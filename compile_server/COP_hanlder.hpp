@@ -10,6 +10,9 @@ namespace ns_hanlder
 {
     using namespace ns_util;
 
+    const std::string default_questions_path = "./questions/";
+    const std::string space = ":";
+
     enum Status
     {
         AC = 0,

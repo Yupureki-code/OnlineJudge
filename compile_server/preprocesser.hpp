@@ -32,15 +32,9 @@ namespace ns_preprocesser
                 file_name = FileUtil::GetUniqueFileName();
                 logger(ns_log::INFO)<<"文件名称: "<<file_name;
                 std::string code = in_value["code"].asString();
-                std::string input = in_value["input"].asString();
                 if(!FileUtil::WriteFile(PathUtil::Src(file_name), code))
                 {
                     logger(ns_log::FATAL)<<"打开文件 "<<PathUtil::Src(file_name)<<"失败";
-                    return HandlerProgramEnd(ns_hanlder::UNKNOWN, file_name);
-                }
-                if(!FileUtil::WriteFile(PathUtil::Stdin(file_name), input))
-                {
-                    logger(ns_log::FATAL)<<"打开文件 "<<PathUtil::Stdin(file_name)<<"失败";
                     return HandlerProgramEnd(ns_hanlder::UNKNOWN, file_name);
                 }
             }

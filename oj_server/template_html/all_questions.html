@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>题目列表</title>
+</head>
+<body>
+    <h1>Online Judge 题目列表</h1>
+    <table border="1">
+        <tr>
+            <th>编号</th>
+            <th>标题</th>
+            <th>难度</th>
+        </tr>
+        {{#question_list}}
+        <tr>
+            <td><a href="/questions/{{number}}">{{number}}</a></td>
+            <td><a href="/questions/{{number}}">{{title}}</a></td>
+            <td>{{star}}</td>
+        </tr>
+        {{/question_list}}
+    </table>
+</body>
+</html>

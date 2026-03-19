@@ -29,21 +29,37 @@ namespace ns_runner
             Json::Reader reader;
             reader.parse(in_json,value);
             int cpu_limit = value["cpu_limit"].asInt();
-            int memory_limit = value["memory_limit"].asInt();
+            int memory_limit = value["mem_limit"].asInt();
+            
+            logger(ns_log::DEBUG)<<"设置资源限制 - CPU: "<<cpu_limit<<"秒, 内存: "<<memory_limit<<"字节";
+            
             struct rlimit r;
+            // 设置CPU时间限制
             r.rlim_cur = cpu_limit;
             r.rlim_max = RLIM_INFINITY;
-            setrlimit(RLIMIT_CPU, &r);
+            if(setrlimit(RLIMIT_CPU, &r) < 0) {
+                logger(ns_log::ERROR)<<"设置CPU限制失败";
+            }
+            
+            // 设置内存限制 - 使用RLIMIT_AS限制地址空间
             r.rlim_cur = memory_limit;
-            setrlimit(RLIMIT_AS, &r);
+            r.rlim_max = memory_limit;
+            if(setrlimit(RLIMIT_AS, &r) < 0) {
+                logger(ns_log::ERROR)<<"设置内存限制失败";
+            }
         }
     public:
         std::string Execute(const std::string& file_name,const std::string& in_json)override
         {
             if(_is_enable)
-            {
+            {   
+                Json::Value in_value;
+                Json::Reader reader;
+                reader.parse(in_json,in_value);
+                std::string id = in_value["id"].asString();
                 std::string _run_file = PathUtil::Exe(file_name);
-                std::string _stdin = PathUtil::Stdin(file_name);
+                std::string _stdin = PathUtil::Stdin(default_questions_path + id + "/in");
+                logger(ns_log::DEBUG)<<"stdin path : "<<_stdin;
                 std::string _stdout = PathUtil::Stdout(file_name);
                 std::string _stderr = PathUtil::Stderr(file_name);
                 umask(0);
@@ -63,13 +79,12 @@ namespace ns_runner
                 }
                 else if(pid == 0)
                 {
+                    SetProcLimit(in_json);
                     dup2(_stdin_fd,0);
                     dup2(_stdout_fd,1);
                     dup2(_stderr_fd,2);
-                    SetProcLimit(in_json);
                     execl(_run_file.c_str(), _run_file.c_str(),nullptr);
-                    logger(ns_log::FATAL)<<"子进程运行 "<<_run_file<<" 失败";
-                    return HandlerProgramEnd(ns_hanlder::UNKNOWN, file_name);
+                    _exit(1);
                 }
                 else 
                 {
@@ -78,10 +93,23 @@ namespace ns_runner
                     close(_stderr_fd);
                     int status = 0;
                     waitpid(pid,&status,0);
-                    logger(ns_log::INFO)<<"运行完毕,ExitCode: "<<(status & 0x7F);
-                    // 根据退出状态码返回相应的错误信息
-                    if(status != 0)
-                        return HandlerProgramEnd(ExitCodeToSatusCode(status & 0x7F), file_name);
+                    
+                    // 检查进程是否正常退出
+                    if (WIFEXITED(status)) {
+                        int exit_code = WEXITSTATUS(status);
+                        logger(ns_log::INFO)<<"运行完毕,ExitCode: "<<exit_code;
+                        if(exit_code != 0)
+                            return HandlerProgramEnd(ExitCodeToSatusCode(exit_code), file_name);
+                    } else if (WIFSIGNALED(status)) {
+                        // 进程被信号终止
+                        int signal = WTERMSIG(status);
+                        logger(ns_log::INFO)<<"运行被信号终止,Signal: "<<signal;
+                        return HandlerProgramEnd(ExitCodeToSatusCode(signal), file_name);
+                    } else {
+                        // 其他情况
+                        logger(ns_log::INFO)<<"运行状态未知,Status: "<<status;
+                        return HandlerProgramEnd(ns_hanlder::UNKNOWN, file_name);
+                    }
                 }
             }
             if(_next)

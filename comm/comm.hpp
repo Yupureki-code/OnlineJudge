@@ -3,6 +3,7 @@
 #include <string>
 #include <atomic>
 #include <fstream>
+#include <vector>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -44,7 +45,7 @@ namespace ns_util
         }
         static std::string Stdin(const std::string & file_name)
         {
-            return default_path + AddSuffix(file_name, ".stdin");
+            return AddSuffix(file_name, ".txt");
         }
         static std::string Stdout(const std::string & file_name)
         {
@@ -115,8 +116,8 @@ namespace ns_util
             std::string _compiler_error = PathUtil::Compile_err(file_name);
             if(FileUtil::IsFileExist(_compiler_error)) unlink(_compiler_error.c_str());
 
-            std::string _execute = PathUtil::Exe(file_name);
-            if(FileUtil::IsFileExist(_execute)) unlink(_execute.c_str());
+            // std::string _execute = PathUtil::Exe(file_name);
+            // if(FileUtil::IsFileExist(_execute)) unlink(_execute.c_str());
 
             std::string _stdin = PathUtil::Stdin(file_name);
             if(FileUtil::IsFileExist(_stdin)) unlink(_stdin.c_str());
@@ -126,6 +127,28 @@ namespace ns_util
 
             std::string _stderr = PathUtil::Stderr(file_name);
             if(FileUtil::IsFileExist(_stderr)) unlink(_stderr.c_str());
+        }
+    };
+
+    class StringUtil
+    {
+    public:
+        static void SplitString(std::string str,std::string space,std::vector<std::string>* v)
+        {
+            size_t pos = 0;
+            while ((pos = str.find(space)) != std::string::npos)
+            {
+                std::string token = str.substr(0, pos);
+                if (!token.empty())
+                {
+                    v->push_back(token);
+                }
+                str.erase(0, pos + space.length());
+            }
+            if (!str.empty())
+            {
+                v->push_back(str);
+            }
         }
     };
 };

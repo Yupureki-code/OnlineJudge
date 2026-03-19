@@ -1,6 +1,6 @@
-test:entry.cpp
-	@g++ entry.cpp -o test -std=c++14 -ljsoncpp
+compile_server:compile_server.cpp
+	@g++ compile_server.cpp -o compile_server -std=c++14 -ljsoncpp
 
 .PHONY:clean
 clean:
-	@rm test
+	@rm compile_server
