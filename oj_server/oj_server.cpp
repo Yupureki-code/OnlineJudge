@@ -1,6 +1,7 @@
 #include <httplib.h>
 #include "oj_control.hpp"
 #include <string>
+#include <fstream>
 
 using namespace httplib;
 
@@ -25,6 +26,12 @@ int main()
 {
     Server svr;
     ns_control::Control ctl;
+    svr.Get("/", [](const Request& req,Response& rep){
+        std::ifstream in("template_html/index.html");
+        std::string html((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        in.close();
+        rep.set_content(html, "text/html;charset=utf-8");
+    });
     svr.Get("/all_questions", [&ctl](const Request& req,Response& rep){
         std::string html;
         ctl.AllQuestions(&html);
@@ -70,6 +77,7 @@ int main()
     }); 
     // 提供静态文件访问
     svr.set_mount_point("/", "./template_html");
+    svr.set_mount_point("/pictures", "./pictures");
     svr.listen("0.0.0.0", 8080);
     return 0;
 }

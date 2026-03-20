@@ -1,19 +1,613 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <title>{{title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}} - Online Judge</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Inter:wght@300;400;500&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Serif SC', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-color: #2D2F2C;
+        }
+
+        /* 背景图片 */
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('pictures/preview.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(0.2px);
+            z-index: -1;
+        }
+
+        /* 雨线效果 */
+        .rain-lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .rain-line {
+            position: absolute;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(244, 246, 240, 0.05));
+            animation: rain 3s linear infinite;
+        }
+
+        @keyframes rain {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 0;
+            margin-bottom: 60px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 300;
+            color: #F4F6F0;
+            font-family: 'Noto Serif SC', serif;
+            letter-spacing: 0.1em;
+        }
+
+        .nav {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .nav a {
+            color: rgba(244, 246, 240, 0.8);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .nav a:hover {
+            color: #F4F6F0;
+        }
+
+        .nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            width: 0;
+            height: 1px;
+            background: rgba(244, 246, 240, 0.6);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav a:hover::after {
+            width: 100%;
+        }
+
+        .rain-toggle {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(244, 246, 240, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .rain-toggle:hover {
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(1.1);
+        }
+
+        .rain-toggle::before {
+            content: '♪';
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+        }
+
+        .question-header {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            animation: fadeIn 0.8s ease;
+        }
+
+        .question-title {
+            font-size: 32px;
+            color: #F4F6F0;
+            margin-bottom: 20px;
+            font-family: 'Noto Serif SC', serif;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+            line-height: 1.2;
+        }
+
+        .question-meta {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(244, 246, 240, 0.7);
+            font-size: 14px;
+            letter-spacing: 0.02em;
+        }
+
+        .difficulty-badge {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 400;
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(244, 246, 240, 0.8);
+            border: 1px solid rgba(244, 246, 240, 0.2);
+        }
+
+        .difficulty-simple {
+            background: rgba(76, 175, 80, 0.15);
+            border-color: rgba(76, 175, 80, 0.3);
+            color: rgba(76, 175, 80, 0.8);
+        }
+
+        .difficulty-medium {
+            background: rgba(255, 152, 0, 0.15);
+            border-color: rgba(255, 152, 0, 0.3);
+            color: rgba(255, 152, 0, 0.8);
+        }
+
+        .difficulty-hard {
+            background: rgba(244, 67, 54, 0.15);
+            border-color: rgba(244, 67, 54, 0.3);
+            color: rgba(244, 67, 54, 0.8);
+        }
+
+        .content-section {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            animation: fadeIn 0.8s ease 0.2s both;
+        }
+
+        .section-title {
+            font-size: 24px;
+            color: #F4F6F0;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Noto Serif SC', serif;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: rgba(244, 246, 240, 0.6);
+            border-radius: 2px;
+        }
+
+        .description {
+            color: rgba(244, 246, 240, 0.85);
+            line-height: 1.8;
+            font-size: 16px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            letter-spacing: 0.02em;
+        }
+
+        .code-editor {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 24px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            animation: fadeIn 0.8s ease 0.4s both;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+            letter-spacing: 0.02em;
+        }
+
+        .editor-tabs {
+            display: flex;
+            gap: 12px;
+        }
+
+        .tab {
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(244, 246, 240, 0.1);
+        }
+
+        .tab.active {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(244, 246, 240, 0.3);
+            color: #F4F6F0;
+        }
+
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(244, 246, 240, 0.2);
+        }
+
+        #editor {
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .submit-section {
+            display: flex;
+            gap: 20px;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .submit-btn {
+            padding: 16px 48px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: #F4F6F0;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.02em;
+        }
+
+        .submit-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .back-btn {
+            padding: 16px 32px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            color: rgba(244, 246, 240, 0.8);
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            letter-spacing: 0.02em;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #F4F6F0;
+            transform: translateY(-2px);
+        }
+
+        .info-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border-left: 4px solid rgba(244, 246, 240, 0.3);
+            color: rgba(244, 246, 240, 0.7);
+            font-size: 14px;
+            line-height: 1.6;
+            letter-spacing: 0.02em;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 60px 0;
+            color: rgba(244, 246, 240, 0.5);
+            font-size: 12px;
+            letter-spacing: 0.02em;
+            animation: fadeIn 2s ease 1s both;
+        }
+
+        /* 涟漪效果 */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(0);
+            animation: ripple 0.4s linear;
+            pointer-events: none;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(244, 246, 240, 0.3);
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(244, 246, 240, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .question-header {
+                padding: 30px;
+            }
+            .question-title {
+                font-size: 24px;
+            }
+            .content-section {
+                padding: 30px;
+            }
+            .submit-section {
+                flex-direction: column;
+            }
+            .submit-btn, .back-btn {
+                width: 100%;
+            }
+            .nav {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            .question-meta {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>{{number}}. {{title}}</h1>
-    <p>难度：{{star}}</p>
-    <h2>题目描述</h2>
-    <pre>{{desc}}</pre>
-    <h2>提交代码</h2>
-    <form action="/judge/{{number}}" method="post">
-        <textarea name="code" rows="20" cols="80" placeholder="在此输入你的代码..."></textarea><br>
-        <input type="submit" value="提交">
-    </form>
-    <p><a href="/all_questions">返回题目列表</a></p>
+
+    
+    <!-- 背景图片 -->
+    <div class="background"></div>
+    
+    <!-- 雨线效果 -->
+    <div class="rain-lines" id="rainLines"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="logo">Online Judge</div>
+            <div class="nav">
+                <a href="/">首页</a>
+                <a href="/all_questions">题库</a>
+                <a href="#about">关于</a>
+                <div class="rain-toggle" id="rainToggle"></div>
+            </div>
+        </div>
+
+        <div class="question-header">
+            <h1 class="question-title">{{number}}. {{title}}</h1>
+            <div class="question-meta">
+                <div class="meta-item">
+                    <span>难度：</span>
+                    <span class="difficulty-badge difficulty-{{star}}">{{star}}</span>
+                </div>
+                <div class="meta-item">
+                    <span>时间限制：</span>
+                    <span>1秒</span>
+                </div>
+                <div class="meta-item">
+                    <span>内存限制：</span>
+                    <span>20MB</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-section">
+            <h2 class="section-title">题目描述</h2>
+            <div class="description">{{desc}}</div>
+        </div>
+
+        <div class="content-section">
+            <h2 class="section-title">提交代码</h2>
+            <div class="info-box">
+                请确保您的代码符合题目要求，并在提交前进行测试。
+            </div>
+            <form action="/judge/{{number}}" method="post">
+                <div class="code-editor">
+                    <div class="editor-header">
+                        <div class="editor-tabs">
+                            <div class="tab active">C++</div>
+                        </div>
+                        <div>支持C++11标准</div>
+                    </div>
+                    <div id="editor" style="height: 400px;"></div>
+                    <textarea name="code" id="code" style="display: none;"></textarea>
+                </div>
+                <div class="submit-section">
+                    <a href="/all_questions" class="back-btn">返回列表</a>
+                    <button type="submit" class="submit-btn">提交代码</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2024 Online Judge. All rights reserved.</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.13/ace.js"></script>
+    <script>
+        // 自定义光标
+        const cursor = document.querySelector('.custom-cursor');
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        // 鼠标悬停效果
+        const interactiveElements = document.querySelectorAll('a, button, .rain-toggle');
+        interactiveElements.forEach(element => {
+            element.addEventListener('mouseenter', () => {
+                cursor.classList.add('hover');
+            });
+            element.addEventListener('mouseleave', () => {
+                cursor.classList.remove('hover');
+            });
+        });
+
+        // 涟漪效果
+        interactiveElements.forEach(element => {
+            element.addEventListener('click', (e) => {
+                const ripple = document.createElement('span');
+                const rect = element.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = x + 'px';
+                ripple.style.top = y + 'px';
+                ripple.classList.add('ripple');
+                
+                element.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 400);
+            });
+        });
+
+        // 生成雨线
+        function createRainLines() {
+            const rainLines = document.getElementById('rainLines');
+            const lineCount = 50;
+            
+            for (let i = 0; i < lineCount; i++) {
+                const line = document.createElement('div');
+                line.classList.add('rain-line');
+                line.style.left = Math.random() * 100 + '%';
+                line.style.height = Math.random() * 100 + 50 + 'px';
+                line.style.animationDelay = Math.random() * 3 + 's';
+                line.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                rainLines.appendChild(line);
+            }
+        }
+
+        // 初始化ACE编辑器
+        var editor = ace.edit("editor");
+        editor.setTheme("ace/theme/monokai");
+        editor.session.setMode("ace/mode/c_cpp");
+        editor.setOptions({
+            fontSize: "14px",
+            lineNumbers: true,
+            autoScrollEditorIntoView: true,
+            copyWithEmptySelection: true,
+            useSoftTabs: true,
+            tabSize: 4
+        });
+        
+        // 设置默认代码
+        editor.setValue('#include <iostream>\n\nint main()\n{\n    // 在这里编写你的代码\n    return 0;\n}');
+        editor.clearSelection();
+        
+        // 表单提交时，将编辑器内容同步到textarea
+        document.querySelector('form').addEventListener('submit', function() {
+            document.getElementById('code').value = editor.getValue();
+        });
+
+        // 初始化
+        createRainLines();
+    </script>
 </body>
 </html>

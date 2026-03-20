@@ -1,96 +1,733 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <title>判题结果</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>判题结果 - Online Judge</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Inter:wght@300;400;500&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Serif SC', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-color: #2D2F2C;
+        }
+
+        /* 背景图片 */
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('pictures/preview.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(0.2px);
+            z-index: -1;
+        }
+
+        /* 雨线效果 */
+        .rain-lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .rain-line {
+            position: absolute;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(244, 246, 240, 0.05));
+            animation: rain 3s linear infinite;
+        }
+
+        @keyframes rain {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 0;
+            margin-bottom: 60px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 300;
+            color: #F4F6F0;
+            font-family: 'Noto Serif SC', serif;
+            letter-spacing: 0.1em;
+        }
+
+        .nav {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .nav a {
+            color: rgba(244, 246, 240, 0.8);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .nav a:hover {
+            color: #F4F6F0;
+        }
+
+        .nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            width: 0;
+            height: 1px;
+            background: rgba(244, 246, 240, 0.6);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav a:hover::after {
+            width: 100%;
+        }
+
+        .rain-toggle {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(244, 246, 240, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .rain-toggle:hover {
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(1.1);
+        }
+
+        .rain-toggle::before {
+            content: '♪';
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+        }
+
+        .result-container {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 60px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            animation: fadeIn 0.8s ease;
+        }
+
+        .result-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .result-icon {
+            font-size: 80px;
+            margin-bottom: 24px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .result-title {
+            font-size: 36px;
+            font-weight: 300;
+            margin-bottom: 16px;
+            font-family: 'Noto Serif SC', serif;
+            letter-spacing: 0.02em;
+        }
+
+        .result-desc {
+            font-size: 16px;
+            color: rgba(244, 246, 240, 0.7);
+            margin-bottom: 40px;
+            letter-spacing: 0.02em;
+            line-height: 1.6;
+        }
+
+        .result-ac .result-title { color: rgba(76, 175, 80, 0.8); }
+        .result-ac .result-icon { color: rgba(76, 175, 80, 0.8); }
+        .result-ac { border-color: rgba(76, 175, 80, 0.2); }
+
+        .result-wa .result-title { color: rgba(255, 152, 0, 0.8); }
+        .result-wa .result-icon { color: rgba(255, 152, 0, 0.8); }
+        .result-wa { border-color: rgba(255, 152, 0, 0.2); }
+
+        .result-error .result-title { color: rgba(244, 67, 54, 0.8); }
+        .result-error .result-icon { color: rgba(244, 67, 54, 0.8); }
+        .result-error { border-color: rgba(244, 67, 54, 0.2); }
+
+        .result-timeout .result-title { color: rgba(156, 39, 176, 0.8); }
+        .result-timeout .result-icon { color: rgba(156, 39, 176, 0.8); }
+        .result-timeout { border-color: rgba(156, 39, 176, 0.2); }
+
+        .result-memory .result-title { color: rgba(33, 150, 243, 0.8); }
+        .result-memory .result-icon { color: rgba(33, 150, 243, 0.8); }
+        .result-memory { border-color: rgba(33, 150, 243, 0.2); }
+
+        .details-section {
+            background: rgba(0,0,0,0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+        }
+
+        .details-title {
+            font-size: 18px;
+            color: #F4F6F0;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+        }
+
+        .details-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: rgba(244, 246, 240, 0.6);
+            border-radius: 2px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(244, 246, 240, 0.1);
+            color: rgba(244, 246, 240, 0.8);
+            font-size: 14px;
+            letter-spacing: 0.02em;
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 400;
+        }
+
+        .detail-value {
+            font-family: 'Courier New', monospace;
+        }
+
+        .output-section {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+        }
+
+        .output-title {
+            font-size: 16px;
+            color: #F4F6F0;
+            margin-bottom: 16px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+        }
+
+        .output-content {
+            background: rgba(0,0,0,0.4);
+            border-radius: 10px;
+            padding: 20px;
+            color: rgba(76, 175, 80, 0.8);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .error-section {
+            background: rgba(244, 67, 54, 0.1);
+            border-radius: 15px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(244, 67, 54, 0.2);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .error-title {
+            font-size: 16px;
+            color: rgba(244, 67, 54, 0.8);
+            margin-bottom: 16px;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.02em;
+        }
+
+        .error-content {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            color: rgba(255, 205, 210, 0.8);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .actions {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .action-btn {
+            padding: 16px 48px;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            letter-spacing: 0.02em;
+        }
+
+        .btn-primary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #F4F6F0;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-primary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(244, 246, 240, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #F4F6F0;
+            transform: translateY(-2px);
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin-bottom: 40px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(244, 246, 240, 0.3), rgba(244, 246, 240, 0.6));
+            border-radius: 2px;
+            animation: progress 1s ease;
+        }
+
+        @keyframes progress {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 24px;
+            text-align: center;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 300;
+            color: #F4F6F0;
+            margin-bottom: 8px;
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        .stat-label {
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+            letter-spacing: 0.02em;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 60px 0;
+            color: rgba(244, 246, 240, 0.5);
+            font-size: 12px;
+            letter-spacing: 0.02em;
+            animation: fadeIn 2s ease 1s both;
+        }
+
+        /* 涟漪效果 */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(0);
+            animation: ripple 0.4s linear;
+            pointer-events: none;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(244, 246, 240, 0.3);
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(244, 246, 240, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .result-container {
+                padding: 40px;
+            }
+            .result-title {
+                font-size: 28px;
+            }
+            .result-icon {
+                font-size: 60px;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .actions {
+                flex-direction: column;
+            }
+            .action-btn {
+                width: 100%;
+            }
+            .nav {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>判题结果</h1>
-    <div id="result"></div>
+
+    
+    <!-- 背景图片 -->
+    <div class="background"></div>
+    
+    <!-- 雨线效果 -->
+    <div class="rain-lines" id="rainLines"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="logo">Online Judge</div>
+            <div class="nav">
+                <a href="/">首页</a>
+                <a href="/all_questions">题库</a>
+                <a href="#about">关于</a>
+                <div class="rain-toggle" id="rainToggle"></div>
+            </div>
+        </div>
+
+        <div id="result"></div>
+
+        <div class="footer">
+            <p>&copy; 2024 Online Judge. All rights reserved.</p>
+        </div>
+    </div>
+
     <script>
-        // 解析URL中的JSON参数
+        // 自定义光标
+        const cursor = document.querySelector('.custom-cursor');
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        // 鼠标悬停效果
+        const interactiveElements = document.querySelectorAll('a, button, .rain-toggle');
+        interactiveElements.forEach(element => {
+            element.addEventListener('mouseenter', () => {
+                cursor.classList.add('hover');
+            });
+            element.addEventListener('mouseleave', () => {
+                cursor.classList.remove('hover');
+            });
+        });
+
+        // 涟漪效果
+        interactiveElements.forEach(element => {
+            element.addEventListener('click', (e) => {
+                const ripple = document.createElement('span');
+                const rect = element.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = x + 'px';
+                ripple.style.top = y + 'px';
+                ripple.classList.add('ripple');
+                
+                element.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 400);
+            });
+        });
+
+        // 生成雨线
+        function createRainLines() {
+            const rainLines = document.getElementById('rainLines');
+            const lineCount = 50;
+            
+            for (let i = 0; i < lineCount; i++) {
+                const line = document.createElement('div');
+                line.classList.add('rain-line');
+                line.style.left = Math.random() * 100 + '%';
+                line.style.height = Math.random() * 100 + 50 + 'px';
+                line.style.animationDelay = Math.random() * 3 + 's';
+                line.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                rainLines.appendChild(line);
+            }
+        }
+
         function getURLParam(name) {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get(name);
         }
 
-        // 显示结果
         function displayResult() {
             const resultDiv = document.getElementById('result');
             try {
-                // 尝试从URL参数获取结果
                 const resultJson = getURLParam('result');
                 if (resultJson) {
                     const result = JSON.parse(decodeURIComponent(resultJson));
                     showResult(result);
                 } else {
-                    // 否则尝试从responseText获取
-                    showResult({"status": "AC", "message": "Accepted", "time": "0ms", "memory": "0KB"});
+                    showResult({"status": 0, "desc": "恭喜你!已通过此题", "stdout": "", "stderr": ""});
                 }
             } catch (e) {
-                resultDiv.innerHTML = '<p>错误：无法解析结果</p>';
+                resultDiv.innerHTML = '<div class="result-container result-error"><div class="result-header"><div class="result-icon">⚠️</div><h1 class="result-title">错误</h1><p class="result-desc">无法解析结果</p></div></div>';
             }
         }
 
         function showResult(result) {
             const resultDiv = document.getElementById('result');
-            let statusText, color;
+            let statusClass, statusIcon, statusText;
             
-            // 根据状态码转换为对应的文本
             switch(result.status) {
                 case 0:
-                    statusText = 'AC';
-                    color = 'green';
+                    statusClass = 'result-ac';
+                    statusIcon = '✅';
+                    statusText = 'AC - 恭喜你!已通过此题';
                     break;
                 case 1:
-                    statusText = 'WA';
-                    color = 'red';
+                    statusClass = 'result-wa';
+                    statusIcon = '❌';
+                    statusText = 'WA - 部分解答错误';
                     break;
                 case 2:
-                    statusText = 'RUNTIME_ERROR';
-                    color = 'red';
+                    statusClass = 'result-timeout';
+                    statusIcon = '⏱️';
+                    statusText = 'TLE - 运行时间超时';
                     break;
                 case 3:
-                    statusText = 'MEMORY_LIMIT';
-                    color = 'red';
+                    statusClass = 'result-memory';
+                    statusIcon = '💾';
+                    statusText = 'MLE - 内存申请过多';
                     break;
                 case 4:
-                    statusText = 'COMPILE_ERROR';
-                    color = 'red';
+                    statusClass = 'result-error';
+                    statusIcon = '🔧';
+                    statusText = 'CE - 编译错误';
                     break;
                 case 5:
-                    statusText = 'FPE_ERROR';
-                    color = 'red';
+                    statusClass = 'result-error';
+                    statusIcon = '🔢';
+                    statusText = 'FPE - 浮点数异常';
                     break;
                 case 6:
-                    statusText = 'SEGV_ERROR';
-                    color = 'red';
+                    statusClass = 'result-error';
+                    statusIcon = '💥';
+                    statusText = 'SEGV - 段错误';
                     break;
                 default:
-                    statusText = 'UNKNOWN';
-                    color = 'red';
+                    statusClass = 'result-error';
+                    statusIcon = '❓';
+                    statusText = 'UNKNOWN - 服务器繁忙，请稍后重试';
             }
             
-            let errorInfo = '';
-            // 如果是编译错误或运行错误，显示错误信息
-            if (result.status === 4 || result.status >= 2 && result.status <= 3 || result.status >= 5 && result.status <= 6) {
-                if (result.stderr) {
-                    errorInfo = `<div style="margin-top: 10px; padding: 10px; background-color: #f5f5f5; border-left: 4px solid ${color};">
-                        <h4>错误信息:</h4>
-                        <pre style="white-space: pre-wrap; font-family: monospace;">${result.stderr}</pre>
-                    </div>`;
-                }
+            let errorSection = '';
+            let outputSection = '';
+            
+            if (result.stderr && result.stderr.trim()) {
+                errorSection = `
+                    <div class="error-section">
+                        <h3 class="error-title">⚠️ 错误信息</h3>
+                        <div class="error-content">${escapeHtml(result.stderr)}</div>
+                    </div>
+                `;
+            }
+            
+            if (result.stdout && result.stdout.trim()) {
+                outputSection = `
+                    <div class="output-section">
+                        <h3 class="output-title">📤 输出结果</h3>
+                        <div class="output-content">${escapeHtml(result.stdout)}</div>
+                    </div>
+                `;
             }
             
             resultDiv.innerHTML = `
-                <p style="color: ${color}; font-size: 24px;">${statusText} - ${result.desc}</p>
-                ${result.stdout ? `<p>输出: ${result.stdout}</p>` : ''}
-                ${errorInfo}
-                <p><a href="/all_questions">返回题目列表</a></p>
+                <div class="result-container ${statusClass}">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    
+                    <div class="result-header">
+                        <div class="result-icon">${statusIcon}</div>
+                        <h1 class="result-title">${statusText}</h1>
+                        <p class="result-desc">${result.desc}</p>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">${result.status === 0 ? '✓' : '✗'}</div>
+                            <div class="stat-label">评测状态</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">1s</div>
+                            <div class="stat-label">时间限制</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">20MB</div>
+                            <div class="stat-label">内存限制</div>
+                        </div>
+                    </div>
+                    
+                    ${outputSection}
+                    ${errorSection}
+                    
+                    <div class="actions">
+                        <a href="/all_questions" class="action-btn btn-secondary">返回题目列表</a>
+                        <button onclick="location.reload()" class="action-btn btn-primary">重新提交</button>
+                    </div>
+                </div>
             `;
         }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
-        // 页面加载时显示结果
+        // 初始化
+        createRainLines();
         window.onload = displayResult;
     </script>
 </body>

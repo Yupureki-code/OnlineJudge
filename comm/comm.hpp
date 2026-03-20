@@ -116,8 +116,8 @@ namespace ns_util
             std::string _compiler_error = PathUtil::Compile_err(file_name);
             if(FileUtil::IsFileExist(_compiler_error)) unlink(_compiler_error.c_str());
 
-            // std::string _execute = PathUtil::Exe(file_name);
-            // if(FileUtil::IsFileExist(_execute)) unlink(_execute.c_str());
+            std::string _execute = PathUtil::Exe(file_name);
+            if(FileUtil::IsFileExist(_execute)) unlink(_execute.c_str());
 
             std::string _stdin = PathUtil::Stdin(file_name);
             if(FileUtil::IsFileExist(_stdin)) unlink(_stdin.c_str());
