@@ -2,89 +2,87 @@
 
 #include <cstdio>
 #include <assert.h>
-#include <unordered_map>
+#include <cstdlib>
 #include <vector>
-#include <fstream>
-#include "../comm/comm.hpp"
 #include "../comm/logstrategy.hpp"
+#include <mysql/mysql.h>
 
 namespace ns_model
 {
     using namespace ns_log;
-    using namespace ns_util;
 
     struct Question
     {
         std::string number;
         std::string title;
         std::string star;
+        std::string desc;
         int cpu_limit;
         int memory_limit;
-        std::string desc;
+        std::string create_time;
+        std::string update_time;
     };
 
-    const std::string default_questions_path = "./questions/";
-    const std::string default_questions_list_name = "questions_list";
-    const std::string space = " ";
+    const std::string oj_questions = "questions";
+    const std::string host = "127.0.0.1";
+    const std::string user = "oj_server";
+    const std::string passwd = "Myoj@2026071024";
+    const std::string db = "myoj";
+    const int port = 3306;
 
     class Model
     {
     private:
-        bool LoadQuestionList(const std::string& question_list)
+        bool QueryMySql(const std::string& sql,std::vector<Question>* qs)
         {
-            std::ifstream in(question_list);
-            if(!in.is_open())
+            MYSQL* my = mysql_init(nullptr);
+            if(mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr)
                 return false;
-            std::string line;
-            while(std::getline(in,line))
+            if(mysql_query(my, sql.c_str()) != 0)
             {
-                std::vector<std::string> v;
-                StringUtil::SplitString(line, space, &v);
-                if(v.size() != 5)
-                {
-                    logger(ns_log::WARNING)<<"题目属性不全";
-                    continue;
-                }
-                Question q;
-                q.number = v[0];
-                q.title = v[1];
-                q.star = v[2];
-                q.cpu_limit = stoi(v[3]);
-                q.memory_limit = stoi(v[4]);
-                FileUtil::ReadFile(default_questions_path + q.number + "_desc.txt", &q.desc,true);
-                _questions[q.number] = q;
+                logger(ns_log::FATAL)<<"MySql查询错误!";
+                return false;
             }
-            logger(ns_log::INFO)<<"加载题库成功";
-            in.close();
+            MYSQL_RES* res = mysql_store_result(my);
+            int rows = mysql_num_rows(res);
+            int cols = mysql_num_fields(res);
+            for(int i = 0;i<rows;i++)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                Question q;
+                q.number = row[0];
+                q.title = row[1];
+                q.desc = row[2];
+                q.star = row[3];
+                q.create_time = row[4];
+                q.update_time = row[5];
+                q.cpu_limit = atoi(row[6]);
+                q.memory_limit = atoi(row[7]);
+                qs->push_back(q);
+            }
+            mysql_free_result(res);
+            mysql_close(my);
             return true;
         }
     public:
-        Model()
-        {
-            assert(LoadQuestionList(default_questions_path + default_questions_list_name));
-        }
         bool GetAllQuestions(std::vector<Question>* qs)
         {
-            if(_questions.empty())
-                return false;
-            for(auto & it : _questions)
-            {
-                qs->push_back(it.second);
-            }
-            return true;
+            std::string sql = "select * from ";
+            sql += oj_questions;
+            return QueryMySql(sql, qs);
         }
         bool GetOneQuestion(const std::string& number,Question* q)
         {
-            auto it = _questions.find(number);
-            if(it == _questions.end())
-            {
-                logger(ns_log::INFO)<<"未找到该题目: "<<number;
+            std::string sql = "select * from ";
+            sql += oj_questions;
+            sql += " where id=" + number;
+            std::vector<Question> v;
+            QueryMySql(sql, &v);
+            if(v.size() != 1)
                 return false;
-            }
-            *q = it->second;
+            *q = v[0];
             return true;
         }
-    private:
-        std::unordered_map<std::string, Question> _questions;
+
     };
 };

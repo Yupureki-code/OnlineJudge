@@ -11,6 +11,7 @@
 #include "oj_view.hpp"
 #include <httplib.h>
 #include <jsoncpp/json/json.h>
+#include "../comm/comm.hpp"
 
 namespace ns_control
 {
@@ -219,8 +220,6 @@ namespace ns_control
              Json::Value compile_value;
             compile_value["id"] = number;
             compile_value["code"] = code;
-            compile_value["cpu_limit"] = q.cpu_limit;
-            compile_value["mem_limit"] = q.memory_limit;
             Json::FastWriter writer;
             std::string compile_string = writer.write(compile_value);
             while(true)

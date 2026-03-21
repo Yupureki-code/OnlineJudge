@@ -35,7 +35,7 @@ namespace ns_preprocesser
                 if(!FileUtil::WriteFile(PathUtil::Src(file_name), code))
                 {
                     logger(ns_log::FATAL)<<"打开文件 "<<PathUtil::Src(file_name)<<"失败";
-                    return HandlerProgramEnd(ns_hanlder::UNKNOWN, file_name);
+                    return HandlerProgramEnd({UNKNOWN}, file_name);
                 }
             }
             if(_next)
@@ -46,7 +46,7 @@ namespace ns_preprocesser
             {
                 //责任链不应该在这结束
                 ns_log::logger(ns_log::INFO)<<"责任链错误结束";
-                return HandlerProgramEnd(ns_hanlder::UNKNOWN, file_name);
+                return HandlerProgramEnd({UNKNOWN}, file_name);
             }
         }
     };

@@ -3,10 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>判题结果 - Online Judge</title>
+    <title>判题结果 - Yupureki-OJ</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Inter:wght@300;400;500&display=swap');
-        
         * {
             margin: 0;
             padding: 0;
@@ -14,7 +12,7 @@
         }
 
         body {
-            font-family: 'Inter', 'Noto Serif SC', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
             background-color: #2D2F2C;
@@ -27,7 +25,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: url('pictures/preview.jpg');
+            background-image: url('/pictures/preview.jpg');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -90,7 +88,7 @@
             font-size: 24px;
             font-weight: 300;
             color: #F4F6F0;
-            font-family: 'Noto Serif SC', serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             letter-spacing: 0.1em;
         }
 
@@ -183,7 +181,7 @@
             font-size: 36px;
             font-weight: 300;
             margin-bottom: 16px;
-            font-family: 'Noto Serif SC', serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             letter-spacing: 0.02em;
         }
 
@@ -416,13 +414,123 @@
             font-weight: 300;
             color: #F4F6F0;
             margin-bottom: 8px;
-            font-family: 'Noto Serif SC', serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
 
         .stat-label {
             color: rgba(244, 246, 240, 0.6);
             font-size: 14px;
             letter-spacing: 0.02em;
+        }
+
+        /* 测试用例样式 */
+        .test-cases-section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            color: #F4F6F0;
+            margin-bottom: 24px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(244, 246, 240, 0.2);
+        }
+
+        .test-cases-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .test-case-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .test-case-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(244, 246, 240, 0.1);
+        }
+
+        .test-case-number {
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+            letter-spacing: 0.02em;
+        }
+
+        .test-case-status {
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+
+        .test-case-desc {
+            color: rgba(244, 246, 240, 0.7);
+            font-size: 14px;
+            letter-spacing: 0.02em;
+        }
+
+        .test-ac {
+            border-color: rgba(76, 175, 80, 0.3);
+        }
+
+        .test-ac .test-case-status {
+            color: rgba(76, 175, 80, 0.8);
+        }
+
+        .test-wa {
+            border-color: rgba(255, 152, 0, 0.3);
+        }
+
+        .test-wa .test-case-status {
+            color: rgba(255, 152, 0, 0.8);
+        }
+
+        .test-timeout {
+            border-color: rgba(255, 193, 7, 0.3);
+        }
+
+        .test-timeout .test-case-status {
+            color: rgba(255, 193, 7, 0.8);
+        }
+
+        .test-memory {
+            border-color: rgba(156, 39, 176, 0.3);
+        }
+
+        .test-memory .test-case-status {
+            color: rgba(156, 39, 176, 0.8);
+        }
+
+        .test-error {
+            border-color: rgba(244, 67, 54, 0.3);
+        }
+
+        .test-error .test-case-status {
+            color: rgba(244, 67, 54, 0.8);
+        }
+
+        .test-unknown {
+            border-color: rgba(244, 246, 240, 0.3);
+        }
+
+        .test-unknown .test-case-status {
+            color: rgba(244, 246, 240, 0.8);
         }
 
         .footer {
@@ -490,6 +598,9 @@
             .result-icon {
                 font-size: 60px;
             }
+            .test-cases-grid {
+                grid-template-columns: 1fr;
+            }
             .stats-grid {
                 grid-template-columns: 1fr;
             }
@@ -522,11 +633,11 @@
     
     <div class="container">
         <div class="header">
-            <div class="logo">Online Judge</div>
+            <div class="logo">Yupureki-OJ</div>
             <div class="nav">
                 <a href="/">首页</a>
                 <a href="/all_questions">题库</a>
-                <a href="#about">关于</a>
+                <a href="/about">关于</a>
                 <div class="rain-toggle" id="rainToggle"></div>
             </div>
         </div>
@@ -534,28 +645,13 @@
         <div id="result"></div>
 
         <div class="footer">
-            <p>&copy; 2024 Online Judge. All rights reserved.</p>
+            <p>&copy; 2026 Yupureki-OJ. All rights reserved.</p>
         </div>
     </div>
 
     <script>
-        // 自定义光标
-        const cursor = document.querySelector('.custom-cursor');
-        document.addEventListener('mousemove', (e) => {
-            cursor.style.left = e.clientX + 'px';
-            cursor.style.top = e.clientY + 'px';
-        });
-
-        // 鼠标悬停效果
+        // 交互元素
         const interactiveElements = document.querySelectorAll('a, button, .rain-toggle');
-        interactiveElements.forEach(element => {
-            element.addEventListener('mouseenter', () => {
-                cursor.classList.add('hover');
-            });
-            element.addEventListener('mouseleave', () => {
-                cursor.classList.remove('hover');
-            });
-        });
 
         // 涟漪效果
         interactiveElements.forEach(element => {
@@ -617,48 +713,124 @@
 
         function showResult(result) {
             const resultDiv = document.getElementById('result');
-            let statusClass, statusIcon, statusText;
             
-            switch(result.status) {
-                case 0:
-                    statusClass = 'result-ac';
-                    statusIcon = '✅';
-                    statusText = 'AC - 恭喜你!已通过此题';
-                    break;
-                case 1:
-                    statusClass = 'result-wa';
-                    statusIcon = '❌';
-                    statusText = 'WA - 部分解答错误';
-                    break;
-                case 2:
-                    statusClass = 'result-timeout';
-                    statusIcon = '⏱️';
-                    statusText = 'TLE - 运行时间超时';
-                    break;
-                case 3:
-                    statusClass = 'result-memory';
-                    statusIcon = '💾';
-                    statusText = 'MLE - 内存申请过多';
-                    break;
-                case 4:
-                    statusClass = 'result-error';
-                    statusIcon = '🔧';
-                    statusText = 'CE - 编译错误';
-                    break;
-                case 5:
-                    statusClass = 'result-error';
-                    statusIcon = '🔢';
-                    statusText = 'FPE - 浮点数异常';
-                    break;
-                case 6:
-                    statusClass = 'result-error';
-                    statusIcon = '💥';
-                    statusText = 'SEGV - 段错误';
-                    break;
-                default:
-                    statusClass = 'result-error';
-                    statusIcon = '❓';
-                    statusText = 'UNKNOWN - 服务器繁忙，请稍后重试';
+            let statusString = result.status || '';
+            const statusArray = statusString.trim().split(/\s+/).filter(s => s);
+            
+            // 检查是否是编译错误
+            const isCompileError = statusArray.length > 0 && statusArray[0] === 'COMPILE_ERROR';
+            
+            // 如果是编译错误，显示专门的编译错误页面
+            if (isCompileError) {
+                resultDiv.innerHTML = `
+                    <div class="result-container result-error">
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                        
+                        <div class="result-header">
+                            <div class="result-icon">🔧</div>
+                            <h1 class="result-title">编译错误</h1>
+                            <p class="result-desc">Compile Error</p>
+                        </div>
+                        
+                        <div class="error-section" style="margin-top: 0;">
+                            <h3 class="error-title">编译报错信息</h3>
+                            <div class="error-content">${escapeHtml(result.stderr || '无编译错误信息')}</div>
+                        </div>
+                        
+                        <div class="actions">
+                            <a href="/questions/" class="action-btn btn-secondary" id="backToQuestion">返回题目</a>
+                            <button onclick="history.back()" class="action-btn btn-primary">返回修改代码</button>
+                        </div>
+                    </div>
+                `;
+                
+                // 设置返回题目按钮的链接
+                setActionLinks();
+                return;
+            }
+            
+            let testCasesHTML = '';
+            let overallStatus = 'AC';
+            let overallIcon = '✅';
+            let overallText = 'AC - 恭喜你!已通过此题';
+            let overallDesc = result.desc || '恭喜你!已通过此题';
+            
+            if (statusArray.length > 0) {
+                overallStatus = statusArray[statusArray.length - 1];
+                
+                testCasesHTML = '<div class="test-cases-section">';
+                testCasesHTML += '<h2 class="section-title">测试用例结果</h2>';
+                testCasesHTML += '<div class="test-cases-grid">';
+                
+                statusArray.forEach((status, index) => {
+                    let statusClass, statusIcon, statusText;
+                    
+                    switch(status) {
+                        case 'AC':
+                            statusClass = 'test-ac';
+                            statusIcon = '✅';
+                            statusText = 'AC';
+                            break;
+                        case 'WA':
+                            statusClass = 'test-wa';
+                            statusIcon = '❌';
+                            statusText = 'WA';
+                            break;
+                        case 'RUNTIME_ERROR':
+                            statusClass = 'test-timeout';
+                            statusIcon = '⏱️';
+                            statusText = 'TLE';
+                            break;
+                        case 'MEMORY_LIMIT':
+                            statusClass = 'test-memory';
+                            statusIcon = '💾';
+                            statusText = 'MLE';
+                            break;
+                        case 'COMPILE_ERROR':
+                            statusClass = 'test-error';
+                            statusIcon = '🔧';
+                            statusText = 'CE';
+                            break;
+                        case 'FPE_ERROR':
+                            statusClass = 'test-error';
+                            statusIcon = '🔢';
+                            statusText = 'FPE';
+                            break;
+                        case 'SEGV_ERROR':
+                            statusClass = 'test-error';
+                            statusIcon = '💥';
+                            statusText = 'SEGV';
+                            break;
+                        default:
+                            statusClass = 'test-unknown';
+                            statusIcon = '❓';
+                            statusText = 'UNKNOWN';
+                    }
+                    
+                    testCasesHTML += `
+                        <div class="test-case-card ${statusClass}">
+                            <div class="test-case-header">
+                                <span class="test-case-number">测试用例 ${index + 1}</span>
+                                <span class="test-case-status">${statusIcon} ${statusText}</span>
+                            </div>
+                            <div class="test-case-desc">${getStatusDesc(status)}</div>
+                        </div>
+                    `;
+                });
+                
+                testCasesHTML += '</div></div>';
+                
+                if (overallStatus === 'AC') {
+                    overallIcon = '✅';
+                    overallText = 'AC - 恭喜你!已通过此题';
+                    overallDesc = '恭喜你!已通过此题';
+                } else {
+                    overallIcon = '❌';
+                    overallText = 'WA - 部分解答错误';
+                    overallDesc = '部分解答错误';
+                }
             }
             
             let errorSection = '';
@@ -682,42 +854,70 @@
                 `;
             }
             
+            // 根据结果生成不同的操作按钮
+        let actionsHTML = '';
+        const currentQuestionId = getCurrentQuestionId();
+        if (overallStatus === 'AC') {
+            // 答案正确时，显示返回题目和下一道题
+            actionsHTML = `
+                <div class="actions">
+                    <a href="/questions/" class="action-btn btn-secondary" id="backToQuestion">返回题目</a>
+                    <a href="/questions/" class="action-btn btn-primary" id="nextQuestion">下一道题</a>
+                </div>
+            `;
+        } else {
+            // 答案错误时，只显示返回题目
+            actionsHTML = `
+                <div class="actions">
+                    <a href="/questions/" class="action-btn btn-secondary" id="backToQuestion">返回题目</a>
+                </div>
+            `;
+        }
+            
             resultDiv.innerHTML = `
-                <div class="result-container ${statusClass}">
+                <div class="result-container ${overallStatus === 'AC' ? 'result-ac' : 'result-wa'}">
                     <div class="progress-bar">
                         <div class="progress-fill"></div>
                     </div>
                     
                     <div class="result-header">
-                        <div class="result-icon">${statusIcon}</div>
-                        <h1 class="result-title">${statusText}</h1>
-                        <p class="result-desc">${result.desc}</p>
+                        <div class="result-icon">${overallIcon}</div>
+                        <h1 class="result-title">${overallText}</h1>
+                        <p class="result-desc">${overallDesc}</p>
                     </div>
                     
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-value">${result.status === 0 ? '✓' : '✗'}</div>
-                            <div class="stat-label">评测状态</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">1s</div>
-                            <div class="stat-label">时间限制</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">20MB</div>
-                            <div class="stat-label">内存限制</div>
-                        </div>
-                    </div>
+                    ${testCasesHTML}
                     
                     ${outputSection}
                     ${errorSection}
                     
-                    <div class="actions">
-                        <a href="/all_questions" class="action-btn btn-secondary">返回题目列表</a>
-                        <button onclick="location.reload()" class="action-btn btn-primary">重新提交</button>
-                    </div>
+                    ${actionsHTML}
                 </div>
             `;
+            
+            // 设置操作按钮的链接
+            setActionLinks();
+        }
+        
+        function getStatusDesc(status) {
+            switch(status) {
+                case 'AC':
+                    return '通过';
+                case 'WA':
+                    return '答案错误';
+                case 'RUNTIME_ERROR':
+                    return '运行时间超时';
+                case 'MEMORY_LIMIT':
+                    return '内存申请过多';
+                case 'COMPILE_ERROR':
+                    return '编译错误';
+                case 'FPE_ERROR':
+                    return '浮点数异常';
+                case 'SEGV_ERROR':
+                    return '段错误';
+                default:
+                    return '未知错误';
+            }
         }
         
         function escapeHtml(text) {
@@ -726,6 +926,50 @@
             return div.innerHTML;
         }
 
+        // 获取当前题目的ID
+        function getCurrentQuestionId() {
+            // 优先从URL参数中获取题目ID
+            const urlParams = new URLSearchParams(window.location.search);
+            const idParam = urlParams.get('id');
+            console.log('idParam:', idParam);
+            if (idParam) {
+                const id = parseInt(idParam);
+                console.log('Parsed id from param:', id);
+                return id;
+            }
+            
+            // 如果没有参数，再从URL路径中获取
+            const currentUrl = window.location.href;
+            console.log('Current URL:', currentUrl);
+            const match = currentUrl.match(/\/(questions|judge)\/(\d+)/);
+            console.log('Match result:', match);
+            if (match) {
+                const id = parseInt(match[2]);
+                console.log('Parsed id from path:', id);
+                return id;
+            }
+            console.log('Returning default id: 1');
+            return 1;
+        }
+
+        // 设置返回题目和下一道题的链接
+        function setActionLinks() {
+            const currentQuestionId = getCurrentQuestionId();
+            console.log('Current question ID:', currentQuestionId);
+            
+            const backToQuestion = document.getElementById('backToQuestion');
+            if (backToQuestion) {
+                backToQuestion.href = `/questions/${currentQuestionId}`;
+                console.log('Set backToQuestion href:', backToQuestion.href);
+            }
+            
+            const nextQuestion = document.getElementById('nextQuestion');
+            if (nextQuestion) {
+                nextQuestion.href = `/questions/${currentQuestionId + 1}`;
+                console.log('Set nextQuestion href:', nextQuestion.href);
+            }
+        }
+        
         // 初始化
         createRainLines();
         window.onload = displayResult;

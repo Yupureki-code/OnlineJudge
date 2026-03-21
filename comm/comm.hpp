@@ -59,6 +59,10 @@ namespace ns_util
         {
             return default_path + AddSuffix(file_name, ".stderr");
         }
+        static std::string Ans(const std::string& file_name)
+        {
+            return default_path + AddSuffix(file_name, ".ans");
+        }
     };
 
     class FileUtil
@@ -118,15 +122,22 @@ namespace ns_util
 
             std::string _execute = PathUtil::Exe(file_name);
             if(FileUtil::IsFileExist(_execute)) unlink(_execute.c_str());
-
-            std::string _stdin = PathUtil::Stdin(file_name);
-            if(FileUtil::IsFileExist(_stdin)) unlink(_stdin.c_str());
-
-            std::string _stdout = PathUtil::Stdout(file_name);
-            if(FileUtil::IsFileExist(_stdout)) unlink(_stdout.c_str());
-
-            std::string _stderr = PathUtil::Stderr(file_name);
-            if(FileUtil::IsFileExist(_stderr)) unlink(_stderr.c_str());
+            for(int i = 1;;i++)
+            {
+                std::string test_file = file_name + "_" + std::to_string(i);
+                std::string _stdin = PathUtil::Stdin(test_file);
+                if(FileUtil::IsFileExist(_stdin)) unlink(_stdin.c_str());
+                else break;
+                std::string _stdout = PathUtil::Stdout(test_file);
+                if(FileUtil::IsFileExist(_stdout)) unlink(_stdout.c_str());
+                else break;
+                std::string _stderr = PathUtil::Stderr(test_file);
+                if(FileUtil::IsFileExist(_stderr)) unlink(_stderr.c_str());
+                else break;
+                std::string _ans = PathUtil::Ans(test_file);
+                if(FileUtil::IsFileExist(_ans)) unlink(_ans.c_str());
+                else break;
+            }
         }
     };
 
@@ -149,6 +160,15 @@ namespace ns_util
             {
                 v->push_back(str);
             }
+        }
+        static std::string TrimString(const std::string& str) 
+        {
+            auto start = str.begin();
+            while (start != str.end() && (*start == ' ' || *start == '\n' || *start == '\r')) ++start;
+            if (start == str.end()) return "";
+            auto end = str.end();
+            while (end != start && (*(end - 1) == ' ' || *(end - 1) == '\n' || *(end - 1) == '\r'))  --end;
+            return std::string(start, end);
         }
     };
 };

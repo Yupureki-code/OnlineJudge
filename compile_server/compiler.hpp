@@ -31,14 +31,14 @@ namespace ns_compile
                     if(_stderr < 0)
                     {
                         logger(ns_log::FATAL)<<"打开编译错误文件失败: "<<PathUtil::Compile_err(file_name);
-                        return HandlerProgramEnd(ns_hanlder::UNKNOWN, file_name);
+                        return HandlerProgramEnd({UNKNOWN}, file_name);
                     }
                     dup2(_stderr,2);
                     // 直接写入编译命令到错误文件
                     fprintf(stderr, "编译命令: g++ %s -o %s -std=c++11\n", PathUtil::Src(file_name).c_str(), PathUtil::Exe(file_name).c_str());
                     execlp("g++","g++", PathUtil::Src(file_name).c_str(),"-o",PathUtil::Exe(file_name).c_str(),"-std=c++11",nullptr);
                     logger(ns_log::FATAL)<<"子进程启动编译失败";
-                    return HandlerProgramEnd(ns_hanlder::UNKNOWN, file_name);
+                    return HandlerProgramEnd({UNKNOWN}, file_name);
                 }
                 else 
                 {
@@ -50,7 +50,7 @@ namespace ns_compile
                     else 
                     {
                         logger(ns_log::INFO)<<"编译失败";
-                        return HandlerProgramEnd(ns_hanlder::COMPILE_ERROR, file_name);
+                        return HandlerProgramEnd({COMPILE_ERROR}, file_name);
                     }
                 }
             }
@@ -62,7 +62,7 @@ namespace ns_compile
             {
                 //责任链不应该在这结束
                 ns_log::logger(ns_log::INFO)<<"责任链错误结束";
-                return HandlerProgramEnd(ns_hanlder::UNKNOWN, file_name);
+                return HandlerProgramEnd({UNKNOWN}, file_name);
             }
         }
     };

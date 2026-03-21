@@ -37,6 +37,12 @@ int main()
         ctl.AllQuestions(&html);
         rep.set_content(html,"text/html;charset=utf-8");
     });
+    svr.Get("/about", [](const Request& req, Response& rep){
+        std::ifstream in("template_html/about.html");
+        std::string html((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        in.close();
+        rep.set_content(html, "text/html;charset=utf-8");
+    });
     svr.Get(R"(/questions/(\d+))", [&ctl](const Request& req,Response& rep){
         std::string number = req.matches[1];
         std::string html;
@@ -71,9 +77,9 @@ int main()
         }
         
         ctl.Judge(number, in_json, &result_json);
-        // 重定向到judge_result.html页面，并将JSON结果作为参数传递
+        // 重定向到judge_result.html页面，并将JSON结果和题目ID作为参数传递
         std::string encoded_result = url_encode(result_json);
-        rep.set_redirect("/judge_result.html?result=" + encoded_result);
+        rep.set_redirect("/judge_result.html?result=" + encoded_result + "&id=" + number);
     }); 
     // 提供静态文件访问
     svr.set_mount_point("/", "./template_html");

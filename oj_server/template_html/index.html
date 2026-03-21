@@ -3,10 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Online Judge - 在线编程评测系统</title>
+    <title>Yupureki-OJ - 在线编程评测系统</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Inter:wght@300;400;500&display=swap');
-        
         * {
             margin: 0;
             padding: 0;
@@ -14,7 +12,7 @@
         }
 
         body {
-            font-family: 'Inter', 'Noto Serif SC', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
             background-color: #2D2F2C;
@@ -27,7 +25,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: url('pictures/preview.jpg');
+            background-image: url('/pictures/preview.jpg');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -90,7 +88,7 @@
             font-size: 24px;
             font-weight: 300;
             color: #F4F6F0;
-            font-family: 'Noto Serif SC', serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             letter-spacing: 0.1em;
         }
 
@@ -164,7 +162,7 @@
             font-size: 64px;
             font-weight: 300;
             color: #F4F6F0;
-            font-family: 'Noto Serif SC', serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             margin-bottom: 30px;
             letter-spacing: 0.05em;
             line-height: 1.2;
@@ -428,13 +426,13 @@
             <div class="nav">
                 <a href="/">首页</a>
                 <a href="/all_questions">题库</a>
-                <a href="#about">关于</a>
+                <a href="/about">关于</a>
                 <div class="rain-toggle" id="rainToggle"></div>
             </div>
         </div>
 
         <div class="hero">
-            <h1>在线OJ平台</h1>
+            <h1>Yupureki-OJ</h1>
             <p>C++&Linux开发的基于责任链模式的负载均衡式在线oj</p>
             <a href="/all_questions" class="cta-button">开始挑战</a>
         </div>
@@ -443,7 +441,7 @@
 
         <div id="login" class="login-section">
             <div class="glass-card">
-                <h2 style="color: #F4F6F0; text-align: center; margin-bottom: 30px; font-family: 'Noto Serif SC', serif; font-weight: 300; letter-spacing: 0.02em;">用户登录</h2>
+                <h2 style="color: #F4F6F0; text-align: center; margin-bottom: 30px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-weight: 300; letter-spacing: 0.02em;">用户登录</h2>
                 <form class="login-form">
                     <div class="form-group">
                         <input type="text" placeholder="用户名" required>
@@ -457,7 +455,7 @@
         </div>
 
         <div class="footer">
-            <p>&copy; 2024 Online Judge. All rights reserved.</p>
+            <p>&copy; 2026 Yupureki-OJ. All rights reserved.</p>
             <div class="social-icons">
                 <div class="social-icon"></div>
                 <div class="social-icon"></div>
@@ -467,23 +465,8 @@
     </div>
 
     <script>
-        // 自定义光标
-        const cursor = document.querySelector('.custom-cursor');
-        document.addEventListener('mousemove', (e) => {
-            cursor.style.left = e.clientX + 'px';
-            cursor.style.top = e.clientY + 'px';
-        });
-
-        // 鼠标悬停效果
+        // 交互元素
         const interactiveElements = document.querySelectorAll('a, button, .rain-toggle, .scroll-indicator, .social-icon');
-        interactiveElements.forEach(element => {
-            element.addEventListener('mouseenter', () => {
-                cursor.classList.add('hover');
-            });
-            element.addEventListener('mouseleave', () => {
-                cursor.classList.remove('hover');
-            });
-        });
 
         // 涟漪效果
         interactiveElements.forEach(element => {

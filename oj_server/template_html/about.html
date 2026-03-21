@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>题目列表 - Yupureki-OJ</title>
+    <title>关于 - Yupureki-OJ</title>
     <style>
         * {
             margin: 0;
@@ -128,6 +128,14 @@
             width: 100%;
         }
 
+        .nav a.active {
+            color: #F4F6F0;
+        }
+
+        .nav a.active::after {
+            width: 100%;
+        }
+
         .rain-toggle {
             width: 32px;
             height: 32px;
@@ -147,8 +155,26 @@
 
         .rain-toggle::before {
             content: '♪';
-            color: rgba(244, 246, 240, 0.6);
+            color: rgba(244, 246, 240, 0.8);
             font-size: 14px;
+        }
+
+        /* 主要内容区域 */
+        .about-content {
+            max-width: 800px;
+            margin: 0 auto;
+            animation: fadeIn 1s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .page-title {
@@ -162,163 +188,118 @@
             animation: fadeIn 1.5s ease;
         }
 
-        .questions-container {
-            display: grid;
-            gap: 24px;
-            margin-bottom: 60px;
-        }
-
-        .question-card {
+        /* 卡片样式 */
+        .glass-card {
             background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(20px);
             border-radius: 20px;
-            padding: 30px;
+            padding: 40px;
             border: 1px solid rgba(244, 246, 240, 0.1);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            animation: fadeIn 0.8s ease both;
-            display: grid;
-            grid-template-columns: 80px 1fr auto;
-            gap: 24px;
-            align-items: center;
+            margin-bottom: 30px;
+            animation: fadeIn 1s ease 0.3s both;
         }
 
-        .question-card:hover {
-            transform: translateY(-5px) scale(1.01);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .question-number {
+        .card-title {
             font-size: 24px;
-            font-weight: 300;
             color: #F4F6F0;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 15px;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
-  
-        .question-info {
-            flex: 1;
+            margin-bottom: 30px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(244, 246, 240, 0.2);
         }
 
-        .question-title {
-            font-size: 18px;
-            color: #F4F6F0;
-            margin-bottom: 12px;
-            font-weight: 400;
+        /* 链接样式 */
+        .link-item {
+            display: flex;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(244, 246, 240, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .link-item:last-child {
+            border-bottom: none;
+        }
+
+        .link-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            margin: 0 -20px;
+            padding-left: 20px;
+            padding-right: 20px;
+            border-radius: 10px;
+        }
+
+        .link-label {
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+            width: 100px;
+            flex-shrink: 0;
             letter-spacing: 0.02em;
         }
 
-        .question-meta {
-            display: flex;
-            gap: 15px;
-            align-items: center;
+        .link-value {
+            flex: 1;
         }
 
-        .difficulty {
-            padding: 6px 18px;
-            border-radius: 20px;
+        .link-value a {
+            color: #F4F6F0;
+            text-decoration: none;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .link-value a:hover {
+            color: rgba(244, 246, 240, 0.8);
+            text-decoration: underline;
+        }
+
+        .link-value a::after {
+            content: '↗';
             font-size: 12px;
-            font-weight: 400;
-            background: rgba(255, 255, 255, 0.08);
-            color: rgba(244, 246, 240, 0.8);
-            border: 1px solid rgba(244, 246, 240, 0.2);
+            opacity: 0.6;
         }
 
-        .difficulty-simple {
-            background: rgba(76, 175, 80, 0.15);
-            border-color: rgba(76, 175, 80, 0.3);
-            color: rgba(76, 175, 80, 0.8);
+        /* 版权说明 */
+        .copyright-section {
+            margin-top: 20px;
         }
 
-        .difficulty-medium {
-            background: rgba(255, 152, 0, 0.15);
-            border-color: rgba(255, 152, 0, 0.3);
-            color: rgba(255, 152, 0, 0.8);
-        }
-
-        .difficulty-hard {
-            background: rgba(244, 67, 54, 0.15);
-            border-color: rgba(244, 67, 54, 0.3);
-            color: rgba(244, 67, 54, 0.8);
-        }
-
-        .arrow-icon {
+        .copyright-title {
             font-size: 20px;
-            color: rgba(244, 246, 240, 0.5);
-            transition: all 0.3s ease;
-        }
-
-        .question-card:hover .arrow-icon {
-            transform: translateX(5px);
-            color: rgba(244, 246, 240, 0.8);
-        }
-
-        .filter-bar {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 24px;
-            margin-bottom: 40px;
-            border: 1px solid rgba(244, 246, 240, 0.1);
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            animation: fadeIn 0.8s ease;
-        }
-
-        .filter-btn {
-            padding: 10px 20px;
-            border: 1px solid rgba(244, 246, 240, 0.2);
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            color: rgba(244, 246, 240, 0.8);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 14px;
-            font-weight: 300;
+            color: #F4F6F0;
+            margin-bottom: 20px;
+            font-weight: 400;
             letter-spacing: 0.02em;
         }
 
-        .filter-btn:hover, .filter-btn.active {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(244, 246, 240, 0.4);
-            color: #F4F6F0;
-            transform: translateY(-2px);
-        }
-
-        .search-box {
-            flex: 1;
-            min-width: 200px;
-            padding: 10px 20px;
-            border: 1px solid rgba(244, 246, 240, 0.2);
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #F4F6F0;
+        .copyright-content {
+            color: rgba(244, 246, 240, 0.7);
+            line-height: 1.8;
             font-size: 14px;
-            font-family: 'Inter', sans-serif;
             letter-spacing: 0.02em;
-            transition: all 0.3s ease;
         }
 
-        .search-box::placeholder {
-            color: rgba(244, 246, 240, 0.4);
+        .copyright-content p {
+            margin-bottom: 15px;
+            text-align: justify;
         }
 
-        .search-box:focus {
-            outline: none;
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(244, 246, 240, 0.4);
+        .copyright-content .project-name {
+            color: #F4F6F0;
+            font-weight: 500;
         }
 
+        .copyright-content .divider {
+            height: 1px;
+            background: rgba(244, 246, 240, 0.2);
+            margin: 20px 0;
+        }
+
+        /* 页脚 */
         .footer {
             text-align: center;
             padding: 60px 0;
@@ -332,80 +313,58 @@
         .ripple {
             position: absolute;
             border-radius: 50%;
-            background: rgba(244, 246, 240, 0.1);
+            background: rgba(244, 246, 240, 0.3);
             transform: scale(0);
-            animation: ripple 0.4s linear;
+            animation: rippleEffect 0.4s linear;
             pointer-events: none;
         }
 
-        @keyframes ripple {
+        @keyframes rippleEffect {
             to {
                 transform: scale(4);
                 opacity: 0;
             }
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* 自定义滚动条 */
-        ::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(244, 246, 240, 0.3);
-            border-radius: 2px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(244, 246, 240, 0.5);
-        }
-
+        /* 响应式设计 */
         @media (max-width: 768px) {
-            .question-card {
-                grid-template-columns: 1fr;
-                text-align: center;
+            .page-title {
+                font-size: 32px;
+                margin-bottom: 40px;
             }
-            .question-number {
-                margin: 0 auto;
+
+            .glass-card {
+                padding: 25px;
             }
-            .question-meta {
-                justify-content: center;
+
+            .card-title {
+                font-size: 20px;
             }
+
+            .link-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .link-label {
+                width: auto;
+            }
+
             .nav {
                 flex-direction: column;
                 gap: 15px;
             }
+
             .header {
                 flex-direction: column;
                 gap: 20px;
                 text-align: center;
             }
-            .filter-bar {
-                flex-direction: column;
-            }
-            .page-title {
-                font-size: 36px;
-            }
         }
     </style>
 </head>
 <body>
-
-    
     <!-- 背景图片 -->
     <div class="background"></div>
     
@@ -418,36 +377,61 @@
             <div class="nav">
                 <a href="/">首页</a>
                 <a href="/all_questions">题库</a>
-                <a href="/about">关于</a>
+                <a href="/about" class="active">关于</a>
                 <div class="rain-toggle" id="rainToggle"></div>
             </div>
         </div>
 
-        <h1 class="page-title">题目列表</h1>
+        <div class="about-content">
+            <h1 class="page-title">关于Yupureki-OJ</h1>
 
-        <div class="filter-bar">
-            <input type="text" class="search-box" placeholder="搜索题目...">
-            <button class="filter-btn active">全部</button>
-            <button class="filter-btn">简单</button>
-            <button class="filter-btn">中等</button>
-            <button class="filter-btn">困难</button>
-        </div>
-
-        <div class="questions-container">
-            {{#question_list}}
-            <a href="/questions/{{number}}" style="text-decoration: none; position: relative;">
-                <div class="question-card">
-                    <div class="question-number">{{number}}</div>
-                    <div class="question-info">
-                        <div class="question-title">{{title}}</div>
-                        <div class="question-meta">
-                            <span class="difficulty difficulty-{{star}}">{{star}}</span>
-                        </div>
+            <!-- 个人信息卡片 -->
+            <div class="glass-card">
+                <h2 class="card-title">个人</h2>
+                <div class="link-item">
+                    <span class="link-label">开发者</span>
+                    <div class="link-value">
+                        <span style="color: #F4F6F0; font-size: 16px;">Yupureki</span>
                     </div>
-                    <div class="arrow-icon">→</div>
                 </div>
-            </a>
-            {{/question_list}}
+                <div class="link-item">
+                    <span class="link-label">项目链接</span>
+                    <div class="link-value">
+                        <a href="https://github.com/Yupureki-code/OnlineJudge" target="_blank" rel="noopener noreferrer">GitHub - OnlineJudge</a>
+                    </div>
+                </div>
+                <div class="link-item">
+                    <span class="link-label">CSDN博客</span>
+                    <div class="link-value">
+                        <a href="https://blog.csdn.net/qq_49648783?spm=1011.2124.3001.10640" target="_blank" rel="noopener noreferrer">Yupureki的技术博客</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 版权说明卡片 -->
+            <div class="glass-card">
+                <h2 class="card-title">版权说明</h2>
+                <div class="copyright-content">
+                    <p>
+                        <span class="project-name">OnlineJudge</span><br>
+                        C++-Load-Balanced Online OJ Platform Based on Chain of Responsibility Pattern
+                    </p>
+                    
+                    <div class="divider"></div>
+                    
+                    <p>
+                        <strong style="color: #F4F6F0;">中文版权说明：</strong><br>
+                        此项目基于C++-责任链模式的负载均衡式在线OJ平台，其代码、注释、图片、数据库、设计、布局、界面等改编于比特就业课-C++负载均衡式在线OJ【标准项目】，仅用于个人和第三方学习。禁止第三方者将此项目用于商业目的，包括且不限于转让、销售等目的。严重者将受法律责任。
+                    </p>
+                    
+                    <div class="divider"></div>
+                    
+                    <p>
+                        <strong style="color: #F4F6F0;">Copyright Notice:</strong><br>
+                        This project is based on the C++ - Chain of Responsibility Pattern Load Balancing Online OJ Platform. Its code, comments, images, database, design, layout, interface, etc. are adapted from the Bit Employment Course - C++ Load Balancing Online OJ [Standard Project], and are only for personal and third-party learning. Third parties are prohibited from using this project for commercial purposes, including but not limited to transfer, sale, etc. Serious violations will be subject to legal liability.
+                    </p>
+                </div>
+            </div>
         </div>
 
         <div class="footer">
@@ -496,47 +480,6 @@
                 rainLines.appendChild(line);
             }
         }
-
-        // 筛选按钮功能
-        const filterBtns = document.querySelectorAll('.filter-btn');
-        const questionCards = document.querySelectorAll('.question-card');
-        
-        filterBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                filterBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                const filter = btn.textContent.trim();
-                
-                questionCards.forEach(card => {
-                    const difficultySpan = card.querySelector('.difficulty');
-                    const difficulty = difficultySpan ? difficultySpan.textContent.trim() : '';
-                    
-                    if (filter === '全部' || difficulty === filter) {
-                        card.parentElement.style.display = 'block';
-                    } else {
-                        card.parentElement.style.display = 'none';
-                    }
-                });
-            });
-        });
-
-        // 搜索功能
-        const searchBox = document.querySelector('.search-box');
-        searchBox.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            
-            questionCards.forEach(card => {
-                const title = card.querySelector('.question-title').textContent.toLowerCase();
-                const number = card.querySelector('.question-number').textContent.toLowerCase();
-                
-                if (title.includes(searchTerm) || number.includes(searchTerm)) {
-                    card.parentElement.style.display = 'block';
-                } else {
-                    card.parentElement.style.display = 'none';
-                }
-            });
-        });
 
         // 初始化
         createRainLines();

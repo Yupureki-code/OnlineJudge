@@ -3,10 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{title}} - Online Judge</title>
+    <title>{{title}} - Yupureki-OJ</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Inter:wght@300;400;500&display=swap');
-        
         * {
             margin: 0;
             padding: 0;
@@ -14,7 +12,7 @@
         }
 
         body {
-            font-family: 'Inter', 'Noto Serif SC', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
             background-color: #2D2F2C;
@@ -27,7 +25,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: url('pictures/preview.jpg');
+            background-image: url('/pictures/preview.jpg');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -90,7 +88,7 @@
             font-size: 24px;
             font-weight: 300;
             color: #F4F6F0;
-            font-family: 'Noto Serif SC', serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             letter-spacing: 0.1em;
         }
 
@@ -157,8 +155,7 @@
             background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(20px);
             border-radius: 20px;
-            padding: 40px;
-            margin-bottom: 40px;
+            padding: 30px;
             border: 1px solid rgba(244, 246, 240, 0.1);
             animation: fadeIn 0.8s ease;
         }
@@ -167,7 +164,7 @@
             font-size: 32px;
             color: #F4F6F0;
             margin-bottom: 20px;
-            font-family: 'Noto Serif SC', serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             font-weight: 300;
             letter-spacing: 0.02em;
             line-height: 1.2;
@@ -217,32 +214,48 @@
             color: rgba(244, 67, 54, 0.8);
         }
 
+        .question-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 40px;
+            animation: fadeIn 0.8s ease 0.2s both;
+            align-items: flex-start;
+        }
+
         .content-section {
             background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(20px);
             border-radius: 20px;
-            padding: 40px;
-            margin-bottom: 40px;
+            padding: 30px;
             border: 1px solid rgba(244, 246, 240, 0.1);
-            animation: fadeIn 0.8s ease 0.2s both;
+            max-height: calc(100vh - 350px);
+            overflow-y: auto;
         }
 
         .section-title {
-            font-size: 24px;
+            font-size: 20px;
             color: #F4F6F0;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 12px;
-            font-family: 'Noto Serif SC', serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             font-weight: 300;
             letter-spacing: 0.02em;
+            flex-shrink: 0;
         }
 
         .section-title::before {
             content: '';
             width: 4px;
-            height: 24px;
+            height: 20px;
             background: rgba(244, 246, 240, 0.6);
             border-radius: 2px;
         }
@@ -250,20 +263,24 @@
         .description {
             color: rgba(244, 246, 240, 0.85);
             line-height: 1.8;
-            font-size: 16px;
+            font-size: 15px;
             white-space: pre-wrap;
             word-wrap: break-word;
             letter-spacing: 0.02em;
         }
 
         .code-editor {
+            flex: 1;
             background: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(10px);
             border-radius: 15px;
-            padding: 24px;
-            margin-bottom: 40px;
+            padding: 30px;
             border: 1px solid rgba(244, 246, 240, 0.1);
             animation: fadeIn 0.8s ease 0.4s both;
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 250px);
+            max-height: calc(100vh - 250px);
         }
 
         .editor-header {
@@ -312,6 +329,9 @@
             gap: 20px;
             justify-content: flex-end;
             align-items: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(244, 246, 240, 0.1);
         }
 
         .submit-btn {
@@ -423,14 +443,24 @@
         }
 
         @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            .question-section {
+                gap: 15px;
+            }
             .question-header {
-                padding: 30px;
+                padding: 20px;
             }
             .question-title {
                 font-size: 24px;
             }
             .content-section {
-                padding: 30px;
+                padding: 20px;
+                max-height: none;
+            }
+            .code-editor {
+                padding: 15px;
             }
             .submit-section {
                 flex-direction: column;
@@ -466,87 +496,67 @@
     
     <div class="container">
         <div class="header">
-            <div class="logo">Online Judge</div>
+            <div class="logo">Yupureki-OJ</div>
             <div class="nav">
                 <a href="/">首页</a>
                 <a href="/all_questions">题库</a>
-                <a href="#about">关于</a>
+                <a href="/about">关于</a>
                 <div class="rain-toggle" id="rainToggle"></div>
             </div>
         </div>
 
-        <div class="question-header">
-            <h1 class="question-title">{{number}}. {{title}}</h1>
-            <div class="question-meta">
-                <div class="meta-item">
-                    <span>难度：</span>
-                    <span class="difficulty-badge difficulty-{{star}}">{{star}}</span>
-                </div>
-                <div class="meta-item">
-                    <span>时间限制：</span>
-                    <span>1秒</span>
-                </div>
-                <div class="meta-item">
-                    <span>内存限制：</span>
-                    <span>20MB</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="content-section">
-            <h2 class="section-title">题目描述</h2>
-            <div class="description">{{desc}}</div>
-        </div>
-
-        <div class="content-section">
-            <h2 class="section-title">提交代码</h2>
-            <div class="info-box">
-                请确保您的代码符合题目要求，并在提交前进行测试。
-            </div>
-            <form action="/judge/{{number}}" method="post">
-                <div class="code-editor">
-                    <div class="editor-header">
-                        <div class="editor-tabs">
-                            <div class="tab active">C++</div>
+        <div class="main-content">
+            <div class="question-section">
+                <div class="question-header">
+                    <h1 class="question-title">{{number}}. {{title}}</h1>
+                    <div class="question-meta">
+                        <div class="meta-item">
+                            <span>难度：</span>
+                            <span class="difficulty-badge difficulty-{{star}}">{{star}}</span>
                         </div>
-                        <div>支持C++11标准</div>
+                        <div class="meta-item">
+                            <span>时间限制：</span>
+                            <span>1秒</span>
+                        </div>
+                        <div class="meta-item">
+                            <span>内存限制：</span>
+                            <span>20MB</span>
+                        </div>
                     </div>
-                    <div id="editor" style="height: 400px;"></div>
+                </div>
+                <div class="content-section">
+                    <h2 class="section-title">题目描述</h2>
+                    <div class="description">{{desc}}</div>
+                </div>
+            </div>
+
+            <div class="code-editor">
+                <div class="editor-header">
+                    <div class="editor-tabs">
+                        <div class="tab active">C++</div>
+                    </div>
+                    <div>支持C++11标准</div>
+                </div>
+                <form action="/judge/{{number}}" method="post" style="flex: 1; display: flex; flex-direction: column;">
+                    <div id="editor" style="flex: 1; min-height: 0; height: 600px;"></div>
                     <textarea name="code" id="code" style="display: none;"></textarea>
-                </div>
-                <div class="submit-section">
-                    <a href="/all_questions" class="back-btn">返回列表</a>
-                    <button type="submit" class="submit-btn">提交代码</button>
-                </div>
-            </form>
+                    <div class="submit-section">
+                        <a href="/questions/{{number}}" class="back-btn">返回题目</a>
+                        <button type="submit" class="submit-btn">提交代码</button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <div class="footer">
-            <p>&copy; 2024 Online Judge. All rights reserved.</p>
+            <p>&copy; 2026 Yupureki-OJ. All rights reserved.</p>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.13/ace.js"></script>
     <script>
-        // 自定义光标
-        const cursor = document.querySelector('.custom-cursor');
-        document.addEventListener('mousemove', (e) => {
-            cursor.style.left = e.clientX + 'px';
-            cursor.style.top = e.clientY + 'px';
-        });
-
-        // 鼠标悬停效果
-        const interactiveElements = document.querySelectorAll('a, button, .rain-toggle');
-        interactiveElements.forEach(element => {
-            element.addEventListener('mouseenter', () => {
-                cursor.classList.add('hover');
-            });
-            element.addEventListener('mouseleave', () => {
-                cursor.classList.remove('hover');
-            });
-        });
-
         // 涟漪效果
+        const interactiveElements = document.querySelectorAll('a, button, .rain-toggle');
         interactiveElements.forEach(element => {
             element.addEventListener('click', (e) => {
                 const ripple = document.createElement('span');
@@ -602,7 +612,7 @@
         editor.clearSelection();
         
         // 表单提交时，将编辑器内容同步到textarea
-        document.querySelector('form').addEventListener('submit', function() {
+        document.querySelector('form').addEventListener('submit', function(e) {
             document.getElementById('code').value = editor.getValue();
         });
 
