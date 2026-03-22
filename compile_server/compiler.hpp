@@ -11,6 +11,8 @@
 #include "../comm/logstrategy.hpp"
 #include "COP_hanlder.hpp"
 
+//编译类:编译代码，生成exe文件，若编译错误直接返回
+
 namespace ns_compile
 {
     using namespace ns_hanlder;

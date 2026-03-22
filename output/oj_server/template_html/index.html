@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yupureki-OJ - 在线编程评测系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-color: #2D2F2C;
+        }
+
+        /* 背景图片 */
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('/pictures/preview.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(0.2px);
+            z-index: -1;
+        }
+
+        /* 雨线效果 */
+        .rain-lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .rain-line {
+            position: absolute;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(244, 246, 240, 0.05));
+            animation: rain 3s linear infinite;
+        }
+
+        @keyframes rain {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 0;
+            margin-bottom: 80px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 300;
+            color: #F4F6F0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            letter-spacing: 0.1em;
+        }
+
+        .nav {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .nav a {
+            color: rgba(244, 246, 240, 0.8);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .nav a:hover {
+            color: #F4F6F0;
+        }
+
+        .nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            width: 0;
+            height: 1px;
+            background: rgba(244, 246, 240, 0.6);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav a:hover::after {
+            width: 100%;
+        }
+
+        .rain-toggle {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(244, 246, 240, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .rain-toggle:hover {
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(1.1);
+        }
+
+        .rain-toggle::before {
+            content: '♪';
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 100px 20px;
+            margin-bottom: 100px;
+            animation: fadeIn 2s ease;
+        }
+
+        .hero h1 {
+            font-size: 64px;
+            font-weight: 300;
+            color: #F4F6F0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin-bottom: 30px;
+            letter-spacing: 0.05em;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 16px;
+            color: rgba(244, 246, 240, 0.7);
+            margin-bottom: 60px;
+            letter-spacing: 0.02em;
+            line-height: 1.6;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 18px 48px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            color: #F4F6F0;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+        }
+
+        .cta-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 48px;
+            height: 48px;
+            border: 1px solid rgba(244, 246, 240, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .scroll-indicator:hover {
+            transform: translateX(-50%) scale(1.1);
+            border-color: rgba(244, 246, 240, 0.6);
+        }
+
+        .scroll-indicator::after {
+            content: '↓';
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(5px);
+            }
+        }
+
+        .login-section {
+            max-width: 400px;
+            margin: 0 auto 100px;
+            animation: fadeIn 2s ease 0.5s both;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 16px 20px;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #F4F6F0;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.02em;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(244, 246, 240, 0.4);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: rgba(244, 246, 240, 0.4);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .submit-btn {
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #F4F6F0;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.02em;
+        }
+
+        .submit-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 60px 0;
+            color: rgba(244, 246, 240, 0.5);
+            font-size: 12px;
+            letter-spacing: 0.02em;
+            animation: fadeIn 2s ease 1s both;
+        }
+
+        .footer p {
+            margin-bottom: 12px;
+        }
+
+        .social-icons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .social-icon {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(244, 246, 240, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .social-icon:hover {
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(1.1);
+        }
+
+        .social-icon::before {
+            content: '○';
+            color: rgba(244, 246, 240, 0.5);
+            font-size: 12px;
+        }
+
+        /* 涟漪效果 */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(0);
+            animation: ripple 0.4s linear;
+            pointer-events: none;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(244, 246, 240, 0.3);
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(244, 246, 240, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 48px;
+            }
+            .nav {
+                gap: 20px;
+            }
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            .login-section {
+                padding: 0 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    
+    <!-- 背景图片 -->
+    <div class="background"></div>
+    
+    <!-- 雨线效果 -->
+    <div class="rain-lines" id="rainLines"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="logo">作者:Yupureki</div>
+            <div class="nav">
+                <a href="/">首页</a>
+                <a href="/all_questions">题库</a>
+                <a href="/about">关于</a>
+                <div class="rain-toggle" id="rainToggle"></div>
+            </div>
+        </div>
+
+        <div class="hero">
+            <h1>Yupureki-OJ</h1>
+            <p>C++&Linux开发的基于责任链模式的负载均衡式在线oj</p>
+            <a href="/all_questions" class="cta-button">开始挑战</a>
+        </div>
+
+        <div class="scroll-indicator" id="scrollIndicator"></div>
+
+        <div id="login" class="login-section">
+            <div class="glass-card">
+                <h2 style="color: #F4F6F0; text-align: center; margin-bottom: 30px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-weight: 300; letter-spacing: 0.02em;">用户登录</h2>
+                <form class="login-form">
+                    <div class="form-group">
+                        <input type="text" placeholder="用户名" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" placeholder="密码" required>
+                    </div>
+                    <button type="submit" class="submit-btn">登录</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2026 Yupureki-OJ. All rights reserved.</p>
+            <div class="social-icons">
+                <div class="social-icon"></div>
+                <div class="social-icon"></div>
+                <div class="social-icon"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 交互元素
+        const interactiveElements = document.querySelectorAll('a, button, .rain-toggle, .scroll-indicator, .social-icon');
+
+        // 涟漪效果
+        interactiveElements.forEach(element => {
+            element.addEventListener('click', (e) => {
+                const ripple = document.createElement('span');
+                const rect = element.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = x + 'px';
+                ripple.style.top = y + 'px';
+                ripple.classList.add('ripple');
+                
+                element.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 400);
+            });
+        });
+
+        // 生成雨线
+        function createRainLines() {
+            const rainLines = document.getElementById('rainLines');
+            const lineCount = 50;
+            
+            for (let i = 0; i < lineCount; i++) {
+                const line = document.createElement('div');
+                line.classList.add('rain-line');
+                line.style.left = Math.random() * 100 + '%';
+                line.style.height = Math.random() * 100 + 50 + 'px';
+                line.style.animationDelay = Math.random() * 3 + 's';
+                line.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                rainLines.appendChild(line);
+            }
+        }
+
+        // 滚动指示器
+        document.getElementById('scrollIndicator').addEventListener('click', () => {
+            window.scrollTo({
+                top: window.innerHeight,
+                behavior: 'smooth'
+            });
+        });
+
+        // 初始化
+        createRainLines();
+    </script>
+</body>
+</html>

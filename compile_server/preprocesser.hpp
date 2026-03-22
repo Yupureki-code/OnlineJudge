@@ -12,6 +12,8 @@
 #include "../comm/comm.hpp"
 #include "COP_hanlder.hpp"
 
+//预处理类:将代码转到.cpp文件内
+
 namespace ns_preprocesser
 {
     using namespace ns_util;

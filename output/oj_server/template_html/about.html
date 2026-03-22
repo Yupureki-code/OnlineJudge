@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关于 - Yupureki-OJ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-color: #2D2F2C;
+        }
+
+        /* 背景图片 */
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('/pictures/preview.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(0.2px);
+            z-index: -1;
+        }
+
+        /* 雨线效果 */
+        .rain-lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .rain-line {
+            position: absolute;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(244, 246, 240, 0.05));
+            animation: rain 3s linear infinite;
+        }
+
+        @keyframes rain {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 0;
+            margin-bottom: 60px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 300;
+            color: #F4F6F0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            letter-spacing: 0.1em;
+        }
+
+        .nav {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .nav a {
+            color: rgba(244, 246, 240, 0.8);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .nav a:hover {
+            color: #F4F6F0;
+        }
+
+        .nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            width: 0;
+            height: 1px;
+            background: rgba(244, 246, 240, 0.6);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav a:hover::after {
+            width: 100%;
+        }
+
+        .nav a.active {
+            color: #F4F6F0;
+        }
+
+        .nav a.active::after {
+            width: 100%;
+        }
+
+        .rain-toggle {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(244, 246, 240, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .rain-toggle:hover {
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(1.1);
+        }
+
+        .rain-toggle::before {
+            content: '♪';
+            color: rgba(244, 246, 240, 0.8);
+            font-size: 14px;
+        }
+
+        /* 主要内容区域 */
+        .about-content {
+            max-width: 800px;
+            margin: 0 auto;
+            animation: fadeIn 1s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .page-title {
+            text-align: center;
+            color: #F4F6F0;
+            font-size: 48px;
+            margin-bottom: 60px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+            animation: fadeIn 1.5s ease;
+        }
+
+        /* 卡片样式 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            margin-bottom: 30px;
+            animation: fadeIn 1s ease 0.3s both;
+        }
+
+        .card-title {
+            font-size: 24px;
+            color: #F4F6F0;
+            margin-bottom: 30px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(244, 246, 240, 0.2);
+        }
+
+        /* 链接样式 */
+        .link-item {
+            display: flex;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(244, 246, 240, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .link-item:last-child {
+            border-bottom: none;
+        }
+
+        .link-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            margin: 0 -20px;
+            padding-left: 20px;
+            padding-right: 20px;
+            border-radius: 10px;
+        }
+
+        .link-label {
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+            width: 100px;
+            flex-shrink: 0;
+            letter-spacing: 0.02em;
+        }
+
+        .link-value {
+            flex: 1;
+        }
+
+        .link-value a {
+            color: #F4F6F0;
+            text-decoration: none;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .link-value a:hover {
+            color: rgba(244, 246, 240, 0.8);
+            text-decoration: underline;
+        }
+
+        .link-value a::after {
+            content: '↗';
+            font-size: 12px;
+            opacity: 0.6;
+        }
+
+        /* 版权说明 */
+        .copyright-section {
+            margin-top: 20px;
+        }
+
+        .copyright-title {
+            font-size: 20px;
+            color: #F4F6F0;
+            margin-bottom: 20px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+        }
+
+        .copyright-content {
+            color: rgba(244, 246, 240, 0.7);
+            line-height: 1.8;
+            font-size: 14px;
+            letter-spacing: 0.02em;
+        }
+
+        .copyright-content p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        .copyright-content .project-name {
+            color: #F4F6F0;
+            font-weight: 500;
+        }
+
+        .copyright-content .divider {
+            height: 1px;
+            background: rgba(244, 246, 240, 0.2);
+            margin: 20px 0;
+        }
+
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            padding: 60px 0;
+            color: rgba(244, 246, 240, 0.5);
+            font-size: 12px;
+            letter-spacing: 0.02em;
+            animation: fadeIn 2s ease 1s both;
+        }
+
+        /* 涟漪效果 */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(244, 246, 240, 0.3);
+            transform: scale(0);
+            animation: rippleEffect 0.4s linear;
+            pointer-events: none;
+        }
+
+        @keyframes rippleEffect {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 32px;
+                margin-bottom: 40px;
+            }
+
+            .glass-card {
+                padding: 25px;
+            }
+
+            .card-title {
+                font-size: 20px;
+            }
+
+            .link-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .link-label {
+                width: auto;
+            }
+
+            .nav {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景图片 -->
+    <div class="background"></div>
+    
+    <!-- 雨线效果 -->
+    <div class="rain-lines" id="rainLines"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="logo">Yupureki-OJ</div>
+            <div class="nav">
+                <a href="/">首页</a>
+                <a href="/all_questions">题库</a>
+                <a href="/about" class="active">关于</a>
+                <div class="rain-toggle" id="rainToggle"></div>
+            </div>
+        </div>
+
+        <div class="about-content">
+            <h1 class="page-title">关于Yupureki-OJ</h1>
+
+            <!-- 个人信息卡片 -->
+            <div class="glass-card">
+                <h2 class="card-title">个人</h2>
+                <div class="link-item">
+                    <span class="link-label">开发者</span>
+                    <div class="link-value">
+                        <span style="color: #F4F6F0; font-size: 16px;">Yupureki</span>
+                    </div>
+                </div>
+                <div class="link-item">
+                    <span class="link-label">项目链接</span>
+                    <div class="link-value">
+                        <a href="https://github.com/Yupureki-code/OnlineJudge" target="_blank" rel="noopener noreferrer">GitHub - OnlineJudge</a>
+                    </div>
+                </div>
+                <div class="link-item">
+                    <span class="link-label">CSDN博客</span>
+                    <div class="link-value">
+                        <a href="https://blog.csdn.net/qq_49648783?spm=1011.2124.3001.10640" target="_blank" rel="noopener noreferrer">Yupureki的技术博客</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 版权说明卡片 -->
+            <div class="glass-card">
+                <h2 class="card-title">版权说明</h2>
+                <div class="copyright-content">
+                    <p>
+                        <span class="project-name">OnlineJudge</span><br>
+                        C++-Load-Balanced Online OJ Platform Based on Chain of Responsibility Pattern
+                    </p>
+                    
+                    <div class="divider"></div>
+                    
+                    <p>
+                        <strong style="color: #F4F6F0;">中文版权说明：</strong><br>
+                        此项目基于C++-责任链模式的负载均衡式在线OJ平台，其代码、注释、图片、数据库、设计、布局、界面等改编于比特就业课-C++负载均衡式在线OJ【标准项目】，仅用于个人和第三方学习。禁止第三方者将此项目用于商业目的，包括且不限于转让、销售等目的。严重者将受法律责任。
+                    </p>
+                    
+                    <div class="divider"></div>
+                    
+                    <p>
+                        <strong style="color: #F4F6F0;">Copyright Notice:</strong><br>
+                        This project is based on the C++ - Chain of Responsibility Pattern Load Balancing Online OJ Platform. Its code, comments, images, database, design, layout, interface, etc. are adapted from the Bit Employment Course - C++ Load Balancing Online OJ [Standard Project], and are only for personal and third-party learning. Third parties are prohibited from using this project for commercial purposes, including but not limited to transfer, sale, etc. Serious violations will be subject to legal liability.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2026 Yupureki-OJ. All rights reserved.</p>
+        </div>
+    </div>
+
+    <script>
+        // 交互元素
+        const interactiveElements = document.querySelectorAll('a, button, .rain-toggle');
+
+        // 涟漪效果
+        interactiveElements.forEach(element => {
+            element.addEventListener('click', (e) => {
+                const ripple = document.createElement('span');
+                const rect = element.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = x + 'px';
+                ripple.style.top = y + 'px';
+                ripple.classList.add('ripple');
+                
+                element.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 400);
+            });
+        });
+
+        // 生成雨线
+        function createRainLines() {
+            const rainLines = document.getElementById('rainLines');
+            const lineCount = 50;
+            
+            for (let i = 0; i < lineCount; i++) {
+                const line = document.createElement('div');
+                line.classList.add('rain-line');
+                line.style.left = Math.random() * 100 + '%';
+                line.style.height = Math.random() * 100 + 50 + 'px';
+                line.style.animationDelay = Math.random() * 3 + 's';
+                line.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                rainLines.appendChild(line);
+            }
+        }
+
+        // 初始化
+        createRainLines();
+    </script>
+</body>
+</html>

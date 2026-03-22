@@ -1,29 +1,40 @@
 #pragma once
 
-#include "../comm/comm.hpp"
+#include <cstdio>
+#include <jsoncpp/json/reader.h>
 #include <jsoncpp/json/value.h>
-#include <memory>
-#include "../comm/logstrategy.hpp"
+#include <jsoncpp/json/writer.h>
 #include <string>
-#include <jsoncpp/json/json.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <assert.h>
+#include "../comm/logstrategy.hpp"
+#include "../comm/comm.hpp"
+
+//责任链模式:preprocesser->compiler->runner->judge
 
 namespace ns_hanlder
 {
-    using namespace ns_util;
     using namespace ns_log;
+    using namespace ns_util;
 
+    //题目状态码
     enum Status
     {
-        AC = 0,
-        WA,
-        RUNTIME_ERROR,
-        MEMORY_LIMIT,
-        COMPILE_ERROR,
-        FPE_ERROR,
-        SEGV_ERROR,
-        UNKNOWN
+        AC = 0,         //通过
+        WA,             //错误
+        RUNTIME_ERROR,  //运行超时
+        MEMORY_LIMIT,   //超过内存大小限制
+        COMPILE_ERROR,  //编译错误
+        FPE_ERROR,      //浮点数异常
+        SEGV_ERROR,     //段错误
+        UNKNOWN         //未知错误
     };
 
+    //模板类
     class HandlerProgram
     {
     public:
@@ -40,6 +51,7 @@ namespace ns_hanlder
         {
             _is_enable = false;
         }
+        //退出码转状态码
         enum Status ExitCodeToSatusCode(int code)
         {
             switch (code) 
@@ -64,6 +76,7 @@ namespace ns_hanlder
                     return UNKNOWN;
             }
         }
+        //状态码转描述
         std::string StatusToDesc(enum Status status)
         {
             switch(status)
@@ -85,9 +98,10 @@ namespace ns_hanlder
                 case UNKNOWN:
                     return "服务器繁忙，请稍后重试";
                 default:
-                    return "服务器繁忙，请稍后重试";
+                    return "未知错误";
             }
         }
+        //状态码转字符串
         std::string StatusToString(enum Status status)
         {
             switch(status)
@@ -109,54 +123,60 @@ namespace ns_hanlder
                 case UNKNOWN:
                     return "UNKNOWN";
                 default:
-                    return "WA";
+                    return "UNKNOWN";
             }
         }
+        //责任链结束
         std::string HandlerProgramEnd(const std::vector<Status>& result,const std::string& file_name,const int line,const std::string filename)
         {
             logger(ns_log::DEBUG)<<"在 "<<filename<<" 的 "<<line<<" 行结束责任链";
             Json::Value out_value;
             std::string result_string;
-            int final_result = 0;
+            bool has_wa = false;
+            bool has_error = false;
+            
             for(auto & it : result)
             {
-                final_result |= it;
                 result_string += StatusToString(it) + " ";
+                if(it == WA)
+                    has_wa = true;
+                if(it != AC && it != WA)
+                    has_error = true;
             }
             out_value["status"] = result_string;
-            if(result.size() == 1 && result[0] != AC && result[0] != WA)
+            
+            // 判断最终结果
+            if(has_error)
             {
+                // 有运行时错误、内存错误等
                 out_value["desc"] = StatusToDesc(result[0]);
                 std::string _stdout;
                 FileUtil::ReadFile(PathUtil::Stdout(file_name), &_stdout, true);
                 out_value["stdout"] = _stdout;
                 std::string _stderr;
-                // 如果是编译错误，读取编译错误文件
-                if(result[0] == COMPILE_ERROR)
-                {
-                    FileUtil::ReadFile(PathUtil::Compile_err(file_name), &_stderr, true);
-                }
-                else
-                {
-                    FileUtil::ReadFile(PathUtil::Stderr(file_name), &_stderr, true);
-                }
+                FileUtil::ReadFile(PathUtil::Stderr(file_name), &_stderr, true);
                 out_value["stderr"] = _stderr;
+            }
+            else if(has_wa)
+            {
+                // 有WA
+                out_value["desc"] = StatusToDesc(WA);
             }
             else
             {
-                if(final_result == 0) out_value["desc"] = StatusToDesc(AC);
-                else out_value["desc"] = StatusToDesc(WA);
+                // 全部AC
+                out_value["desc"] = StatusToDesc(AC);
             }
-            Json::StreamWriterBuilder builder;
-            builder["emitUTF8"] = true;
-            std::string out_json = Json::writeString(builder, out_value);
+            
+            Json::StyledWriter writer;
+            std::string out_json = writer.write(out_value);
             FileUtil::RemoveTmpFiles(file_name);
             logger(DEBUG)<<"out_json:"<<out_json;
             return out_json;
         }
     protected:
-        bool _is_enable = true;
         std::shared_ptr<HandlerProgram> _next;
+        bool _is_enable = true;
     };
     #define HandlerProgramEnd(a,b) (HandlerProgramEnd(a,b,__LINE__,__FILE__))
 };

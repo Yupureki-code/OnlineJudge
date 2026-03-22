@@ -7,32 +7,36 @@
 #include "../comm/logstrategy.hpp"
 #include <mysql/mysql.h>
 
+// model: 主要用来和数据进行交互，对外提供访问数据的接口
+
 namespace ns_model
 {
     using namespace ns_log;
 
+    //题目属性
     struct Question
     {
-        std::string number;
-        std::string title;
-        std::string star;
-        std::string desc;
-        int cpu_limit;
-        int memory_limit;
-        std::string create_time;
-        std::string update_time;
+        std::string number; //题号
+        std::string title;  //标题
+        std::string star;   //难度
+        std::string desc;   //描述
+        int cpu_limit;      //时间限制
+        int memory_limit;   //内存限制
+        std::string create_time; //创建时间
+        std::string update_time; //更新时间
     };
 
     const std::string oj_questions = "questions";
     const std::string host = "127.0.0.1";
     const std::string user = "oj_server";
-    const std::string passwd = "Myoj@2026071024";
+    const std::string passwd = "Myoj@localhost2026071024";
     const std::string db = "myoj";
     const int port = 3306;
 
     class Model
     {
     private:
+        //查询Mysql
         bool QueryMySql(const std::string& sql,std::vector<Question>* qs)
         {
             MYSQL* my = mysql_init(nullptr);
@@ -46,6 +50,7 @@ namespace ns_model
             MYSQL_RES* res = mysql_store_result(my);
             int rows = mysql_num_rows(res);
             int cols = mysql_num_fields(res);
+            //获取题目属性
             for(int i = 0;i<rows;i++)
             {
                 MYSQL_ROW row = mysql_fetch_row(res);
@@ -65,12 +70,14 @@ namespace ns_model
             return true;
         }
     public:
+        //题库:得到一页内全部的题目
         bool GetAllQuestions(std::vector<Question>* qs)
         {
             std::string sql = "select * from ";
             sql += oj_questions;
             return QueryMySql(sql, qs);
         }
+        //题目:获得单个题目
         bool GetOneQuestion(const std::string& number,Question* q)
         {
             std::string sql = "select * from ";

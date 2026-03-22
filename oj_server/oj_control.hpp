@@ -13,6 +13,8 @@
 #include <jsoncpp/json/json.h>
 #include "../comm/comm.hpp"
 
+//用来控制访问和返回的数据
+
 namespace ns_control
 {
     using namespace ns_model;
@@ -20,6 +22,7 @@ namespace ns_control
     using namespace ns_util;
     using namespace ns_view;
 
+    //表示后端编译服务器的类
     class Machine
     {
     public:
@@ -63,12 +66,13 @@ namespace ns_control
         ~Machine()
         {}
     private:
-        std::string _ip;
-        uint16_t _port;
-        uint32_t _load = 0;
-        std::shared_ptr<std::mutex> _mtx;
+        std::string _ip;  //编译服务器的ip地址
+        uint16_t _port;   //编译服务器的port端口
+        uint32_t _load = 0;  //编译服务器的负载
+        std::shared_ptr<std::mutex> _mtx; //互斥锁
     };
 
+    //默认配置文件
     const std::string machine_conf = "./conf/service_machine.conf";
 
     class CentralConsole
@@ -79,6 +83,7 @@ namespace ns_control
             assert(LoadConf(machine_conf));
             logger(ns_log::INFO)<<"加载 "<<machine_conf<<" 成功";
         }
+        //加载配置文件:配置编译服务器
         bool LoadConf(const std::string& conf)
         {
             std::ifstream in(conf);
@@ -103,6 +108,7 @@ namespace ns_control
             in.close();
             return true;
         }
+        //智能选择负载最小的编译服务器
         bool SmartChoose(int* id,Machine** m)
         {
             _mtx.lock();
@@ -118,7 +124,7 @@ namespace ns_control
             for(auto & it : _online)
             {
                 int cur = _machines[it].Load();
-                if(cur < load)
+                if(cur < load) //比较负载
                 {
                     load = cur;
                     *id = it;
@@ -128,6 +134,7 @@ namespace ns_control
             _mtx.unlock();
             return true;
         }
+        //编译服务器下线
          void OfflineMachine(int which)
         {
             _mtx.lock();
@@ -143,6 +150,7 @@ namespace ns_control
             }
             _mtx.unlock();
         }
+        //编译服务器上线
         void OnlineMachine()
         {
             _mtx.lock();
@@ -151,6 +159,7 @@ namespace ns_control
             _mtx.unlock();
             logger(INFO) << "所有的主机都上线啦!" << "\n";
         }
+        //DEBUG::显示目前的主机情况
         void ShowMachines()
         {
             _mtx.lock();
@@ -167,25 +176,41 @@ namespace ns_control
             _mtx.unlock();
         }
     private:
-        std::vector<Machine> _machines;
-        std::vector<int> _online;
-        std::vector<int> _offline;
-        std::mutex _mtx;
+        std::vector<Machine> _machines;  //表示全部主机的数组，下标代表编号
+        std::vector<int> _online;  //上线的主机
+        std::vector<int> _offline; //下线的主机
+        std::mutex _mtx; //互斥锁
     };
     
     class Control
     {
     public:
-        bool AllQuestions(std::string *html)
+        //加载一页内的全部题目
+        bool AllQuestions(std::string *html, int page = 1)
         {
             bool ret = true;
             std::vector<struct Question> all;
             if (_model.GetAllQuestions(&all))
             {
+                //按照题目编号排序
                 sort(all.begin(), all.end(), [](const struct Question &q1, const struct Question &q2){
                     return atoi(q1.number.c_str()) < atoi(q2.number.c_str());
                 });
-                _view.AllExpandHtml(all, html);
+                
+                const int questionsPerPage = 5;
+                int totalPages = (all.size() + questionsPerPage - 1) / questionsPerPage;
+                if (page < 1) page = 1;
+                if (page > totalPages) page = totalPages;
+                
+                int startIndex = (page - 1) * questionsPerPage;
+                int endIndex = std::min(startIndex + questionsPerPage, (int)all.size());
+                
+                std::vector<struct Question> pageQuestions;
+                for (int i = startIndex; i < endIndex; i++) {
+                    pageQuestions.push_back(all[i]);
+                }
+                
+                _view.AllExpandHtml(pageQuestions, html, page, totalPages);
             }
             else
             {
@@ -194,6 +219,7 @@ namespace ns_control
             }
             return ret;
         }
+        //获取单个题目
         bool OneQuestion(const std::string &number, std::string *html)
         {
             bool ret = true;
@@ -209,6 +235,7 @@ namespace ns_control
             }
             return ret;
         }
+        //判断题目正确，调用主机责任链
         void Judge(const std::string& number,const std::string& in_json,std::string* out_json)
         {
             struct Question q;

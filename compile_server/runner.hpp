@@ -18,6 +18,10 @@
 #include "COP_hanlder.hpp"
 #include <mysql/mysql.h>
 
+// 运行类:运行exe文件，从stdin中获得输入数据。
+// 1.若发生运行中错误，向stderr写入错误类型
+// 2.若正确，向stdout写入输出内容
+
 namespace ns_runner
 {
     using namespace ns_hanlder;
@@ -28,7 +32,7 @@ namespace ns_runner
     const std::string oj_questions = "questions";
     const std::string host = "127.0.0.1";
     const std::string user = "oj_server";
-    const std::string passwd = "Myoj@2026071024";
+    const std::string passwd = "Myoj@localhost2026071024";
     const std::string db = "myoj";
     const int port = 3306;
 
@@ -43,6 +47,7 @@ namespace ns_runner
     class HandlerRunner : public HandlerProgram
     {
     private:
+        //设置时间和内存限制
         void SetProcLimit(int cpu_limit,int mem_limit)
         {
             logger(ns_log::DEBUG)<<"设置资源限制 - CPU: "<<cpu_limit<<"秒, 内存: "<<mem_limit<<"字节";
@@ -62,6 +67,7 @@ namespace ns_runner
                 logger(ns_log::ERROR)<<"设置内存限制失败";
             }
         }
+        //查询Mysql，获得题目输入,输出内容，时间限制和内存限制
         bool QueryMysql(const std::string& question_id,std::vector<Test>* tests)
         {
             MYSQL* my = mysql_init(nullptr);
@@ -70,6 +76,7 @@ namespace ns_runner
                 logger(ns_log::FATAL)<<"MySQL连接失败: "<<mysql_error(my);
                 return false;
             }
+            //查询时间和空间限制
             std::string question_sql = "select cpu_limit,mem_limit from " + oj_questions  + " where id='"+question_id+"'"; 
             if(mysql_query(my, question_sql.c_str()) != 0)
             {
@@ -94,6 +101,7 @@ namespace ns_runner
             int cpu_limit = atoi(row[0]);
             int mem_limit = atoi(row[1]);
             mysql_free_result(res);
+            //查询输入，输出内容
             std::string tests_sql = "select `in`,`out` from " + oj_tests + " where question_id='" + question_id + "'";
             if(mysql_query(my, tests_sql.c_str()) != 0)
             {
@@ -153,7 +161,9 @@ namespace ns_runner
                         logger(FATAL)<<"MySQL查询题目"<<in_value["id"].asString()<<" 失败!";
                         exit(1);
                     }
+                    //测试用例id
                     int test_number = 0;
+                    //多个测试用例，分别处理
                     for(auto & test : tests)
                     {
                         test_number++;
@@ -185,6 +195,7 @@ namespace ns_runner
                         }
                         else if(pid == 0)
                         {
+                            //子进程执行程序，重定向文件描述符
                             SetProcLimit(test.cpu_limit, test.mem_limit);
                             dup2(_stdin_fd,0);
                             dup2(_stdout_fd,1);
@@ -194,9 +205,11 @@ namespace ns_runner
                         }
                         else
                         {
+                            //父进程等待子进程执行，获得状态码
                             int wait_status = 0;
                             waitpid(pid,&wait_status,0);
                             logger(ns_log::DEBUG)<<test_number<<" 的status:"<<wait_status;
+                            //根据状态码判断，若是运行中错误直接返回
                             if(WIFEXITED(wait_status))
                             {
                                 int exit_code = WEXITSTATUS(wait_status);
@@ -217,20 +230,26 @@ namespace ns_runner
                 }
                 else 
                 {
+                    //父进程获得子进程退出码
                     int status = 0;
                     waitpid(pid,&status,0);
                     // 检查进程是否正常退出
-                    if (WIFEXITED(status)) {
+                    if (WIFEXITED(status)) 
+                    {
                         int exit_code = WEXITSTATUS(status);
                         logger(ns_log::INFO)<<"运行完毕,ExitCode: "<<exit_code;
                         if(exit_code != 0)
                             return HandlerProgramEnd({ExitCodeToSatusCode(exit_code)}, file_name);
-                    } else if (WIFSIGNALED(status)) {
+                    } 
+                    else if (WIFSIGNALED(status)) 
+                    {
                         // 进程被信号终止
                         int signal = WTERMSIG(status);
                         logger(ns_log::INFO)<<"运行被信号终止,Signal: "<<signal;
                         return HandlerProgramEnd({ExitCodeToSatusCode(signal)}, file_name);
-                    } else {
+                    } 
+                    else 
+                    {
                         // 其他情况
                         logger(ns_log::INFO)<<"运行状态未知,Status: "<<status;
                         return HandlerProgramEnd({UNKNOWN}, file_name);
