@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yupureki-OJ - 在线编程评测系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* 登录/注册弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: rgba(60, 80, 60, 0.95);
+            margin: 15% auto;
+            padding: 30px;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            color: #F4F6F0;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .close {
+            color: rgba(244, 246, 240, 0.6);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close:hover {
+            color: #F4F6F0;
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 300;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: rgba(244, 246, 240, 0.8);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #F4F6F0;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: rgba(244, 246, 240, 0.4);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .form-group input::placeholder {
+            color: rgba(244, 246, 240, 0.4);
+        }
+
+        .auth-btn {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: rgba(244, 246, 240, 0.8);
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.02em;
+            margin-left: 10px;
+        }
+
+        .auth-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #F4F6F0;
+            transform: translateY(-2px);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 10px;
+            color: #4CAF50;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            background: rgba(76, 175, 80, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .form-toggle {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            color: rgba(244, 246, 240, 0.6);
+        }
+
+        .form-toggle a {
+            color: #4CAF50;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .form-toggle a:hover {
+            color: #81C784;
+        }
+
+        /* 认证标签页样式 */
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(244, 246, 240, 0.2);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 12px;
+            background: transparent;
+            border: none;
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .auth-tab:hover {
+            color: #F4F6F0;
+        }
+
+        .auth-tab.active {
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-color: #2D2F2C;
+        }
+
+        /* 背景图片 */
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('./pictures/preview.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(0.2px);
+            z-index: -1;
+        }
+
+        /* 雨线效果 */
+        .rain-lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .rain-line {
+            position: absolute;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(244, 246, 240, 0.05));
+            animation: rain 3s linear infinite;
+        }
+
+        @keyframes rain {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(60, 80, 60, 0.15);
+            backdrop-filter: blur(20px);
+            padding: 10px 80px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .head {
+            margin-top: 20px;
+            align-items: center;
+            border-radius: 50%;
+        }
+        .logo{
+            font-size: 24px;
+            font-weight: 300;
+            color: #F4F6F0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            letter-spacing: 0.1em;
+        }
+
+        .nav {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            margin-left: 80px;
+            margin-right: 80px;
+        }
+
+        .nav a {
+            color: rgba(244, 246, 240, 0.8);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .nav a:hover {
+            color: #F4F6F0;
+        }
+
+        .nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            width: 0;
+            height: 1px;
+            background: rgba(244, 246, 240, 0.6);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav a:hover::after {
+            width: 100%;
+        }
+
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 200px;
+            padding: 8px 12px;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #F4F6F0;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.02em;
+            transition: all 0.3s ease;
+        }
+
+        .search-input::placeholder {
+            color: rgba(244, 246, 240, 0.4);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: rgba(244, 246, 240, 0.4);
+            background: rgba(255, 255, 255, 0.08);
+            width: 250px;
+        }
+
+        .rain-toggle {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(244, 246, 240, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .rain-toggle:hover {
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(1.1);
+        }
+
+        .rain-toggle::before {
+            content: '♪';
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 100px 20px;
+            margin-bottom: 100px;
+            animation: fadeIn 2s ease;
+        }
+
+        .hero h1 {
+            font-size: 64px;
+            font-weight: 300;
+            color: #F4F6F0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin-bottom: 30px;
+            letter-spacing: 0.05em;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 16px;
+            color: rgba(244, 246, 240, 0.7);
+            margin-bottom: 60px;
+            letter-spacing: 0.02em;
+            line-height: 1.6;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 18px 48px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            color: #F4F6F0;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+        }
+
+        .cta-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 48px;
+            height: 48px;
+            border: 1px solid rgba(244, 246, 240, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .scroll-indicator:hover {
+            transform: translateX(-50%) scale(1.1);
+            border-color: rgba(244, 246, 240, 0.6);
+        }
+
+        .scroll-indicator::after {
+            content: '↓';
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(5px);
+            }
+        }
+
+        .login-section {
+            max-width: 400px;
+            margin: 0 auto 100px;
+            animation: fadeIn 2s ease 0.5s both;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 16px 20px;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #F4F6F0;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.02em;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(244, 246, 240, 0.4);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: rgba(244, 246, 240, 0.4);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .submit-btn {
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #F4F6F0;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.02em;
+        }
+
+        .submit-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 60px 0;
+            color: rgba(244, 246, 240, 0.5);
+            font-size: 12px;
+            letter-spacing: 0.02em;
+            animation: fadeIn 2s ease 1s both;
+        }
+
+        .footer p {
+            margin-bottom: 12px;
+        }
+
+        .social-icons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .social-icon {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(244, 246, 240, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .social-icon:hover {
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(1.1);
+        }
+
+        .social-icon::before {
+            content: '○';
+            color: rgba(244, 246, 240, 0.5);
+            font-size: 12px;
+        }
+
+        /* 涟漪效果 */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(0);
+            animation: ripple 0.4s linear;
+            pointer-events: none;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(244, 246, 240, 0.3);
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(244, 246, 240, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 48px;
+            }
+            .nav {
+                gap: 20px;
+            }
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            .login-section {
+                padding: 0 20px;
+            }
+        }
+        /* 新增模态框样式 - 全屏居中，背景模糊 */
+        .clerk-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+        .clerk-modal-content {
+            background: transparent;
+            max-width: 480px;
+            width: 90%;
+            border-radius: 24px;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: #F4F6F0;
+            font-size: 32px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 8px;
+            line-height: 1;
+            transition: transform 0.2s;
+        }
+        .close-modal:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景图片、雨线等保持不变 -->
+    <div class="background"></div>
+    <div class="rain-lines" id="rainLines"></div>
+
+    <div class="header">
+        <div class="nav">
+            <img src="./pictures/icon.png" width="40px" height="40px">
+            <p class="logo">Yupureki-OJ</p>
+            <a href="/">首页</a>
+            <a href="/all_questions">题库</a>
+            <a href="/about">关于</a>
+            <div class="rain-toggle" id="rainToggle"></div>
+        </div>
+        <div class="search-container">
+            <input type="text" class="search-input" placeholder="搜索题目...">
+        </div>
+        <div class="nav">
+            <!-- 未登录状态 -->
+            <div id="user-auth" style="display: block;">
+                <button class="auth-btn" id="sign-in-button">登录/注册</button>
+            </div>
+            <!-- 登录状态 -->
+            <div id="user-profile" style="display: none;">
+                <a href="#"><img src="./pictures/message.png" width="40px" height="40px"></a>
+                <a href="/user/profile" style="margin: 0 10px; color: white; text-decoration: none;">个人中心</a>
+                <a href="/user/profile"><img src="./pictures/head.jpg" width="40px" height="40px" style="border-radius: 50%;"></a>
+                <button class="auth-btn" id="sign-out-button" style="margin-left: 10px;">退出登录</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Yupureki-OJ</h1>
+            <p>C++&Linux开发的基于责任链模式的负载均衡式在线oj</p>
+            <a href="/all_questions" class="cta-button">开始挑战</a>
+        </div>
+        <div class="scroll-indicator" id="scrollIndicator"></div>
+        <div class="footer">
+            <p>&copy; 2026 Yupureki-OJ. All rights reserved.</p>
+            <div class="social-icons">
+                <div class="social-icon"></div>
+                <div class="social-icon"></div>
+                <div class="social-icon"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框结构（初始隐藏） -->
+    <div id="clerk-modal" class="clerk-modal">
+        <div class="clerk-modal-content">
+            <button class="close-modal" id="close-modal-btn">&times;</button>
+            <div id="clerk-signin-container"></div>
+        </div>
+    </div>
+
+    <!-- Clerk SDK 脚本 (按官方顺序) -->
+    <script
+      defer
+      crossorigin="anonymous"
+      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"
+      type="text/javascript">
+    </script>
+    <script
+      defer
+      crossorigin="anonymous"
+      data-clerk-publishable-key="pk_test_cXVpZXQtbWFjYXF1ZS02My5jbGVyay5hY2NvdW50cy5kZXYk"
+      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+      type="text/javascript">
+    </script>
+
+    <script>
+        // ========== 雨线、涟漪等原有交互（保持原样）==========
+        function createRainLines() {
+            const rainLines = document.getElementById('rainLines');
+            const lineCount = 100;
+            for (let i = 0; i < lineCount; i++) {
+                const line = document.createElement('div');
+                line.className = 'rain-line';
+                line.style.left = Math.random() * 100 + '%';
+                line.style.height = (Math.random() * 100 + 50) + 'px';
+                line.style.animationDuration = (Math.random() * 2 + 1) + 's';
+                line.style.animationDelay = Math.random() * 5 + 's';
+                rainLines.appendChild(line);
+            }
+        }
+        createRainLines();
+        document.getElementById('scrollIndicator').addEventListener('click', () => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' }));
+        
+        // ========== Clerk 集成（模态框方式）==========
+        let clerkInitialized = false;
+        let userAuth, userProfile, modal, signinContainer, closeModalBtn;
+        let userCreated = false;
+        let isCreatingUser = false;
+
+        // 检查用户是否存在于数据库
+        async function checkUserExists(email) {
+            try {
+                console.log('检查用户存在性:', email);
+                const response = await fetch('/api/user/check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+                console.log('检查用户响应状态:', response.status);
+                const data = await response.json();
+                console.log('检查用户响应数据:', data);
+                return data;
+            } catch (error) {
+                console.error('检查用户失败:', error);
+                return { exists: false };
+            }
+        }
+
+        // 创建新用户
+        async function createUser(name, email) {
+            try {
+                console.log('创建用户开始:', name, email);
+                const response = await fetch('/api/user/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email })
+                });
+                console.log('创建用户响应状态:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('创建用户响应数据:', data);
+                return data;
+            } catch (error) {
+                console.error('创建用户失败:', error);
+                alert('创建用户失败: ' + error.message);
+                return { created: false };
+            }
+        }
+
+        // 显示用户信息弹窗
+        function showUserInfoModal() {
+            const modal = document.createElement('div');
+            modal.className = 'user-info-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = `
+                background-color: white;
+                padding: 30px;
+                border-radius: 10px;
+                width: 400px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            `;
+
+            modalContent.innerHTML = `
+                <h2 style="margin-bottom: 20px; text-align: center;">完善个人信息</h2>
+                <form id="user-info-form">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">用户名</label>
+                        <input type="text" id="username" placeholder="请输入用户名" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <button type="button" id="cancel-btn" style="padding: 10px 20px; border: 1px solid #ddd; border-radius: 5px; background-color: #f5f5f5; cursor: pointer;">取消</button>
+                        <button type="submit" style="padding: 10px 20px; border: none; border-radius: 5px; background-color: #4CAF50; color: white; cursor: pointer;">保存</button>
+                    </div>
+                </form>
+            `;
+
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+
+            // 不需要填充邮箱，因为弹窗中已经没有邮箱输入框了
+
+            // 取消按钮
+            const cancelBtn = document.getElementById('cancel-btn');
+            console.log('取消按钮元素:', cancelBtn);
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    document.body.removeChild(modal);
+                });
+            }
+
+            // 直接为保存按钮添加点击事件监听器
+            console.log('开始查找保存按钮');
+            const saveBtn = modalContent.querySelector('button[type="submit"]');
+            console.log('保存按钮元素:', saveBtn);
+            if (saveBtn) {
+                console.log('为保存按钮添加点击事件监听器');
+                saveBtn.addEventListener('click', async function(e) {
+                    console.log('保存按钮点击事件被触发');
+                    e.preventDefault();
+                    console.log('阻止默认提交行为');
+                    // 从当前弹窗中获取用户名
+                    const usernameInput = modalContent.querySelector('#username');
+                    console.log('用户名输入框元素:', usernameInput);
+                    const name = usernameInput ? usernameInput.value : '';
+                    console.log('表单数据 - 用户名:', name);
+
+                    if (!name) {
+                        alert('请输入用户名');
+                        return;
+                    }
+
+                    // 从Clerk.user中获取邮箱地址
+                    let email = null;
+                    const user = Clerk.user;
+                    if (user && typeof user === 'object') {
+                        // 尝试从primaryEmailAddress获取邮箱
+                        if (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress) {
+                            email = user.primaryEmailAddress.emailAddress;
+                            console.log('用户邮箱 (primaryEmailAddress):', email);
+                        } 
+                        // 尝试从emailAddresses数组获取邮箱
+                        else if (user.emailAddresses && user.emailAddresses.length > 0) {
+                            // 检查emailAddresses[0]是否有email或emailAddress属性
+                            if (user.emailAddresses[0].email) {
+                                email = user.emailAddresses[0].email;
+                                console.log('用户邮箱 (emailAddresses[0].email):', email);
+                            } else if (user.emailAddresses[0].emailAddress) {
+                                email = user.emailAddresses[0].emailAddress;
+                                console.log('用户邮箱 (emailAddresses[0].emailAddress):', email);
+                            }
+                        }
+                    }
+
+                    if (!email) {
+                        alert('无法获取用户邮箱地址，请重试');
+                        return;
+                    }
+
+                    // 设置isCreatingUser标志为true，避免在用户创建过程中再次显示完善个人信息弹窗
+                    isCreatingUser = true;
+                    console.log('设置isCreatingUser标志为:', isCreatingUser);
+                    
+                    console.log('调用createUser函数');
+                    const result = await createUser(name, email);
+                    console.log('createUser函数返回结果:', result);
+                    // 检查result.created是否为true
+                    if (result && typeof result === 'object' && result.created) {
+                        alert('个人信息保存成功！');
+                        // 移除弹窗
+                        document.body.removeChild(modal);
+                        // 手动检查用户存在性，确保更新AuthUI时能够正确检测到用户已经存在
+                        setTimeout(async () => {
+                            try {
+                                const checkResult = await checkUserExists(email);
+                                console.log('保存后检查用户存在性结果:', checkResult);
+                                // 手动更新UI，确保用户存在性检查通过
+                                updateAuthUI();
+                            } catch (error) {
+                                console.error('保存后检查用户存在性失败:', error);
+                            } finally {
+                                // 设置isCreatingUser标志为false
+                                isCreatingUser = false;
+                                console.log('设置isCreatingUser标志为:', isCreatingUser);
+                            }
+                        }, 1000);
+                    } else {
+                        alert('个人信息保存失败，请重试');
+                        // 设置isCreatingUser标志为false
+                        isCreatingUser = false;
+                        console.log('设置isCreatingUser标志为:', isCreatingUser);
+                    }
+                });
+            } else {
+                console.error('保存按钮元素未找到');
+            }
+        }
+
+        // 更新右上角 UI：根据登录状态显示按钮或 UserButton
+        async function updateAuthUI() {
+            console.log('updateAuthUI 开始执行');
+            console.log('clerkInitialized:', clerkInitialized);
+            if (!clerkInitialized) {
+                console.log('Clerk 未初始化，退出 updateAuthUI');
+                return;
+            }
+            console.log('Clerk.isSignedIn:', Clerk.isSignedIn);
+            if (Clerk.isSignedIn) {
+                // 已登录：显示聊天图标、个人中心和用户头像
+                console.log('用户已登录，开始更新UI');
+                userAuth.style.display = 'none';
+                userProfile.style.display = 'flex';
+                userProfile.style.alignItems = 'center';
+                // 挂载 UserButton 到用户头像位置
+                // 先检查是否已经存在UserButton
+                let userButtonDiv = userProfile.querySelector('#user-button');
+                if (!userButtonDiv) {
+                    // 如果不存在，创建新的UserButton
+                    userButtonDiv = document.createElement('div');
+                    userButtonDiv.id = 'user-button';
+                    // 清空userProfile，避免重复元素
+                    userProfile.innerHTML = '';
+                    // 重新添加聊天图标和个人中心链接
+                    const chatIcon = document.createElement('a');
+                    chatIcon.href = '#';
+                    chatIcon.innerHTML = '<img src="./pictures/message.png" width="40px" height="40px">';
+                    userProfile.appendChild(chatIcon);
+                    
+                    const profileLink = document.createElement('a');
+                    profileLink.href = './user/profile.html';
+                    profileLink.className = 'profile-link';
+                    profileLink.textContent = '个人中心';
+                    userProfile.appendChild(profileLink);
+                    
+                    // 添加UserButton
+                    userProfile.appendChild(userButtonDiv);
+                    // 挂载UserButton
+                    try {
+                        Clerk.mountUserButton(userButtonDiv);
+                        console.log('UserButton 挂载成功');
+                    } catch (error) {
+                        console.error('UserButton 挂载失败:', error);
+                    }
+                }
+
+                // 检查用户是否存在于数据库
+                try {
+                    // 延迟一下，确保用户信息完全加载
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // 直接访问Clerk.user属性获取用户信息
+                    const user = Clerk.user;
+                    console.log('Clerk.user:', user);
+                    // 检查user是否为有效的用户对象
+                    let email = null;
+                    if (user && typeof user === 'object') {
+                        // 尝试从primaryEmailAddress获取邮箱
+                        if (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress) {
+                            email = user.primaryEmailAddress.emailAddress;
+                            console.log('用户邮箱 (primaryEmailAddress):', email);
+                        } 
+                        // 尝试从emailAddresses数组获取邮箱
+                        else if (user.emailAddresses && user.emailAddresses.length > 0) {
+                            // 检查emailAddresses[0]是否有email或emailAddress属性
+                            if (user.emailAddresses[0].email) {
+                                email = user.emailAddresses[0].email;
+                                console.log('用户邮箱 (emailAddresses[0].email):', email);
+                            } else if (user.emailAddresses[0].emailAddress) {
+                                email = user.emailAddresses[0].emailAddress;
+                                console.log('用户邮箱 (emailAddresses[0].emailAddress):', email);
+                            }
+                        }
+                    }
+                    
+                    if (email) {
+                        // 检查用户是否存在
+                        console.log('开始检查用户存在性');
+                        console.log('isCreatingUser:', isCreatingUser);
+                        // 如果用户正在创建中，跳过检查
+                        if (isCreatingUser) {
+                            console.log('用户正在创建中，跳过检查');
+                        } else {
+                            const result = await checkUserExists(email);
+                            console.log('检查用户存在性结果:', result);
+                            // 检查result.exists是否为true
+                            if (result && typeof result === 'object' && result.exists) {
+                                console.log('用户已存在，跳过弹窗');
+                            } else {
+                                // 显示用户信息弹窗
+                                console.log('用户不存在，显示完善个人信息弹窗');
+                                console.log('调用showUserInfoModal函数');
+                                // 检查是否已经存在完善个人信息弹窗，如果存在，不重复显示
+                                const existingModal = document.querySelector('.user-info-modal');
+                                if (!existingModal) {
+                                    showUserInfoModal();
+                                    console.log('showUserInfoModal函数调用完成');
+                                } else {
+                                    console.log('完善个人信息弹窗已存在，不重复显示');
+                                }
+                            }
+                        }
+                    } else {
+                        console.log('用户对象不完整或没有邮箱地址');
+                        // 尝试使用Clerk的其他方法获取用户信息
+                        try {
+                            // 检查是否有currentUser方法
+                            if (typeof Clerk.currentUser === 'function') {
+                                const currentUser = await Clerk.currentUser();
+                                console.log('Clerk.currentUser():', currentUser);
+                                let currentEmail = null;
+                                if (currentUser && typeof currentUser === 'object') {
+                                    // 尝试从primaryEmailAddress获取邮箱
+                                    if (currentUser.primaryEmailAddress && currentUser.primaryEmailAddress.emailAddress) {
+                                        currentEmail = currentUser.primaryEmailAddress.emailAddress;
+                                        console.log('用户邮箱 (currentUser.primaryEmailAddress):', currentEmail);
+                                    } 
+                                    // 尝试从emailAddresses数组获取邮箱
+                                    else if (currentUser.emailAddresses && currentUser.emailAddresses.length > 0) {
+                                        // 检查emailAddresses[0]是否有email或emailAddress属性
+                                        if (currentUser.emailAddresses[0].email) {
+                                            currentEmail = currentUser.emailAddresses[0].email;
+                                            console.log('用户邮箱 (currentUser.emailAddresses[0].email):', currentEmail);
+                                        } else if (currentUser.emailAddresses[0].emailAddress) {
+                                            currentEmail = currentUser.emailAddresses[0].emailAddress;
+                                            console.log('用户邮箱 (currentUser.emailAddresses[0].emailAddress):', currentEmail);
+                                        }
+                                    }
+                                }
+                                
+                                if (currentEmail && !userCreated) {
+                                    const result = await checkUserExists(currentEmail);
+                                    if (!result.exists) {
+                                        showUserInfoModal();
+                                    }
+                                }
+                            }
+                        } catch (err) {
+                            console.error('尝试使用currentUser方法获取用户信息失败:', err);
+                        }
+                    }
+                } catch (error) {
+                    console.error('获取用户信息失败:', error);
+                }
+            } else {
+                // 未登录：只显示登录/注册按钮，不显示聊天图标
+                console.log('用户未登录，更新UI');
+                userAuth.style.display = 'block';
+                userProfile.style.display = 'none';
+            }
+            console.log('updateAuthUI 执行完成');
+        }
+
+        // 显示模态框，并将 SignIn 组件挂载到容器内
+        async function showModal() {
+            if (!clerkInitialized) return;
+            // 清空容器，重新挂载 SignIn（避免重复挂载）
+            signinContainer.innerHTML = '';
+            // 挂载 SignIn 组件
+            Clerk.mountSignIn(signinContainer);
+            modal.style.display = 'flex';
+        }
+
+        // 关闭模态框并卸载 SignIn 组件（可选，卸载释放资源）
+        function closeModal() {
+            modal.style.display = 'none';
+            if (Clerk && signinContainer) {
+                // 尝试卸载组件（如果有 unmount 方法）
+                if (typeof Clerk.unmountSignIn === 'function') {
+                    Clerk.unmountSignIn(signinContainer);
+                }
+                signinContainer.innerHTML = '';
+            }
+        }
+
+        window.addEventListener('load', async function() {
+            if (typeof Clerk === 'undefined') {
+                console.error('Clerk SDK 未加载');
+                return;
+            }
+
+            // 初始化 Clerk（必须传入 UI 构造函数）
+            await Clerk.load({
+                ui: { ClerkUI: window.__internal_ClerkUICtor },
+            });
+            clerkInitialized = true;
+            console.log('Clerk 初始化完成');
+
+            // 获取导航栏元素和模态框元素
+            userAuth = document.getElementById('user-auth');
+            userProfile = document.getElementById('user-profile');
+            modal = document.getElementById('clerk-modal');
+            signinContainer = document.getElementById('clerk-signin-container');
+            closeModalBtn = document.getElementById('close-modal-btn');
+
+            // 监听用户状态变化（登录、登出、更新）
+            Clerk.addListener(({ user }) => {
+                console.log('Clerk 用户状态变化:', user);
+                updateAuthUI();
+                // 如果用户刚刚登录成功，关闭模态框
+                if (user && modal.style.display === 'flex') {
+                    closeModal();
+                }
+            });
+
+            // 绑定关闭按钮事件
+            closeModalBtn.addEventListener('click', closeModal);
+            // 点击模态框背景（非内容区）关闭
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+
+            // 初始更新 UI
+            updateAuthUI();
+
+            // 绑定打开模态框的初始按钮（如果初始状态是未登录，按钮会存在）
+            const initialBtn = document.getElementById('sign-in-button');
+            if (initialBtn) {
+                initialBtn.addEventListener('click', showModal);
+            }
+        });
+    </script>
+</body>
+</html>

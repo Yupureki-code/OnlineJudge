@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/oj_server.dir/src/oj_server.cpp.o -o /home/Yupureki/work/OnlineJudge/output/oj_server  -lpthread -lmysqlclient -ljsoncpp -lctemplate 

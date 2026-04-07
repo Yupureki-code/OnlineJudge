@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 - Yupureki-OJ</title>
+    <!-- Clerk SDK -->
+    <script
+      crossorigin="anonymous"
+      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"
+      type="text/javascript"
+    ></script>
+    
+    <script
+      crossorigin="anonymous"
+      data-clerk-publishable-key="pk_test_cXVpZXQtbWFjYXF1ZS02My5jbGVyay5hY2NvdW50cy5kZXYk"
+      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+      type="text/javascript"
+    ></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-color: #2D2F2C;
+            position: relative;
+        }
+
+        /* 背景图片 */
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('/pictures/preview.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(0.2px);
+            z-index: -1;
+        }
+
+        /* 雨线效果 */
+        .rain-lines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .rain-line {
+            position: absolute;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(244, 246, 240, 0.05));
+            animation: rain 3s linear infinite;
+        }
+
+        @keyframes rain {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(60, 80, 60, 0.15);
+            backdrop-filter: blur(20px);
+            padding: 10px 80px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 300;
+            color: #F4F6F0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            letter-spacing: 0.1em;
+        }
+
+        .nav {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .nav a {
+            color: rgba(244, 246, 240, 0.8);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .nav a:hover {
+            color: #F4F6F0;
+        }
+
+        .nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            width: 0;
+            height: 1px;
+            background: rgba(244, 246, 240, 0.6);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav a:hover::after {
+            width: 100%;
+        }
+
+        .rain-toggle {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(244, 246, 240, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .rain-toggle:hover {
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(1.1);
+        }
+
+        .rain-toggle::before {
+            content: '♪';
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+        }
+
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 200px;
+            padding: 8px 12px;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #F4F6F0;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.02em;
+            transition: all 0.3s ease;
+        }
+
+        .search-input::placeholder {
+            color: rgba(244, 246, 240, 0.4);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: rgba(244, 246, 240, 0.4);
+            background: rgba(255, 255, 255, 0.08);
+            width: 250px;
+        }
+
+        .container {
+            padding: 40px;
+            position: relative;
+            z-index: 2;
+            min-height: calc(100vh - 100px);
+        }
+
+        .user-profile {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            margin-bottom: 30px;
+            animation: fadeIn 0.8s ease;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid rgba(244, 246, 240, 0.2);
+        }
+
+        .user-info h1 {
+            font-size: 32px;
+            color: #F4F6F0;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .user-stats {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            color: #4CAF50;
+            font-weight: 400;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: rgba(244, 246, 240, 0.7);
+            margin-top: 5px;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            margin-bottom: 30px;
+            animation: fadeIn 0.8s ease 0.2s both;
+        }
+
+        .section-title {
+            font-size: 20px;
+            color: #F4F6F0;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 300;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: rgba(244, 246, 240, 0.6);
+            border-radius: 2px;
+        }
+
+        .submission-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .submission-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #4CAF50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .submission-info {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .submission-problem {
+            font-size: 16px;
+            color: #F4F6F0;
+        }
+
+        .submission-time {
+            font-size: 14px;
+            color: rgba(244, 246, 240, 0.6);
+        }
+
+        .submission-status {
+            font-size: 14px;
+            font-weight: 400;
+            padding: 6px 16px;
+            border-radius: 20px;
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .status-wa {
+            background: rgba(244, 67, 54, 0.2);
+            color: #F44336;
+            border-color: rgba(244, 67, 54, 0.3);
+        }
+
+        .status-ce {
+            background: rgba(255, 152, 0, 0.2);
+            color: #FF9800;
+            border-color: rgba(255, 152, 0, 0.3);
+        }
+
+        .logout-btn {
+            padding: 12px 24px;
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            border-radius: 50px;
+            color: #F44336;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .logout-btn:hover {
+            background: rgba(244, 67, 54, 0.3);
+            transform: translateY(-2px);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(244, 246, 240, 0.3);
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(244, 246, 240, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+                padding: 10px 0;
+            }
+
+            .nav {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 15px;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .user-stats {
+                justify-content: center;
+            }
+
+            .submission-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .submission-status {
+                align-self: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景图片 -->
+    <div class="background"></div>
+    
+    <!-- 雨线效果 -->
+    <div class="rain-lines" id="rainLines"></div>
+    
+    <div class="header">
+        <div class="nav">
+            <img src="/pictures/icon.png" type="icon" width="40px" height="40px">
+            <p class="logo">Yupureki-OJ</p>
+            <a href="/">首页</a>
+            <a href="/all_questions">题库</a>
+            <a href="/about">关于</a>
+            <div class="rain-toggle" id="rainToggle"></div>
+        </div>
+        <div class="search-container">
+            <input type="text" class="search-input" placeholder="搜索题目...">
+        </div>
+        <div class="nav">
+            <a href="#"><img src="/pictures/message.png" width="40px" height="40px"></a>
+            <div id="user-auth" style="display: none;">
+                <button class="auth-btn" id="sign-in-button">登录/注册</button>
+            </div>
+            <div id="user-profile">
+                <button class="auth-btn" id="sign-out-button" style="margin-left: 10px;"></button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="user-profile">
+            <div class="profile-header">
+                <img src="/pictures/head.jpg" class="avatar" alt="用户头像">
+                <div class="user-info">
+                    <h1>用户名</h1>
+                    <p style="color: rgba(244, 246, 240, 0.7);">邮箱：user@example.com</p>
+                    <div class="user-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">已解决题目</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">总提交数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">100%</div>
+                            <div class="stat-label">正确率</div>
+                        </div>
+                    </div>
+                    <button class="logout-btn" id="logout-btn">退出登录</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">最近提交</h2>
+            <div class="submission-list">
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">已解决题目</h2>
+        </div>
+    </div>
+
+    <script>
+        // 生成雨线
+        function createRainLines() {
+            const rainLines = document.getElementById('rainLines');
+            const lineCount = 50;
+            
+            for (let i = 0; i < lineCount; i++) {
+                const line = document.createElement('div');
+                line.classList.add('rain-line');
+                line.style.left = Math.random() * 100 + '%';
+                line.style.height = Math.random() * 100 + 50 + 'px';
+                line.style.animationDelay = Math.random() * 3 + 's';
+                line.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                rainLines.appendChild(line);
+            }
+        }
+
+        // 雨线开关
+        document.getElementById('rainToggle').addEventListener('click', function() {
+            const rainLines = document.getElementById('rainLines');
+            if (rainLines.style.display === 'none') {
+                rainLines.style.display = 'block';
+            } else {
+                rainLines.style.display = 'none';
+            }
+        });
+
+        // 退出登录
+        document.getElementById('logout-btn').addEventListener('click', function() {
+            try {
+                if (Clerk) {
+                    Clerk.signOut();
+                    console.log('退出登录');
+                } else {
+                    console.error('Clerk未初始化');
+                }
+            } catch (error) {
+                console.error('退出登录失败:', error);
+            }
+        });
+
+        // Clerk用户管理功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const signOutButton = document.getElementById('sign-out-button');
+            const userAuth = document.getElementById('user-auth');
+            const userProfile = document.getElementById('user-profile');
+            let clerkInitialized = false;
+
+            // 检查登录状态
+            function checkLoginStatus() {
+                if (!clerkInitialized) return;
+                
+                if (Clerk.isSignedIn) {
+                    userAuth.style.display = 'none';
+                    userProfile.style.display = 'flex';
+                    userProfile.style.alignItems = 'center';
+                } else {
+                    userAuth.style.display = 'block';
+                    userProfile.style.display = 'none';
+                    // 如果未登录，重定向到首页
+                    window.location.href = '/';
+                }
+            }
+
+            // 退出登录按钮点击事件
+            signOutButton.addEventListener('click', function() {
+                try {
+                    if (Clerk) {
+                        Clerk.signOut();
+                        console.log('退出登录');
+                    } else {
+                        console.error('Clerk未初始化');
+                    }
+                } catch (error) {
+                    console.error('退出登录失败:', error);
+                }
+            });
+
+            // 获取用户信息
+            async function getUserInfo(email) {
+                try {
+                    const response = await fetch('/api/user/get', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ email })
+                    });
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('获取用户信息失败:', error);
+                    return { found: false };
+                }
+            }
+
+            // 初始化Clerk
+            window.addEventListener('load', async function() {
+                try {
+                    await Clerk.load({
+                        ui: { ClerkUI: window.__internal_ClerkUICtor },
+                    });
+                    clerkInitialized = true;
+                    console.log('Clerk 初始化完成');
+                    
+                    // 监听用户状态变化
+                    Clerk.addListener(({ user }) => {
+                        checkLoginStatus();
+                        if (user && typeof user === 'object') {
+                            console.log('用户已登录:', user);
+                            // 尝试从多个地方获取邮箱地址
+                            let email = null;
+                            // 尝试从primaryEmailAddress获取邮箱
+                            if (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress) {
+                                email = user.primaryEmailAddress.emailAddress;
+                                console.log('用户邮箱 (primaryEmailAddress):', email);
+                            } 
+                            // 尝试从emailAddresses数组获取邮箱
+                            else if (user.emailAddresses && user.emailAddresses.length > 0) {
+                                // 检查emailAddresses[0]是否有email或emailAddress属性
+                                if (user.emailAddresses[0].email) {
+                                    email = user.emailAddresses[0].email;
+                                    console.log('用户邮箱 (emailAddresses[0].email):', email);
+                                } else if (user.emailAddresses[0].emailAddress) {
+                                    email = user.emailAddresses[0].emailAddress;
+                                    console.log('用户邮箱 (emailAddresses[0].emailAddress):', email);
+                                }
+                            }
+                            
+                            if (email) {
+                                // 获取用户信息并更新页面
+                                getUserInfo(email).then(result => {
+                                    console.log('获取用户信息结果:', result);
+                                    if (result.found) {
+                                        // 更新用户信息
+                                        document.querySelector('.user-info h1').textContent = result.user.name || '用户名';
+                                        document.querySelector('.user-info p').textContent = `邮箱：${result.user.email || '未设置邮箱'}`;
+                                    } else {
+                                        console.log('用户信息未找到');
+                                    }
+                                }).catch(error => {
+                                    console.error('获取用户信息失败:', error);
+                                });
+                            } else {
+                                console.log('无法获取用户邮箱地址');
+                            }
+                        } else {
+                            console.log('用户已退出登录');
+                        }
+                    });
+                    
+                    // 初始化登录状态
+                    checkLoginStatus();
+                } catch (error) {
+                    console.error('Clerk 初始化失败:', error);
+                }
+            });
+        });
+
+        // 初始化
+        createRainLines();
+    </script>
+</body>
+</html>
