@@ -1,0 +1,173 @@
+<style>
+    .about-content {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .page-title {
+        text-align: center;
+        font-size: 48px;
+        font-weight: 300;
+        color: #F4F6F0;
+        margin-bottom: 40px;
+        letter-spacing: 0.1em;
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 40px;
+        border: 1px solid rgba(244, 246, 240, 0.1);
+        transition: all 0.3s ease;
+        margin-bottom: 30px;
+    }
+
+    .glass-card:hover {
+        background: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-title {
+        font-size: 24px;
+        font-weight: 400;
+        color: #F4F6F0;
+        margin-bottom: 24px;
+        letter-spacing: 0.05em;
+    }
+
+    .link-item {
+        display: flex;
+        align-items: center;
+        padding: 15px 0;
+        border-bottom: 1px solid rgba(244, 246, 240, 0.1);
+    }
+
+    .link-item:last-child {
+        border-bottom: none;
+    }
+
+    .link-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        margin: 0 -20px;
+        padding-left: 20px;
+        padding-right: 20px;
+        border-radius: 10px;
+    }
+
+    .link-label {
+        color: rgba(244, 246, 240, 0.6);
+        font-size: 14px;
+        width: 100px;
+        flex-shrink: 0;
+        letter-spacing: 0.02em;
+    }
+
+    .link-value {
+        flex: 1;
+    }
+
+    .link-value a {
+        color: #F4F6F0;
+        text-decoration: none;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .link-value a:hover {
+        color: rgba(244, 246, 240, 0.8);
+        text-decoration: underline;
+    }
+
+    .link-value a::after {
+        content: '↗';
+        font-size: 12px;
+        opacity: 0.6;
+    }
+
+    .link-value span {
+        color: #F4F6F0;
+        font-size: 16px;
+    }
+
+    .copyright-content {
+        color: rgba(244, 246, 240, 0.7);
+        line-height: 1.8;
+        font-size: 14px;
+        letter-spacing: 0.02em;
+    }
+
+    .copyright-content p {
+        margin-bottom: 15px;
+        text-align: justify;
+    }
+
+    .copyright-content .project-name {
+        color: #F4F6F0;
+        font-weight: 500;
+    }
+
+    .copyright-content .divider {
+        height: 1px;
+        background: rgba(244, 246, 240, 0.2);
+        margin: 20px 0;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<div class="about-content">
+    <h1 class="page-title">关于Yupureki-OJ</h1>
+
+    <div class="glass-card">
+        <h2 class="card-title">个人</h2>
+        <div class="link-item">
+            <span class="link-label">开发者</span>
+            <div class="link-value">
+                <span>Yupureki</span>
+            </div>
+        </div>
+        <div class="link-item">
+            <span class="link-label">项目链接</span>
+            <div class="link-value">
+                <a href="https://github.com/Yupureki-code/OnlineJudge" target="_blank" rel="noopener noreferrer">GitHub - OnlineJudge</a>
+            </div>
+        </div>
+        <div class="link-item">
+            <span class="link-label">CSDN博客</span>
+            <div class="link-value">
+                <a href="https://blog.csdn.net/qq_49648783?spm=1011.2124.3001.10640" target="_blank" rel="noopener noreferrer">Yupureki的技术博客</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-card">
+        <h2 class="card-title">版权说明</h2>
+        <div class="copyright-content">
+            <p>
+                <span class="project-name">OnlineJudge</span><br>
+                C++-Load-Balanced Online OJ Platform Based on Chain of Responsibility Pattern
+            </p>
+            
+            <div class="divider"></div>
+            
+            <p>
+                <strong style="color: #F4F6F0;">中文版权说明：</strong><br>
+                此项目基于C++-责任链模式的负载均衡式在线OJ平台，其代码、注释、图片、数据库、设计、布局、界面等改编于比特就业课-C++负载均衡式在线OJ【标准项目】，仅用于个人和第三方学习。禁止第三方者将此项目用于商业目的，包括且不限于转让、销售等目的。严重者将受法律责任。
+            </p>
+            
+            <div class="divider"></div>
+            
+            <p>
+                <strong style="color: #F4F6F0;">Copyright Notice:</strong><br>
+                This project is based on the C++ - Chain of Responsibility Pattern Load Balancing Online OJ Platform. Its code, comments, images, database, design, layout, interface, etc. are adapted from the Bit Employment Course - C++ Load Balancing Online OJ [Standard Project], and are only for personal and third-party learning. Third parties are prohibited from using this project for commercial purposes, including but not limited to transfer, sale, etc. Serious violations will be subject to legal liability.
+            </p>
+        </div>
+    </div>
+</div>

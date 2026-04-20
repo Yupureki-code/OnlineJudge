@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/Yupureki/work/OnlineJudge/src/oj_server/src/oj_server.cpp" "src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o" "gcc" "src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o.d"
+  "/home/yupureki/project/OnlineJudge/src/oj_server/src/oj_server.cpp" "src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o" "gcc" "src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

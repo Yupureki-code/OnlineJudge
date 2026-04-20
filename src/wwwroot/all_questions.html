@@ -4,21 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>题库 - Yupureki-OJ</title>
-    <!-- Clerk SDK -->
-    <script
-      defer
-      crossorigin="anonymous"
-      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"
-      type="text/javascript"
-    ></script>
-    
-    <script
-      defer
-      crossorigin="anonymous"
-      data-clerk-publishable-key="pk_test_cXVpZXQtbWFjYXF1ZS02My5jbGVyay5hY2NvdW50cy5kZXYk"
-      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
-      type="text/javascript"
-    ></script>
     <style>
         * {
             margin: 0;
@@ -387,13 +372,31 @@
             border-radius: 20px;
             padding: 30px;
             border: 1px solid rgba(244, 246, 240, 0.1);
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
-            animation: fadeIn 0.8s ease both;
+            animation: slideIn 0.6s ease both;
             display: grid;
             grid-template-columns: 80px 1fr auto;
             gap: 24px;
             align-items: center;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .question-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
         .question-card:hover {
@@ -723,6 +726,44 @@
                 justify-content: center;
             }
         }
+
+        /* Clerk Modal Styles */
+        .clerk-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+        .clerk-modal-content {
+            background: transparent;
+            max-width: 480px;
+            width: 90%;
+            border-radius: 24px;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: #F4F6F0;
+            font-size: 32px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 8px;
+            line-height: 1;
+            transition: transform 0.2s;
+        }
+        .close-modal:hover {
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
@@ -743,14 +784,27 @@
                 <input type="text" class="search-input" placeholder="搜索题目...">
         </div>
         <div class="nav">
-            <a href="#"><img src="./pictures/message.png" width="40px" height="40px"></a>
-            <div id="user-auth">
+            <script>
+                if (typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO.isLoggedIn) {
+                    document.getElementById('user-auth').style.display = 'none';
+                    document.getElementById('user-profile').style.display = 'flex';
+                }
+            </script>
+            <!-- 未登录状态 -->
+            <div id="user-auth" style="display: block;">
                 <button class="auth-btn" id="sign-in-button">登录/注册</button>
             </div>
+            <!-- 登录状态 -->
             <div id="user-profile" style="display: none;">
-                <a href="/user/profile"><img src="./pictures/head.jpg" width="40px" height="40px" style="border-radius: 50%;"></a>
-                <button class="auth-btn" id="sign-out-button" style="margin-left: 10px;">退出登录</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Clerk Modal -->
+    <div id="clerk-modal" class="clerk-modal">
+        <div class="clerk-modal-content">
+            <button class="close-modal" id="close-modal-btn">&times;</button>
+            <div id="clerk-signin-container"></div>
         </div>
     </div>
     <div class="container">
@@ -848,6 +902,18 @@
         const filterBtns = document.querySelectorAll('.filter-btn');
         const questionCards = document.querySelectorAll('.question-card');
         
+        function animateFilterResults() {
+            const visibleCards = document.querySelectorAll('.question-card:visible');
+            visibleCards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 50);
+            });
+        }
+
         filterBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 filterBtns.forEach(b => b.classList.remove('active'));
@@ -865,6 +931,8 @@
                         card.parentElement.style.display = 'none';
                     }
                 });
+                
+                setTimeout(animateFilterResults, 50);
             });
         });
 
@@ -883,6 +951,8 @@
                     card.parentElement.style.display = 'none';
                 }
             });
+            
+            setTimeout(animateFilterResults, 50);
         });
 
         // 分页功能
@@ -918,73 +988,38 @@
             }
         }
 
+        // 刷新题目列表动画
+        function animateQuestionCards() {
+            const cards = document.querySelectorAll('.question-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.classList.add('visible');
+                }, index * 80);
+            });
+        }
+
         // 初始化
         createRainLines();
         updatePagination();
-
-        // Clerk用户管理功能
-        document.addEventListener('DOMContentLoaded', function() {
-            const signInButton = document.getElementById('sign-in-button');
-            const signOutButton = document.getElementById('sign-out-button');
-            const userAuth = document.getElementById('user-auth');
-            const userProfile = document.getElementById('user-profile');
-
-            // 检查登录状态
-            function checkLoginStatus() {
-                if (window.Clerk && window.Clerk.user) {
-                    userAuth.style.display = 'none';
-                    userProfile.style.display = 'block';
-                } else {
-                    userAuth.style.display = 'block';
-                    userProfile.style.display = 'none';
-                }
-            }
-
-            // 登录/注册按钮点击事件
-            signInButton.addEventListener('click', function() {
-                try {
-                    if (window.Clerk) {
-                        window.Clerk.openSignIn();
-                        console.log('打开登录/注册弹窗');
-                    } else {
-                        console.error('Clerk未初始化');
-                    }
-                } catch (error) {
-                    console.error('打开弹窗失败:', error);
-                }
-            });
-
-            // 退出登录按钮点击事件
-            signOutButton.addEventListener('click', function() {
-                try {
-                    if (window.Clerk) {
-                        window.Clerk.signOut();
-                        console.log('退出登录');
-                    } else {
-                        console.error('Clerk未初始化');
-                    }
-                } catch (error) {
-                    console.error('退出登录失败:', error);
-                }
-            });
-
-            // 监听用户状态变化
-            if (window.Clerk) {
-                window.Clerk.addListener(({ user }) => {
-                    checkLoginStatus();
-                    if (user) {
-                        console.log('用户已登录:', user);
-                    } else {
-                        console.log('用户已退出登录');
-                    }
-                });
-            }
-
-            // 初始化登录状态
-            checkLoginStatus();
-        });
+        animateQuestionCards();
     </script>
 
-
+    <!-- Clerk SDK -->
+    <script
+      defer
+      crossorigin="anonymous"
+      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"
+      type="text/javascript">
+    </script>
+    <script
+      defer
+      crossorigin="anonymous"
+      data-clerk-publishable-key="pk_test_cXVpZXQtbWFjYXF1ZS02My5jbGVyay5hY2NvdW50cy5kZXYk"
+      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+      type="text/javascript">
+    </script>
+    <script src="./js/clerk-auth.js"></script>
 </body>
 </html>

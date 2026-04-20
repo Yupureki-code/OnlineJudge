@@ -1,4 +1,4 @@
-# Install script for directory: /home/Yupureki/work/OnlineJudge
+# Install script for directory: /home/yupureki/project/OnlineJudge
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -44,12 +44,17 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/Yupureki/work/OnlineJudge/build/src/compile_server/cmake_install.cmake")
+  include("/home/yupureki/project/OnlineJudge/build/src/private/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/Yupureki/work/OnlineJudge/build/src/oj_server/cmake_install.cmake")
+  include("/home/yupureki/project/OnlineJudge/build/src/compile_server/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("/home/yupureki/project/OnlineJudge/build/src/oj_server/cmake_install.cmake")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -60,5 +65,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/Yupureki/work/OnlineJudge/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/yupureki/project/OnlineJudge/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

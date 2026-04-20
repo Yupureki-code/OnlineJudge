@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/Yupureki/work/OnlineJudge
+CMAKE_SOURCE_DIR = /home/yupureki/project/OnlineJudge
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/Yupureki/work/OnlineJudge/build
+CMAKE_BINARY_DIR = /home/yupureki/project/OnlineJudge/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,14 +87,14 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/Yupureki/work/OnlineJudge/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/Yupureki/work/OnlineJudge/build/CMakeFiles /home/Yupureki/work/OnlineJudge/build/src/compile_server//CMakeFiles/progress.marks
-	cd /home/Yupureki/work/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/Yupureki/work/OnlineJudge/build/CMakeFiles 0
+	cd /home/yupureki/project/OnlineJudge/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles /home/yupureki/project/OnlineJudge/build/src/compile_server//CMakeFiles/progress.marks
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/Yupureki/work/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/clean
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/clean
 .PHONY : clean
 
 # The main clean target
@@ -103,22 +103,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/Yupureki/work/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/preinstall
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/Yupureki/work/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/preinstall
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/Yupureki/work/OnlineJudge/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/yupureki/project/OnlineJudge/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 src/compile_server/CMakeFiles/compile_server.dir/rule:
-	cd /home/Yupureki/work/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/CMakeFiles/compile_server.dir/rule
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/CMakeFiles/compile_server.dir/rule
 .PHONY : src/compile_server/CMakeFiles/compile_server.dir/rule
 
 # Convenience name for target.
@@ -127,7 +127,7 @@ compile_server: src/compile_server/CMakeFiles/compile_server.dir/rule
 
 # fast build rule for target.
 compile_server/fast:
-	cd /home/Yupureki/work/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/build
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/build
 .PHONY : compile_server/fast
 
 src/compile_server.o: src/compile_server.cpp.o
@@ -135,7 +135,7 @@ src/compile_server.o: src/compile_server.cpp.o
 
 # target to build an object file
 src/compile_server.cpp.o:
-	cd /home/Yupureki/work/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o
 .PHONY : src/compile_server.cpp.o
 
 src/compile_server.i: src/compile_server.cpp.i
@@ -143,7 +143,7 @@ src/compile_server.i: src/compile_server.cpp.i
 
 # target to preprocess a source file
 src/compile_server.cpp.i:
-	cd /home/Yupureki/work/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.i
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.i
 .PHONY : src/compile_server.cpp.i
 
 src/compile_server.s: src/compile_server.cpp.s
@@ -151,7 +151,7 @@ src/compile_server.s: src/compile_server.cpp.s
 
 # target to generate assembly for a file
 src/compile_server.cpp.s:
-	cd /home/Yupureki/work/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.s
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.s
 .PHONY : src/compile_server.cpp.s
 
 # Help Target
@@ -177,6 +177,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/Yupureki/work/OnlineJudge/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/yupureki/project/OnlineJudge/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

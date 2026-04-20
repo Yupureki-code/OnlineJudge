@@ -41,11 +41,11 @@ namespace ns_judge
                             break;
                         else
                         {
-                            logger(FATAL)<<"读取stderr文件失败: "<<stderr_path;
+                            ns_log::logger(FATAL)<<"读取stderr文件失败: "<<stderr_path;
                             return HandlerProgramEnd({UNKNOWN}, file_name);
                         }
                     }
-                    logger(ns_log::DEBUG)<<"stderr: "<<err;
+                    ns_log::logger(ns_log::DEBUG)<<"stderr: "<<err;
                     //判断运行是否出错
                     if(err == "运行时间超时") result.push_back(RUNTIME_ERROR);
                     else if(err == "内存申请过多") result.push_back(MEMORY_LIMIT);

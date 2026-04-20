@@ -4,19 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>个人中心 - Yupureki-OJ</title>
-    <!-- Clerk SDK -->
-    <script
-      crossorigin="anonymous"
-      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"
-      type="text/javascript"
-    ></script>
-    
-    <script
-      crossorigin="anonymous"
-      data-clerk-publishable-key="pk_test_cXVpZXQtbWFjYXF1ZS02My5jbGVyay5hY2NvdW50cy5kZXYk"
-      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
-      type="text/javascript"
-    ></script>
     <style>
         * {
             margin: 0;
@@ -416,6 +403,44 @@
                 align-self: flex-end;
             }
         }
+
+        /* Clerk Modal Styles */
+        .clerk-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+        .clerk-modal-content {
+            background: transparent;
+            max-width: 480px;
+            width: 90%;
+            border-radius: 24px;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: #F4F6F0;
+            font-size: 32px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 8px;
+            line-height: 1;
+            transition: transform 0.2s;
+        }
+        .close-modal:hover {
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
@@ -438,13 +463,27 @@
             <input type="text" class="search-input" placeholder="搜索题目...">
         </div>
         <div class="nav">
-            <a href="#"><img src="/pictures/message.png" width="40px" height="40px"></a>
-            <div id="user-auth" style="display: none;">
+            <script>
+                if (typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO.isLoggedIn) {
+                    document.getElementById('user-auth').style.display = 'none';
+                    document.getElementById('user-profile').style.display = 'flex';
+                }
+            </script>
+            <!-- 未登录状态 -->
+            <div id="user-auth" style="display: block;">
                 <button class="auth-btn" id="sign-in-button">登录/注册</button>
             </div>
-            <div id="user-profile">
-                <button class="auth-btn" id="sign-out-button" style="margin-left: 10px;"></button>
+            <!-- 登录状态 -->
+            <div id="user-profile" style="display: none;">
             </div>
+        </div>
+    </div>
+
+    <!-- Clerk Modal -->
+    <div id="clerk-modal" class="clerk-modal">
+        <div class="clerk-modal-content">
+            <button class="close-modal" id="close-modal-btn">&times;</button>
+            <div id="clerk-signin-container"></div>
         </div>
     </div>
     
@@ -493,7 +532,7 @@
             
             for (let i = 0; i < lineCount; i++) {
                 const line = document.createElement('div');
-                line.classList.add('rain-line');
+                line.className = 'rain-line';
                 line.style.left = Math.random() * 100 + '%';
                 line.style.height = Math.random() * 100 + 50 + 'px';
                 line.style.animationDelay = Math.random() * 3 + 's';
@@ -526,126 +565,30 @@
             }
         });
 
-        // Clerk用户管理功能
-        document.addEventListener('DOMContentLoaded', function() {
-            const signOutButton = document.getElementById('sign-out-button');
-            const userAuth = document.getElementById('user-auth');
-            const userProfile = document.getElementById('user-profile');
-            let clerkInitialized = false;
-
-            // 检查登录状态
-            function checkLoginStatus() {
-                if (!clerkInitialized) return;
-                
-                if (Clerk.isSignedIn) {
-                    userAuth.style.display = 'none';
-                    userProfile.style.display = 'flex';
-                    userProfile.style.alignItems = 'center';
-                } else {
-                    userAuth.style.display = 'block';
-                    userProfile.style.display = 'none';
-                    // 如果未登录，重定向到首页
-                    window.location.href = '/';
-                }
-            }
-
-            // 退出登录按钮点击事件
-            signOutButton.addEventListener('click', function() {
-                try {
-                    if (Clerk) {
-                        Clerk.signOut();
-                        console.log('退出登录');
-                    } else {
-                        console.error('Clerk未初始化');
-                    }
-                } catch (error) {
-                    console.error('退出登录失败:', error);
-                }
-            });
-
-            // 获取用户信息
-            async function getUserInfo(email) {
-                try {
-                    const response = await fetch('/api/user/get', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ email })
-                    });
-                    const data = await response.json();
-                    return data;
-                } catch (error) {
-                    console.error('获取用户信息失败:', error);
-                    return { found: false };
-                }
-            }
-
-            // 初始化Clerk
-            window.addEventListener('load', async function() {
-                try {
-                    await Clerk.load({
-                        ui: { ClerkUI: window.__internal_ClerkUICtor },
-                    });
-                    clerkInitialized = true;
-                    console.log('Clerk 初始化完成');
-                    
-                    // 监听用户状态变化
-                    Clerk.addListener(({ user }) => {
-                        checkLoginStatus();
-                        if (user && typeof user === 'object') {
-                            console.log('用户已登录:', user);
-                            // 尝试从多个地方获取邮箱地址
-                            let email = null;
-                            // 尝试从primaryEmailAddress获取邮箱
-                            if (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress) {
-                                email = user.primaryEmailAddress.emailAddress;
-                                console.log('用户邮箱 (primaryEmailAddress):', email);
-                            } 
-                            // 尝试从emailAddresses数组获取邮箱
-                            else if (user.emailAddresses && user.emailAddresses.length > 0) {
-                                // 检查emailAddresses[0]是否有email或emailAddress属性
-                                if (user.emailAddresses[0].email) {
-                                    email = user.emailAddresses[0].email;
-                                    console.log('用户邮箱 (emailAddresses[0].email):', email);
-                                } else if (user.emailAddresses[0].emailAddress) {
-                                    email = user.emailAddresses[0].emailAddress;
-                                    console.log('用户邮箱 (emailAddresses[0].emailAddress):', email);
-                                }
-                            }
-                            
-                            if (email) {
-                                // 获取用户信息并更新页面
-                                getUserInfo(email).then(result => {
-                                    console.log('获取用户信息结果:', result);
-                                    if (result.found) {
-                                        // 更新用户信息
-                                        document.querySelector('.user-info h1').textContent = result.user.name || '用户名';
-                                        document.querySelector('.user-info p').textContent = `邮箱：${result.user.email || '未设置邮箱'}`;
-                                    } else {
-                                        console.log('用户信息未找到');
-                                    }
-                                }).catch(error => {
-                                    console.error('获取用户信息失败:', error);
-                                });
-                            } else {
-                                console.log('无法获取用户邮箱地址');
-                            }
-                        } else {
-                            console.log('用户已退出登录');
-                        }
-                    });
-                    
-                    // 初始化登录状态
-                    checkLoginStatus();
-                } catch (error) {
-                    console.error('Clerk 初始化失败:', error);
-                }
-            });
-        });
-
         // 初始化
         createRainLines();
+
+        // 使用服务端注入的用户信息（无延迟）
+        if (typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO.isLoggedIn) {
+            document.querySelector('.user-info h1').textContent = SERVER_USER_INFO.name || '用户名';
+            document.querySelector('.user-info p').textContent = `邮箱：${SERVER_USER_INFO.email || '未设置邮箱'}`;
+        }
     </script>
+
+    <!-- Clerk SDK -->
+    <script
+      defer
+      crossorigin="anonymous"
+      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"
+      type="text/javascript">
+    </script>
+    <script
+      defer
+      crossorigin="anonymous"
+      data-clerk-publishable-key="pk_test_cXVpZXQtbWFjYXF1ZS02My5jbGVyay5hY2NvdW50cy5kZXYk"
+      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+      type="text/javascript">
+    </script>
+    <script src="../js/clerk-auth.js"></script>
 </body>
 </html>

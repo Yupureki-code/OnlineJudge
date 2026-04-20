@@ -7,12 +7,13 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 # The top level Makefile was generated from the following files:
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
-  "/home/Yupureki/work/OnlineJudge/CMakeLists.txt"
+  "/home/yupureki/project/OnlineJudge/CMakeLists.txt"
   "CMakeFiles/3.28.3/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.28.3/CMakeSystem.cmake"
-  "/home/Yupureki/work/OnlineJudge/config.in.h"
-  "/home/Yupureki/work/OnlineJudge/src/compile_server/CMakeLists.txt"
-  "/home/Yupureki/work/OnlineJudge/src/oj_server/CMakeLists.txt"
+  "/home/yupureki/project/OnlineJudge/config.in.h"
+  "/home/yupureki/project/OnlineJudge/src/compile_server/CMakeLists.txt"
+  "/home/yupureki/project/OnlineJudge/src/oj_server/CMakeLists.txt"
+  "/home/yupureki/project/OnlineJudge/src/private/CMakeLists.txt"
   "/usr/share/cmake-3.28/Modules/CMakeCXXInformation.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeCommonLanguageInclude.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeGenericSystem.cmake"
@@ -38,8 +39,9 @@ set(CMAKE_MAKEFILE_OUTPUTS
 
 # Byproducts of CMake generate step:
 set(CMAKE_MAKEFILE_PRODUCTS
-  "/home/Yupureki/work/OnlineJudge/src/comm/config.h"
+  "/home/yupureki/project/OnlineJudge/src/comm/config.h"
   "CMakeFiles/CMakeDirectoryInformation.cmake"
+  "src/private/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/compile_server/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/oj_server/CMakeFiles/CMakeDirectoryInformation.cmake"
   )

@@ -129,7 +129,7 @@ namespace ns_hanlder
         //责任链结束
         std::string HandlerProgramEnd(const std::vector<Status>& result,const std::string& file_name,const int line,const std::string filename)
         {
-            logger(ns_log::DEBUG)<<"在 "<<filename<<" 的 "<<line<<" 行结束责任链";
+            ns_log::logger(ns_log::DEBUG)<<"在 "<<filename<<" 的 "<<line<<" 行结束责任链";
             Json::Value out_value;
             std::string result_string;
             bool has_wa = false;
@@ -171,7 +171,7 @@ namespace ns_hanlder
             Json::StyledWriter writer;
             std::string out_json = writer.write(out_value);
             FileUtil::RemoveTmpFiles(file_name);
-            logger(DEBUG)<<"out_json:"<<out_json;
+            ns_log::logger(DEBUG)<<"out_json:"<<out_json;
             return out_json;
         }
     protected:

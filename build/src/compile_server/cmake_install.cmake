@@ -1,4 +1,4 @@
-# Install script for directory: /home/Yupureki/work/OnlineJudge/src/compile_server
+# Install script for directory: /home/yupureki/project/OnlineJudge/src/compile_server
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

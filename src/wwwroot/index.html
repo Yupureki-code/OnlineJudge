@@ -675,10 +675,6 @@
             </div>
             <!-- 登录状态 -->
             <div id="user-profile" style="display: none;">
-                <a href="#"><img src="./pictures/message.png" width="40px" height="40px"></a>
-                <a href="/user/profile" style="margin: 0 10px; color: white; text-decoration: none;">个人中心</a>
-                <a href="/user/profile"><img src="./pictures/head.jpg" width="40px" height="40px" style="border-radius: 50%;"></a>
-                <button class="auth-btn" id="sign-out-button" style="margin-left: 10px;">退出登录</button>
             </div>
         </div>
     </div>
@@ -747,6 +743,35 @@
         let userCreated = false;
         let isCreatingUser = false;
 
+        // localStorage 缓存用户信息
+        const USER_INFO_KEY = 'oj_user_info';
+        
+        function saveUserInfo(userInfo) {
+            try {
+                localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+            } catch (e) {
+                console.error('保存用户信息失败:', e);
+            }
+        }
+        
+        function getCachedUserInfo() {
+            try {
+                const data = localStorage.getItem(USER_INFO_KEY);
+                return data ? JSON.parse(data) : null;
+            } catch (e) {
+                console.error('读取缓存用户信息失败:', e);
+                return null;
+            }
+        }
+        
+        function clearUserInfo() {
+            try {
+                localStorage.removeItem(USER_INFO_KEY);
+            } catch (e) {
+                console.error('清除用户信息失败:', e);
+            }
+        }
+
         // 检查用户是否存在于数据库
         async function checkUserExists(email) {
             try {
@@ -793,6 +818,30 @@
             }
         }
 
+        // 获取用户信息
+        async function getUserInfo(email) {
+            try {
+                console.log('获取用户信息开始:', email);
+                const response = await fetch('/api/user/get', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+                console.log('获取用户信息响应状态:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('获取用户信息响应数据:', data);
+                return data;
+            } catch (error) {
+                console.error('获取用户信息失败:', error);
+                return { found: false };
+            }
+        }
+
         // 显示用户信息弹窗
         function showUserInfoModal() {
             const modal = document.createElement('div');
@@ -803,32 +852,35 @@
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
+                background-color: rgba(0, 0, 0, 0.7);
+                backdrop-filter: blur(5px);
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                z-index: 1000;
+                z-index: 10001;
             `;
 
             const modalContent = document.createElement('div');
             modalContent.style.cssText = `
-                background-color: white;
+                background-color: rgba(60, 80, 60, 0.95);
                 padding: 30px;
-                border-radius: 10px;
+                border-radius: 20px;
                 width: 400px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(244, 246, 240, 0.15);
+                backdrop-filter: blur(10px);
             `;
 
             modalContent.innerHTML = `
-                <h2 style="margin-bottom: 20px; text-align: center;">完善个人信息</h2>
+                <h2 style="margin-bottom: 20px; text-align: center; color: #F4F6F0; font-size: 20px; font-weight: 400; letter-spacing: 0.02em;">完善个人信息</h2>
                 <form id="user-info-form">
                     <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">用户名</label>
-                        <input type="text" id="username" placeholder="请输入用户名" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        <label style="display: block; margin-bottom: 8px; color: rgba(244, 246, 240, 0.8); font-size: 14px;">用户名</label>
+                        <input type="text" id="username" placeholder="请输入用户名" style="width: 100%; padding: 12px; border: 1px solid rgba(244, 246, 240, 0.2); border-radius: 10px; background: rgba(255, 255, 255, 0.05); color: #F4F6F0; font-size: 14px;">
                     </div>
                     <div style="display: flex; justify-content: space-between;">
-                        <button type="button" id="cancel-btn" style="padding: 10px 20px; border: 1px solid #ddd; border-radius: 5px; background-color: #f5f5f5; cursor: pointer;">取消</button>
-                        <button type="submit" style="padding: 10px 20px; border: none; border-radius: 5px; background-color: #4CAF50; color: white; cursor: pointer;">保存</button>
+                        <button type="button" id="cancel-btn" style="padding: 10px 20px; border: 1px solid rgba(244, 246, 240, 0.2); border-radius: 10px; background: rgba(255, 255, 255, 0.05); color: rgba(244, 246, 240, 0.8); cursor: pointer; font-size: 14px; transition: all 0.3s ease;">取消</button>
+                        <button type="submit" style="padding: 10px 20px; border: none; border-radius: 10px; background: rgba(76, 175, 80, 0.2); color: #4CAF50; cursor: pointer; font-size: 14px; font-weight: 400; transition: all 0.3s ease;">保存</button>
                     </div>
                 </form>
             `;
@@ -845,6 +897,14 @@
                 cancelBtn.addEventListener('click', function() {
                     document.body.removeChild(modal);
                 });
+                cancelBtn.addEventListener('mouseenter', function() {
+                    this.style.background = 'rgba(255, 255, 255, 0.1)';
+                    this.style.borderColor = 'rgba(244, 246, 240, 0.4)';
+                });
+                cancelBtn.addEventListener('mouseleave', function() {
+                    this.style.background = 'rgba(255, 255, 255, 0.05)';
+                    this.style.borderColor = 'rgba(244, 246, 240, 0.2)';
+                });
             }
 
             // 直接为保存按钮添加点击事件监听器
@@ -853,6 +913,14 @@
             console.log('保存按钮元素:', saveBtn);
             if (saveBtn) {
                 console.log('为保存按钮添加点击事件监听器');
+                saveBtn.addEventListener('mouseenter', function() {
+                    this.style.background = 'rgba(76, 175, 80, 0.3)';
+                    this.style.transform = 'translateY(-2px)';
+                });
+                saveBtn.addEventListener('mouseleave', function() {
+                    this.style.background = 'rgba(76, 175, 80, 0.2)';
+                    this.style.transform = 'translateY(0)';
+                });
                 saveBtn.addEventListener('click', async function(e) {
                     console.log('保存按钮点击事件被触发');
                     e.preventDefault();
@@ -944,135 +1012,217 @@
             }
             console.log('Clerk.isSignedIn:', Clerk.isSignedIn);
             if (Clerk.isSignedIn) {
-                // 已登录：显示聊天图标、个人中心和用户头像
                 console.log('用户已登录，开始更新UI');
                 userAuth.style.display = 'none';
                 userProfile.style.display = 'flex';
                 userProfile.style.alignItems = 'center';
-                // 挂载 UserButton 到用户头像位置
-                // 先检查是否已经存在UserButton
-                let userButtonDiv = userProfile.querySelector('#user-button');
-                if (!userButtonDiv) {
-                    // 如果不存在，创建新的UserButton
-                    userButtonDiv = document.createElement('div');
-                    userButtonDiv.id = 'user-button';
-                    // 清空userProfile，避免重复元素
-                    userProfile.innerHTML = '';
-                    // 重新添加聊天图标和个人中心链接
-                    const chatIcon = document.createElement('a');
-                    chatIcon.href = '#';
-                    chatIcon.innerHTML = '<img src="./pictures/message.png" width="40px" height="40px">';
-                    userProfile.appendChild(chatIcon);
-                    
-                    const profileLink = document.createElement('a');
-                    profileLink.href = './user/profile.html';
-                    profileLink.className = 'profile-link';
-                    profileLink.textContent = '个人中心';
-                    userProfile.appendChild(profileLink);
-                    
-                    // 添加UserButton
-                    userProfile.appendChild(userButtonDiv);
-                    // 挂载UserButton
-                    try {
-                        Clerk.mountUserButton(userButtonDiv);
-                        console.log('UserButton 挂载成功');
-                    } catch (error) {
-                        console.error('UserButton 挂载失败:', error);
+                
+                if (userProfile.querySelector('.avatar-wrapper')) {
+                    return;
+                }
+                
+                userProfile.innerHTML = '';
+                
+                // 添加聊天图标
+                const chatIcon = document.createElement('a');
+                chatIcon.href = '#';
+                chatIcon.innerHTML = '<img src="./pictures/message.png" width="40px" height="40px">';
+                userProfile.appendChild(chatIcon);
+                
+                // 添加一个容器来包含头像和弹窗
+                const avatarWrapper = document.createElement('div');
+                avatarWrapper.className = 'avatar-wrapper';
+                avatarWrapper.style.cssText = `
+                    position: relative;
+                    margin-left: 10px;
+                    cursor: pointer;
+                `;
+                
+                // 添加自定义头像容器
+                const avatarContainer = document.createElement('div');
+                avatarContainer.className = 'avatar-container';
+                avatarContainer.style.cssText = `
+                    position: relative;
+                    width: 40px;
+                    height: 40px;
+                `;
+                
+                // 添加头像图片
+                const avatarImg = document.createElement('img');
+                avatarImg.src = './pictures/head.jpg'; // 默认头像
+                avatarImg.width = 40;
+                avatarImg.height = 40;
+                avatarImg.style.borderRadius = '50%';
+                
+                // 点击头像跳转到个人中心
+                avatarImg.addEventListener('click', function() {
+                    window.location.href = './user/profile.html';
+                });
+                
+                avatarContainer.appendChild(avatarImg);
+                
+                // 添加悬停弹窗
+                const dropdown = document.createElement('div');
+                dropdown.className = 'avatar-dropdown';
+                dropdown.style.cssText = `
+                    position: absolute;
+                    top: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    margin-top: 12px;
+                    background-color: rgba(60, 80, 60, 0.95);
+                    border-radius: 16px;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                    padding: 20px;
+                    width: 220px;
+                    display: none;
+                    z-index: 1000;
+                    cursor: default;
+                    border: 1px solid rgba(244, 246, 240, 0.15);
+                    backdrop-filter: blur(10px);
+                `;
+                
+                dropdown.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 15px;">
+                        <img src="./pictures/head.jpg" width="60px" height="60px" style="border-radius: 50%; margin-bottom: 12px; border: 2px solid rgba(244, 246, 240, 0.2);">
+                        <div id="dropdown-username" style="font-size: 16px; font-weight: 500; color: #F4F6F0; letter-spacing: 0.02em;">用户名</div>
+                    </div>
+                    <hr style="margin: 12px 0; border: none; border-top: 1px solid rgba(244, 246, 240, 0.1);">
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button class="dropdown-btn" id="go-profile-btn" style="padding: 10px 16px; border: 1px solid rgba(244, 246, 240, 0.2); border-radius: 8px; background: rgba(255, 255, 255, 0.08); color: #F4F6F0; cursor: pointer; font-size: 13px; font-weight: 400; transition: all 0.3s ease;">个人中心</button>
+                        <button class="dropdown-btn" id="sign-out-btn" style="padding: 10px 16px; border: 1px solid rgba(244, 67, 54, 0.3); border-radius: 8px; background: rgba(244, 67, 54, 0.1); color: #F44336; cursor: pointer; font-size: 13px; font-weight: 400; transition: all 0.3s ease;">退出登录</button>
+                    </div>
+                `;
+                
+                avatarWrapper.appendChild(avatarContainer);
+                avatarWrapper.appendChild(dropdown);
+                userProfile.appendChild(avatarWrapper);
+                
+                // 添加一个透明元素来连接头像和弹窗，确保鼠标在缝隙时不会离开avatarWrapper
+                const connector = document.createElement('div');
+                connector.style.cssText = `
+                    position: absolute;
+                    top: 40px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 200px;
+                    height: 10px;
+                    background: transparent;
+                `;
+                avatarWrapper.appendChild(connector);
+                
+                // 使用JavaScript事件监听器控制弹窗显示
+                avatarWrapper.onmouseenter = function() {
+                    dropdown.style.display = 'block';
+                };
+                
+                avatarWrapper.onmouseleave = function() {
+                    dropdown.style.display = 'none';
+                };
+                
+                // 退出登录按钮点击事件
+                const signOutBtn = dropdown.querySelector('#sign-out-btn');
+                if (signOutBtn) {
+                    signOutBtn.addEventListener('click', async function() {
+                        try {
+                            await fetch('/api/user/logout', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                            if (Clerk) {
+                                Clerk.signOut();
+                                console.log('退出登录');
+                            }
+                            window.location.reload();
+                        } catch (error) {
+                            console.error('退出登录失败:', error);
+                        }
+                    });
+                }
+                
+                // 个人中心按钮点击事件
+                const goProfileBtn = dropdown.querySelector('#go-profile-btn');
+                if (goProfileBtn) {
+                    goProfileBtn.addEventListener('click', function() {
+                        window.location.href = '/user/profile';
+                    });
+                }
+                
+                // 给所有按钮添加悬停效果
+                const allButtons = dropdown.querySelectorAll('.dropdown-btn');
+                allButtons.forEach(function(btn) {
+                    btn.addEventListener('mouseenter', function() {
+                        if (btn.textContent === '退出登录') {
+                            this.style.background = 'rgba(244, 67, 54, 0.2)';
+                            this.style.transform = 'translateY(-1px)';
+                        } else {
+                            this.style.background = 'rgba(255, 255, 255, 0.15)';
+                            this.style.transform = 'translateY(-1px)';
+                        }
+                    });
+                    btn.addEventListener('mouseleave', function() {
+                        if (btn.textContent === '退出登录') {
+                            this.style.background = 'rgba(244, 67, 54, 0.1)';
+                        } else {
+                            this.style.background = 'rgba(255, 255, 255, 0.08)';
+                        }
+                        this.style.transform = 'translateY(0)';
+                    });
+                });
+                
+                // 获取用户信息并更新弹窗 - 优化：先从缓存读取，再异步更新
+                const cachedUserInfo = getCachedUserInfo();
+                if (cachedUserInfo) {
+                    const usernameElement = dropdown.querySelector('#dropdown-username');
+                    if (usernameElement) {
+                        usernameElement.textContent = cachedUserInfo.name || '用户名';
                     }
                 }
-
-                // 检查用户是否存在于数据库
+                
                 try {
-                    // 延迟一下，确保用户信息完全加载
-                    await new Promise(resolve => setTimeout(resolve, 1000));
                     // 直接访问Clerk.user属性获取用户信息
                     const user = Clerk.user;
                     console.log('Clerk.user:', user);
-                    // 检查user是否为有效的用户对象
                     let email = null;
                     if (user && typeof user === 'object') {
-                        // 尝试从primaryEmailAddress获取邮箱
                         if (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress) {
                             email = user.primaryEmailAddress.emailAddress;
-                            console.log('用户邮箱 (primaryEmailAddress):', email);
                         } 
-                        // 尝试从emailAddresses数组获取邮箱
                         else if (user.emailAddresses && user.emailAddresses.length > 0) {
-                            // 检查emailAddresses[0]是否有email或emailAddress属性
                             if (user.emailAddresses[0].email) {
                                 email = user.emailAddresses[0].email;
-                                console.log('用户邮箱 (emailAddresses[0].email):', email);
                             } else if (user.emailAddresses[0].emailAddress) {
                                 email = user.emailAddresses[0].emailAddress;
-                                console.log('用户邮箱 (emailAddresses[0].emailAddress):', email);
                             }
                         }
                     }
                     
                     if (email) {
-                        // 检查用户是否存在
-                        console.log('开始检查用户存在性');
-                        console.log('isCreatingUser:', isCreatingUser);
-                        // 如果用户正在创建中，跳过检查
-                        if (isCreatingUser) {
-                            console.log('用户正在创建中，跳过检查');
-                        } else {
-                            const result = await checkUserExists(email);
-                            console.log('检查用户存在性结果:', result);
-                            // 检查result.exists是否为true
-                            if (result && typeof result === 'object' && result.exists) {
-                                console.log('用户已存在，跳过弹窗');
-                            } else {
-                                // 显示用户信息弹窗
-                                console.log('用户不存在，显示完善个人信息弹窗');
-                                console.log('调用showUserInfoModal函数');
-                                // 检查是否已经存在完善个人信息弹窗，如果存在，不重复显示
-                                const existingModal = document.querySelector('.user-info-modal');
-                                if (!existingModal) {
-                                    showUserInfoModal();
-                                    console.log('showUserInfoModal函数调用完成');
-                                } else {
-                                    console.log('完善个人信息弹窗已存在，不重复显示');
-                                }
+                        // 并行执行用户信息获取和存在性检查
+                        const [userInfo, existResult] = await Promise.all([
+                            getUserInfo(email),
+                            checkUserExists(email)
+                        ]);
+                        
+                        // 保存到缓存
+                        if (userInfo && userInfo.found) {
+                            saveUserInfo({ name: userInfo.user.name, email: email, exists: true });
+                            const usernameElement = dropdown.querySelector('#dropdown-username');
+                            if (usernameElement) {
+                                usernameElement.textContent = userInfo.user.name || '用户名';
                             }
                         }
-                    } else {
-                        console.log('用户对象不完整或没有邮箱地址');
-                        // 尝试使用Clerk的其他方法获取用户信息
-                        try {
-                            // 检查是否有currentUser方法
-                            if (typeof Clerk.currentUser === 'function') {
-                                const currentUser = await Clerk.currentUser();
-                                console.log('Clerk.currentUser():', currentUser);
-                                let currentEmail = null;
-                                if (currentUser && typeof currentUser === 'object') {
-                                    // 尝试从primaryEmailAddress获取邮箱
-                                    if (currentUser.primaryEmailAddress && currentUser.primaryEmailAddress.emailAddress) {
-                                        currentEmail = currentUser.primaryEmailAddress.emailAddress;
-                                        console.log('用户邮箱 (currentUser.primaryEmailAddress):', currentEmail);
-                                    } 
-                                    // 尝试从emailAddresses数组获取邮箱
-                                    else if (currentUser.emailAddresses && currentUser.emailAddresses.length > 0) {
-                                        // 检查emailAddresses[0]是否有email或emailAddress属性
-                                        if (currentUser.emailAddresses[0].email) {
-                                            currentEmail = currentUser.emailAddresses[0].email;
-                                            console.log('用户邮箱 (currentUser.emailAddresses[0].email):', currentEmail);
-                                        } else if (currentUser.emailAddresses[0].emailAddress) {
-                                            currentEmail = currentUser.emailAddresses[0].emailAddress;
-                                            console.log('用户邮箱 (currentUser.emailAddresses[0].emailAddress):', currentEmail);
-                                        }
-                                    }
-                                }
-                                
-                                if (currentEmail && !userCreated) {
-                                    const result = await checkUserExists(currentEmail);
-                                    if (!result.exists) {
-                                        showUserInfoModal();
-                                    }
-                                }
+                        
+                        // 检查用户是否存在数据库
+                        if (existResult && existResult.exists) {
+                            console.log('用户已存在，跳过弹窗');
+                        } else {
+                            // 显示用户信息弹窗
+                            console.log('用户不存在，显示完善个人信息弹窗');
+                            const existingModal = document.querySelector('.user-info-modal');
+                            if (!existingModal) {
+                                showUserInfoModal();
                             }
-                        } catch (err) {
-                            console.error('尝试使用currentUser方法获取用户信息失败:', err);
                         }
                     }
                 } catch (error) {
@@ -1115,44 +1265,75 @@
                 return;
             }
 
-            // 初始化 Clerk（必须传入 UI 构造函数）
             await Clerk.load({
                 ui: { ClerkUI: window.__internal_ClerkUICtor },
             });
             clerkInitialized = true;
             console.log('Clerk 初始化完成');
 
-            // 获取导航栏元素和模态框元素
             userAuth = document.getElementById('user-auth');
             userProfile = document.getElementById('user-profile');
             modal = document.getElementById('clerk-modal');
             signinContainer = document.getElementById('clerk-signin-container');
             closeModalBtn = document.getElementById('close-modal-btn');
 
-            // 监听用户状态变化（登录、登出、更新）
-            Clerk.addListener(({ user }) => {
+            if (typeof SERVER_USER_INFO !== 'undefined') {
+                if (SERVER_USER_INFO.isLoggedIn) {
+                    userAuth.style.display = 'none';
+                    userProfile.style.display = 'flex';
+                    updateAuthUI();
+                } else {
+                    userAuth.style.display = 'block';
+                    userProfile.style.display = 'none';
+                }
+            } else {
+                userAuth.style.display = 'block';
+                userProfile.style.display = 'none';
+            }
+
+            Clerk.addListener(async ({ user }) => {
                 console.log('Clerk 用户状态变化:', user);
-                updateAuthUI();
-                // 如果用户刚刚登录成功，关闭模态框
-                if (user && modal.style.display === 'flex') {
+                if (user) {
+                    let email = null;
+                    if (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress) {
+                        email = user.primaryEmailAddress.emailAddress;
+                    } else if (user.emailAddresses && user.emailAddresses.length > 0) {
+                        const firstEmail = user.emailAddresses[0];
+                        email = firstEmail.emailAddress || firstEmail.email;
+                    }
+                    
+                    if (email && !SERVER_USER_INFO.isLoggedIn) {
+                        const response = await fetch('/api/user/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email })
+                        });
+                        console.log('登录响应:', response);
+                        if (response.ok) {
+                            SERVER_USER_INFO.isLoggedIn = true;
+                            SERVER_USER_INFO.email = email;
+                            userAuth.style.display = 'none';
+                            userProfile.style.display = 'flex';
+                            updateAuthUI();
+                        }
+                    }
+                    
                     closeModal();
                 }
             });
 
-            // 绑定关闭按钮事件
             closeModalBtn.addEventListener('click', closeModal);
-            // 点击模态框背景（非内容区）关闭
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) closeModal();
             });
 
-            // 初始更新 UI
-            updateAuthUI();
-
-            // 绑定打开模态框的初始按钮（如果初始状态是未登录，按钮会存在）
+            // 绑定登录按钮事件
             const initialBtn = document.getElementById('sign-in-button');
             if (initialBtn) {
-                initialBtn.addEventListener('click', showModal);
+                initialBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showModal();
+                });
             }
         });
     </script>

@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <vector>
 #include "../../comm/logstrategy.hpp"
+#include "../../comm/comm.hpp"
 #include <mysql/mysql.h>
 
 // model: 主要用来和数据进行交互，对外提供访问数据的接口
@@ -36,14 +37,6 @@ namespace ns_model
         std::string last_login; //最后登录时间
     };
 
-    const std::string oj_questions = "questions";
-    const std::string oj_users = "users";
-    const std::string host = "127.0.0.1";
-    const std::string user = "oj_server";
-    const std::string passwd = "Myoj@localhost2026071024";
-    const std::string db = "myoj";
-    const int port = 3306;
-
     class Model
     {
     private:
@@ -55,7 +48,7 @@ namespace ns_model
                 return false;
             if(mysql_query(my, sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL)<<"MySql查询错误!";
+                ns_log::logger(ns_log::FATAL)<<"MySql查询错误!";
                 return false;
             }
             MYSQL_RES* res = mysql_store_result(my);
@@ -85,11 +78,11 @@ namespace ns_model
         bool QueryUser(const std::string& sql, User* user)
         {
             MYSQL* my = mysql_init(nullptr);
-            if(mysql_real_connect(my, host.c_str(), ns_model::user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr)
+            if(mysql_real_connect(my, host.c_str(), ::user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr)
                 return false;
             if(mysql_query(my, sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL)<<"MySql查询错误!";
+                ns_log::logger(ns_log::FATAL)<<"MySql查询错误!";
                 mysql_close(my);
                 return false;
             }
@@ -116,11 +109,11 @@ namespace ns_model
         bool ExecuteSql(const std::string& sql)
         {
             MYSQL* my = mysql_init(nullptr);
-            if(mysql_real_connect(my, host.c_str(), ns_model::user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr)
+            if(mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr)
                 return false;
             if(mysql_query(my, sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL)<<"MySql执行错误!";
+                ns_log::logger(ns_log::FATAL)<<"MySql执行错误!";
                 mysql_close(my);
                 return false;
             }
@@ -155,11 +148,11 @@ namespace ns_model
         {
             std::string sql = "select * from " + oj_users + " where email='" + email + "'";
             MYSQL* my = mysql_init(nullptr);
-            if(mysql_real_connect(my, host.c_str(), ns_model::user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr)
+            if(mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr)
                 return false;
             if(mysql_query(my, sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL)<<"MySql查询错误!";
+                ns_log::logger(ns_log::FATAL)<<"MySql查询错误!";
                 mysql_close(my);
                 return false;
             }
@@ -189,6 +182,13 @@ namespace ns_model
         {
             std::string sql = "update " + oj_users + " set last_login=NOW() where email='" + email + "'";
             return ExecuteSql(sql);
+        }
+
+        //用户:通过ID获取用户信息
+        bool GetUserById(int uid, User* user)
+        {
+            std::string sql = "select * from " + oj_users + " where uid=" + std::to_string(uid);
+            return QueryUser(sql, user);
         }
 
     };

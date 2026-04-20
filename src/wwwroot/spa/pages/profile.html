@@ -1,0 +1,163 @@
+<style>
+    .user-profile {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .profile-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 3px solid rgba(244, 246, 240, 0.2);
+        margin-bottom: 20px;
+    }
+
+    .user-info h1 {
+        font-size: 32px;
+        font-weight: 300;
+        color: #F4F6F0;
+        margin-bottom: 8px;
+    }
+
+    .user-info p {
+        color: rgba(244, 246, 240, 0.6);
+        font-size: 14px;
+    }
+
+    .user-stats {
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+        margin-top: 30px;
+    }
+
+    .stat-item {
+        text-align: center;
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(20px);
+        border-radius: 16px;
+        padding: 20px 30px;
+        border: 1px solid rgba(244, 246, 240, 0.1);
+        min-width: 120px;
+    }
+
+    .stat-value {
+        font-size: 32px;
+        font-weight: 300;
+        color: #4CAF50;
+        margin-bottom: 8px;
+    }
+
+    .stat-label {
+        font-size: 14px;
+        color: rgba(244, 246, 240, 0.6);
+        letter-spacing: 0.02em;
+    }
+
+    .profile-card {
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 30px;
+        border: 1px solid rgba(244, 246, 240, 0.1);
+        margin-top: 30px;
+    }
+
+    .card-title {
+        font-size: 20px;
+        font-weight: 400;
+        color: #F4F6F0;
+        margin-bottom: 20px;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 15px 0;
+        border-bottom: 1px solid rgba(244, 246, 240, 0.1);
+    }
+
+    .info-item:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        color: rgba(244, 246, 240, 0.6);
+        font-size: 14px;
+    }
+
+    .info-value {
+        color: #F4F6F0;
+        font-size: 14px;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<div class="user-profile">
+    <div class="profile-header">
+        <img src="/pictures/head.jpg" class="avatar" alt="用户头像">
+        <div class="user-info">
+            <h1 id="profile-username">用户名</h1>
+            <p id="profile-email">邮箱：加载中...</p>
+        </div>
+        <div class="user-stats">
+            <div class="stat-item">
+                <div class="stat-value" id="stat-solved">0</div>
+                <div class="stat-label">已解决题目</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-submitted">0</div>
+                <div class="stat-label">提交总数</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-card">
+        <h2 class="card-title">个人信息</h2>
+        <div class="info-item">
+            <span class="info-label">用户名</span>
+            <span class="info-value" id="info-name">-</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">邮箱</span>
+            <span class="info-value" id="info-email">-</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">注册时间</span>
+            <span class="info-value" id="info-create-time">-</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function initPage() {
+        loadUserProfile();
+    }
+
+    async function loadUserProfile() {
+        try {
+            const response = await fetch('/api/user/info');
+            const data = await response.json();
+            
+            if (data.success && data.user) {
+                const user = data.user;
+                document.getElementById('profile-username').textContent = user.name || '用户';
+                document.getElementById('profile-email').textContent = '邮箱：' + (user.email || '-');
+                document.getElementById('info-name').textContent = user.name || '-';
+                document.getElementById('info-email').textContent = user.email || '-';
+                document.getElementById('info-create-time').textContent = user.create_time || '-';
+            }
+        } catch (error) {
+            console.error('加载用户信息失败:', error);
+        }
+    }
+</script>

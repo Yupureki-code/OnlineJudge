@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/Yupureki/work/OnlineJudge
+CMAKE_SOURCE_DIR = /home/yupureki/project/OnlineJudge
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/Yupureki/work/OnlineJudge/build
+CMAKE_BINARY_DIR = /home/yupureki/project/OnlineJudge/build
 
 # Include any dependencies generated for this target.
 include src/compile_server/CMakeFiles/compile_server.dir/depend.make
@@ -70,18 +70,18 @@ include src/compile_server/CMakeFiles/compile_server.dir/progress.make
 include src/compile_server/CMakeFiles/compile_server.dir/flags.make
 
 src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: src/compile_server/CMakeFiles/compile_server.dir/flags.make
-src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home/Yupureki/work/OnlineJudge/src/compile_server/src/compile_server.cpp
+src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home/yupureki/project/OnlineJudge/src/compile_server/src/compile_server.cpp
 src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: src/compile_server/CMakeFiles/compile_server.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/Yupureki/work/OnlineJudge/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o"
-	cd /home/Yupureki/work/OnlineJudge/build/src/compile_server && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o -MF CMakeFiles/compile_server.dir/src/compile_server.cpp.o.d -o CMakeFiles/compile_server.dir/src/compile_server.cpp.o -c /home/Yupureki/work/OnlineJudge/src/compile_server/src/compile_server.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o"
+	cd /home/yupureki/project/OnlineJudge/build/src/compile_server && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o -MF CMakeFiles/compile_server.dir/src/compile_server.cpp.o.d -o CMakeFiles/compile_server.dir/src/compile_server.cpp.o -c /home/yupureki/project/OnlineJudge/src/compile_server/src/compile_server.cpp
 
 src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/compile_server.dir/src/compile_server.cpp.i"
-	cd /home/Yupureki/work/OnlineJudge/build/src/compile_server && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/Yupureki/work/OnlineJudge/src/compile_server/src/compile_server.cpp > CMakeFiles/compile_server.dir/src/compile_server.cpp.i
+	cd /home/yupureki/project/OnlineJudge/build/src/compile_server && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/yupureki/project/OnlineJudge/src/compile_server/src/compile_server.cpp > CMakeFiles/compile_server.dir/src/compile_server.cpp.i
 
 src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/compile_server.dir/src/compile_server.cpp.s"
-	cd /home/Yupureki/work/OnlineJudge/build/src/compile_server && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/Yupureki/work/OnlineJudge/src/compile_server/src/compile_server.cpp -o CMakeFiles/compile_server.dir/src/compile_server.cpp.s
+	cd /home/yupureki/project/OnlineJudge/build/src/compile_server && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/yupureki/project/OnlineJudge/src/compile_server/src/compile_server.cpp -o CMakeFiles/compile_server.dir/src/compile_server.cpp.s
 
 # Object files for target compile_server
 compile_server_OBJECTS = \
@@ -90,21 +90,21 @@ compile_server_OBJECTS = \
 # External object files for target compile_server
 compile_server_EXTERNAL_OBJECTS =
 
-/home/Yupureki/work/OnlineJudge/output/compile_server: src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o
-/home/Yupureki/work/OnlineJudge/output/compile_server: src/compile_server/CMakeFiles/compile_server.dir/build.make
-/home/Yupureki/work/OnlineJudge/output/compile_server: src/compile_server/CMakeFiles/compile_server.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/Yupureki/work/OnlineJudge/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable /home/Yupureki/work/OnlineJudge/output/compile_server"
-	cd /home/Yupureki/work/OnlineJudge/build/src/compile_server && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/compile_server.dir/link.txt --verbose=$(VERBOSE)
+/home/yupureki/project/OnlineJudge/output/compile_server: src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o
+/home/yupureki/project/OnlineJudge/output/compile_server: src/compile_server/CMakeFiles/compile_server.dir/build.make
+/home/yupureki/project/OnlineJudge/output/compile_server: src/compile_server/CMakeFiles/compile_server.dir/link.txt
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable /home/yupureki/project/OnlineJudge/output/compile_server"
+	cd /home/yupureki/project/OnlineJudge/build/src/compile_server && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/compile_server.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
-src/compile_server/CMakeFiles/compile_server.dir/build: /home/Yupureki/work/OnlineJudge/output/compile_server
+src/compile_server/CMakeFiles/compile_server.dir/build: /home/yupureki/project/OnlineJudge/output/compile_server
 .PHONY : src/compile_server/CMakeFiles/compile_server.dir/build
 
 src/compile_server/CMakeFiles/compile_server.dir/clean:
-	cd /home/Yupureki/work/OnlineJudge/build/src/compile_server && $(CMAKE_COMMAND) -P CMakeFiles/compile_server.dir/cmake_clean.cmake
+	cd /home/yupureki/project/OnlineJudge/build/src/compile_server && $(CMAKE_COMMAND) -P CMakeFiles/compile_server.dir/cmake_clean.cmake
 .PHONY : src/compile_server/CMakeFiles/compile_server.dir/clean
 
 src/compile_server/CMakeFiles/compile_server.dir/depend:
-	cd /home/Yupureki/work/OnlineJudge/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/Yupureki/work/OnlineJudge /home/Yupureki/work/OnlineJudge/src/compile_server /home/Yupureki/work/OnlineJudge/build /home/Yupureki/work/OnlineJudge/build/src/compile_server /home/Yupureki/work/OnlineJudge/build/src/compile_server/CMakeFiles/compile_server.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/yupureki/project/OnlineJudge/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/yupureki/project/OnlineJudge /home/yupureki/project/OnlineJudge/src/compile_server /home/yupureki/project/OnlineJudge/build /home/yupureki/project/OnlineJudge/build/src/compile_server /home/yupureki/project/OnlineJudge/build/src/compile_server/CMakeFiles/compile_server.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : src/compile_server/CMakeFiles/compile_server.dir/depend
 

@@ -28,14 +28,6 @@ namespace ns_runner
     using namespace ns_log;
     using namespace ns_util;
 
-    const std::string oj_tests = "tests";
-    const std::string oj_questions = "questions";
-    const std::string host = "127.0.0.1";
-    const std::string user = "oj_server";
-    const std::string passwd = "Myoj@localhost2026071024";
-    const std::string db = "myoj";
-    const int port = 3306;
-
     struct Test
     {
         std::string in;
@@ -50,21 +42,21 @@ namespace ns_runner
         //设置时间和内存限制
         void SetProcLimit(int cpu_limit,int mem_limit)
         {
-            logger(ns_log::DEBUG)<<"设置资源限制 - CPU: "<<cpu_limit<<"秒, 内存: "<<mem_limit<<"字节";
+            ns_log::logger(ns_log::DEBUG)<<"设置资源限制 - CPU: "<<cpu_limit<<"秒, 内存: "<<mem_limit<<"字节";
             
             struct rlimit r;
             // 设置CPU时间限制
             r.rlim_cur = cpu_limit;
             r.rlim_max = RLIM_INFINITY;
             if(setrlimit(RLIMIT_CPU, &r) < 0) {
-                logger(ns_log::ERROR)<<"设置CPU限制失败";
+                ns_log::logger(ns_log::ERROR)<<"设置CPU限制失败";
             }
             
             // 设置内存限制 - 使用RLIMIT_AS限制地址空间
             r.rlim_cur = mem_limit;
             r.rlim_max = mem_limit;
             if(setrlimit(RLIMIT_AS, &r) < 0) {
-                logger(ns_log::ERROR)<<"设置内存限制失败";
+                ns_log::logger(ns_log::ERROR)<<"设置内存限制失败";
             }
         }
         //查询Mysql，获得题目输入,输出内容，时间限制和内存限制
@@ -73,27 +65,27 @@ namespace ns_runner
             MYSQL* my = mysql_init(nullptr);
             if(mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr)
             {
-                logger(ns_log::FATAL)<<"MySQL连接失败: "<<mysql_error(my);
+                ns_log::logger(ns_log::FATAL)<<"MySQL连接失败: "<<mysql_error(my);
                 return false;
             }
             //查询时间和空间限制
             std::string question_sql = "select cpu_limit,mem_limit from " + oj_questions  + " where id='"+question_id+"'"; 
             if(mysql_query(my, question_sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL)<<"MySql查询错误: "<<mysql_error(my);
+                ns_log::logger(ns_log::FATAL)<<"MySql查询错误: "<<mysql_error(my);
                 return false;
             }
             MYSQL_RES* res = mysql_store_result(my);
             if(res == nullptr)
             {
-                logger(ns_log::FATAL)<<"MySQL获取结果集失败: "<<mysql_error(my);
+                ns_log::logger(ns_log::FATAL)<<"MySQL获取结果集失败: "<<mysql_error(my);
                 mysql_close(my);
                 return false;
             }
             MYSQL_ROW row = mysql_fetch_row(res);
             if(row == nullptr)
             {
-                logger(ns_log::FATAL)<<"MySQL获取行失败: "<<mysql_error(my);
+                ns_log::logger(ns_log::FATAL)<<"MySQL获取行失败: "<<mysql_error(my);
                 mysql_free_result(res);
                 mysql_close(my);
                 return false;
@@ -105,13 +97,13 @@ namespace ns_runner
             std::string tests_sql = "select `in`,`out` from " + oj_tests + " where question_id='" + question_id + "'";
             if(mysql_query(my, tests_sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL)<<"MySql查询错误: "<<mysql_error(my);
+                ns_log::logger(ns_log::FATAL)<<"MySql查询错误: "<<mysql_error(my);
                 return false;
             }
             res = mysql_store_result(my);
             if(res == nullptr)
             {
-                logger(ns_log::FATAL)<<"MySQL获取结果集失败: "<<mysql_error(my);
+                ns_log::logger(ns_log::FATAL)<<"MySQL获取结果集失败: "<<mysql_error(my);
                 mysql_close(my);
                 return false;
             }
@@ -122,7 +114,7 @@ namespace ns_runner
                 MYSQL_ROW row = mysql_fetch_row(res);
                 if(row == nullptr)
                 {
-                    logger(ns_log::FATAL)<<"MySQL获取行失败: "<<mysql_error(my);
+                    ns_log::logger(ns_log::FATAL)<<"MySQL获取行失败: "<<mysql_error(my);
                     mysql_free_result(res);
                     mysql_close(my);
                     return false;
@@ -147,7 +139,7 @@ namespace ns_runner
                 pid_t pid = fork();
                 if(pid < 0)
                 {
-                    logger(ns_log::FATAL)<<"创建子进程失败";
+                    ns_log::logger(ns_log::FATAL)<<"创建子进程失败";
                     return HandlerProgramEnd({UNKNOWN}, file_name);
                 }
                 else if(pid == 0)
@@ -158,7 +150,7 @@ namespace ns_runner
                     std::vector<Test> tests;
                     if(!QueryMysql(in_value["id"].asString(), &tests))
                     {
-                        logger(FATAL)<<"MySQL查询题目"<<in_value["id"].asString()<<" 失败!";
+                        ns_log::logger(FATAL)<<"MySQL查询题目"<<in_value["id"].asString()<<" 失败!";
                         exit(1);
                     }
                     //测试用例id
@@ -178,19 +170,19 @@ namespace ns_runner
                         int _ans_fd = open(_ans.c_str(),O_CREAT | O_WRONLY,0644);
                         if(!FileUtil::WriteFile(_stdin, test.in) || !FileUtil::WriteFile(_ans, test.out))
                         {
-                            logger(FATAL)<<"写入 "<<_stdin <<" || "<<_ans<<" 错误!";
+                            ns_log::logger(FATAL)<<"写入 "<<_stdin <<" || "<<_ans<<" 错误!";
                             exit(1);
                         }
                         if(_stdin_fd < 0 || _stdout_fd < 0 || _stderr_fd < 0 || _ans_fd < 0)
                         {
-                            logger(ns_log::FATAL)<<"打开_stdin _stdout _stderr _ans文件失败";
+                            ns_log::logger(ns_log::FATAL)<<"打开_stdin _stdout _stderr _ans文件失败";
                             exit(1);
                         }
                         close(_ans_fd);
                         pid_t pid = fork();
                         if(pid < 0)
                         {
-                            logger(ns_log::FATAL)<<"创建子进程失败";
+                            ns_log::logger(ns_log::FATAL)<<"创建子进程失败";
                             exit(1);
                         }
                         else if(pid == 0)
@@ -208,7 +200,7 @@ namespace ns_runner
                             //父进程等待子进程执行，获得状态码
                             int wait_status = 0;
                             waitpid(pid,&wait_status,0);
-                            logger(ns_log::DEBUG)<<test_number<<" 的status:"<<wait_status;
+                            ns_log::logger(ns_log::DEBUG)<<test_number<<" 的status:"<<wait_status;
                             //根据状态码判断，若是运行中错误直接返回
                             if(WIFEXITED(wait_status))
                             {
@@ -237,7 +229,7 @@ namespace ns_runner
                     if (WIFEXITED(status)) 
                     {
                         int exit_code = WEXITSTATUS(status);
-                        logger(ns_log::INFO)<<"运行完毕,ExitCode: "<<exit_code;
+                        ns_log::logger(ns_log::INFO)<<"运行完毕,ExitCode: "<<exit_code;
                         if(exit_code != 0)
                             return HandlerProgramEnd({ExitCodeToSatusCode(exit_code)}, file_name);
                     } 
@@ -245,13 +237,13 @@ namespace ns_runner
                     {
                         // 进程被信号终止
                         int signal = WTERMSIG(status);
-                        logger(ns_log::INFO)<<"运行被信号终止,Signal: "<<signal;
+                        ns_log::logger(ns_log::INFO)<<"运行被信号终止,Signal: "<<signal;
                         return HandlerProgramEnd({ExitCodeToSatusCode(signal)}, file_name);
                     } 
                     else 
                     {
                         // 其他情况
-                        logger(ns_log::INFO)<<"运行状态未知,Status: "<<status;
+                        ns_log::logger(ns_log::INFO)<<"运行状态未知,Status: "<<status;
                         return HandlerProgramEnd({UNKNOWN}, file_name);
                     }
                 }

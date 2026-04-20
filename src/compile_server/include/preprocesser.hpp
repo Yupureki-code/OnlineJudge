@@ -36,7 +36,7 @@ namespace ns_preprocesser
                 std::string code = in_value["code"].asString();
                 if(!FileUtil::WriteFile(PathUtil::Src(file_name), code))
                 {
-                    logger(ns_log::FATAL)<<"打开文件 "<<PathUtil::Src(file_name)<<"失败";
+                    ns_log::logger(ns_log::FATAL)<<"打开文件 "<<PathUtil::Src(file_name)<<"失败";
                     return HandlerProgramEnd({UNKNOWN}, file_name);
                 }
             }

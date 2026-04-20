@@ -1,0 +1,237 @@
+<style>
+    .question-section {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .question-header {
+        margin-bottom: 30px;
+    }
+
+    .question-title {
+        font-size: 32px;
+        font-weight: 300;
+        color: #F4F6F0;
+        margin-bottom: 16px;
+        letter-spacing: 0.05em;
+    }
+
+    .question-meta {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: rgba(244, 246, 240, 0.7);
+        font-size: 14px;
+    }
+
+    .difficulty-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 300;
+    }
+
+    .difficulty-badge.difficulty-简单 {
+        background: rgba(76, 175, 80, 0.15);
+        color: #4CAF50;
+    }
+
+    .difficulty-badge.difficulty-中等 {
+        background: rgba(255, 152, 0, 0.15);
+        color: #FF9800;
+    }
+
+    .difficulty-badge.difficulty-困难 {
+        background: rgba(244, 67, 54, 0.15);
+        color: #F44336;
+    }
+
+    .question-content {
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 40px;
+        border: 1px solid rgba(244, 246, 240, 0.1);
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 400;
+        color: #F4F6F0;
+        margin-bottom: 20px;
+        letter-spacing: 0.02em;
+    }
+
+    .description-text {
+        color: rgba(244, 246, 240, 0.85);
+        line-height: 1.8;
+        font-size: 15px;
+        white-space: pre-wrap;
+    }
+
+    .code-section {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        padding: 24px;
+        margin-top: 30px;
+    }
+
+    .code-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .code-title {
+        color: rgba(244, 246, 240, 0.6);
+        font-size: 14px;
+    }
+
+    .language-badge {
+        color: rgba(244, 246, 240, 0.6);
+        font-size: 12px;
+    }
+
+    .code-area {
+        width: 100%;
+        min-height: 200px;
+        background: transparent;
+        border: 1px solid rgba(244, 246, 240, 0.2);
+        border-radius: 12px;
+        padding: 16px;
+        color: #F4F6F0;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        resize: vertical;
+    }
+
+    .code-area:focus {
+        outline: none;
+        border-color: rgba(76, 175, 80, 0.5);
+    }
+
+    .code-area::placeholder {
+        color: rgba(244, 246, 240, 0.4);
+    }
+
+    .submit-section {
+        margin-top: 30px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 16px;
+    }
+
+    .submit-btn {
+        padding: 14px 32px;
+        background: rgba(76, 175, 80, 0.2);
+        border: 1px solid rgba(76, 175, 80, 0.4);
+        border-radius: 12px;
+        color: #4CAF50;
+        font-size: 14px;
+        font-weight: 400;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .submit-btn:hover {
+        background: rgba(76, 175, 80, 0.3);
+        transform: translateY(-2px);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<div class="question-section" id="questionSection">
+    <div style="text-align: center; padding: 60px; color: rgba(244, 246, 240, 0.6);">
+        加载中...
+    </div>
+</div>
+
+<script>
+    async function initPage(params) {
+        if (params && params.length > 0) {
+            const number = params[0];
+            loadQuestion(number);
+        }
+    }
+
+    async function loadQuestion(number) {
+        try {
+            const response = await fetch(`/questions/${number}`);
+            const html = await response.text();
+            
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            const title = doc.querySelector('.question-title')?.textContent || '题目';
+            const meta = doc.querySelector('.question-meta')?.innerHTML || '';
+            const content = doc.querySelector('.question-content')?.innerHTML || '';
+            
+            const section = document.getElementById('questionSection');
+            section.innerHTML = `
+                <div class="question-header">
+                    <h1 class="question-title">${title}</h1>
+                    <div class="question-meta">${meta}</div>
+                </div>
+                <div class="question-content">${content}</div>
+                
+                <div class="code-section">
+                    <div class="code-header">
+                        <span class="code-title">提交代码</span>
+                        <span class="language-badge">C++</span>
+                    </div>
+                    <textarea class="code-area" id="codeArea" placeholder="请输入您的代码..."></textarea>
+                    <div class="submit-section">
+                        <button class="submit-btn" id="submitBtn">提交代码</button>
+                    </div>
+                </div>
+            `;
+            
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.addEventListener('click', () => submitCode(number));
+            }
+        } catch (error) {
+            console.error('加载题目失败:', error);
+            document.getElementById('questionSection').innerHTML = 
+                '<div style="text-align: center; padding: 60px; color: rgba(244, 246, 240, 0.6);">加载失败</div>';
+        }
+    }
+
+    async function submitCode(number) {
+        const codeArea = document.getElementById('codeArea');
+        const code = codeArea?.value;
+        
+        if (!code || code.trim() === '') {
+            alert('请输入代码');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/judge/${number}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                window.location.hash = '#result';
+            }
+        } catch (error) {
+            console.error('提交失败:', error);
+            alert('提交失败');
+        }
+    }
+</script>

@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/Yupureki/work/OnlineJudge/src/compile_server/include
+CXX_INCLUDES = -I/home/yupureki/project/OnlineJudge/src/compile_server/include
 
 CXX_FLAGS = 
 

@@ -1,0 +1,403 @@
+<style>
+    .page-title {
+        text-align: center;
+        font-size: 48px;
+        font-weight: 300;
+        color: #F4F6F0;
+        margin-bottom: 40px;
+        letter-spacing: 0.1em;
+    }
+
+    .filter-bar {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    .search-box {
+        padding: 12px 20px;
+        border: 1px solid rgba(244, 246, 240, 0.2);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #F4F6F0;
+        font-size: 14px;
+        width: 250px;
+        transition: all 0.3s ease;
+    }
+
+    .search-box::placeholder {
+        color: rgba(244, 246, 240, 0.4);
+    }
+
+    .search-box:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(244, 246, 240, 0.4);
+    }
+
+    .filter-btn {
+        padding: 12px 24px;
+        border: 1px solid rgba(244, 246, 240, 0.2);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(244, 246, 240, 0.8);
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .filter-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(244, 246, 240, 0.4);
+        color: #F4F6F0;
+    }
+
+    .filter-btn.active {
+        background: rgba(76, 175, 80, 0.2);
+        border-color: rgba(76, 175, 80, 0.5);
+        color: #4CAF50;
+    }
+
+    .questions-container {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .question-card {
+        display: grid;
+        grid-template-columns: 80px 1fr 50px;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(20px);
+        border-radius: 16px;
+        padding: 20px 30px;
+        border: 1px solid rgba(244, 246, 240, 0.1);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .question-card:hover {
+        background: rgba(255, 255, 255, 0.12);
+        transform: translateX(5px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .question-number {
+        font-size: 24px;
+        font-weight: 300;
+        color: rgba(244, 246, 240, 0.6);
+        letter-spacing: 0.05em;
+    }
+
+    .question-info {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .question-title {
+        font-size: 16px;
+        font-weight: 400;
+        color: #F4F6F0;
+        letter-spacing: 0.02em;
+    }
+
+    .question-meta {
+        display: flex;
+        gap: 10px;
+    }
+
+    .difficulty {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 300;
+        letter-spacing: 0.02em;
+    }
+
+    .difficulty-简单 {
+        background: rgba(76, 175, 80, 0.15);
+        color: #4CAF50;
+    }
+
+    .difficulty-中等 {
+        background: rgba(255, 152, 0, 0.15);
+        color: #FF9800;
+    }
+
+    .difficulty-困难 {
+        background: rgba(244, 67, 54, 0.15);
+        color: #F44336;
+    }
+
+    .arrow-icon {
+        color: rgba(244, 246, 240, 0.4);
+        font-size: 20px;
+        transition: all 0.3s ease;
+    }
+
+    .question-card:hover .arrow-icon {
+        color: #F4F6F0;
+        transform: translateX(5px);
+    }
+
+    .pagination {
+        margin: 40px 0;
+        padding: 0;
+    }
+
+    .pagination-container {
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 24px;
+        border: 1px solid rgba(244, 246, 240, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .pagination-info {
+        color: rgba(244, 246, 240, 0.8);
+        font-size: 14px;
+        font-weight: 300;
+        letter-spacing: 0.02em;
+    }
+
+    .pagination-buttons {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .pagination-btn {
+        padding: 10px 20px;
+        border: 1px solid rgba(244, 246, 240, 0.2);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(244, 246, 240, 0.8);
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+        font-weight: 300;
+        letter-spacing: 0.02em;
+    }
+
+    .pagination-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(244, 246, 240, 0.4);
+        color: #F4F6F0;
+        transform: translateY(-2px);
+    }
+
+    .pagination-numbers {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .pagination-num {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(244, 246, 240, 0.2);
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(244, 246, 240, 0.8);
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+        font-weight: 300;
+    }
+
+    .pagination-num:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(244, 246, 240, 0.4);
+        color: #F4F6F0;
+        transform: scale(1.1);
+    }
+
+    .pagination-num.current {
+        background: rgba(244, 246, 240, 0.2);
+        border-color: rgba(244, 246, 240, 0.5);
+        color: #F4F6F0;
+        font-weight: 400;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<h1 class="page-title">题目列表</h1>
+
+<div class="filter-bar">
+    <input type="text" class="search-box" id="searchBox" placeholder="搜索题目...">
+    <button class="filter-btn active" data-difficulty="all">全部</button>
+    <button class="filter-btn" data-difficulty="简单">简单</button>
+    <button class="filter-btn" data-difficulty="中等">中等</button>
+    <button class="filter-btn" data-difficulty="困难">困难</button>
+</div>
+
+<div class="questions-container" id="questions-container">
+    <div style="text-align: center; padding: 40px; color: rgba(244, 246, 240, 0.6);">
+        加载中...
+    </div>
+</div>
+
+<div class="pagination" id="pagination"></div>
+
+<script>
+    const QUESTIONS_PER_PAGE = 5;
+    let allQuestions = [];
+    let currentPage = 1;
+    let currentDifficulty = 'all';
+    let currentSearch = '';
+
+    async function initPage() {
+        loadQuestions();
+        setupEventListeners();
+    }
+
+    function setupEventListeners() {
+        const searchBox = document.getElementById('searchBox');
+        searchBox.addEventListener('input', (e) => {
+            currentSearch = e.target.value.toLowerCase();
+            currentPage = 1;
+            renderQuestions();
+        });
+
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentDifficulty = btn.dataset.difficulty;
+                currentPage = 1;
+                renderQuestions();
+            });
+        });
+    }
+
+    async function loadQuestions() {
+        try {
+            const response = await fetch('/api/questions');
+            const data = await response.json();
+            
+            if (data.questions && data.questions.length > 0) {
+                allQuestions = data.questions;
+                renderQuestions();
+            }
+        } catch (error) {
+            console.error('加载题目失败:', error);
+        }
+    }
+
+    function getFilteredQuestions() {
+        let filtered = allQuestions;
+
+        if (currentDifficulty !== 'all') {
+            filtered = filtered.filter(q => q.star === currentDifficulty);
+        }
+
+        if (currentSearch) {
+            filtered = filtered.filter(q => 
+                q.title.toLowerCase().includes(currentSearch) ||
+                q.number.toLowerCase().includes(currentSearch)
+            );
+        }
+
+        return filtered;
+    }
+
+    function renderQuestions() {
+        const container = document.getElementById('questions-container');
+        const filtered = getFilteredQuestions();
+        
+        const totalPages = Math.max(1, Math.ceil(filtered.length / QUESTIONS_PER_PAGE));
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        const startIndex = (currentPage - 1) * QUESTIONS_PER_PAGE;
+        const endIndex = Math.min(startIndex + QUESTIONS_PER_PAGE, filtered.length);
+        const pageQuestions = filtered.slice(startIndex, endIndex);
+
+        if (pageQuestions.length === 0) {
+            container.innerHTML = '<div style="text-align: center; padding: 40px; color: rgba(244, 246, 240, 0.6);">暂无题目</div>';
+        } else {
+            container.innerHTML = pageQuestions.map(q => `
+                <div class="question-card" onclick="window.location.href='#question/${q.number}'" style="cursor: pointer;">
+                    <div class="question-number">${q.number}</div>
+                    <div class="question-info">
+                        <div class="question-title">${q.title}</div>
+                        <div class="question-meta">
+                            <span class="difficulty difficulty-${q.star}">${q.star}</span>
+                        </div>
+                    </div>
+                    <div class="arrow-icon">→</div>
+                </div>
+            `).join('');
+        }
+
+        renderPagination(filtered.length, totalPages);
+    }
+
+    function renderPagination(totalQuestions, totalPages) {
+        const pagination = document.getElementById('pagination');
+        
+        if (totalPages <= 1) {
+            pagination.innerHTML = '';
+            return;
+        }
+
+        let html = `
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    第 ${currentPage} 页 / 共 ${totalPages} 页 (共 ${totalQuestions} 题)
+                </div>
+                <div class="pagination-buttons">
+                    <a class="pagination-btn" onclick="goToPage(1)">首页</a>
+                    <a class="pagination-btn" onclick="goToPage(${currentPage - 1})">上一页</a>
+                    <div class="pagination-numbers">
+        `;
+
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                html += `<a class="pagination-num ${i === currentPage ? 'current' : ''}" onclick="goToPage(${i})">${i}</a>`;
+            } else if (i === currentPage - 2 || i === currentPage + 2) {
+                html += `<span style="color: rgba(244, 246, 240, 0.4);">...</span>`;
+            }
+        }
+
+        html += `
+                    </div>
+                    <a class="pagination-btn" onclick="goToPage(${currentPage + 1})">下一页</a>
+                    <a class="pagination-btn" onclick="goToPage(${totalPages})">末页</a>
+                </div>
+            </div>
+        `;
+
+        pagination.innerHTML = html;
+    }
+
+    function goToPage(page) {
+        const filtered = getFilteredQuestions();
+        const totalPages = Math.ceil(filtered.length / QUESTIONS_PER_PAGE);
+        
+        if (page < 1 || page > totalPages) return;
+        
+        currentPage = page;
+        renderQuestions();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+</script>

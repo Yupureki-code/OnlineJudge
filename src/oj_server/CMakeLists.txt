@@ -21,4 +21,4 @@ endif()
 target_include_directories(oj_server PRIVATE ${CMAKE_SOURCE_DIR}/src/oj_server/include)
 
 # 链接库
-target_link_libraries(oj_server PRIVATE pthread mysqlclient jsoncpp ctemplate)
+target_link_libraries(oj_server PRIVATE pthread mysqlclient jsoncpp ctemplate cpp-httplib)

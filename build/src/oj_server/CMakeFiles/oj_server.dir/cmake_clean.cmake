@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "/home/Yupureki/work/OnlineJudge/output/oj_server"
-  "/home/Yupureki/work/OnlineJudge/output/oj_server.pdb"
+  "/home/yupureki/project/OnlineJudge/output/oj_server"
+  "/home/yupureki/project/OnlineJudge/output/oj_server.pdb"
   "CMakeFiles/oj_server.dir/src/oj_server.cpp.o"
   "CMakeFiles/oj_server.dir/src/oj_server.cpp.o.d"
 )

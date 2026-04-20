@@ -9,6 +9,7 @@
 #include <memory>
 #include "oj_model.hpp"
 #include "oj_view.hpp"
+#include "oj_session.hpp"
 #include <httplib.h>
 #include <jsoncpp/json/json.h>
 #include "../../comm/comm.hpp"
@@ -21,6 +22,7 @@ namespace ns_control
     using namespace ns_log;
     using namespace ns_util;
     using namespace ns_view;
+    using namespace ns_session;
 
     //使用ns_model中的User结构体
     using User = ns_model::User;
@@ -189,6 +191,8 @@ namespace ns_control
     class Control
     {
     public:
+        Model* GetModel() { return &_model; }
+        
         //加载一页内的全部题目
         bool AllQuestions(std::string *html, int page = 1)
         {
@@ -346,10 +350,55 @@ namespace ns_control
             response["found"] = found;
             return found;
         }
+
+        //用户:获取用户信息(User对象)
+        bool GetUser(const std::string& email, User* user)
+        {
+            return _model.GetUser(email, user);
+        }
     private:
         Model _model;
         View _view;
         CentralConsole _console;
+        SessionManager _session_manager;
+
+    public:
+        std::string CreateSession(int user_id, const std::string& email)
+        {
+            return _session_manager.CreateSession(user_id, email);
+        }
+
+        void DestroySession(const std::string& session_id)
+        {
+            _session_manager.DestroySession(session_id);
+        }
+
+        bool GetSessionUser(const std::string& cookie_header, User* user)
+        {
+            std::string session_id;
+            if (!_session_manager.ParseCookie(cookie_header, &session_id))
+            {
+                return false;
+            }
+
+            Session session;
+            if (!_session_manager.GetSession(session_id, &session))
+            {
+                return false;
+            }
+
+            return _model.GetUserById(session.user_id, user);
+        }
+
+        std::string GetSetCookieHeader(const std::string& session_id)
+        {
+            return _session_manager.GetCookieHeader(session_id);
+        }
+
+        std::string GetClearCookieHeader()
+        {
+            return _session_manager.GetClearCookieHeader();
+        }
     };
 };
 
