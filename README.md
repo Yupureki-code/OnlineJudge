@@ -1,11 +1,11 @@
 OnlineJudge
 版权说明
-此项目基于C++-责任链模式的负载均衡式在线OJ平台，该项目的代码，注释，图片，数据库，设计，布局，界面等仅用于个人和第三方学习。禁止第三方者将此项目用于商业目的，包括且不限于转让，销售等目的。严重者将受法律责任
+此项目基于C++-基于分布式架构的在线OJ平台，该项目的代码，注释，图片，数据库，设计，布局，界面等仅用于个人和第三方学习。禁止第三方者将此项目用于商业目的，包括且不限于转让，销售等目的。严重者将受法律责任
 
-Copyright Notice: This project is an online OJ platform based on C - the chain of responsibility pattern with load balancing. The project's code, comments, images, database, design, layout, interface, etc. are only for personal and third-party learning. Third parties are prohibited from using this project for commercial purposes, including but not limited to transfer, sale, etc. Serious violations will be subject to legal liability.
+Copyright Notice: This project is a C++ - Online OJ Platform Based on Distributed Architecture. The project's code, comments, images, database, design, layout, interface, etc. are only for personal and third-party learning. Third parties are prohibited from using this project for commercial purposes, including but not limited to transfer, sale, etc. Serious violations will be subject to legal liability.
 
 项目介绍
-C++-责任链模式的负载均衡式在线OJ平台 C++-Load-Balanced Online OJ Platform Based on Chain of Responsibility Pattern
+C++-基于分布式架构的在线OJ平台 C++ - Online OJ Platform Based on Distributed Architecture
 
 1. 项目整体架构
 1.1 技术栈
