@@ -7,4 +7,4 @@ add_executable(compile_server src/compile_server.cpp)
 target_include_directories(compile_server PRIVATE ${CMAKE_SOURCE_DIR}/src/compile_server/include)
 
 # 链接库
-target_link_libraries(compile_server PRIVATE pthread mysqlclient jsoncpp ctemplate cpp-httplib)
+target_link_libraries(compile_server PRIVATE pthread mysqlclient jsoncpp ctemplate cpp-httplib Logger)

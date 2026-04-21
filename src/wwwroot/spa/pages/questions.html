@@ -259,145 +259,152 @@
 <div class="pagination" id="pagination"></div>
 
 <script>
-    const QUESTIONS_PER_PAGE = 5;
-    let allQuestions = [];
-    let currentPage = 1;
-    let currentDifficulty = 'all';
-    let currentSearch = '';
-
-    async function initPage() {
-        loadQuestions();
-        setupEventListeners();
-    }
-
-    function setupEventListeners() {
-        const searchBox = document.getElementById('searchBox');
-        searchBox.addEventListener('input', (e) => {
-            currentSearch = e.target.value.toLowerCase();
-            currentPage = 1;
-            renderQuestions();
-        });
-
-        const filterBtns = document.querySelectorAll('.filter-btn');
-        filterBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                filterBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentDifficulty = btn.dataset.difficulty;
-                currentPage = 1;
-                renderQuestions();
-            });
-        });
-    }
-
-    async function loadQuestions() {
-        try {
-            const response = await fetch('/api/questions');
-            const data = await response.json();
+    if (typeof window.questionsPage === 'undefined') {
+        window.questionsPage = {
+            QUESTIONS_PER_PAGE: 5,
+            allQuestions: [],
+            currentPage: 1,
+            currentDifficulty: 'all',
+            currentSearch: '',
             
-            if (data.questions && data.questions.length > 0) {
-                allQuestions = data.questions;
-                renderQuestions();
+            initPage: function() {
+                this.loadQuestions();
+                this.setupEventListeners();
+            },
+
+            setupEventListeners: function() {
+                var self = this;
+                var searchBox = document.getElementById('searchBox');
+                if (searchBox) {
+                    searchBox.addEventListener('input', function(e) {
+                        self.currentSearch = e.target.value.toLowerCase();
+                        self.currentPage = 1;
+                        self.renderQuestions();
+                    });
+                }
+
+                var filterBtns = document.querySelectorAll('.filter-btn');
+                filterBtns.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        filterBtns.forEach(function(b) { b.classList.remove('active'); });
+                        btn.classList.add('active');
+                        self.currentDifficulty = btn.dataset.difficulty;
+                        self.currentPage = 1;
+                        self.renderQuestions();
+                    });
+                });
+            },
+
+            loadQuestions: function() {
+                var self = this;
+                fetch('/api/questions')
+                    .then(function(response) { return response.json(); })
+                    .then(function(data) {
+                        if (data.questions && data.questions.length > 0) {
+                            self.allQuestions = data.questions;
+                            self.renderQuestions();
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('加载题目失败:', error);
+                    });
+            },
+
+            getFilteredQuestions: function() {
+                var filtered = this.allQuestions;
+
+                if (this.currentDifficulty !== 'all') {
+                    filtered = filtered.filter(function(q) { return q.star === this.currentDifficulty; }.bind(this));
+                }
+
+                if (this.currentSearch) {
+                    var search = this.currentSearch;
+                    filtered = filtered.filter(function(q) { 
+                        return q.title.toLowerCase().includes(search) || q.number.toLowerCase().includes(search);
+                    });
+                }
+
+                return filtered;
+            },
+
+            renderQuestions: function() {
+                var container = document.getElementById('questions-container');
+                if (!container) return;
+                
+                var filtered = this.getFilteredQuestions();
+                
+                var totalPages = Math.max(1, Math.ceil(filtered.length / this.QUESTIONS_PER_PAGE));
+                if (this.currentPage > totalPages) this.currentPage = totalPages;
+
+                var startIndex = (this.currentPage - 1) * this.QUESTIONS_PER_PAGE;
+                var endIndex = Math.min(startIndex + this.QUESTIONS_PER_PAGE, filtered.length);
+                var pageQuestions = filtered.slice(startIndex, endIndex);
+
+                if (pageQuestions.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: rgba(244, 246, 240, 0.6);">暂无题目</div>';
+                } else {
+                    container.innerHTML = pageQuestions.map(function(q) {
+                        return '<div class="question-card" onclick="window.location.hash=\'#question/' + q.number + '\'" style="cursor: pointer;">' +
+                            '<div class="question-number">' + q.number + '</div>' +
+                            '<div class="question-info">' +
+                            '<div class="question-title">' + q.title + '</div>' +
+                            '<div class="question-meta">' +
+                            '<span class="difficulty difficulty-' + q.star + '">' + q.star + '</span>' +
+                            '</div></div><div class="arrow-icon">→</div></div>';
+                    }).join('');
+                }
+
+                this.renderPagination(filtered.length, totalPages);
+            },
+
+            renderPagination: function(totalQuestions, totalPages) {
+                var pagination = document.getElementById('pagination');
+                if (!pagination) return;
+                
+                if (totalPages <= 1) {
+                    pagination.innerHTML = '';
+                    return;
+                }
+
+                var html = '<div class="pagination-container">' +
+                    '<div class="pagination-info">第 ' + this.currentPage + ' 页 / 共 ' + totalPages + ' 页 (共 ' + totalQuestions + ' 题)</div>' +
+                    '<div class="pagination-buttons">' +
+                    '<a class="pagination-btn" href="#" onclick="window.questionsPage.goToPage(1); return false;">首页</a>' +
+                    '<a class="pagination-btn" href="#" onclick="window.questionsPage.goToPage(' + (this.currentPage - 1) + '); return false;">上一页</a>' +
+                    '<div class="pagination-numbers">';
+
+                for (var i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= this.currentPage - 1 && i <= this.currentPage + 1)) {
+                        html += '<a class="pagination-num ' + (i === this.currentPage ? 'current' : '') + '" href="#" onclick="window.questionsPage.goToPage(' + i + '); return false;">' + i + '</a>';
+                    } else if (i === this.currentPage - 2 || i === this.currentPage + 2) {
+                        html += '<span style="color: rgba(244, 246, 240, 0.4);">...</span>';
+                    }
+                }
+
+                html += '</div>' +
+                    '<a class="pagination-btn" href="#" onclick="window.questionsPage.goToPage(' + (this.currentPage + 1) + '); return false;">下一页</a>' +
+                    '<a class="pagination-btn" href="#" onclick="window.questionsPage.goToPage(' + totalPages + '); return false;">末页</a>' +
+                    '</div></div>';
+
+                pagination.innerHTML = html;
+            },
+
+            goToPage: function(page) {
+                var filtered = this.getFilteredQuestions();
+                var totalPages = Math.ceil(filtered.length / this.QUESTIONS_PER_PAGE);
+                
+                if (page < 1 || page > totalPages) return;
+                
+                this.currentPage = page;
+                this.renderQuestions();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
-        } catch (error) {
-            console.error('加载题目失败:', error);
-        }
+        };
     }
-
-    function getFilteredQuestions() {
-        let filtered = allQuestions;
-
-        if (currentDifficulty !== 'all') {
-            filtered = filtered.filter(q => q.star === currentDifficulty);
+    
+    window.initPage = function() {
+        if (window.questionsPage) {
+            window.questionsPage.initPage();
         }
-
-        if (currentSearch) {
-            filtered = filtered.filter(q => 
-                q.title.toLowerCase().includes(currentSearch) ||
-                q.number.toLowerCase().includes(currentSearch)
-            );
-        }
-
-        return filtered;
-    }
-
-    function renderQuestions() {
-        const container = document.getElementById('questions-container');
-        const filtered = getFilteredQuestions();
-        
-        const totalPages = Math.max(1, Math.ceil(filtered.length / QUESTIONS_PER_PAGE));
-        if (currentPage > totalPages) currentPage = totalPages;
-
-        const startIndex = (currentPage - 1) * QUESTIONS_PER_PAGE;
-        const endIndex = Math.min(startIndex + QUESTIONS_PER_PAGE, filtered.length);
-        const pageQuestions = filtered.slice(startIndex, endIndex);
-
-        if (pageQuestions.length === 0) {
-            container.innerHTML = '<div style="text-align: center; padding: 40px; color: rgba(244, 246, 240, 0.6);">暂无题目</div>';
-        } else {
-            container.innerHTML = pageQuestions.map(q => `
-                <div class="question-card" onclick="window.location.href='#question/${q.number}'" style="cursor: pointer;">
-                    <div class="question-number">${q.number}</div>
-                    <div class="question-info">
-                        <div class="question-title">${q.title}</div>
-                        <div class="question-meta">
-                            <span class="difficulty difficulty-${q.star}">${q.star}</span>
-                        </div>
-                    </div>
-                    <div class="arrow-icon">→</div>
-                </div>
-            `).join('');
-        }
-
-        renderPagination(filtered.length, totalPages);
-    }
-
-    function renderPagination(totalQuestions, totalPages) {
-        const pagination = document.getElementById('pagination');
-        
-        if (totalPages <= 1) {
-            pagination.innerHTML = '';
-            return;
-        }
-
-        let html = `
-            <div class="pagination-container">
-                <div class="pagination-info">
-                    第 ${currentPage} 页 / 共 ${totalPages} 页 (共 ${totalQuestions} 题)
-                </div>
-                <div class="pagination-buttons">
-                    <a class="pagination-btn" onclick="goToPage(1)">首页</a>
-                    <a class="pagination-btn" onclick="goToPage(${currentPage - 1})">上一页</a>
-                    <div class="pagination-numbers">
-        `;
-
-        for (let i = 1; i <= totalPages; i++) {
-            if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
-                html += `<a class="pagination-num ${i === currentPage ? 'current' : ''}" onclick="goToPage(${i})">${i}</a>`;
-            } else if (i === currentPage - 2 || i === currentPage + 2) {
-                html += `<span style="color: rgba(244, 246, 240, 0.4);">...</span>`;
-            }
-        }
-
-        html += `
-                    </div>
-                    <a class="pagination-btn" onclick="goToPage(${currentPage + 1})">下一页</a>
-                    <a class="pagination-btn" onclick="goToPage(${totalPages})">末页</a>
-                </div>
-            </div>
-        `;
-
-        pagination.innerHTML = html;
-    }
-
-    function goToPage(page) {
-        const filtered = getFilteredQuestions();
-        const totalPages = Math.ceil(filtered.length / QUESTIONS_PER_PAGE);
-        
-        if (page < 1 || page > totalPages) return;
-        
-        currentPage = page;
-        renderQuestions();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    };
 </script>

@@ -4,202 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{title}} - Yupureki-OJ</title>
-    <link rel="preload" as="image" href="/pictures/preview.jpg">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
-
-        .page-loading-mask {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(24, 28, 24, 0.55);
-            backdrop-filter: blur(3px);
-            z-index: 99999;
-            transition: opacity 0.2s ease;
-        }
-
-        .page-loading-mask.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .page-loading-text {
-            color: #F4F6F0;
-            font-size: 18px;
-            letter-spacing: 0.08em;
-            padding: 12px 18px;
-            border: 1px solid rgba(244, 246, 240, 0.25);
-            border-radius: 12px;
-            background: rgba(24, 28, 24, 0.45);
-        }
-
-        /* 登录/注册弹窗样式 */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
-        }
-
-        .modal-content {
-            background-color: rgba(60, 80, 60, 0.95);
-            margin: 15% auto;
-            padding: 30px;
-            border: 1px solid rgba(244, 246, 240, 0.2);
-            border-radius: 20px;
-            width: 90%;
-            max-width: 400px;
-            color: #F4F6F0;
-            position: relative;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .close {
-            color: rgba(244, 246, 240, 0.6);
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-
-        .close:hover {
-            color: #F4F6F0;
-        }
-
-        .modal h2 {
-            margin-bottom: 20px;
-            font-size: 24px;
-            font-weight: 300;
-            text-align: center;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: rgba(244, 246, 240, 0.8);
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(244, 246, 240, 0.2);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #F4F6F0;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: rgba(244, 246, 240, 0.4);
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .form-group input::placeholder {
-            color: rgba(244, 246, 240, 0.4);
-        }
-
-        .auth-btn {
-            padding: 12px 24px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            color: rgba(244, 246, 240, 0.8);
-            border: 1px solid rgba(244, 246, 240, 0.1);
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 400;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            letter-spacing: 0.02em;
-            margin-left: 10px;
-        }
-
-        .auth-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: #F4F6F0;
-            transform: translateY(-2px);
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 14px;
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid rgba(76, 175, 80, 0.3);
-            border-radius: 10px;
-            color: #4CAF50;
-            font-size: 14px;
-            font-weight: 400;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-        }
-
-        .submit-btn:hover {
-            background: rgba(76, 175, 80, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .form-toggle {
-            text-align: center;
-            margin-top: 15px;
-            font-size: 14px;
-            color: rgba(244, 246, 240, 0.6);
-        }
-
-        .form-toggle a {
-            color: #4CAF50;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-        .form-toggle a:hover {
-            color: #81C784;
-        }
-
-        /* 认证标签页样式 */
-        .auth-tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid rgba(244, 246, 240, 0.2);
-        }
-
-        .auth-tab {
-            flex: 1;
-            padding: 12px;
-            background: transparent;
-            border: none;
-            color: rgba(244, 246, 240, 0.6);
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .auth-tab:hover {
-            color: #F4F6F0;
-        }
-
-        .auth-tab.active {
-            color: #4CAF50;
-            border-bottom: 2px solid #4CAF50;
         }
 
         body {
@@ -208,11 +17,6 @@
             overflow-x: hidden;
             background-color: #2D2F2C;
             position: relative;
-            background-image: url('/pictures/preview.jpg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
         }
 
         /* 背景图片 */
@@ -222,7 +26,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: url('/pictures/preview.jpg');
+            background-image: url('preview.jpg');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -369,8 +173,6 @@
             display: flex;
             gap: 40px;
             align-items: center;
-            margin-left: 80px;
-            margin-right: 80px;
         }
 
         .nav a {
@@ -832,15 +634,9 @@
             align-items: flex-start;
             justify-content: space-between;
         }
-
-
     </style>
 </head>
 <body>
-
-        <div id="page-loading-mask" class="page-loading-mask">
-            <div class="page-loading-text">加载中...</div>
-        </div>
 
     
     <!-- 背景图片 -->
@@ -850,7 +646,7 @@
     <div class="rain-lines" id="rainLines"></div>
     <div class="header">
         <div class="nav">
-            <img src="/pictures/icon.png" type="icon" width="40px" height="40px">
+            <img src="icon.png" type="icon" width="40px" height="40px">
             <p class="logo">Yupureki-OJ</p>
             <a href="/">首页</a>
             <a href="/all_questions">题库</a>
@@ -861,23 +657,9 @@
             <input type="text" class="search-input" placeholder="搜索题目...">
         </div>
         <div class="nav">
-            <script>
-                if (typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO.isLoggedIn) {
-                    document.getElementById('user-auth').style.display = 'none';
-                    document.getElementById('user-profile').style.display = 'flex';
-                }
-            </script>
-            <!-- 未登录状态 -->
-            <div id="user-auth" style="display: block;">
-                <button class="auth-btn" id="sign-in-button">登录/注册</button>
-            </div>
-            <!-- 登录状态 -->
-            <div id="user-profile" style="display: none;">
-            </div>
+            <a href="#"><img src="message.png" width="40px" height="40px"></a>
+            <a href="#"><img src="head.jpg" width="40px" height="40px" style="border-radius: 50%;"></a>
         </div>
-    </div>
-
-
     </div>
     <div class="container">
         <div class="question-section" id="questionSection">
@@ -1096,11 +878,5 @@
         // 初始化
         createRainLines();
     </script>
-
-    
-    
-    
-    <script src="/js/page-loading.js"></script>
-    <script src="/js/auth.js"></script>
 </body>
 </html>

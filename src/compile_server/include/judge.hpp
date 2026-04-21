@@ -11,7 +11,7 @@
 #include <fcntl.h>
 #include <assert.h>
 #include "COP_hanlder.hpp"
-#include "../../comm/logstrategy.hpp"
+#include <Logger/logstrategy.h>
 // 判断类:判断运行结果
 // 1.运行中错误，获取对应的错误类型
 // 2.运行正常，判断答案对错。对->AC，错->WA
@@ -41,11 +41,11 @@ namespace ns_judge
                             break;
                         else
                         {
-                            ns_log::logger(FATAL)<<"读取stderr文件失败: "<<stderr_path;
+                            logger(FATAL)<<"读取stderr文件失败: "<<stderr_path;
                             return HandlerProgramEnd({UNKNOWN}, file_name);
                         }
                     }
-                    ns_log::logger(ns_log::DEBUG)<<"stderr: "<<err;
+                    logger(DEBUG)<<"stderr: "<<err;
                     //判断运行是否出错
                     if(err == "运行时间超时") result.push_back(RUNTIME_ERROR);
                     else if(err == "内存申请过多") result.push_back(MEMORY_LIMIT);

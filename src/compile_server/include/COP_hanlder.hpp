@@ -12,7 +12,7 @@
 #include <fcntl.h>
 #include <assert.h>
 #include "../../comm/comm.hpp"
-#include "../../comm/logstrategy.hpp"
+#include <Logger/logstrategy.h>
 
 //责任链模式:preprocesser->compiler->runner->judge
 
@@ -129,7 +129,7 @@ namespace ns_hanlder
         //责任链结束
         std::string HandlerProgramEnd(const std::vector<Status>& result,const std::string& file_name,const int line,const std::string filename)
         {
-            ns_log::logger(ns_log::DEBUG)<<"在 "<<filename<<" 的 "<<line<<" 行结束责任链";
+            logger(ns_log::DEBUG)<<"在 "<<filename<<" 的 "<<line<<" 行结束责任链";
             Json::Value out_value;
             std::string result_string;
             bool has_wa = false;
@@ -171,7 +171,7 @@ namespace ns_hanlder
             Json::StyledWriter writer;
             std::string out_json = writer.write(out_value);
             FileUtil::RemoveTmpFiles(file_name);
-            ns_log::logger(DEBUG)<<"out_json:"<<out_json;
+            logger(DEBUG)<<"out_json:"<<out_json;
             return out_json;
         }
     protected:

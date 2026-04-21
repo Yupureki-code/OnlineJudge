@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <jsoncpp/json/json.h>
 
 const char *root = "/";
 const char *dev_null = "/dev/null";

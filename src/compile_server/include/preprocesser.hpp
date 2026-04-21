@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "../../comm/comm.hpp"
-#include "../../comm/logstrategy.hpp"
+#include <Logger/logstrategy.h>
 #include "COP_hanlder.hpp"
 
 //预处理类:将代码转到.cpp文件内
@@ -36,7 +36,7 @@ namespace ns_preprocesser
                 std::string code = in_value["code"].asString();
                 if(!FileUtil::WriteFile(PathUtil::Src(file_name), code))
                 {
-                    ns_log::logger(ns_log::FATAL)<<"打开文件 "<<PathUtil::Src(file_name)<<"失败";
+                    logger(ns_log::FATAL)<<"打开文件 "<<PathUtil::Src(file_name)<<"失败";
                     return HandlerProgramEnd({UNKNOWN}, file_name);
                 }
             }
@@ -47,7 +47,7 @@ namespace ns_preprocesser
             else 
             {
                 //责任链不应该在这结束
-                ns_log::logger(ns_log::INFO)<<"责任链错误结束";
+                logger(ns_log::INFO)<<"责任链错误结束";
                 return HandlerProgramEnd({UNKNOWN}, file_name);
             }
         }

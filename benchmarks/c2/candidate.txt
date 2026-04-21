@@ -1,0 +1,17 @@
+label=candidate
+timestamp=2026-04-21 21:48:18
+base_url=http://127.0.0.1:8080
+rounds=5
+aggregation=median
+req_all=500
+req_one=500
+question_id=1
+all_p95=0.001180
+all_avg=0.000852
+all_error_rate=0.000000
+one_p95=0.001063
+one_avg=0.000747
+one_error_rate=0.000000
+db_fallback_list_delta=1
+db_fallback_detail_delta=0
+db_fallback_total_delta=1

@@ -21,4 +21,18 @@ endif()
 target_include_directories(oj_server PRIVATE ${CMAKE_SOURCE_DIR}/src/oj_server/include)
 
 # 链接库
-target_link_libraries(oj_server PRIVATE pthread mysqlclient jsoncpp ctemplate cpp-httplib)
+target_link_libraries(oj_server PRIVATE pthread mysqlclient jsoncpp ctemplate cpp-httplib Logger)
+
+# Redis client libraries (redis++ depends on hiredis)
+find_library(REDIS_PLUS_PLUS_LIB NAMES redis++ redis++_static)
+find_library(HIREDIS_LIB NAMES hiredis hiredis_static)
+
+if(NOT REDIS_PLUS_PLUS_LIB)
+    message(FATAL_ERROR "redis++ library not found. Please install redis++ and retry.")
+endif()
+
+if(NOT HIREDIS_LIB)
+    message(FATAL_ERROR "hiredis library not found. Please install hiredis and retry.")
+endif()
+
+target_link_libraries(oj_server PRIVATE ${REDIS_PLUS_PLUS_LIB} ${HIREDIS_LIB})

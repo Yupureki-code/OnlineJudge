@@ -195,11 +195,29 @@ CONF_PATH:STRING=/home/yupureki/project/OnlineJudge/conf
 //Enable debug output
 ENABLE_DEBUG:BOOL=OFF
 
+//Path to a library.
+HIREDIS_LIB:FILEPATH=/usr/lib/x86_64-linux-gnu/libhiredis.so
+
+//No help, variable specified on the command line.
+HOST:UNINITIALIZED=localhost
+
 //default html file path
 HTML_PATH:STRING=/home/yupureki/project/OnlineJudge/src/wwwroot
 
 //default log file path
 LOG_PATH:STRING=/home/yupureki/project/OnlineJudge/log
+
+//No help, variable specified on the command line.
+MYOJ:UNINITIALIZED=myoj
+
+//No help, variable specified on the command line.
+OJ_QUESTIONS:UNINITIALIZED=questions
+
+//No help, variable specified on the command line.
+OJ_TESTS:UNINITIALIZED=tests
+
+//No help, variable specified on the command line.
+OJ_USERS:UNINITIALIZED=users
 
 //Value Computed by CMake
 OnlineJudge_BINARY_DIR:STATIC=/home/yupureki/project/OnlineJudge/build
@@ -209,6 +227,24 @@ OnlineJudge_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
 OnlineJudge_SOURCE_DIR:STATIC=/home/yupureki/project/OnlineJudge
+
+//No help, variable specified on the command line.
+PASSWD:UNINITIALIZED=password
+
+//No help, variable specified on the command line.
+PORT:UNINITIALIZED=3306
+
+//Path to a library.
+REDIS_PLUS_PLUS_LIB:FILEPATH=/usr/local/lib/libredis++.so
+
+//No help, variable specified on the command line.
+USER:UNINITIALIZED=oj_server
+
+//The directory containing a CMake configuration file for hiredis.
+hiredis_DIR:PATH=hiredis_DIR-NOTFOUND
+
+//The directory containing a CMake configuration file for redis++.
+redis++_DIR:PATH=/usr/local/share/cmake/redis++
 
 
 ########################

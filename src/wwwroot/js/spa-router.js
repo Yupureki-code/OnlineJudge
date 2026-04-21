@@ -8,25 +8,27 @@ const SPA = {
 
         const route = hash.replace('#', '') || 'home';
         
-        if (this.currentPage === route) return;
-        this.currentPage = route;
+        const routeParts = route.split('/');
+        const pageName = routeParts[0];
+        const pageParams = routeParts.slice(1);
+        
+        const baseRoute = pageName + (pageParams.length > 0 ? '/' + pageParams.join('/') : '');
+        if (this.currentPage === baseRoute) return;
+        this.currentPage = baseRoute;
 
         pageContent.style.opacity = '0';
         
-        const pageHTML = this.pages[route];
+        const cacheKey = baseRoute;
+        const pageHTML = this.pages[cacheKey];
         if (pageHTML) {
             pageContent.innerHTML = pageHTML;
-            this.executePageScripts(pageContent);
+            this.executePageScripts(pageContent, pageParams);
         } else {
-            const routeParts = route.split('/');
-            const pageName = routeParts[0];
-            const pageParams = routeParts.slice(1);
-            
             try {
                 const response = await fetch(`./spa/pages/${pageName}.html`);
                 if (response.ok) {
                     const html = await response.text();
-                    this.pages[route] = html;
+                    this.pages[cacheKey] = html;
                     pageContent.innerHTML = html;
                     this.executePageScripts(pageContent, pageParams);
                 } else {
@@ -47,19 +49,69 @@ const SPA = {
 
     executePageScripts(container, params = []) {
         const scripts = container.querySelectorAll('script');
+        const inlineScripts = [];
+        const externalScripts = [];
+        
         scripts.forEach(script => {
-            const newScript = document.createElement('script');
             if (script.src) {
-                newScript.src = script.src;
+                externalScripts.push(script.src);
             } else {
-                newScript.textContent = script.textContent;
+                inlineScripts.push(script.textContent);
             }
-            document.body.appendChild(newScript).remove();
         });
-
-        if (typeof initPage === 'function') {
-            initPage(params);
-        }
+        
+        const loadExternalScripts = () => {
+            return new Promise((resolve) => {
+                if (externalScripts.length === 0) {
+                    resolve();
+                    return;
+                }
+                
+                let loadedCount = 0;
+                const checkComplete = () => {
+                    loadedCount++;
+                    if (loadedCount === externalScripts.length) {
+                        setTimeout(resolve, 100);
+                    }
+                };
+                
+                externalScripts.forEach(src => {
+                    let existingScript = document.querySelector(`script[src="${src}"]`);
+                    
+                    if (existingScript && typeof ace !== 'undefined') {
+                        checkComplete();
+                        return;
+                    }
+                    
+                    if (existingScript) {
+                        existingScript.remove();
+                    }
+                    
+                    const newScript = document.createElement('script');
+                    newScript.src = src;
+                    newScript.onload = checkComplete;
+                    newScript.onerror = () => {
+                        console.error('Failed to load script:', src);
+                        checkComplete();
+                    };
+                    document.head.appendChild(newScript);
+                });
+            });
+        };
+        
+        loadExternalScripts().then(() => {
+            inlineScripts.forEach(code => {
+                try {
+                    eval(code);
+                } catch (e) {
+                    console.error('Script execution error:', e);
+                }
+            });
+            
+            if (typeof window.initPage === 'function') {
+                window.initPage(params);
+            }
+        });
     },
 
     init() {
@@ -69,9 +121,10 @@ const SPA = {
         window.addEventListener('hashchange', () => this.handleRoute());
         
         document.addEventListener('click', (e) => {
-            if (e.target.tagName === 'A' && e.target.getAttribute('href')?.startsWith('#')) {
+            const anchor = e.target.closest('a');
+            if (anchor && anchor.getAttribute('href')?.startsWith('#')) {
                 e.preventDefault();
-                const hash = e.target.getAttribute('href');
+                const hash = anchor.getAttribute('href');
                 window.location.hash = hash;
             }
         });

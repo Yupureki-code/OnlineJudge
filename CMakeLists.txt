@@ -12,6 +12,7 @@ set(USER "null")
 set(PASSWD "null")
 set(MYOJ "null")
 set(PORT "null")
+set(REDIS "null")
 
 add_subdirectory(src/private)
 

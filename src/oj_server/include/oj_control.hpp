@@ -194,31 +194,26 @@ namespace ns_control
         Model* GetModel() { return &_model; }
         
         //加载一页内的全部题目
-        bool AllQuestions(std::string *html, int page = 1)
+        bool AllQuestions(std::string *html,
+                          int page = 1,
+                          int size = 5,
+                          const QueryStruct& query_hash = QueryStruct(),
+                          const std::string& list_version = "1")
         {
             bool ret = true;
-            std::vector<struct Question> all;
-            if (_model.GetAllQuestions(&all))
+            std::vector<struct Question> page_questions;
+            int total_count = 0;
+            int total_pages = 0;
+
+            if (_model.GetAllQuestions(page, size, list_version, page_questions, &total_count, &total_pages, query_hash))
             {
-                //按照题目编号排序
-                sort(all.begin(), all.end(), [](const struct Question &q1, const struct Question &q2){
-                    return atoi(q1.number.c_str()) < atoi(q2.number.c_str());
-                });
-                
-                const int questionsPerPage = 5;
-                int totalPages = (all.size() + questionsPerPage - 1) / questionsPerPage;
-                if (page < 1) page = 1;
-                if (page > totalPages) page = totalPages;
-                
-                int startIndex = (page - 1) * questionsPerPage;
-                int endIndex = std::min(startIndex + questionsPerPage, (int)all.size());
-                
-                std::vector<struct Question> pageQuestions;
-                for (int i = startIndex; i < endIndex; i++) {
-                    pageQuestions.push_back(all[i]);
-                }
-                
-                _view.AllExpandHtml(pageQuestions, html, page, totalPages);
+                int safe_page = page;
+                if (safe_page < 1) safe_page = 1;
+                if (total_pages > 0 && safe_page > total_pages) safe_page = total_pages;
+                if (total_pages <= 0) safe_page = 1;
+
+                int render_total_pages = (total_pages <= 0 ? 1 : total_pages);
+                _view.AllExpandHtml(page_questions, html, safe_page, render_total_pages);
             }
             else
             {
@@ -231,8 +226,8 @@ namespace ns_control
         bool OneQuestion(const std::string &number, std::string *html)
         {
             bool ret = true;
-            struct Question q;
-            if (_model.GetOneQuestion(number, &q))
+            Question q;
+            if (_model.GetOneQuestion(number, q))
             {
                 _view.OneExpandHtml(q, html);
             }
@@ -246,8 +241,8 @@ namespace ns_control
         //判断题目正确，调用主机责任链
         void Judge(const std::string& number,const std::string& in_json,std::string* out_json)
         {
-            struct Question q;
-            _model.GetOneQuestion(number, &q);
+            Question q;
+            _model.GetOneQuestion(number, q);
             Json::Reader reader;
             Json::Value in_value;
             reader.parse(in_json, in_value);
@@ -356,6 +351,22 @@ namespace ns_control
         {
             return _model.GetUser(email, user);
         }
+
+        bool SaveQuestion(const Question& q)
+        {
+            return _model.SaveQuestion(q);
+        }
+
+        bool DeleteQuestion(const std::string& number)
+        {
+            return _model.DeleteQuestion(number);
+        }
+
+        // 题目写路径统一调用：递增列表版本，触发列表缓存失效。
+        std::string TouchQuestionListVersion()
+        {
+            return _model.TouchQuestionListVersion();
+        }
     private:
         Model _model;
         View _view;
@@ -371,6 +382,15 @@ namespace ns_control
         void DestroySession(const std::string& session_id)
         {
             _session_manager.DestroySession(session_id);
+        }
+
+        void DestroySessionByCookieHeader(const std::string& cookie_header)
+        {
+            std::string session_id;
+            if (_session_manager.ParseCookie(cookie_header, &session_id))
+            {
+                _session_manager.DestroySession(session_id);
+            }
         }
 
         bool GetSessionUser(const std::string& cookie_header, User* user)

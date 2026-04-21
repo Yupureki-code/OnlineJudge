@@ -4,8 +4,6 @@
 src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home/yupureki/project/OnlineJudge/src/compile_server/src/compile_server.cpp \
   /home/yupureki/project/OnlineJudge/src/comm/comm.hpp \
   /home/yupureki/project/OnlineJudge/src/comm/config.h \
-  /home/yupureki/project/OnlineJudge/src/comm/lock.hpp \
-  /home/yupureki/project/OnlineJudge/src/comm/logstrategy.hpp \
   /home/yupureki/project/OnlineJudge/src/compile_server/include/COP_hanlder.hpp \
   /home/yupureki/project/OnlineJudge/src/compile_server/include/compiler.hpp \
   /home/yupureki/project/OnlineJudge/src/compile_server/include/entry.hpp \
@@ -246,6 +244,7 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
   /usr/include/jsoncpp/json/allocator.h \
   /usr/include/jsoncpp/json/config.h \
   /usr/include/jsoncpp/json/forwards.h \
+  /usr/include/jsoncpp/json/json.h \
   /usr/include/jsoncpp/json/json_features.h \
   /usr/include/jsoncpp/json/reader.h \
   /usr/include/jsoncpp/json/value.h \
@@ -466,6 +465,7 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h \
   /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h \
+  /usr/local/include/Logger/logstrategy.h \
   /usr/local/include/ctemplate/template_string.h
 
 
@@ -627,9 +627,9 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 
 /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h:
 
-/usr/include/x86_64-linux-gnu/bits/math-vector.h:
-
 /usr/include/x86_64-linux-gnu/bits/locale.h:
+
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
 
@@ -751,8 +751,6 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 
 /usr/include/c++/13/bits/stl_algo.h:
 
-/home/yupureki/project/OnlineJudge/src/comm/logstrategy.hpp:
-
 /usr/include/c++/13/cstddef:
 
 /home/yupureki/project/OnlineJudge/src/compile_server/include/compiler.hpp:
@@ -803,6 +801,20 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 
 /usr/include/c++/13/unordered_map:
 
+/usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h:
+
+/usr/include/stdio.h:
+
+/usr/include/c++/13/bits/stl_iterator_base_types.h:
+
+/usr/include/c++/13/bits/regex_compiler.h:
+
+/usr/include/c++/13/bits/stl_uninitialized.h:
+
+/usr/include/c++/13/bits/new_allocator.h:
+
+/usr/include/c++/13/bits/atomic_base.h:
+
 /usr/include/x86_64-linux-gnu/bits/types/struct_sigstack.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h:
@@ -819,29 +831,11 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 
 /usr/include/libintl.h:
 
-/usr/include/linux/posix_types.h:
-
-/usr/include/c++/13/bits/ptr_traits.h:
-
 /usr/include/c++/13/bits/std_abs.h:
 
 /usr/include/c++/13/bits/parse_numbers.h:
 
 /usr/include/c++/13/bits/ostream.tcc:
-
-/usr/include/c++/13/bits/stl_uninitialized.h:
-
-/usr/include/c++/13/bits/new_allocator.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h:
-
-/usr/include/stdio.h:
-
-/usr/include/c++/13/bits/stl_iterator_base_types.h:
-
-/usr/include/c++/13/bits/regex_compiler.h:
-
-/usr/include/c++/13/bits/atomic_base.h:
 
 /usr/include/c++/13/bits/stl_function.h:
 
@@ -917,11 +911,11 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 
 /usr/include/c++/13/bits/stl_construct.h:
 
-/home/yupureki/project/OnlineJudge/src/compile_server/include/runner.hpp:
-
 /usr/include/c++/13/bits/regex.h:
 
 /usr/include/c++/13/backward/binders.h:
+
+/home/yupureki/project/OnlineJudge/src/compile_server/include/runner.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/resource.h:
 
@@ -963,45 +957,11 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 
 /usr/include/c++/13/bits/shared_ptr_base.h:
 
-/usr/include/c++/13/bits/regex_constants.h:
-
-/usr/include/arpa/inet.h:
-
-/usr/include/arpa/nameser_compat.h:
-
 /usr/include/c++/13/algorithm:
 
 /usr/include/c++/13/clocale:
 
 /home/yupureki/project/OnlineJudge/src/compile_server/src/compile_server.cpp:
-
-/usr/include/x86_64-linux-gnu/bits/local_lim.h:
-
-/home/yupureki/project/OnlineJudge/src/comm/lock.hpp:
-
-/usr/include/c++/13/ext/string_conversions.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
-
-/usr/include/mysql/errmsg.h:
-
-/usr/include/c++/13/bits/stl_map.h:
-
-/home/yupureki/project/OnlineJudge/src/comm/config.h:
-
-/usr/include/c++/13/bits/predefined_ops.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
-
-/usr/include/c++/13/condition_variable:
-
-/usr/include/x86_64-linux-gnu/bits/signum-generic.h:
-
-/usr/include/c++/13/iosfwd:
-
-/usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
-
-/usr/include/ifaddrs.h:
 
 /usr/include/asm-generic/int-ll64.h:
 
@@ -1045,13 +1005,37 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 
 /usr/include/c++/13/bits/stl_deque.h:
 
-/usr/include/c++/13/bits/hash_bytes.h:
+/usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
+
+/usr/include/mysql/errmsg.h:
+
+/usr/include/c++/13/bits/stl_map.h:
+
+/home/yupureki/project/OnlineJudge/src/comm/config.h:
+
+/usr/include/c++/13/bits/predefined_ops.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
+
+/usr/include/c++/13/condition_variable:
+
+/usr/include/x86_64-linux-gnu/bits/signum-generic.h:
+
+/usr/include/c++/13/iosfwd:
+
+/usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
+
+/usr/include/ifaddrs.h:
 
 /usr/include/c++/13/array:
 
 /home/yupureki/project/OnlineJudge/src/comm/comm.hpp:
 
 /usr/include/fcntl.h:
+
+/usr/include/c++/13/bits/hash_bytes.h:
+
+/usr/include/c++/13/bits/stl_numeric.h:
 
 /usr/include/c++/13/bits/uses_allocator_args.h:
 
@@ -1061,7 +1045,21 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 
 /usr/include/jsoncpp/json/json_features.h:
 
+/usr/include/c++/13/bits/regex_constants.h:
+
+/usr/include/arpa/inet.h:
+
+/usr/include/arpa/nameser_compat.h:
+
+/usr/include/alloca.h:
+
+/usr/include/x86_64-linux-gnu/bits/endianness.h:
+
+/usr/include/c++/13/bits/chrono.h:
+
 /usr/include/c++/13/bits/functexcept.h:
+
+/usr/local/include/Logger/logstrategy.h:
 
 /usr/include/arpa/nameser.h:
 
@@ -1072,12 +1070,6 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 /usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h:
 
 /usr/include/c++/13/bits/unique_ptr.h:
-
-/usr/include/alloca.h:
-
-/usr/include/x86_64-linux-gnu/bits/endianness.h:
-
-/usr/include/c++/13/bits/chrono.h:
 
 /usr/include/x86_64-linux-gnu/bits/long-double.h:
 
@@ -1113,6 +1105,10 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 
 /usr/include/c++/13/bits/localefwd.h:
 
+/usr/include/c++/13/bits/ptr_traits.h:
+
+/usr/include/linux/posix_types.h:
+
 /usr/include/x86_64-linux-gnu/bits/waitstatus.h:
 
 /usr/include/c++/13/bits/exception_defines.h:
@@ -1136,8 +1132,6 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 /usr/include/c++/13/bits/functional_hash.h:
 
 /usr/include/errno.h:
-
-/usr/include/c++/13/bits/stl_numeric.h:
 
 /usr/include/c++/13/bits/stl_raw_storage_iter.h:
 
@@ -1289,6 +1283,8 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 
 /usr/include/c++/13/ext/numeric_traits.h:
 
+/usr/include/c++/13/ext/string_conversions.h:
+
 /usr/include/c++/13/ext/type_traits.h:
 
 /usr/include/c++/13/functional:
@@ -1390,6 +1386,10 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
 /usr/include/jsoncpp/json/version.h:
 
 /usr/include/jsoncpp/json/forwards.h:
+
+/usr/include/x86_64-linux-gnu/bits/math-vector.h:
+
+/usr/include/jsoncpp/json/json.h:
 
 /usr/include/jsoncpp/json/writer.h:
 

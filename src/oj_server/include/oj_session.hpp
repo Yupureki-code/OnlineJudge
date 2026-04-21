@@ -5,11 +5,14 @@
 #include <mutex>
 #include <time.h>
 #include <random>
+#include <unordered_map>
+#include <sw/redis++/redis++.h>
 #include "../../comm/comm.hpp"
-#include "../../comm/logstrategy.hpp"
+#include <Logger/logstrategy.h>
 
 namespace ns_session
 {
+    using namespace sw::redis;
     using namespace ns_log;
     using namespace ns_util;
 
@@ -28,9 +31,60 @@ namespace ns_session
     class SessionManager
     {
     private:
+        static constexpr const char* kSessionPrefix = "oj:prod:v1:session:user:";
+
         std::map<std::string, Session> _sessions;
         std::mutex _mtx;
         std::string _secret_key;
+        Redis _redis;
+
+        std::string BuildSessionKey(const std::string& session_id)
+        {
+            return std::string(kSessionPrefix) + session_id;
+        }
+
+        bool SetSessionToRedis(const Session& sess)
+        {
+            std::unordered_map<std::string, std::string> fields;
+            fields["session_id"] = sess.session_id;
+            fields["user_id"] = std::to_string(sess.user_id);
+            fields["email"] = sess.email;
+            fields["create_time"] = std::to_string(static_cast<long long>(sess.create_time));
+            fields["last_access_time"] = std::to_string(static_cast<long long>(sess.last_access_time));
+
+            std::string key = BuildSessionKey(sess.session_id);
+            _redis.hmset(key, fields.begin(), fields.end());
+            _redis.expire(key, SESSION_EXPIRE_SECONDS);
+            return true;
+        }
+
+        bool GetSessionFromRedis(const std::string& session_id, Session* session)
+        {
+            std::string key = BuildSessionKey(session_id);
+            std::unordered_map<std::string, std::string> fields;
+            _redis.hgetall(key, std::inserter(fields, fields.begin()));
+            if (fields.empty())
+            {
+                return false;
+            }
+
+            session->session_id = session_id;
+            session->user_id = std::stoi(fields["user_id"]);
+            session->email = fields["email"];
+            session->create_time = static_cast<time_t>(std::stoll(fields["create_time"]));
+            session->last_access_time = static_cast<time_t>(std::stoll(fields["last_access_time"]));
+
+            // 滑动续期
+            session->last_access_time = time(nullptr);
+            _redis.hset(key, "last_access_time", std::to_string(static_cast<long long>(session->last_access_time)));
+            _redis.expire(key, SESSION_EXPIRE_SECONDS);
+            return true;
+        }
+
+        void DeleteSessionFromRedis(const std::string& session_id)
+        {
+            _redis.del(BuildSessionKey(session_id));
+        }
 
         std::string GenerateSessionId()
         {
@@ -47,7 +101,7 @@ namespace ns_session
         }
 
     public:
-        SessionManager() : _secret_key("oj_secret_key_2026")
+        SessionManager() : _secret_key("oj_secret_key_2026"), _redis(redis_addr)
         {
         }
 
@@ -63,7 +117,15 @@ namespace ns_session
             sess.create_time = time(nullptr);
             sess.last_access_time = time(nullptr);
             
-            _sessions[session_id] = sess;
+            try
+            {
+                SetSessionToRedis(sess);
+            }
+            catch (const sw::redis::Error& e)
+            {
+                logger(ERROR) << "Redis session write failed, fallback to local map: " << e.what();
+                _sessions[session_id] = sess;
+            }
             
             logger(INFO) << "创建 Session: " << session_id << " for user: " << email;
             return session_id;
@@ -72,7 +134,24 @@ namespace ns_session
         bool GetSession(const std::string& session_id, Session* session)
         {
             std::lock_guard<std::mutex> lock(_mtx);
-            
+
+            if (session == nullptr)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (GetSessionFromRedis(session_id, session))
+                {
+                    return true;
+                }
+            }
+            catch (const sw::redis::Error& e)
+            {
+                logger(ERROR) << "Redis session read failed, fallback to local map: " << e.what();
+            }
+
             auto it = _sessions.find(session_id);
             if (it == _sessions.end())
             {
@@ -95,7 +174,16 @@ namespace ns_session
         void DestroySession(const std::string& session_id)
         {
             std::lock_guard<std::mutex> lock(_mtx);
-            _sessions.erase(session_id);
+            try
+            {
+                DeleteSessionFromRedis(session_id);
+            }
+            catch (const sw::redis::Error& e)
+            {
+                logger(ERROR) << "Redis session delete failed: " << e.what();
+            }
+
+            _sessions.erase(session_id); // fallback map cleanup
             logger(INFO) << "销毁 Session: " << session_id;
         }
 

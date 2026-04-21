@@ -1,7 +1,7 @@
 #include "../include/entry.hpp"
 #include <jsoncpp/json/value.h>
 #include <jsoncpp/json/writer.h>
-#include "../../comm/logstrategy.hpp"
+#include <Logger/logstrategy.h>
 #include <httplib.h>
 
 using namespace httplib;
@@ -28,7 +28,7 @@ int main(int argv,char* argc[])
             rep.set_content(out_json, "application/json;charset=utf-8");
         }
     });
-    ns_log::logger(INFO)<<"配置服务器 0.0.0.0:"<<argc[1]<<" 成功";
+    logger(INFO)<<"配置服务器 0.0.0.0:"<<argc[1]<<" 成功";
     //Daemon(false, false);
     svr.listen("0.0.0.0", atoi(argc[1]));
     return 0;

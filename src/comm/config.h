@@ -12,3 +12,4 @@ const std::string user = "oj_server";
 const std::string passwd = "Myoj@remotehost2026071024";
 const std::string db = "myoj";
 const int port = std::stoi("3306");
+const std::string redis_addr = "tcp://127.0.0.1:6379";

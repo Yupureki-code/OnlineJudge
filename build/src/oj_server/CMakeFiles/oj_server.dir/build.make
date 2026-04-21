@@ -92,6 +92,8 @@ oj_server_EXTERNAL_OBJECTS =
 
 /home/yupureki/project/OnlineJudge/output/oj_server: src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o
 /home/yupureki/project/OnlineJudge/output/oj_server: src/oj_server/CMakeFiles/oj_server.dir/build.make
+/home/yupureki/project/OnlineJudge/output/oj_server: /usr/local/lib/libredis++.so
+/home/yupureki/project/OnlineJudge/output/oj_server: /usr/lib/x86_64-linux-gnu/libhiredis.so
 /home/yupureki/project/OnlineJudge/output/oj_server: src/oj_server/CMakeFiles/oj_server.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable /home/yupureki/project/OnlineJudge/output/oj_server"
 	cd /home/yupureki/project/OnlineJudge/build/src/oj_server && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/oj_server.dir/link.txt --verbose=$(VERBOSE)

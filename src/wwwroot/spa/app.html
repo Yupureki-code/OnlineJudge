@@ -4,11 +4,39 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yupureki-OJ - 在线编程评测系统</title>
+    <link rel="preload" as="image" href="/pictures/preview.jpg">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        .page-loading-mask {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(24, 28, 24, 0.55);
+            backdrop-filter: blur(3px);
+            z-index: 99999;
+            transition: opacity 0.2s ease;
+        }
+
+        .page-loading-mask.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .page-loading-text {
+            color: #F4F6F0;
+            font-size: 18px;
+            letter-spacing: 0.08em;
+            padding: 12px 18px;
+            border: 1px solid rgba(244, 246, 240, 0.25);
+            border-radius: 12px;
+            background: rgba(24, 28, 24, 0.45);
         }
 
         .auth-btn {
@@ -37,6 +65,11 @@
             min-height: 100vh;
             overflow-x: hidden;
             background-color: #2D2F2C;
+            background-image: url('/pictures/preview.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
         }
 
         .background {
@@ -175,45 +208,9 @@
             color: rgba(244, 246, 240, 0.4);
         }
 
-        .clerk-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(8px);
-            z-index: 10000;
-            justify-content: center;
-            align-items: center;
-        }
 
-        .clerk-modal-content {
-            background: transparent;
-            max-width: 480px;
-            width: 90%;
-            border-radius: 24px;
-            position: relative;
-        }
 
-        .close-modal {
-            position: absolute;
-            top: -40px;
-            right: 0;
-            color: #F4F6F0;
-            font-size: 32px;
-            cursor: pointer;
-            background: none;
-            border: none;
-            padding: 8px;
-            line-height: 1;
-            transition: transform 0.2s;
-        }
 
-        .close-modal:hover {
-            transform: scale(1.1);
-        }
 
         .page-content {
             min-height: calc(100vh - 200px);
@@ -261,6 +258,9 @@
     </style>
 </head>
 <body>
+    <div id="page-loading-mask" class="page-loading-mask">
+        <div class="page-loading-text">加载中...</div>
+    </div>
     <div class="background"></div>
     <div class="rain-lines" id="rainLines"></div>
 
@@ -269,7 +269,7 @@
             <img src="./pictures/icon.png" width="40px" height="40px">
             <p class="logo">Yupureki-OJ</p>
             <a href="#home">首页</a>
-            <a href="#questions">题库</a>
+            <a href="/all_questions">题库</a>
             <a href="#about">关于</a>
         </div>
         <div class="search-container">
@@ -293,28 +293,14 @@
         <p>&copy; 2026 Yupureki-OJ. All rights reserved.</p>
     </div>
 
-    <div id="clerk-modal" class="clerk-modal">
-        <div class="clerk-modal-content">
-            <button class="close-modal" id="close-modal-btn">&times;</button>
-            <div id="clerk-signin-container"></div>
-        </div>
+
     </div>
 
-    <script
-      defer
-      crossorigin="anonymous"
-      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"
-      type="text/javascript">
-    </script>
-    <script
-      defer
-      crossorigin="anonymous"
-      data-clerk-publishable-key="pk_test_cXVpZXQtbWFjYXF1ZS02My5jbGVyay5hY2NvdW50cy5kZXYk"
-      src="https://quiet-macaque-63.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
-      type="text/javascript">
-    </script>
+    
+    
 
     <script src="./js/spa-router.js"></script>
-    <script src="./js/clerk-auth.js"></script>
+    <script src="/js/page-loading.js"></script>
+    <script src="/js/auth.js"></script>
 </body>
 </html>

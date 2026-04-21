@@ -12,3 +12,4 @@ const std::string user = "@USER@";
 const std::string passwd = "@PASSWD@";
 const std::string db = "@MYOJ@";
 const int port = std::stoi("@PORT@");
+const std::string redis_addr = "@REDIS@";

@@ -1,237 +1,508 @@
 <style>
+    .question-container {
+        padding: 20px;
+        position: relative;
+        z-index: 2;
+        min-height: calc(100vh - 100px);
+        width: 100%;
+        margin: 0;
+        display: flex;
+        animation: fadeIn 0.8s ease 0.2s both;
+        align-items: stretch;
+        box-sizing: border-box;
+    }
+
+    .resizer {
+        width: 12px;
+        background: transparent;
+        cursor: col-resize;
+        position: relative;
+        transition: background 0.3s ease;
+        z-index: 10;
+    }
+
+    .resizer::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 2px;
+        height: 100%;
+        background: rgba(244, 246, 240, 0.2);
+        transition: background 0.3s ease;
+    }
+
+    .resizer:hover::before,
+    .resizer.active::before {
+        background: rgba(244, 246, 240, 0.6);
+    }
+
+    .resizer:hover {
+        background: rgba(244, 246, 240, 0.1);
+    }
+
+    .resizer.active {
+        background: rgba(244, 246, 240, 0.2);
+    }
+    
     .question-section {
-        max-width: 900px;
-        margin: 0 auto;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-width: 300px;
     }
 
     .question-header {
-        margin-bottom: 30px;
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 30px;
+        border: 1px solid rgba(244, 246, 240, 0.1);
+        animation: fadeIn 0.8s ease;
     }
 
     .question-title {
         font-size: 32px;
-        font-weight: 300;
         color: #F4F6F0;
-        margin-bottom: 16px;
-        letter-spacing: 0.05em;
+        margin-bottom: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-weight: 300;
+        letter-spacing: 0.02em;
+        line-height: 1.2;
     }
 
     .question-meta {
         display: flex;
-        gap: 24px;
+        gap: 30px;
+        align-items: center;
         flex-wrap: wrap;
     }
 
     .meta-item {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
         color: rgba(244, 246, 240, 0.7);
         font-size: 14px;
+        letter-spacing: 0.02em;
     }
 
     .difficulty-badge {
-        padding: 4px 12px;
-        border-radius: 12px;
+        padding: 8px 20px;
+        border-radius: 20px;
         font-size: 12px;
-        font-weight: 300;
+        font-weight: 400;
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(244, 246, 240, 0.8);
+        border: 1px solid rgba(244, 246, 240, 0.2);
     }
 
-    .difficulty-badge.difficulty-简单 {
+    .difficulty-简单 {
         background: rgba(76, 175, 80, 0.15);
-        color: #4CAF50;
+        border-color: rgba(76, 175, 80, 0.3);
+        color: rgba(76, 175, 80, 0.8);
     }
 
-    .difficulty-badge.difficulty-中等 {
+    .difficulty-medium, .difficulty-中等 {
         background: rgba(255, 152, 0, 0.15);
-        color: #FF9800;
+        border-color: rgba(255, 152, 0, 0.3);
+        color: rgba(255, 152, 0, 0.8);
     }
 
-    .difficulty-badge.difficulty-困难 {
+    .difficulty-困难, .difficulty-hard {
         background: rgba(244, 67, 54, 0.15);
-        color: #F44336;
+        border-color: rgba(244, 67, 54, 0.3);
+        color: rgba(244, 67, 54, 0.8);
     }
 
-    .question-content {
+    .content-section {
         background: rgba(255, 255, 255, 0.08);
         backdrop-filter: blur(20px);
-        border-radius: 24px;
-        padding: 40px;
+        border-radius: 20px;
+        padding: 30px;
         border: 1px solid rgba(244, 246, 240, 0.1);
+        flex: 1;
+        overflow-y: auto;
     }
 
     .section-title {
         font-size: 20px;
-        font-weight: 400;
         color: #F4F6F0;
         margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-weight: 300;
         letter-spacing: 0.02em;
+        flex-shrink: 0;
     }
 
-    .description-text {
+    .section-title::before {
+        content: '';
+        width: 4px;
+        height: 20px;
+        background: rgba(244, 246, 240, 0.6);
+        border-radius: 2px;
+    }
+
+    .description {
         color: rgba(244, 246, 240, 0.85);
         line-height: 1.8;
         font-size: 15px;
         white-space: pre-wrap;
+        word-wrap: break-word;
+        letter-spacing: 0.02em;
     }
 
-    .code-section {
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 12px;
-        padding: 24px;
-        margin-top: 30px;
+    .code-editor {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 30px;
+        border: 1px solid rgba(244, 246, 240, 0.1);
+        animation: fadeIn 0.8s ease 0.4s both;
+        display: flex;
+        flex-direction: column;
+        min-width: 300px;
     }
 
-    .code-header {
+    .editor-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
-    }
-
-    .code-title {
+        margin-bottom: 20px;
         color: rgba(244, 246, 240, 0.6);
         font-size: 14px;
+        letter-spacing: 0.02em;
+        flex-shrink: 0;
     }
 
-    .language-badge {
-        color: rgba(244, 246, 240, 0.6);
-        font-size: 12px;
+    .editor-tabs {
+        display: flex;
+        gap: 12px;
     }
 
-    .code-area {
-        width: 100%;
-        min-height: 200px;
-        background: transparent;
-        border: 1px solid rgba(244, 246, 240, 0.2);
-        border-radius: 12px;
-        padding: 16px;
+    .tab {
+        padding: 8px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(244, 246, 240, 0.1);
+    }
+
+    .tab.active {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(244, 246, 240, 0.3);
         color: #F4F6F0;
-        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    #editor {
+        border-radius: 10px;
         font-size: 14px;
-        line-height: 1.6;
-        resize: vertical;
-    }
-
-    .code-area:focus {
-        outline: none;
-        border-color: rgba(76, 175, 80, 0.5);
-    }
-
-    .code-area::placeholder {
-        color: rgba(244, 246, 240, 0.4);
+        font-family: 'Courier New', monospace;
     }
 
     .submit-section {
-        margin-top: 30px;
         display: flex;
-        justify-content: flex-end;
-        gap: 16px;
+        justify-content: space-between;
+        gap: 20px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(244, 246, 240, 0.1);
+        flex-shrink: 0;
+        min-height: 100px;
     }
 
     .submit-btn {
-        padding: 14px 32px;
-        background: rgba(76, 175, 80, 0.2);
-        border: 1px solid rgba(76, 175, 80, 0.4);
-        border-radius: 12px;
+        padding: 16px 24px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
         color: #4CAF50;
-        font-size: 14px;
+        border: 1px solid rgba(244, 246, 240, 0.2);
+        border-radius: 50px;
+        font-size: 12px;
         font-weight: 400;
         cursor: pointer;
         transition: all 0.3s ease;
+        letter-spacing: 0.02em;
     }
 
     .submit-btn:hover {
-        background: rgba(76, 175, 80, 0.3);
+        background: rgba(255, 255, 255, 0.15);
         transform: translateY(-2px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .option-btn {
+        padding: 16px 16px;
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        color: rgba(244, 246, 240, 0.8);
+        border: 1px solid rgba(244, 246, 240, 0.1);
+        border-radius: 50px;
+        font-size: 12px;
+        font-weight: 400;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        letter-spacing: 0.02em;
+    }
+
+    .option-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #F4F6F0;
+        transform: translateY(-2px);
+    }
+
+    .jump-option {
+        width: 190px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+    }
+
+    .info-option {
+        width: 270px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
     }
 
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(30px); }
         to { opacity: 1; transform: translateY(0); }
     }
+
+    @media (max-width: 768px) {
+        .question-container {
+            flex-direction: column;
+        }
+        .resizer {
+            display: none;
+        }
+        .question-section, .code-editor {
+            min-width: 0;
+        }
+        .question-header { padding: 15px; }
+        .question-title { font-size: 18px; margin-bottom: 10px; }
+        .question-meta { flex-direction: row; flex-wrap: wrap; gap: 10px; font-size: 12px; }
+        .difficulty-badge { padding: 3px 8px; font-size: 11px; }
+        .description { font-size: 13px; line-height: 1.5; }
+        .submit-section { flex-direction: column; gap: 8px; }
+        .submit-btn { width: 100%; padding: 10px; color: green; font-size: 14px; }
+    }
 </style>
 
-<div class="question-section" id="questionSection">
-    <div style="text-align: center; padding: 60px; color: rgba(244, 246, 240, 0.6);">
-        加载中...
+<div class="question-container">
+    <div class="question-section" id="questionSection">
+        <div class="question-header">
+            <h1 class="question-title" id="questionTitle">加载中...</h1>
+            <div class="question-meta">
+                <div class="meta-item">
+                    <span>难度：</span>
+                    <span class="difficulty-badge" id="difficultyBadge">-</span>
+                </div>
+                <div class="meta-item">
+                    <span>时间限制：</span>
+                    <span>1秒</span>
+                </div>
+                <div class="meta-item">
+                    <span>内存限制：</span>
+                    <span>20MB</span>
+                </div>
+            </div>
+        </div>
+        <div class="content-section">
+            <h2 class="section-title">题目描述</h2>
+            <div class="description" id="questionDesc">加载中...</div>
+        </div>
+    </div>
+
+    <div class="resizer" id="resizer"></div>
+
+    <div class="code-editor" id="codeEditor">
+        <div class="editor-header">
+            <div class="editor-tabs">
+                <div class="tab active">C++</div>
+            </div>
+            <div>支持C++11标准</div>
+        </div>
+        <form id="codeForm" action="/judge/1" method="post" style="flex: 1; display: flex; flex-direction: column;">
+            <div id="editor-container" style="flex: 3; min-height: 200px; display: flex; flex-direction: column;">
+                <div id="editor" style="flex: 1; min-height: 0;"></div>
+            </div>
+            <div class="submit-section">
+                <div class="info-option">
+                    <button type="button" class="option-btn">测试结果</button>
+                    <button type="button" class="option-btn">测试用例</button>
+                    <button type="button" class="option-btn">提交记录</button>
+                </div>
+                <div class="jump-option">
+                    <a href="/all_questions" class="option-btn">返回题库</a>
+                    <button type="submit" class="submit-btn">提交代码</button>
+                </div>
+            </div>
+            <textarea name="code" id="code" style="display: none;"></textarea>
+            <input type="hidden" name="number" id="questionNumber">
+        </form>
     </div>
 </div>
 
 <script>
-    async function initPage(params) {
-        if (params && params.length > 0) {
-            const number = params[0];
-            loadQuestion(number);
-        }
-    }
-
-    async function loadQuestion(number) {
-        try {
-            const response = await fetch(`/questions/${number}`);
-            const html = await response.text();
+    if (typeof window.questionPage === 'undefined') {
+        window.questionPage = {
+            editor: null,
+            currentNumber: null,
             
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            
-            const title = doc.querySelector('.question-title')?.textContent || '题目';
-            const meta = doc.querySelector('.question-meta')?.innerHTML || '';
-            const content = doc.querySelector('.question-content')?.innerHTML || '';
-            
-            const section = document.getElementById('questionSection');
-            section.innerHTML = `
-                <div class="question-header">
-                    <h1 class="question-title">${title}</h1>
-                    <div class="question-meta">${meta}</div>
-                </div>
-                <div class="question-content">${content}</div>
+            init: function(number) {
+                if (this.currentNumber === number && this.editor) {
+                    return;
+                }
+                this.currentNumber = number;
                 
-                <div class="code-section">
-                    <div class="code-header">
-                        <span class="code-title">提交代码</span>
-                        <span class="language-badge">C++</span>
-                    </div>
-                    <textarea class="code-area" id="codeArea" placeholder="请输入您的代码..."></textarea>
-                    <div class="submit-section">
-                        <button class="submit-btn" id="submitBtn">提交代码</button>
-                    </div>
-                </div>
-            `;
+                var questionNum = document.getElementById('questionNumber');
+                var codeForm = document.getElementById('codeForm');
+                if (questionNum) questionNum.value = number;
+                if (codeForm) codeForm.action = '/judge/' + number;
+                
+                this.loadQuestion(number);
+                this.initEditor();
+                this.setupFormSubmit();
+                this.setupResizer();
+            },
             
-            const submitBtn = document.getElementById('submitBtn');
-            if (submitBtn) {
-                submitBtn.addEventListener('click', () => submitCode(number));
-            }
-        } catch (error) {
-            console.error('加载题目失败:', error);
-            document.getElementById('questionSection').innerHTML = 
-                '<div style="text-align: center; padding: 60px; color: rgba(244, 246, 240, 0.6);">加载失败</div>';
-        }
-    }
-
-    async function submitCode(number) {
-        const codeArea = document.getElementById('codeArea');
-        const code = codeArea?.value;
-        
-        if (!code || code.trim() === '') {
-            alert('请输入代码');
-            return;
-        }
-        
-        try {
-            const response = await fetch(`/judge/${number}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code })
-            });
+            loadQuestion: function(number) {
+                var self = this;
+                fetch('/api/question/' + number)
+                    .then(function(response) { return response.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            var q = data.question;
+                            var titleEl = document.getElementById('questionTitle');
+                            var badgeEl = document.getElementById('difficultyBadge');
+                            var descEl = document.getElementById('questionDesc');
+                            
+                            if (titleEl) titleEl.textContent = q.number + '. ' + q.title;
+                            if (descEl) descEl.textContent = q.desc;
+                            if (badgeEl) {
+                                badgeEl.textContent = q.star;
+                                badgeEl.className = 'difficulty-badge difficulty-' + q.star;
+                            }
+                            document.title = q.title + ' - Yupureki-OJ';
+                        } else {
+                            var titleEl = document.getElementById('questionTitle');
+                            var descEl = document.getElementById('questionDesc');
+                            if (titleEl) titleEl.textContent = '题目不存在';
+                            if (descEl) descEl.textContent = data.error || '无法加载题目';
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('加载题目失败:', error);
+                        var titleEl = document.getElementById('questionTitle');
+                        var descEl = document.getElementById('questionDesc');
+                        if (titleEl) titleEl.textContent = '加载失败';
+                        if (descEl) descEl.textContent = '网络错误，请重试';
+                    });
+            },
             
-            const result = await response.json();
-            if (result.success) {
-                window.location.hash = '#result';
+            initEditor: function() {
+                var editorEl = document.getElementById('editor');
+                if (!editorEl) return;
+                
+                if (this.editor) {
+                    this.editor.destroy();
+                }
+                
+                this.editor = ace.edit('editor');
+                this.editor.setTheme('ace/theme/monokai');
+                this.editor.session.setMode('ace/mode/c_cpp');
+                this.editor.setOptions({
+                    fontSize: '14px',
+                    lineNumbers: true,
+                    autoScrollEditorIntoView: true,
+                    copyWithEmptySelection: true,
+                    useSoftTabs: true,
+                    tabSize: 4
+                });
+                
+                this.editor.setValue('#include <iostream>\n\nint main()\n{\n    // 在这里编写你的代码\n    return 0;\n}');
+                this.editor.clearSelection();
+            },
+            
+            setupFormSubmit: function() {
+                var self = this;
+                document.getElementById('codeForm').addEventListener('submit', function(e) {
+                    var codeEl = document.getElementById('code');
+                    if (codeEl && self.editor) {
+                        codeEl.value = self.editor.getValue();
+                    }
+                });
+            },
+            
+            setupResizer: function() {
+                var resizer = document.getElementById('resizer');
+                var questionSection = document.querySelector('.question-section');
+                var codeEditor = document.getElementById('codeEditor');
+                
+                if (!resizer || !questionSection || !codeEditor) return;
+                
+                var isResizing = false;
+                
+                resizer.addEventListener('mousedown', function(e) {
+                    isResizing = true;
+                    resizer.classList.add('active');
+                });
+                
+                document.addEventListener('mousemove', function(e) {
+                    if (!isResizing) return;
+                    
+                    var container = document.querySelector('.question-container');
+                    var containerRect = container.getBoundingClientRect();
+                    var containerWidth = containerRect.width;
+                    
+                    var questionWidth = e.clientX - containerRect.left;
+                    var minWidth = containerWidth * 0.25;
+                    var maxWidth = containerWidth * 0.6;
+                    
+                    if (questionWidth >= minWidth && questionWidth <= maxWidth) {
+                        questionSection.style.flex = 'none';
+                        questionSection.style.width = questionWidth + 'px';
+                        codeEditor.style.flex = 'none';
+                        codeEditor.style.width = (containerWidth - questionWidth - 12) + 'px';
+                    }
+                });
+                
+                document.addEventListener('mouseup', function() {
+                    if (isResizing) {
+                        isResizing = false;
+                        resizer.classList.remove('active');
+                    }
+                });
+            },
+            
+            showTestResult: function() {
+                alert('测试结果功能开发中...');
+            },
+            
+            showTestCases: function() {
+                alert('测试用例功能开发中...');
+            },
+            
+            showSubmitHistory: function() {
+                alert('提交记录功能开发中...');
             }
-        } catch (error) {
-            console.error('提交失败:', error);
-            alert('提交失败');
-        }
+        };
     }
+    
+    window.initPage = function(params) {
+        var number = params && params[0] ? params[0] : '1';
+        if (window.questionPage) {
+            window.questionPage.init(number);
+        }
+    };
 </script>
