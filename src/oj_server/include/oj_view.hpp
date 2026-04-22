@@ -2,6 +2,9 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <fstream>
+#include <mutex>
 #include <ctemplate/template.h>
 #include "oj_model.hpp"
 #include "../../comm/comm.hpp"
@@ -72,5 +75,38 @@ namespace ns_view
             //开始渲染html
             tpl->Expand(html, &root);
         }
+        bool GetStaticHtml(const std::string& name, std::string* html, bool* cache_hit = nullptr)
+        {
+            {
+                std::lock_guard<std::mutex> lock(_html_cache_mtx);
+                auto it = _html_cache.find(name);
+                if (it != _html_cache.end())
+                {
+                    if (cache_hit != nullptr) *cache_hit = true;
+                    *html = it->second;
+                    return true;
+                }
+            }
+
+            std::string path = HTML_PATH + "/" + name;
+            std::ifstream in(path);
+            if (!in.is_open())
+            {
+                if (cache_hit != nullptr) *cache_hit = false;
+                return false;
+            }
+            std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            in.close();
+            if (cache_hit != nullptr) *cache_hit = false;
+            *html = content;
+            {
+                std::lock_guard<std::mutex> lock(_html_cache_mtx);
+                _html_cache[name] = content;
+            }
+            return true;
+        }
+    private:
+        std::unordered_map<std::string, std::string> _html_cache; //html缓存
+        std::mutex _html_cache_mtx;
     };
 };

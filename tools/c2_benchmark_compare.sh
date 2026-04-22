@@ -81,17 +81,30 @@ fetch_metrics_line() {
     local json
     json=$(curl -sS "$BASE_URL/api/metrics/cache" || true)
     if [[ -z "$json" ]]; then
-        echo "list_db_fallbacks=0 detail_db_fallbacks=0 list_requests=0 detail_requests=0"
+        echo "list_db_fallbacks=0 detail_db_fallbacks=0 list_requests=0 detail_requests=0 html_static_requests=0 html_static_hits=0 html_list_requests=0 html_list_hits=0 html_detail_requests=0 html_detail_hits=0"
         return
     fi
 
     local list_db detail_db list_req detail_req
+    local html_static_req html_static_hit html_list_req html_list_hit html_detail_req html_detail_hit
     list_db=$(extract_json_num "list_db_fallbacks" "$json")
     detail_db=$(extract_json_num "detail_db_fallbacks" "$json")
     list_req=$(extract_json_num "list_requests" "$json")
     detail_req=$(extract_json_num "detail_requests" "$json")
+    html_static_req=$(extract_json_num "html_static_requests" "$json")
+    html_static_hit=$(extract_json_num "html_static_hits" "$json")
+    html_list_req=$(extract_json_num "html_list_requests" "$json")
+    html_list_hit=$(extract_json_num "html_list_hits" "$json")
+    html_detail_req=$(extract_json_num "html_detail_requests" "$json")
+    html_detail_hit=$(extract_json_num "html_detail_hits" "$json")
 
-    echo "list_db_fallbacks=$list_db detail_db_fallbacks=$detail_db list_requests=$list_req detail_requests=$detail_req"
+    echo "list_db_fallbacks=$list_db detail_db_fallbacks=$detail_db list_requests=$list_req detail_requests=$detail_req html_static_requests=$html_static_req html_static_hits=$html_static_hit html_list_requests=$html_list_req html_list_hits=$html_list_hit html_detail_requests=$html_detail_req html_detail_hits=$html_detail_hit"
+}
+
+calc_hit_rate() {
+    local hits="$1"
+    local reqs="$2"
+    awk -v h="$hits" -v r="$reqs" 'BEGIN{ if (r<=0) printf "0.00"; else printf "%.2f", (h*100.0)/r }'
 }
 
 calc_stats() {
@@ -167,6 +180,12 @@ declare -a one_p95_vals one_avg_vals one_err_vals
 sum_list_db=0
 sum_detail_db=0
 sum_total_db=0
+sum_html_static_req=0
+sum_html_static_hit=0
+sum_html_list_req=0
+sum_html_list_hit=0
+sum_html_detail_req=0
+sum_html_detail_hit=0
 
 for ((round=1; round<=ROUNDS; round++)); do
     start_metrics=$(fetch_metrics_line)
@@ -187,10 +206,22 @@ for ((round=1; round<=ROUNDS; round++)); do
     delta_list_db=$(( end_list_db_fallbacks - start_list_db_fallbacks ))
     delta_detail_db=$(( end_detail_db_fallbacks - start_detail_db_fallbacks ))
     delta_db_total=$(( delta_list_db + delta_detail_db ))
+    delta_html_static_req=$(( end_html_static_requests - start_html_static_requests ))
+    delta_html_static_hit=$(( end_html_static_hits - start_html_static_hits ))
+    delta_html_list_req=$(( end_html_list_requests - start_html_list_requests ))
+    delta_html_list_hit=$(( end_html_list_hits - start_html_list_hits ))
+    delta_html_detail_req=$(( end_html_detail_requests - start_html_detail_requests ))
+    delta_html_detail_hit=$(( end_html_detail_hits - start_html_detail_hits ))
 
     sum_list_db=$(( sum_list_db + delta_list_db ))
     sum_detail_db=$(( sum_detail_db + delta_detail_db ))
     sum_total_db=$(( sum_total_db + delta_db_total ))
+    sum_html_static_req=$(( sum_html_static_req + delta_html_static_req ))
+    sum_html_static_hit=$(( sum_html_static_hit + delta_html_static_hit ))
+    sum_html_list_req=$(( sum_html_list_req + delta_html_list_req ))
+    sum_html_list_hit=$(( sum_html_list_hit + delta_html_list_hit ))
+    sum_html_detail_req=$(( sum_html_detail_req + delta_html_detail_req ))
+    sum_html_detail_hit=$(( sum_html_detail_hit + delta_html_detail_hit ))
 
     all_p95_vals+=("$all_p95")
     all_avg_vals+=("$all_avg")
@@ -199,7 +230,9 @@ for ((round=1; round<=ROUNDS; round++)); do
     one_avg_vals+=("$one_avg")
     one_err_vals+=("$one_error_rate")
 
-    echo "[C2][round ${round}/${ROUNDS}] all p95=${all_p95}s avg=${all_avg}s err=${all_error_rate}% | one p95=${one_p95}s avg=${one_avg}s err=${one_error_rate}% | db_total=${delta_db_total}"
+    round_html_list_rate=$(calc_hit_rate "$delta_html_list_hit" "$delta_html_list_req")
+    round_html_detail_rate=$(calc_hit_rate "$delta_html_detail_hit" "$delta_html_detail_req")
+    echo "[C2][round ${round}/${ROUNDS}] all p95=${all_p95}s avg=${all_avg}s err=${all_error_rate}% | one p95=${one_p95}s avg=${one_avg}s err=${one_error_rate}% | db_total=${delta_db_total} | html(list/detail)_hit=${round_html_list_rate}%/${round_html_detail_rate}%"
 done
 
 all_p95=$(median_num "${all_p95_vals[@]}")
@@ -212,6 +245,15 @@ one_error_rate=$(median_num "${one_err_vals[@]}")
 delta_list_db="$sum_list_db"
 delta_detail_db="$sum_detail_db"
 delta_db_total="$sum_total_db"
+html_static_requests_delta="$sum_html_static_req"
+html_static_hits_delta="$sum_html_static_hit"
+html_list_requests_delta="$sum_html_list_req"
+html_list_hits_delta="$sum_html_list_hit"
+html_detail_requests_delta="$sum_html_detail_req"
+html_detail_hits_delta="$sum_html_detail_hit"
+html_static_hit_rate=$(calc_hit_rate "$html_static_hits_delta" "$html_static_requests_delta")
+html_list_hit_rate=$(calc_hit_rate "$html_list_hits_delta" "$html_list_requests_delta")
+html_detail_hit_rate=$(calc_hit_rate "$html_detail_hits_delta" "$html_detail_requests_delta")
 
 report_file="$OUT_DIR/${LABEL}.txt"
 cat > "$report_file" <<EOF
@@ -232,14 +274,24 @@ one_error_rate=$one_error_rate
 db_fallback_list_delta=$delta_list_db
 db_fallback_detail_delta=$delta_detail_db
 db_fallback_total_delta=$delta_db_total
+html_static_requests_delta=$html_static_requests_delta
+html_static_hits_delta=$html_static_hits_delta
+html_static_hit_rate=$html_static_hit_rate
+html_list_requests_delta=$html_list_requests_delta
+html_list_hits_delta=$html_list_hits_delta
+html_list_hit_rate=$html_list_hit_rate
+html_detail_requests_delta=$html_detail_requests_delta
+html_detail_hits_delta=$html_detail_hits_delta
+html_detail_hit_rate=$html_detail_hit_rate
 EOF
 
 echo "[C2] snapshot written: $report_file"
 echo "[C2] all_questions: p95=${all_p95}s avg=${all_avg}s err=${all_error_rate}%"
 echo "[C2] one_question : p95=${one_p95}s avg=${one_avg}s err=${one_error_rate}%"
 echo "[C2] mysql回源(代理): list=$delta_list_db detail=$delta_detail_db total=$delta_db_total"
+echo "[C2] html命中率(本轮累计): static=${html_static_hit_rate}% list=${html_list_hit_rate}% detail=${html_detail_hit_rate}%"
 
-if [[ -f "$OUT_DIR/baseline.txt" && -f "$OUT_DIR/candidate.txt" ]]; then
+if [[ "$LABEL" == "candidate" && -f "$OUT_DIR/baseline.txt" && -f "$OUT_DIR/candidate.txt" ]]; then
     get_kv() {
         local file="$1"
         local key="$2"
@@ -251,12 +303,16 @@ if [[ -f "$OUT_DIR/baseline.txt" && -f "$OUT_DIR/candidate.txt" ]]; then
     base_all_err="$(get_kv "$OUT_DIR/baseline.txt" "all_error_rate")"
     base_one_err="$(get_kv "$OUT_DIR/baseline.txt" "one_error_rate")"
     base_db_total="$(get_kv "$OUT_DIR/baseline.txt" "db_fallback_total_delta")"
+    base_html_list_hit_rate="$(get_kv "$OUT_DIR/baseline.txt" "html_list_hit_rate")"
+    base_html_detail_hit_rate="$(get_kv "$OUT_DIR/baseline.txt" "html_detail_hit_rate")"
 
     cand_all_p95="$(get_kv "$OUT_DIR/candidate.txt" "all_p95")"
     cand_one_p95="$(get_kv "$OUT_DIR/candidate.txt" "one_p95")"
     cand_all_err="$(get_kv "$OUT_DIR/candidate.txt" "all_error_rate")"
     cand_one_err="$(get_kv "$OUT_DIR/candidate.txt" "one_error_rate")"
     cand_db_total="$(get_kv "$OUT_DIR/candidate.txt" "db_fallback_total_delta")"
+    cand_html_list_hit_rate="$(get_kv "$OUT_DIR/candidate.txt" "html_list_hit_rate")"
+    cand_html_detail_hit_rate="$(get_kv "$OUT_DIR/candidate.txt" "html_detail_hit_rate")"
 
     echo ""
     echo "========== C2 Compare (baseline -> candidate) =========="
@@ -265,4 +321,6 @@ if [[ -f "$OUT_DIR/baseline.txt" && -f "$OUT_DIR/candidate.txt" ]]; then
     awk -v b="$base_all_err" -v c="$cand_all_err" 'BEGIN{ printf("all_questions err: %.2f%% -> %.2f%%\n", b, c)}'
     awk -v b="$base_one_err" -v c="$cand_one_err" 'BEGIN{ printf("one_question  err: %.2f%% -> %.2f%%\n", b, c)}'
     echo "db_fallback_total: ${base_db_total} -> ${cand_db_total}"
+    awk -v b="$base_html_list_hit_rate" -v c="$cand_html_list_hit_rate" 'BEGIN{ printf("html list hit: %.2f%% -> %.2f%%\n", b, c)}'
+    awk -v b="$base_html_detail_hit_rate" -v c="$cand_html_detail_hit_rate" 'BEGIN{ printf("html detail hit: %.2f%% -> %.2f%%\n", b, c)}'
 fi

@@ -20,8 +20,11 @@ endif()
 # 包含头文件目录
 target_include_directories(oj_server PRIVATE ${CMAKE_SOURCE_DIR}/src/oj_server/include)
 
+find_package(CURL REQUIRED)
+find_package(OpenSSL REQUIRED)
+
 # 链接库
-target_link_libraries(oj_server PRIVATE pthread mysqlclient jsoncpp ctemplate cpp-httplib Logger)
+target_link_libraries(oj_server PRIVATE pthread mysqlclient jsoncpp ctemplate cpp-httplib Logger CURL::libcurl OpenSSL::Crypto)
 
 # Redis client libraries (redis++ depends on hiredis)
 find_library(REDIS_PLUS_PLUS_LIB NAMES redis++ redis++_static)

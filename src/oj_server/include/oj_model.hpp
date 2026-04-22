@@ -29,32 +29,46 @@ namespace ns_model
         std::string email; //邮箱
         std::string create_time; //创建时间
         std::string last_login; //最后登录时间
+        std::string password_algo; //密码算法
     };
 
     class Model
     {
     private:
-        struct CacheMetrics
+        struct CacheMetrics// 缓存指标结构体:记录题目列表和题目详情这两条查询链路的运行指标。
         {
-            std::atomic<long long> list_requests{0};
-            std::atomic<long long> list_hits{0};
-            std::atomic<long long> list_misses{0};
-            std::atomic<long long> list_db_fallbacks{0};
-            std::atomic<long long> list_total_ms{0};
+            std::atomic<long long> list_requests{0};// all_questions请求总数
+            std::atomic<long long> list_hits{0};// all_questions缓存命中数
+            std::atomic<long long> list_misses{0};// all_questions缓存未命中数
+            std::atomic<long long> list_db_fallbacks{0};// all_questions数据库回退数
+            std::atomic<long long> list_total_ms{0};// all_questions总耗时
 
-            std::atomic<long long> detail_requests{0};
-            std::atomic<long long> detail_hits{0};
-            std::atomic<long long> detail_misses{0};
-            std::atomic<long long> detail_db_fallbacks{0};
-            std::atomic<long long> detail_total_ms{0};
+            std::atomic<long long> detail_requests{0};// one_question请求总数
+            std::atomic<long long> detail_hits{0};// one_question缓存命中数
+            std::atomic<long long> detail_misses{0};// one_question缓存未命中数
+            std::atomic<long long> detail_db_fallbacks{0};// one_question数据库回退数
+            std::atomic<long long> detail_total_ms{0};// one_question总耗时
+
+            std::atomic<long long> html_static_requests{0};
+            std::atomic<long long> html_static_hits{0};
+            std::atomic<long long> html_static_misses{0};
+
+            std::atomic<long long> html_list_requests{0};
+            std::atomic<long long> html_list_hits{0};
+            std::atomic<long long> html_list_misses{0};
+
+            std::atomic<long long> html_detail_requests{0};
+            std::atomic<long long> html_detail_hits{0};
+            std::atomic<long long> html_detail_misses{0};
         };
 
-        static CacheMetrics& Metrics()
+        static CacheMetrics& Metrics()// 获取缓存指标实例
         {
             static CacheMetrics m;
             return m;
         }
 
+        // 记录题目列表查询的指标数据
         void RecordListMetrics(bool cache_hit, bool db_fallback, long long cost_ms)
         {
             auto& m = Metrics();
@@ -82,6 +96,7 @@ namespace ns_model
             }
         }
 
+        // 记录题目详情查询的指标数据  
         void RecordDetailMetrics(bool cache_hit, bool db_fallback, long long cost_ms)
         {
             auto& m = Metrics();
@@ -107,6 +122,36 @@ namespace ns_model
                                      << " db_fallback=" << fallbacks
                                      << " avg_ms=" << avg_ms;
             }
+        }
+
+        void RecordHtmlStaticMetrics(bool cache_hit)
+        {
+            auto& m = Metrics();
+            m.html_static_requests.fetch_add(1, std::memory_order_relaxed);
+            if (cache_hit)
+                m.html_static_hits.fetch_add(1, std::memory_order_relaxed);
+            else
+                m.html_static_misses.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        void RecordHtmlListMetrics(bool cache_hit)
+        {
+            auto& m = Metrics();
+            m.html_list_requests.fetch_add(1, std::memory_order_relaxed);
+            if (cache_hit)
+                m.html_list_hits.fetch_add(1, std::memory_order_relaxed);
+            else
+                m.html_list_misses.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        void RecordHtmlDetailMetrics(bool cache_hit)
+        {
+            auto& m = Metrics();
+            m.html_detail_requests.fetch_add(1, std::memory_order_relaxed);
+            if (cache_hit)
+                m.html_detail_hits.fetch_add(1, std::memory_order_relaxed);
+            else
+                m.html_detail_misses.fetch_add(1, std::memory_order_relaxed);
         }
 
         using MySqlConn = std::unique_ptr<MYSQL, void(*)(MYSQL*)>;
@@ -257,8 +302,10 @@ namespace ns_model
             return true;
         }
 
+        //构建题目列表查询的WHERE子句
         std::string BuildQuestionWhereClause(const QueryStruct& query_hash, MYSQL* my)
         {
+            //条件列表
             std::vector<std::string> clauses;
 
             // both 模式映射后会产生 id/title 同值，且 id 为纯数字，此时保持 OR 语义。
@@ -267,30 +314,36 @@ namespace ns_model
                 query_hash.id == query_hash.title &&
                 IsAllDigits(query_hash.id))
             {
+                //id title内容相同，并且还都是纯数字，说明用户可能在同时搜索id和title，这时保持OR关系
                 std::string safe_title = EscapeSqlString(query_hash.title, my);
                 clauses.push_back("(id=" + query_hash.id + " or title like '%" + safe_title + "%')");
             }
             else
             {
+                //id和title不同时存在，或者虽然同时存在但内容不同，或者虽然同时存在且内容相同但不是纯数字，这三种情况都保持AND关系
                 if (!query_hash.id.empty())
                 {
                     if (IsAllDigits(query_hash.id))
                     {
+                        //纯数字才允许进入SQL
                         clauses.push_back("id=" + query_hash.id);
                     }
                     else
                     {
+                        //否则给一个永远不可能成立的条件，让SQL返回空结果
                         clauses.push_back("1=0");
                     }
                 }
 
                 if (!query_hash.title.empty())
                 {
+                    // title使用模糊匹配
                     std::string safe_title = EscapeSqlString(query_hash.title, my);
                     clauses.push_back("title like '%" + safe_title + "%'");
                 }
             }
 
+            //如果difficulty不为空,会把英文难度映射成中文：
             if (!query_hash.difficulty.empty())
             {
                 std::string difficulty = query_hash.difficulty;
@@ -324,7 +377,7 @@ namespace ns_model
             return where.str();
         }
 
-        //查询用户
+        //查询用户基础信息
         bool QueryUser(const std::string& sql, User* user)
         {
             auto my = CreateConnection();
@@ -348,11 +401,60 @@ namespace ns_model
                 return false;
             }
             MYSQL_ROW row = mysql_fetch_row(res);
+            if (row == nullptr)
+            {
+                mysql_free_result(res);
+                return false;
+            }
             user->uid = atoi(row[0]);
             user->name = row[1];
-            user->email = row[4];
-            user->create_time = row[2];
-            user->last_login = row[3];
+            user->email = row[2];
+            user->create_time = row[3];
+            user->last_login = row[4];
+            user->password_algo = row[5] == nullptr ? "" : row[5];
+            mysql_free_result(res);
+            return true;
+        }
+
+        bool QueryUserPasswordAuth(const std::string& sql, std::string* password_hash, std::string* password_algo)
+        {
+            if (password_hash == nullptr || password_algo == nullptr)
+            {
+                return false;
+            }
+
+            auto my = CreateConnection();
+            if(!my)
+                return false;
+            if(mysql_query(my.get(), sql.c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询错误!";
+                return false;
+            }
+
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql结果集为空!";
+                return false;
+            }
+
+            int rows = mysql_num_rows(res);
+            if (rows != 1)
+            {
+                mysql_free_result(res);
+                return false;
+            }
+
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row == nullptr)
+            {
+                mysql_free_result(res);
+                return false;
+            }
+
+            *password_hash = row[0] == nullptr ? "" : row[0];
+            *password_algo = row[1] == nullptr ? "" : row[1];
             mysql_free_result(res);
             return true;
         }
@@ -385,6 +487,18 @@ namespace ns_model
             long long detail_misses = 0;
             long long detail_db_fallbacks = 0;
             long long detail_total_ms = 0;
+
+            long long html_static_requests = 0;
+            long long html_static_hits = 0;
+            long long html_static_misses = 0;
+
+            long long html_list_requests = 0;
+            long long html_list_hits = 0;
+            long long html_list_misses = 0;
+
+            long long html_detail_requests = 0;
+            long long html_detail_hits = 0;
+            long long html_detail_misses = 0;
         };
 
         bool GetAllQuestions(std::vector<Question>* questions)
@@ -396,17 +510,41 @@ namespace ns_model
             sql += oj_questions;
             return QueryMySql(sql, *questions);
         }
+        bool GetHtmlPage(std::string *html,
+                         std::shared_ptr<Cache::CacheKey> key)
+        {
+            return _cache.GetHtmlPage(html, key);
+        }
+        void SetHtmlPage(std::string *html,
+                         std::shared_ptr<Cache::CacheKey> key)
+        {
+            _cache.SetHtmlPage(html, key);
+        }
+        void InvalidatePage(std::shared_ptr<Cache::CacheKey> key)
+        {
+            _cache.InvalidatePage(key);
+        }
+        void RecordStaticHtmlCacheMetrics(bool cache_hit)
+        {
+            RecordHtmlStaticMetrics(cache_hit);
+        }
+        void RecordListHtmlCacheMetrics(bool cache_hit)
+        {
+            RecordHtmlListMetrics(cache_hit);
+        }
+        void RecordDetailHtmlCacheMetrics(bool cache_hit)
+        {
+            RecordHtmlDetailMetrics(cache_hit);
+        }
 
         //题库:得到一页内全部的题目
-        bool GetAllQuestions(int page,
-                             int size,
-                             const std::string& list_version,
+        bool GetAllQuestions(std::shared_ptr<Cache::CacheListKey> key,
                              std::vector<Question>& questions,
                              int* total_count,
-                             int* total_pages,
-                             const QueryStruct& query_hash = QueryStruct())
+                             int* total_pages)
         {
             auto begin = std::chrono::steady_clock::now();
+            // 参数校验，这一步顺便记录一次列表查询指标，表示这次请求没有成功完成
             if (total_count == nullptr || total_pages == nullptr)
             {
                 auto end = std::chrono::steady_clock::now();
@@ -414,55 +552,60 @@ namespace ns_model
                 RecordListMetrics(false, false, cost_ms);
                 return false;
             }
-
-            if (page < 1) page = 1;
-            if (size < 1) size = 5;
-
-            (void)list_version;
-
-            QueryStruct normalized_query = NormalizeQuestionQuery(query_hash);
-            std::string effective_list_version = _cache.GetListVersion();
-
-            if(_cache.GetAllQuestions(page, size, effective_list_version, total_count, total_pages, questions, normalized_query))
+            // 先查缓存:
+            //  调用 _cache.GetAllQuestions(...) 尝试从 Redis 读取这一页的数据。
+            //  缓存命中时，函数直接返回 true。
+            //  这时 questions、total_count、total_pages 都会被缓存结果填好。
+            //  同时记录一次“缓存命中”的指标。
+            if(_cache.GetAllQuestions(key,  questions,total_count, total_pages))
             {
-                logger(ns_log::INFO) << "Cache hit for question list page " << page;
+                logger(ns_log::INFO) << "Cache hit for question list page " << key->GetCacheKeyString(&_cache);
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 RecordListMetrics(true, false, cost_ms);
                 return true;
             }
-
+            // 缓存没命中就查数据库
+            // 先创建 MySQL 连接。
             auto my = CreateConnection();
             if (!my)
             {
+                // 如果连接失败，直接返回 false，并记录这次是回源失败。
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 RecordListMetrics(false, true, cost_ms);
                 return false;
             }
-
-            std::string where_clause = BuildQuestionWhereClause(normalized_query, my.get());
-
+            // 然后根据查询条件生成 where_clause，拼出统计总数的 SQL。
+            std::string where_clause = BuildQuestionWhereClause(key->GetQueryHash(), my.get());
+            //先执行 select count(*) ... 得到满足条件的题目总数，写入 total_count。
             std::string count_sql = "select count(*) from " + oj_questions + where_clause;
             if (!QueryCount(count_sql, total_count))
             {
+                //如果统计失败，直接返回 false。
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 RecordListMetrics(false, true, cost_ms);
                 return false;
             }
-
+            // 如果 total_count <= 0，说明没有任何结果：
+            // total_pages 设为 0
+            // questions.clear()
+            // 仍然把这个空结果写入缓存
+            // 返回 true
             if (*total_count <= 0)
             {
                 *total_pages = 0;
                 questions.clear();
-                _cache.SetAllQuestions(page, size, effective_list_version, *total_count, *total_pages, questions, normalized_query);
+                _cache.SetAllQuestions(key, questions,*total_count, *total_pages);
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 RecordListMetrics(false, true, cost_ms);
                 return true;
             }
-
+            //计算分页并查当前页数据
+            int size = key->GetSize();
+            int page = key->GetPage();
             *total_pages = (*total_count + size - 1) / size;
             int safe_page = std::min(page, *total_pages);
             int offset = (safe_page - 1) * size;
@@ -479,12 +622,23 @@ namespace ns_model
                 RecordListMetrics(false, true, cost_ms);
                 return false;
             }
-
-            _cache.SetAllQuestions(safe_page, size, effective_list_version, *total_count, *total_pages, questions, normalized_query);
+            // 回填缓存
+            // 数据查出来后，会调用 _cache.SetAllQuestions(...) 写回 Redis。
+            // 缓存键里包含：
+            // 查询条件
+            // 页码
+            // 每页大小
+            // 列表版本号
+            // 这样下次同样条件的请求就可以直接命中缓存。
+            auto write_key = _cache.BuildListCacheKey(key->GetQueryHash(), safe_page, size, key->GetListVersion(), Cache::CacheKey::PageType::kData);
+            _cache.SetAllQuestions(write_key, questions, *total_count, *total_pages);
             auto end = std::chrono::steady_clock::now();
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
             RecordListMetrics(false, true, cost_ms);
             return true;
+            // 记录指标并返回
+            // 无论是缓存命中还是数据库回源成功，都会调用 RecordListMetrics(...)。
+            // 这里的统计不是为了业务逻辑本身，而是为了监控缓存效果和接口耗时。
         }
         //题目:获得单个题目
         bool GetOneQuestion(const std::string& number,Question& q)
@@ -497,7 +651,8 @@ namespace ns_model
                 RecordDetailMetrics(false, false, cost_ms);
                 return false;
             }
-            if(_cache.GetQuestion(number, q))
+            auto detail_key = _cache.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kData);
+            if(_cache.GetQuestion(detail_key, q))
             {
                 logger(ns_log::INFO) << "Cache hit for question " << number;
                 auto end = std::chrono::steady_clock::now();
@@ -511,7 +666,7 @@ namespace ns_model
             std::vector<Question> v;
             if (!QueryMySql(sql, v))
             {
-                _cache.SetQuestionNotFound(number);
+                _cache.SetQuestionNotFound(detail_key, number);
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 RecordDetailMetrics(false, true, cost_ms);
@@ -519,20 +674,21 @@ namespace ns_model
             }
             if(v.size() != 1)
             {
-                _cache.SetQuestionNotFound(number);
+                _cache.SetQuestionNotFound(detail_key, number);
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 RecordDetailMetrics(false, true, cost_ms);
                 return false;
             }
             q = v[0];
-            _cache.SetQuestion(q);
+            _cache.SetQuestion(detail_key, q);
             auto end = std::chrono::steady_clock::now();
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
             RecordDetailMetrics(false, true, cost_ms);
             return true;
         }
 
+        //题目写接口:新增或修改题目
         bool SaveQuestion(const Question& input)
         {
             if (!IsAllDigits(input.number))
@@ -564,7 +720,10 @@ namespace ns_model
             }
 
             Question cached = input;
-            _cache.SetQuestion(cached);
+            auto detail_key = _cache.BuildDetailCacheKey(input.number, Cache::CacheKey::PageType::kData);
+            _cache.SetQuestion(detail_key, cached);
+            auto detail_html_key = _cache.BuildDetailCacheKey(input.number, Cache::CacheKey::PageType::kHtml);
+            _cache.InvalidatePage(detail_html_key);
             TouchQuestionListVersion();
             return true;
         }
@@ -582,7 +741,10 @@ namespace ns_model
                 return false;
             }
 
-            _cache.SetQuestionNotFound(number);
+            auto detail_key = _cache.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kData);
+            _cache.SetQuestionNotFound(detail_key, number);
+            auto detail_html_key = _cache.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kHtml);
+            _cache.InvalidatePage(detail_html_key);
             TouchQuestionListVersion();
             return true;
         }
@@ -622,7 +784,9 @@ namespace ns_model
 
             std::string safe_name = EscapeSqlString(name, my.get());
             std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "insert into " + oj_users + " (name, email) values ('" + safe_name + "', '" + safe_email + "')";
+            std::string sql = "insert into " + oj_users +
+                              " (name, password_hash, email, password_algo) values ('" +
+                              safe_name + "', '', '" + safe_email + "', 'none')";
             return ExecuteSql(sql);
         }
 
@@ -634,7 +798,7 @@ namespace ns_model
                 return false;
 
             std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "select * from " + oj_users + " where email='" + safe_email + "'";
+            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where email='" + safe_email + "'";
             return QueryUser(sql, user);
         }
 
@@ -653,8 +817,35 @@ namespace ns_model
         //用户:通过ID获取用户信息
         bool GetUserById(int uid, User* user)
         {
-            std::string sql = "select * from " + oj_users + " where uid=" + std::to_string(uid);
+            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where uid=" + std::to_string(uid);
             return QueryUser(sql, user);
+        }
+
+        bool SetUserPassword(const std::string& email, const std::string& password_hash, const std::string& password_algo)
+        {
+            auto my = CreateConnection();
+            if(!my)
+                return false;
+
+            std::string safe_email = EscapeSqlString(email, my.get());
+            std::string safe_hash = EscapeSqlString(password_hash, my.get());
+            std::string safe_algo = EscapeSqlString(password_algo, my.get());
+            std::string sql = "update " + oj_users +
+                              " set password_hash='" + safe_hash +
+                              "', password_algo='" + safe_algo +
+                              "', password_update_at=NOW() where email='" + safe_email + "'";
+            return ExecuteSql(sql);
+        }
+
+        bool GetUserPasswordAuth(const std::string& email, std::string* password_hash, std::string* password_algo)
+        {
+            auto my = CreateConnection();
+            if(!my)
+                return false;
+
+            std::string safe_email = EscapeSqlString(email, my.get());
+            std::string sql = "select password_hash,password_algo from " + oj_users + " where email='" + safe_email + "'";
+            return QueryUserPasswordAuth(sql, password_hash, password_algo);
         }
 
         CacheMetricsSnapshot GetCacheMetricsSnapshot() const
@@ -672,6 +863,18 @@ namespace ns_model
             s.detail_misses = m.detail_misses.load(std::memory_order_relaxed);
             s.detail_db_fallbacks = m.detail_db_fallbacks.load(std::memory_order_relaxed);
             s.detail_total_ms = m.detail_total_ms.load(std::memory_order_relaxed);
+
+            s.html_static_requests = m.html_static_requests.load(std::memory_order_relaxed);
+            s.html_static_hits = m.html_static_hits.load(std::memory_order_relaxed);
+            s.html_static_misses = m.html_static_misses.load(std::memory_order_relaxed);
+
+            s.html_list_requests = m.html_list_requests.load(std::memory_order_relaxed);
+            s.html_list_hits = m.html_list_hits.load(std::memory_order_relaxed);
+            s.html_list_misses = m.html_list_misses.load(std::memory_order_relaxed);
+
+            s.html_detail_requests = m.html_detail_requests.load(std::memory_order_relaxed);
+            s.html_detail_hits = m.html_detail_hits.load(std::memory_order_relaxed);
+            s.html_detail_misses = m.html_detail_misses.load(std::memory_order_relaxed);
             return s;
         }
 
@@ -681,6 +884,23 @@ namespace ns_model
             std::string version = _cache.BumpListVersion();
             logger(ns_log::INFO) << "Question list version bumped to " << version;
             return version;
+        }
+        std::string GetListVersion()
+        {
+            return _cache.GetListVersion();
+        }
+        std::shared_ptr<Cache::CacheListKey> BuildListCacheKey(const QueryStruct& query_hash, int page, int size, const std::string& list_version, Cache::CacheKey::PageType page_type)
+        {
+            QueryStruct normalized_query = NormalizeQuestionQuery(query_hash);
+            return _cache.BuildListCacheKey(normalized_query, page, size, list_version, page_type);
+        }
+        std::shared_ptr<Cache::CacheDetailKey> BuildDetailCacheKey(const std::string& number, Cache::CacheKey::PageType page_type)
+        {
+            return _cache.BuildDetailCacheKey(number, page_type);
+        }
+        std::shared_ptr<Cache::CacheStaticKey> BuildHtmlCacheKey(const std::string& page_name, Cache::CacheKey::PageType page_type)
+        {
+            return _cache.BuildStaticCacheKey(page_name, page_type);
         }
     private:
         Cache _cache;

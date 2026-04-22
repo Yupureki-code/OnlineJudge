@@ -1,12 +1,77 @@
-// Unified auth script based on backend session APIs.
-
+// Unified auth script based on email verification code APIs.
 (function () {
+    const state = {
+        currentUser: null,
+        sendCodeCooldownTimer: null,
+        sendCodeCooldownLeft: 0,
+        pendingRouteAfterLogin: ""
+    };
+
     function trim(value) {
         return (value || "").trim();
     }
 
     function isValidEmail(email) {
         return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email);
+    }
+
+    function isValidCode(code) {
+        return /^\d{6}$/.test(code);
+    }
+
+    function mapSendCodeError(errorCode, status) {
+        if (status === 429 || errorCode === "TOO_MANY_REQUESTS") {
+            return "请求过于频繁，请稍后再试";
+        }
+        if (errorCode === "EMAIL_DAILY_LIMIT") {
+            return "该邮箱今日发送次数已达上限";
+        }
+        if (errorCode === "IP_DAILY_LIMIT") {
+            return "当前网络今日发送次数已达上限";
+        }
+        if (errorCode === "MAIL_SEND_FAILED") {
+            return "验证码发送失败，请稍后重试";
+        }
+        return "发送验证码失败，请稍后重试";
+    }
+
+    function mapVerifyCodeError(errorCode, status) {
+        if (status === 429 || errorCode === "ATTEMPTS_EXCEEDED") {
+            return "验证失败次数过多，请重新获取验证码";
+        }
+        if (errorCode === "CODE_NOT_FOUND") {
+            return "验证码不存在或已过期，请重新获取";
+        }
+        if (errorCode === "CODE_MISMATCH") {
+            return "验证码错误，请检查后重试";
+        }
+        if (errorCode === "CODE_EXPIRED") {
+            return "验证码已过期，请重新获取";
+        }
+        if (errorCode === "USER_CREATE_FAILED") {
+            return "自动创建账号失败，请稍后重试";
+        }
+        return "验证失败，请稍后重试";
+    }
+
+    async function getJson(url) {
+        const response = await fetch(url, {
+            method: "GET",
+            credentials: "include"
+        });
+
+        let payload = {};
+        try {
+            payload = await response.json();
+        } catch (e) {
+            payload = { success: false, error: "响应解析失败" };
+        }
+
+        return {
+            ok: response.ok,
+            status: response.status,
+            data: payload
+        };
     }
 
     async function postJson(url, body) {
@@ -24,20 +89,14 @@
             payload = { success: false, error: "响应解析失败" };
         }
 
-        return { ok: response.ok, status: response.status, data: payload };
+        return {
+            ok: response.ok,
+            status: response.status,
+            data: payload
+        };
     }
 
     async function fetchCurrentUser() {
-        try {
-            const response = await fetch("/api/user/info", { credentials: "include" });
-            const data = await response.json();
-            if (data && data.success && data.user) {
-                return data.user;
-            }
-        } catch (e) {
-            // ignore network errors here; UI falls back to logged-out state
-        }
-
         if (typeof SERVER_USER_INFO !== "undefined" && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn) {
             return {
                 name: SERVER_USER_INFO.name || "用户",
@@ -46,17 +105,81 @@
             };
         }
 
+        const result = await getJson("/api/user/info");
+        if (result.ok && result.data && result.data.success && result.data.user) {
+            return result.data.user;
+        }
+
         return null;
     }
 
+    function clearCooldown() {
+        if (state.sendCodeCooldownTimer) {
+            clearInterval(state.sendCodeCooldownTimer);
+            state.sendCodeCooldownTimer = null;
+        }
+        state.sendCodeCooldownLeft = 0;
+    }
+
     function closeAuthModal() {
+        clearCooldown();
         const modal = document.getElementById("auth-modal");
         if (modal) {
             modal.remove();
         }
     }
 
-    function openAuthModal(onAuthSuccess) {
+    function setAuthMessage(message, isError) {
+        const msg = document.getElementById("auth-message");
+        if (!msg) return;
+        msg.style.color = isError ? "#ffb0b0" : "#b8f3be";
+        msg.textContent = message || "";
+    }
+
+    function setAuthBusy(isBusy) {
+        const sendBtn = document.getElementById("auth-send-code");
+        const verifyBtn = document.getElementById("auth-verify-code");
+        const closeBtn = document.getElementById("auth-close");
+        if (verifyBtn) verifyBtn.disabled = isBusy;
+        if (closeBtn) closeBtn.disabled = isBusy;
+        if (sendBtn && state.sendCodeCooldownLeft <= 0) {
+            sendBtn.disabled = isBusy;
+        }
+    }
+
+    function updateSendCodeButton() {
+        const sendBtn = document.getElementById("auth-send-code");
+        if (!sendBtn) return;
+
+        if (state.sendCodeCooldownLeft > 0) {
+            sendBtn.disabled = true;
+            sendBtn.textContent = "重新发送(" + state.sendCodeCooldownLeft + "s)";
+            return;
+        }
+
+        sendBtn.disabled = false;
+        sendBtn.textContent = "发送验证码";
+    }
+
+    function startCooldown(seconds) {
+        clearCooldown();
+        state.sendCodeCooldownLeft = Math.max(0, Number(seconds) || 0);
+        updateSendCodeButton();
+
+        if (state.sendCodeCooldownLeft <= 0) {
+            return;
+        }
+
+        state.sendCodeCooldownTimer = setInterval(function () {
+            state.sendCodeCooldownLeft -= 1;
+            if (state.sendCodeCooldownLeft <= 0) {
+                clearCooldown();
+            }
+            updateSendCodeButton();
+        }, 1000);
+    }
+
+    function buildAuthModal() {
         closeAuthModal();
 
         const modal = document.createElement("div");
@@ -68,125 +191,196 @@
             "display: flex",
             "align-items: center",
             "justify-content: center",
-            "background: rgba(0,0,0,0.7)",
+            "background: rgba(0,0,0,0.72)",
             "backdrop-filter: blur(4px)"
         ].join(";");
 
         const panel = document.createElement("div");
         panel.style.cssText = [
-            "width: min(90vw, 420px)",
+            "width: min(92vw, 460px)",
             "padding: 24px",
             "border-radius: 14px",
-            "background: rgba(40, 52, 40, 0.95)",
+            "background: rgba(40, 52, 40, 0.96)",
             "border: 1px solid rgba(244, 246, 240, 0.2)",
             "box-shadow: 0 10px 40px rgba(0,0,0,0.35)",
             "color: #F4F6F0"
         ].join(";");
 
-        panel.innerHTML = `
-            <h3 style="margin-bottom:14px;font-weight:500;">邮箱登录 / 注册</h3>
-            <div style="display:flex;flex-direction:column;gap:10px;">
-                <input id="auth-email" type="email" placeholder="请输入邮箱" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.05);color:#F4F6F0;" />
-                <input id="auth-name" type="text" placeholder="注册时填写用户名（可选）" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.05);color:#F4F6F0;" />
-                <div id="auth-error" style="min-height:18px;color:#ff8f8f;font-size:12px;"></div>
-                <div style="display:flex;gap:10px;justify-content:flex-end;">
-                    <button id="auth-cancel" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:transparent;color:#F4F6F0;cursor:pointer;">取消</button>
-                    <button id="auth-login" style="padding:8px 12px;border-radius:8px;border:none;background:#4caf50;color:#fff;cursor:pointer;">邮箱登录</button>
-                    <button id="auth-register" style="padding:8px 12px;border-radius:8px;border:none;background:#2d7cf0;color:#fff;cursor:pointer;">注册并登录</button>
-                </div>
-            </div>
-        `;
+        panel.innerHTML = [
+            '<h3 style="margin:0 0 10px 0;font-weight:500;">邮箱验证码登录</h3>',
+            '<p style="margin:0 0 16px 0;font-size:12px;color:rgba(244,246,240,.75);">首次使用该邮箱会自动创建账号</p>',
+            '<div style="display:flex;flex-direction:column;gap:10px;">',
+            '<input id="auth-email" type="email" placeholder="请输入邮箱" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
+            '<div style="display:flex;gap:8px;">',
+            '<input id="auth-code" type="text" maxlength="6" inputmode="numeric" placeholder="请输入6位验证码" style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
+            '<button id="auth-send-code" style="padding:10px 12px;border-radius:8px;border:none;background:#2d7cf0;color:#fff;cursor:pointer;white-space:nowrap;">发送验证码</button>',
+            '</div>',
+            '<input id="auth-name" type="text" placeholder="首次注册用户名（可选）" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
+            '<div id="auth-message" style="min-height:18px;font-size:12px;color:#b8f3be;"></div>',
+            '<div style="display:flex;gap:10px;justify-content:flex-end;">',
+            '<button id="auth-close" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:transparent;color:#F4F6F0;cursor:pointer;">取消</button>',
+            '<button id="auth-verify-code" style="padding:8px 12px;border-radius:8px;border:none;background:#4caf50;color:#fff;cursor:pointer;">登录 / 注册</button>',
+            '</div>',
+            '</div>'
+        ].join("");
 
         modal.appendChild(panel);
         document.body.appendChild(modal);
 
+        const closeBtn = panel.querySelector("#auth-close");
+        const sendBtn = panel.querySelector("#auth-send-code");
+        const verifyBtn = panel.querySelector("#auth-verify-code");
         const emailInput = panel.querySelector("#auth-email");
-        const nameInput = panel.querySelector("#auth-name");
-        const errorEl = panel.querySelector("#auth-error");
-        const cancelBtn = panel.querySelector("#auth-cancel");
-        const loginBtn = panel.querySelector("#auth-login");
-        const registerBtn = panel.querySelector("#auth-register");
+        const codeInput = panel.querySelector("#auth-code");
 
-        function setError(msg) {
-            errorEl.textContent = msg || "";
+        function readInputs() {
+            const email = trim(panel.querySelector("#auth-email")?.value);
+            const code = trim(panel.querySelector("#auth-code")?.value);
+            const name = trim(panel.querySelector("#auth-name")?.value);
+            return { email, code, name };
         }
 
-        function getInput() {
-            const email = trim(emailInput.value);
-            const name = trim(nameInput.value);
-            if (!isValidEmail(email)) {
-                setError("请输入合法邮箱");
-                return null;
+        async function onSendCode() {
+            const input = readInputs();
+            if (!isValidEmail(input.email)) {
+                setAuthMessage("请输入合法邮箱", true);
+                return;
             }
-            return { email, name };
+
+            setAuthBusy(true);
+            setAuthMessage("", false);
+
+            try {
+                const result = await postJson("/api/auth/send_code", { email: input.email });
+                if (result.ok && result.data && result.data.success) {
+                    const retryAfter = Number(result.data.retry_after_seconds || 60);
+                    startCooldown(retryAfter);
+                    setAuthMessage("验证码已发送，请查收邮箱", false);
+                    if (codeInput) codeInput.focus();
+                    return;
+                }
+
+                const errorMsg = mapSendCodeError(result.data?.error_code, result.status);
+                setAuthMessage(errorMsg, true);
+            } catch (e) {
+                setAuthMessage("网络异常，请稍后重试", true);
+            } finally {
+                setAuthBusy(false);
+                updateSendCodeButton();
+            }
         }
 
-        cancelBtn.addEventListener("click", closeAuthModal);
-        modal.addEventListener("click", (e) => {
-            if (e.target === modal) {
-                closeAuthModal();
+        async function onVerifyCode() {
+            const input = readInputs();
+            if (!isValidEmail(input.email)) {
+                setAuthMessage("请输入合法邮箱", true);
+                return;
             }
-        });
-
-        loginBtn.addEventListener("click", async () => {
-            setError("");
-            const input = getInput();
-            if (!input) {
+            if (!isValidCode(input.code)) {
+                setAuthMessage("验证码应为6位数字", true);
                 return;
             }
 
-            const result = await postJson("/api/user/login", { email: input.email });
-            if (result.ok && result.data && result.data.exists) {
-                closeAuthModal();
-                if (typeof onAuthSuccess === "function") {
-                    onAuthSuccess();
+            setAuthBusy(true);
+            setAuthMessage("正在验证...", false);
+
+            try {
+                const result = await postJson("/api/auth/verify_code", {
+                    email: input.email,
+                    code: input.code,
+                    name: input.name
+                });
+
+                if (result.ok && result.data && result.data.success) {
+                    state.currentUser = result.data.user || null;
+                    setAuthMessage("登录成功", false);
+                    closeAuthModal();
+                    await refreshAuthUI();
+                    window.dispatchEvent(new CustomEvent("oj-auth-changed", {
+                        detail: {
+                            user: state.currentUser,
+                            isNewUser: !!result.data.is_new_user
+                        }
+                    }));
+
+                    if (state.pendingRouteAfterLogin) {
+                        window.location.hash = state.pendingRouteAfterLogin;
+                        state.pendingRouteAfterLogin = "";
+                    }
+                    return;
                 }
-                return;
+
+                const errorMsg = mapVerifyCodeError(result.data?.error_code, result.status);
+                setAuthMessage(errorMsg, true);
+            } catch (e) {
+                setAuthMessage("网络异常，请稍后重试", true);
+            } finally {
+                setAuthBusy(false);
+                updateSendCodeButton();
             }
+        }
 
-            if (result.ok && result.data && result.data.exists === false) {
-                setError("用户不存在，请使用“注册并登录”");
-                return;
-            }
-
-            setError((result.data && result.data.error) || "登录失败，请稍后重试");
-        });
-
-        registerBtn.addEventListener("click", async () => {
-            setError("");
-            const input = getInput();
-            if (!input) {
-                return;
-            }
-
-            if (!input.name) {
-                setError("注册需要用户名");
-                return;
-            }
-
-            const createRes = await postJson("/api/user/create", { name: input.name, email: input.email });
-            if (createRes.ok && createRes.data && createRes.data.created) {
+        if (closeBtn) {
+            closeBtn.addEventListener("click", closeAuthModal);
+        }
+        modal.addEventListener("click", function (event) {
+            if (event.target === modal) {
                 closeAuthModal();
-                if (typeof onAuthSuccess === "function") {
-                    onAuthSuccess();
-                }
-                return;
             }
-
-            setError((createRes.data && createRes.data.error) || "注册失败，可能邮箱已存在");
         });
+        if (sendBtn) {
+            sendBtn.addEventListener("click", onSendCode);
+        }
+        if (verifyBtn) {
+            verifyBtn.addEventListener("click", onVerifyCode);
+        }
+        if (emailInput) {
+            emailInput.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    onSendCode();
+                }
+            });
+        }
+        if (codeInput) {
+            codeInput.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    onVerifyCode();
+                }
+            });
+            codeInput.addEventListener("input", function () {
+                codeInput.value = codeInput.value.replace(/\D/g, "").slice(0, 6);
+            });
+        }
+
+        updateSendCodeButton();
+        return modal;
+    }
+
+    function openAuthModal(options) {
+        const modal = buildAuthModal();
+        const emailInput = modal.querySelector("#auth-email");
+
+        if (options && options.fromRoute) {
+            state.pendingRouteAfterLogin = options.fromRoute;
+        }
+
+        if (emailInput) {
+            emailInput.focus();
+        }
     }
 
     async function logoutAndRefresh() {
         try {
             await postJson("/api/user/logout", {});
         } catch (e) {
-            // ignore and continue with refresh
+            // Ignore network errors during logout and still clear UI with reload.
         }
         window.location.reload();
     }
 
-    function renderLoggedOut(userAuth, userProfile, onLogin) {
+    function renderLoggedOut(userAuth, userProfile) {
         if (userAuth) {
             userAuth.style.display = "block";
         }
@@ -197,7 +391,9 @@
 
         const signInButton = document.getElementById("sign-in-button");
         if (signInButton) {
-            signInButton.onclick = onLogin;
+            signInButton.onclick = function () {
+                openAuthModal();
+            };
         }
     }
 
@@ -239,17 +435,17 @@
             "display:none"
         ].join(";");
 
-        dropdown.innerHTML = `
-            <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:14px;">
-                <img src="/pictures/head.jpg" width="56" height="56" style="border-radius:50%;margin-bottom:10px;border:2px solid rgba(244,246,240,0.2);" />
-                <div style="font-size:15px;font-weight:500;color:#F4F6F0;">${user.name || "用户"}</div>
-                <div style="font-size:12px;color:rgba(244,246,240,0.7);margin-top:4px;">${user.email || ""}</div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-                <button id="go-profile-btn" style="padding:9px 14px;border:1px solid rgba(244,246,240,0.2);border-radius:8px;background:rgba(255,255,255,0.08);color:#F4F6F0;cursor:pointer;">个人中心</button>
-                <button id="sign-out-btn" style="padding:9px 14px;border:1px solid rgba(244,67,54,0.35);border-radius:8px;background:rgba(244,67,54,0.1);color:#F44336;cursor:pointer;">退出登录</button>
-            </div>
-        `;
+        dropdown.innerHTML = [
+            '<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:14px;">',
+            '<img src="/pictures/head.jpg" width="56" height="56" style="border-radius:50%;margin-bottom:10px;border:2px solid rgba(244,246,240,0.2);" />',
+            '<div style="font-size:15px;font-weight:500;color:#F4F6F0;">' + (user.name || "用户") + '</div>',
+            '<div style="font-size:12px;color:rgba(244,246,240,0.7);margin-top:4px;">' + (user.email || "") + '</div>',
+            '</div>',
+            '<div style="display:flex;flex-direction:column;gap:8px;">',
+            '<button id="go-profile-btn" style="padding:9px 14px;border:1px solid rgba(244,246,240,0.2);border-radius:8px;background:rgba(255,255,255,0.08);color:#F4F6F0;cursor:pointer;">个人中心</button>',
+            '<button id="sign-out-btn" style="padding:9px 14px;border:1px solid rgba(244,67,54,0.35);border-radius:8px;background:rgba(244,67,54,0.1);color:#F44336;cursor:pointer;">退出登录</button>',
+            '</div>'
+        ].join("");
 
         avatarWrapper.appendChild(avatar);
         avatarWrapper.appendChild(dropdown);
@@ -264,7 +460,7 @@
             dropdown.style.display = "block";
         }
         function hideDropdownDelay() {
-            hideTimer = setTimeout(() => {
+            hideTimer = setTimeout(function () {
                 dropdown.style.display = "none";
             }, 120);
         }
@@ -276,6 +472,7 @@
 
         const profileBtn = dropdown.querySelector("#go-profile-btn");
         const signOutBtn = dropdown.querySelector("#sign-out-btn");
+
         if (profileBtn) {
             profileBtn.onclick = function () {
                 window.location.href = "/user/profile";
@@ -289,318 +486,56 @@
     async function refreshAuthUI() {
         const userAuth = document.getElementById("user-auth");
         const userProfile = document.getElementById("user-profile");
-        const user = await fetchCurrentUser();
+
+        let user = state.currentUser;
+        if (!user) {
+            try {
+                user = await fetchCurrentUser();
+            } catch (e) {
+                user = null;
+            }
+        }
+
+        state.currentUser = user;
 
         if (!user) {
-            renderLoggedOut(userAuth, userProfile, function () {
-                openAuthModal(refreshAuthUI);
-            });
-            return;
+            renderLoggedOut(userAuth, userProfile);
+            return null;
         }
 
         renderLoggedIn(userAuth, userProfile, user);
+        return user;
     }
 
-    async function bindProfileLogout() {
+    function bindProfileLogout() {
         const logoutBtn = document.getElementById("logout-btn");
         if (logoutBtn) {
             logoutBtn.addEventListener("click", logoutAndRefresh);
         }
     }
 
+    async function requireLogin(options) {
+        const user = await refreshAuthUI();
+        if (user) {
+            return true;
+        }
+        openAuthModal(options || {});
+        return false;
+    }
+
+    window.addEventListener("oj-auth-required", function (event) {
+        const fromRoute = event?.detail?.fromRoute || "";
+        openAuthModal({ fromRoute: fromRoute });
+    });
+
     document.addEventListener("DOMContentLoaded", async function () {
         await refreshAuthUI();
-        await bindProfileLogout();
+        bindProfileLogout();
     });
-})();
-// Shared Session Authentication Script
-// Replaces Clerk-based auth with backend session APIs.
 
-(function () {
-    function apiPost(url, body) {
-        return fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify(body || {})
-        }).then((res) => res.json());
-    }
-
-    function apiGet(url) {
-        return fetch(url, {
-            method: "GET",
-            credentials: "include"
-        }).then((res) => res.json());
-    }
-
-    function createAuthModal() {
-        let modal = document.getElementById("auth-modal");
-        if (modal) return modal;
-
-        modal = document.createElement("div");
-        modal.id = "auth-modal";
-        modal.style.cssText = [
-            "position: fixed",
-            "top: 0",
-            "left: 0",
-            "width: 100%",
-            "height: 100%",
-            "display: none",
-            "justify-content: center",
-            "align-items: center",
-            "background: rgba(0,0,0,0.75)",
-            "backdrop-filter: blur(6px)",
-            "z-index: 10010"
-        ].join(";");
-
-        const panel = document.createElement("div");
-        panel.style.cssText = [
-            "width: min(92vw, 420px)",
-            "border-radius: 16px",
-            "padding: 22px",
-            "background: rgba(60, 80, 60, 0.95)",
-            "border: 1px solid rgba(244, 246, 240, 0.15)",
-            "box-shadow: 0 10px 35px rgba(0,0,0,0.35)",
-            "color: #F4F6F0"
-        ].join(";");
-
-        panel.innerHTML = [
-            '<h3 style="margin: 0 0 14px 0; font-size: 18px; font-weight: 500;">邮箱登录 / 注册</h3>',
-            '<div style="display:flex; flex-direction:column; gap:10px;">',
-            '<input id="auth-email" type="email" placeholder="请输入邮箱" style="padding:10px 12px; border-radius:10px; border:1px solid rgba(244,246,240,.25); background: rgba(255,255,255,.06); color:#F4F6F0;">',
-            '<input id="auth-name" type="text" placeholder="注册时填写用户名（登录可留空）" style="padding:10px 12px; border-radius:10px; border:1px solid rgba(244,246,240,.25); background: rgba(255,255,255,.06); color:#F4F6F0;">',
-            '<div id="auth-msg" style="min-height:18px; color:#ffd26f; font-size:12px;"></div>',
-            '<div style="display:flex; gap:10px; justify-content:flex-end;">',
-            '<button id="auth-cancel" style="padding:8px 14px; border-radius:8px; border:1px solid rgba(244,246,240,.25); background: rgba(255,255,255,.08); color:#F4F6F0; cursor:pointer;">取消</button>',
-            '<button id="auth-login" style="padding:8px 14px; border-radius:8px; border:0; background: rgba(76,175,80,.85); color:#fff; cursor:pointer;">邮箱登录</button>',
-            '<button id="auth-register" style="padding:8px 14px; border-radius:8px; border:0; background: rgba(33,150,243,.85); color:#fff; cursor:pointer;">注册并登录</button>',
-            "</div>",
-            "</div>"
-        ].join("");
-
-        modal.appendChild(panel);
-        document.body.appendChild(modal);
-        return modal;
-    }
-
-    function readAuthInputs() {
-        const emailInput = document.getElementById("auth-email");
-        const nameInput = document.getElementById("auth-name");
-        const msg = document.getElementById("auth-msg");
-        const email = (emailInput?.value || "").trim();
-        const name = (nameInput?.value || "").trim();
-
-        if (!email) {
-            if (msg) msg.textContent = "请先输入邮箱";
-            return null;
-        }
-
-        return { email, name, msg };
-    }
-
-    async function logoutAndRefresh() {
-        try {
-            await fetch("/api/user/logout", {
-                method: "POST",
-                credentials: "include"
-            });
-        } catch (e) {
-            console.error("退出登录失败:", e);
-        }
-        window.location.reload();
-    }
-
-    function renderGuest(userAuth, userProfile) {
-        if (userAuth) userAuth.style.display = "block";
-        if (userProfile) {
-            userProfile.style.display = "none";
-            userProfile.innerHTML = "";
-        }
-    }
-
-    function renderLoggedIn(userAuth, userProfile, user) {
-        if (!userProfile) return;
-        if (userAuth) userAuth.style.display = "none";
-
-        userProfile.style.display = "flex";
-        userProfile.style.alignItems = "center";
-        userProfile.innerHTML = "";
-
-        const chatIcon = document.createElement("a");
-        chatIcon.href = "#";
-        chatIcon.innerHTML = '<img src="/pictures/message.png" width="40" height="40">';
-        userProfile.appendChild(chatIcon);
-
-        const avatarWrapper = document.createElement("div");
-        avatarWrapper.style.cssText = "position: relative; margin-left: 10px; cursor: pointer;";
-
-        const avatar = document.createElement("img");
-        avatar.src = "/pictures/head.jpg";
-        avatar.width = 40;
-        avatar.height = 40;
-        avatar.style.cssText = "border-radius: 50%; display: block;";
-        avatar.addEventListener("click", function () {
-            window.location.href = "/user/profile";
-        });
-
-        const dropdown = document.createElement("div");
-        dropdown.style.cssText = [
-            "position: absolute",
-            "top: 55px",
-            "left: 50%",
-            "transform: translateX(-50%)",
-            "background-color: rgba(60, 80, 60, 0.95)",
-            "border-radius: 16px",
-            "box-shadow: 0 8px 32px rgba(0,0,0,0.3)",
-            "padding: 16px",
-            "width: 220px",
-            "z-index: 10001",
-            "border: 1px solid rgba(244, 246, 240, 0.15)",
-            "backdrop-filter: blur(10px)",
-            "display: none"
-        ].join(";");
-
-        dropdown.innerHTML = [
-            '<div style="display:flex; flex-direction:column; align-items:center; margin-bottom:12px;">',
-            '<img src="/pictures/head.jpg" width="60" height="60" style="border-radius:50%; margin-bottom:10px; border:2px solid rgba(244,246,240,.2);">',
-            `<div style="font-size:16px; font-weight:500; color:#F4F6F0;">${user.name || "用户"}</div>`,
-            `<div style="font-size:12px; color:rgba(244,246,240,.7); margin-top:4px;">${user.email || ""}</div>`,
-            "</div>",
-            '<hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(244,246,240,.1);">',
-            '<div style="display:flex; flex-direction:column; gap:8px;">',
-            '<button id="go-profile-btn" style="padding:10px 16px; border:1px solid rgba(244,246,240,.2); border-radius:8px; background: rgba(255,255,255,.08); color:#F4F6F0; cursor:pointer;">个人中心</button>',
-            '<button id="sign-out-btn" style="padding:10px 16px; border:1px solid rgba(244,67,54,.3); border-radius:8px; background: rgba(244,67,54,.1); color:#F44336; cursor:pointer;">退出登录</button>',
-            "</div>"
-        ].join("");
-
-        avatarWrapper.appendChild(avatar);
-        avatarWrapper.appendChild(dropdown);
-        userProfile.appendChild(avatarWrapper);
-
-        avatarWrapper.addEventListener("mouseenter", function () {
-            dropdown.style.display = "block";
-        });
-        avatarWrapper.addEventListener("mouseleave", function () {
-            dropdown.style.display = "none";
-        });
-
-        const profileBtn = dropdown.querySelector("#go-profile-btn");
-        if (profileBtn) {
-            profileBtn.addEventListener("click", function () {
-                window.location.href = "/user/profile";
-            });
-        }
-
-        const signOutBtn = dropdown.querySelector("#sign-out-btn");
-        if (signOutBtn) {
-            signOutBtn.addEventListener("click", logoutAndRefresh);
-        }
-    }
-
-    async function refreshAuthUI() {
-        const userAuth = document.getElementById("user-auth");
-        const userProfile = document.getElementById("user-profile");
-        if (!userAuth && !userProfile) return;
-
-        // 优先用服务端注入，减少首屏闪烁。
-        if (typeof SERVER_USER_INFO !== "undefined" && SERVER_USER_INFO.isLoggedIn) {
-            renderLoggedIn(userAuth, userProfile, SERVER_USER_INFO);
-            return;
-        }
-
-        try {
-            const info = await apiGet("/api/user/info");
-            if (info && info.success && info.user) {
-                renderLoggedIn(userAuth, userProfile, info.user);
-            } else {
-                renderGuest(userAuth, userProfile);
-            }
-        } catch (e) {
-            console.error("获取登录态失败:", e);
-            renderGuest(userAuth, userProfile);
-        }
-    }
-
-    function bindSignIn() {
-        const signInButton = document.getElementById("sign-in-button");
-        if (!signInButton) return;
-
-        signInButton.addEventListener("click", function () {
-            const modal = createAuthModal();
-            modal.style.display = "flex";
-
-            const cancelBtn = document.getElementById("auth-cancel");
-            const loginBtn = document.getElementById("auth-login");
-            const registerBtn = document.getElementById("auth-register");
-            const msg = document.getElementById("auth-msg");
-
-            if (cancelBtn) {
-                cancelBtn.onclick = function () {
-                    modal.style.display = "none";
-                };
-            }
-
-            if (loginBtn) {
-                loginBtn.onclick = async function () {
-                    const form = readAuthInputs();
-                    if (!form) return;
-
-                    try {
-                        const result = await apiPost("/api/user/login", { email: form.email });
-                        if (result && result.exists) {
-                            modal.style.display = "none";
-                            await refreshAuthUI();
-                            window.location.reload();
-                            return;
-                        }
-                        if (msg) msg.textContent = "该邮箱未注册，请先注册";
-                    } catch (e) {
-                        if (msg) msg.textContent = "登录失败，请稍后重试";
-                    }
-                };
-            }
-
-            if (registerBtn) {
-                registerBtn.onclick = async function () {
-                    const form = readAuthInputs();
-                    if (!form) return;
-                    if (!form.name) {
-                        if (form.msg) form.msg.textContent = "注册需要填写用户名";
-                        return;
-                    }
-
-                    try {
-                        const result = await apiPost("/api/user/create", {
-                            name: form.name,
-                            email: form.email
-                        });
-                        if (result && result.created) {
-                            modal.style.display = "none";
-                            await refreshAuthUI();
-                            window.location.reload();
-                            return;
-                        }
-                        if (form.msg) form.msg.textContent = "注册失败，邮箱可能已存在";
-                    } catch (e) {
-                        if (form.msg) form.msg.textContent = "注册失败，请稍后重试";
-                    }
-                };
-            }
-        });
-    }
-
-    function bindProfileLogoutButton() {
-        const logoutBtn = document.getElementById("logout-btn");
-        if (!logoutBtn) return;
-
-        logoutBtn.addEventListener("click", async function () {
-            await logoutAndRefresh();
-        });
-    }
-
-    document.addEventListener("DOMContentLoaded", function () {
-        bindSignIn();
-        bindProfileLogoutButton();
-        refreshAuthUI();
-    });
+    window.OJAuth = {
+        openAuthModal: openAuthModal,
+        refreshAuthUI: refreshAuthUI,
+        requireLogin: requireLogin
+    };
 })();

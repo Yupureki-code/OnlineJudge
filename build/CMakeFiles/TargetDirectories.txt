@@ -1,7 +1,5 @@
 /home/yupureki/project/OnlineJudge/build/CMakeFiles/edit_cache.dir
 /home/yupureki/project/OnlineJudge/build/CMakeFiles/rebuild_cache.dir
-/home/yupureki/project/OnlineJudge/build/src/private/CMakeFiles/edit_cache.dir
-/home/yupureki/project/OnlineJudge/build/src/private/CMakeFiles/rebuild_cache.dir
 /home/yupureki/project/OnlineJudge/build/src/compile_server/CMakeFiles/compile_server.dir
 /home/yupureki/project/OnlineJudge/build/src/compile_server/CMakeFiles/edit_cache.dir
 /home/yupureki/project/OnlineJudge/build/src/compile_server/CMakeFiles/rebuild_cache.dir

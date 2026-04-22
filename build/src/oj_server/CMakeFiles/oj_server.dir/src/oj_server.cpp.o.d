@@ -337,8 +337,9 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: \
  /usr/include/c++/13/bits/unordered_set.h /usr/include/c++/13/utility \
  /usr/include/c++/13/bits/stl_relops.h \
  /home/yupureki/project/OnlineJudge/src/oj_server/src/../include/oj_control.hpp \
+ /usr/include/c++/13/chrono \
  /home/yupureki/project/OnlineJudge/src/oj_server/src/../include/oj_model.hpp \
- /usr/include/c++/13/chrono /usr/local/include/Logger/logstrategy.h \
+ /usr/local/include/Logger/logstrategy.h \
  /home/yupureki/project/OnlineJudge/src/oj_server/src/../include/../../comm/comm.hpp \
  /home/yupureki/project/OnlineJudge/src/oj_server/src/../include/../../comm/config.h \
  /usr/include/x86_64-linux-gnu/sys/time.h \
@@ -349,8 +350,16 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: \
  /usr/include/jsoncpp/json/forwards.h /usr/include/jsoncpp/json/reader.h \
  /usr/include/jsoncpp/json/value.h /usr/include/jsoncpp/json/writer.h \
  /home/yupureki/project/OnlineJudge/src/oj_server/src/../include/oj_cache.hpp \
- /usr/include/jsoncpp/json/value.h \
- /usr/local/include/sw/redis++/redis++.h \
+ /usr/include/jsoncpp/json/value.h /usr/include/mysql/mysql.h \
+ /usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h \
+ /usr/include/mysql/field_types.h /usr/include/mysql/my_list.h \
+ /usr/include/mysql/mysql_com.h /usr/include/mysql/my_command.h \
+ /usr/include/mysql/my_compress.h \
+ /usr/include/mysql/udf_registration_types.h \
+ /usr/include/mysql/client_plugin.h /usr/include/c++/13/stdlib.h \
+ /usr/include/mysql/plugin_auth_common.h \
+ /usr/include/mysql/mysql_version.h /usr/include/mysql/mysql_time.h \
+ /usr/include/mysql/errmsg.h /usr/local/include/sw/redis++/redis++.h \
  /usr/local/include/sw/redis++/redis.h \
  /usr/local/include/sw/redis++/connection_pool.h \
  /usr/local/include/sw/redis++/connection.h \
@@ -378,16 +387,18 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: \
  /usr/local/include/sw/redis++/redis_cluster.hpp \
  /usr/local/include/sw/redis++/queued_redis.h \
  /usr/local/include/sw/redis++/queued_redis.hpp \
- /usr/include/mysql/mysql.h \
- /usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h \
- /usr/include/mysql/field_types.h /usr/include/mysql/my_list.h \
- /usr/include/mysql/mysql_com.h /usr/include/mysql/my_command.h \
- /usr/include/mysql/my_compress.h \
- /usr/include/mysql/udf_registration_types.h \
- /usr/include/mysql/client_plugin.h /usr/include/c++/13/stdlib.h \
- /usr/include/mysql/plugin_auth_common.h \
- /usr/include/mysql/mysql_version.h /usr/include/mysql/mysql_time.h \
- /usr/include/mysql/errmsg.h \
+ /home/yupureki/project/OnlineJudge/src/oj_server/src/../include/oj_mail.hpp \
+ /usr/include/x86_64-linux-gnu/curl/curl.h \
+ /usr/include/x86_64-linux-gnu/curl/curlver.h \
+ /usr/include/x86_64-linux-gnu/curl/system.h \
+ /usr/include/x86_64-linux-gnu/curl/easy.h \
+ /usr/include/x86_64-linux-gnu/curl/multi.h \
+ /usr/include/x86_64-linux-gnu/curl/curl.h \
+ /usr/include/x86_64-linux-gnu/curl/urlapi.h \
+ /usr/include/x86_64-linux-gnu/curl/options.h \
+ /usr/include/x86_64-linux-gnu/curl/header.h \
+ /usr/include/x86_64-linux-gnu/curl/websockets.h \
+ /usr/include/x86_64-linux-gnu/curl/mprintf.h \
  /home/yupureki/project/OnlineJudge/src/oj_server/src/../include/oj_view.hpp \
  /usr/local/include/ctemplate/template.h \
  /usr/local/include/ctemplate/template_cache.h \
@@ -400,4 +411,8 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: \
  /usr/local/include/ctemplate/template_dictionary_interface.h \
  /usr/local/include/ctemplate/template_modifiers.h \
  /usr/local/include/ctemplate/template_namelist.h \
- /home/yupureki/project/OnlineJudge/src/oj_server/src/../include/oj_session.hpp
+ /home/yupureki/project/OnlineJudge/src/oj_server/src/../include/oj_session.hpp \
+ /usr/include/openssl/sha.h /usr/include/openssl/macros.h \
+ /usr/include/x86_64-linux-gnu/openssl/opensslconf.h \
+ /usr/include/x86_64-linux-gnu/openssl/configuration.h \
+ /usr/include/openssl/opensslv.h /usr/include/openssl/e_os2.h

@@ -4,18 +4,6 @@ project(OnlineJudge LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(OJ_TESTS "null")
-set(OJ_QUESTIONS "null")
-set(OJ_USERS "null")
-set(HOST "null")
-set(USER "null")
-set(PASSWD "null")
-set(MYOJ "null")
-set(PORT "null")
-set(REDIS "null")
-
-add_subdirectory(src/private)
-
 option(ENABLE_DEBUG "Enable debug output" OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
 set(CONF_PATH ${CMAKE_SOURCE_DIR}/conf CACHE STRING "default conf file path")

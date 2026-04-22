@@ -103,6 +103,10 @@
 </style>
 
 <div class="user-profile">
+    <div id="profile-guest-tip" style="display:none;background:rgba(255,255,255,0.08);backdrop-filter:blur(20px);border-radius:16px;padding:20px;border:1px solid rgba(244,246,240,0.1);margin-bottom:20px;text-align:center;">
+        <p style="color:rgba(244,246,240,0.85);margin-bottom:12px;">请先登录后查看个人信息</p>
+        <button id="profile-login-btn" style="padding:8px 14px;border-radius:8px;border:none;background:#4caf50;color:#fff;cursor:pointer;">去登录</button>
+    </div>
     <div class="profile-header">
         <img src="/pictures/head.jpg" class="avatar" alt="用户头像">
         <div class="user-info">
@@ -144,20 +148,42 @@
     };
 
     async function loadUserProfile() {
+        const guestTip = document.getElementById('profile-guest-tip');
+        const profileLoginBtn = document.getElementById('profile-login-btn');
+
+        if (profileLoginBtn) {
+            profileLoginBtn.onclick = function () {
+                if (window.OJAuth && typeof window.OJAuth.openAuthModal === 'function') {
+                    window.OJAuth.openAuthModal({ fromRoute: '#profile' });
+                }
+            };
+        }
+
         try {
-            const response = await fetch('/api/user/info');
+            const response = await fetch('/api/user/info', { credentials: 'include' });
             const data = await response.json();
             
             if (data.success && data.user) {
+                if (guestTip) {
+                    guestTip.style.display = 'none';
+                }
                 const user = data.user;
                 document.getElementById('profile-username').textContent = user.name || '用户';
                 document.getElementById('profile-email').textContent = '邮箱：' + (user.email || '-');
                 document.getElementById('info-name').textContent = user.name || '-';
                 document.getElementById('info-email').textContent = user.email || '-';
                 document.getElementById('info-create-time').textContent = user.create_time || '-';
+                return;
+            }
+
+            if (guestTip) {
+                guestTip.style.display = 'block';
             }
         } catch (error) {
             console.error('加载用户信息失败:', error);
+            if (guestTip) {
+                guestTip.style.display = 'block';
+            }
         }
     }
 </script>

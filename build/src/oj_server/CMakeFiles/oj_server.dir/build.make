@@ -92,6 +92,8 @@ oj_server_EXTERNAL_OBJECTS =
 
 /home/yupureki/project/OnlineJudge/output/oj_server: src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o
 /home/yupureki/project/OnlineJudge/output/oj_server: src/oj_server/CMakeFiles/oj_server.dir/build.make
+/home/yupureki/project/OnlineJudge/output/oj_server: /usr/lib/x86_64-linux-gnu/libcurl.so
+/home/yupureki/project/OnlineJudge/output/oj_server: /usr/lib/x86_64-linux-gnu/libcrypto.so
 /home/yupureki/project/OnlineJudge/output/oj_server: /usr/local/lib/libredis++.so
 /home/yupureki/project/OnlineJudge/output/oj_server: /usr/lib/x86_64-linux-gnu/libhiredis.so
 /home/yupureki/project/OnlineJudge/output/oj_server: src/oj_server/CMakeFiles/oj_server.dir/link.txt

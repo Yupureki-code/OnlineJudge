@@ -2,6 +2,28 @@ const SPA = {
     pages: {},
     currentPage: null,
 
+    async canAccessRoute(pageName, originalHash) {
+        const protectedRoutes = ["profile"];
+        if (!protectedRoutes.includes(pageName)) {
+            return true;
+        }
+
+        try {
+            const response = await fetch('/api/user/info', { credentials: 'include' });
+            const data = await response.json();
+            if (data && data.success && data.user) {
+                return true;
+            }
+        } catch (error) {
+            console.error('登录态检查失败:', error);
+        }
+
+        window.dispatchEvent(new CustomEvent('oj-auth-required', {
+            detail: { fromRoute: originalHash || '#home' }
+        }));
+        return false;
+    },
+
     async loadPage(hash) {
         const pageContent = document.getElementById('page-content');
         if (!pageContent) return;
@@ -11,6 +33,13 @@ const SPA = {
         const routeParts = route.split('/');
         const pageName = routeParts[0];
         const pageParams = routeParts.slice(1);
+
+        const canAccess = await this.canAccessRoute(pageName, hash || '#home');
+        if (!canAccess) {
+            this.currentPage = 'home';
+            window.location.hash = '#home';
+            return;
+        }
         
         const baseRoute = pageName + (pageParams.length > 0 ? '/' + pageParams.join('/') : '');
         if (this.currentPage === baseRoute) return;

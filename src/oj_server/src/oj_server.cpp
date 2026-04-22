@@ -48,6 +48,32 @@ bool ParseJsonBody(const Request& req, Json::Value* out)
     return Json::parseFromStream(builder, ss, out, &errs);
 }
 
+bool IsSafeStaticPageName(const std::string& page_name)
+{
+    if (page_name.empty())
+    {
+        return false;
+    }
+    if (page_name.find("..") != std::string::npos)
+    {
+        return false;
+    }
+    if (page_name.front() == '/' || page_name.front() == '\\')
+    {
+        return false;
+    }
+    return true;
+}
+
+bool IsValidAuthCode(const std::string& code)
+{
+    if (code.size() != 6)
+    {
+        return false;
+    }
+    return std::all_of(code.begin(), code.end(), [](unsigned char ch){ return std::isdigit(ch); });
+}
+
 void ReplyBadRequest(Response& rep, const std::string& message)
 {
     Json::Value response;
@@ -67,6 +93,21 @@ bool ExtractAndValidateEmail(const Json::Value& in_value, std::string* email)
 
     *email = Trim(in_value["email"].asString());
     if (email->empty() || !IsValidEmail(*email))
+    {
+        return false;
+    }
+    return true;
+}
+
+bool ExtractAndValidatePassword(const Json::Value& in_value, std::string* password)
+{
+    if (password == nullptr || !in_value.isMember("password") || !in_value["password"].isString())
+    {
+        return false;
+    }
+
+    *password = in_value["password"].asString();
+    if (password->empty())
     {
         return false;
     }
@@ -296,8 +337,8 @@ int main()
     });
 
     svr.Get("/", [&ctl, &getCurrentUser](const Request& req, Response& rep){
-        std::string html = ReadHtmlFile(HTML_PATH + "/spa/app.html");
-        
+        std::string html;
+        ctl.GetStaticHtml("index.html", &html);
         ns_control::User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
@@ -329,7 +370,8 @@ int main()
     });
 
     svr.Get("/about", [&ctl, &getCurrentUser](const Request& req, Response& rep){
-        std::string html = ReadHtmlFile(HTML_PATH + "/about.html");
+        std::string html;
+        ctl.GetStaticHtml("about.html" , &html);
         
         ns_control::User user;
         bool isLoggedIn = getCurrentUser(req, &user);
@@ -340,7 +382,8 @@ int main()
     });
 
     svr.Get("/user/profile", [&ctl, &getCurrentUser](const Request& req, Response& rep){
-        std::string html = ReadHtmlFile(HTML_PATH + "/user/profile.html");
+        std::string html;
+        ctl.GetStaticHtml("user/profile.html", &html);
         
         ns_control::User user;
         bool isLoggedIn = getCurrentUser(req, &user);
@@ -368,7 +411,8 @@ int main()
     }); 
 
     svr.Get(R"(/judge_result\.html)", [&ctl, &getCurrentUser](const Request& req, Response& rep){
-        std::string html = ReadHtmlFile(HTML_PATH + "/judge_result.html");
+        std::string html;
+        ctl.GetStaticHtml("judge_result.html", &html);
         
         ns_control::User user;
         bool isLoggedIn = getCurrentUser(req, &user);
@@ -379,7 +423,8 @@ int main()
     });
 
     svr.Get(R"(/one_question\.html)", [&ctl, &getCurrentUser](const Request& req, Response& rep){
-        std::string html = ReadHtmlFile(HTML_PATH + "/one_question.html");
+        std::string html;
+        ctl.GetStaticHtml("one_question.html", &html);
         
         ns_control::User user;
         bool isLoggedIn = getCurrentUser(req, &user);
@@ -419,6 +464,127 @@ int main()
         std::string encoded_result = url_encode(result_json);
         rep.set_redirect("/judge_result.html?result=" + encoded_result + "&id=" + number);
     }); 
+
+    svr.Post("/api/auth/send_code", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value in_value;
+        if (!ParseJsonBody(req, &in_value))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "请求体必须是 JSON");
+            return;
+        }
+
+        std::string email;
+        if (!ExtractAndValidateEmail(in_value, &email))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "邮箱格式不合法");
+            return;
+        }
+
+        std::string err_code;
+        int retry_after_seconds = 0;
+        bool ok = ctl.SendEmailAuthCode(email, req.remote_addr, &err_code, &retry_after_seconds);
+
+        Json::Value response;
+        response["success"] = ok;
+        if (ok)
+        {
+            response["retry_after_seconds"] = retry_after_seconds;
+        }
+        else
+        {
+            response["error_code"] = err_code;
+            if (err_code == "TOO_MANY_REQUESTS" || err_code == "EMAIL_DAILY_LIMIT" || err_code == "IP_DAILY_LIMIT")
+            {
+                rep.status = 429;
+            }
+            else
+            {
+                rep.status = 400;
+            }
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
+
+    svr.Post("/api/auth/verify_code", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value in_value;
+        if (!ParseJsonBody(req, &in_value))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "请求体必须是 JSON");
+            return;
+        }
+
+        std::string email;
+        if (!ExtractAndValidateEmail(in_value, &email))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "邮箱格式不合法");
+            return;
+        }
+
+        if (!in_value.isMember("code") || !in_value["code"].isString())
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "验证码不能为空");
+            return;
+        }
+
+        std::string code = Trim(in_value["code"].asString());
+        if (!IsValidAuthCode(code))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "验证码格式不合法");
+            return;
+        }
+
+        std::string name;
+        if (in_value.isMember("name") && in_value["name"].isString())
+        {
+            name = Trim(in_value["name"].asString());
+        }
+
+        ns_control::User user;
+        bool is_new_user = false;
+        std::string err_code;
+        bool ok = ctl.VerifyEmailAuthCodeAndLogin(email, code, name, &user, &is_new_user, &err_code);
+
+        Json::Value response;
+        response["success"] = ok;
+        if (!ok)
+        {
+            response["error_code"] = err_code;
+            if (err_code == "ATTEMPTS_EXCEEDED")
+            {
+                rep.status = 429;
+            }
+            else
+            {
+                rep.status = 400;
+            }
+        }
+        else
+        {
+            std::string session_id = ctl.CreateSession(user.uid, user.email);
+            std::string cookie = ctl.GetSetCookieHeader(session_id);
+            rep.set_header("Set-Cookie", cookie);
+
+            response["is_new_user"] = is_new_user;
+            response["user"]["uid"] = user.uid;
+            response["user"]["name"] = user.name;
+            response["user"]["email"] = user.email;
+            response["user"]["create_time"] = user.create_time;
+            response["user"]["last_login"] = user.last_login;
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
 
     svr.Post("/api/user/check", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
@@ -587,6 +753,104 @@ int main()
         rep.set_content(response_str, "application/json;charset=utf-8");
     });
 
+    svr.Post("/api/user/password/set", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value response;
+        ns_control::User current_user;
+        if (!getCurrentUser(req, &current_user))
+        {
+            response["success"] = false;
+            response["error_code"] = "UNAUTHORIZED";
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.status = 401;
+            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            return;
+        }
+
+        Json::Value in_value;
+        if (!ParseJsonBody(req, &in_value))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "请求体必须是 JSON");
+            return;
+        }
+
+        std::string password;
+        if (!ExtractAndValidatePassword(in_value, &password))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "密码不能为空");
+            return;
+        }
+
+        std::string err_code;
+        bool ok = ctl.SetPasswordForUser(current_user.email, password, &err_code);
+        response["success"] = ok;
+        if (!ok)
+        {
+            response["error_code"] = err_code;
+            rep.status = 400;
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
+
+    svr.Post("/api/user/password/login", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value in_value;
+        if (!ParseJsonBody(req, &in_value))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "请求体必须是 JSON");
+            return;
+        }
+
+        std::string email;
+        if (!ExtractAndValidateEmail(in_value, &email))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "邮箱格式不合法");
+            return;
+        }
+
+        std::string password;
+        if (!ExtractAndValidatePassword(in_value, &password))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "密码不能为空");
+            return;
+        }
+
+        ns_control::User user;
+        std::string err_code;
+        bool ok = ctl.LoginWithPassword(email, password, &user, &err_code);
+
+        Json::Value response;
+        response["success"] = ok;
+        if (!ok)
+        {
+            response["error_code"] = err_code;
+            rep.status = 400;
+        }
+        else
+        {
+            std::string session_id = ctl.CreateSession(user.uid, user.email);
+            std::string cookie = ctl.GetSetCookieHeader(session_id);
+            rep.set_header("Set-Cookie", cookie);
+
+            response["user"]["uid"] = user.uid;
+            response["user"]["name"] = user.name;
+            response["user"]["email"] = user.email;
+            response["user"]["create_time"] = user.create_time;
+            response["user"]["last_login"] = user.last_login;
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
+
     svr.Get("/api/questions", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         std::vector<ns_model::Question> all;
@@ -634,6 +898,18 @@ int main()
         response["detail_misses"] = Json::Int64(m.detail_misses);
         response["detail_db_fallbacks"] = Json::Int64(m.detail_db_fallbacks);
         response["detail_total_ms"] = Json::Int64(m.detail_total_ms);
+
+        response["html_static_requests"] = Json::Int64(m.html_static_requests);
+        response["html_static_hits"] = Json::Int64(m.html_static_hits);
+        response["html_static_misses"] = Json::Int64(m.html_static_misses);
+
+        response["html_list_requests"] = Json::Int64(m.html_list_requests);
+        response["html_list_hits"] = Json::Int64(m.html_list_hits);
+        response["html_list_misses"] = Json::Int64(m.html_list_misses);
+
+        response["html_detail_requests"] = Json::Int64(m.html_detail_requests);
+        response["html_detail_hits"] = Json::Int64(m.html_detail_hits);
+        response["html_detail_misses"] = Json::Int64(m.html_detail_misses);
 
         Json::FastWriter writer;
         addCORSHeaders(rep);
@@ -790,6 +1066,80 @@ int main()
         rep.set_content(writer.write(response), "application/json;charset=utf-8");
     });
 
+    svr.Post("/api/static/cache/invalidate", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value response;
+
+        ns_control::User user;
+        if (!getCurrentUser(req, &user))
+        {
+            response["success"] = false;
+            response["error"] = "未登录";
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.status = 401;
+            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            return;
+        }
+
+        Json::Value in_value;
+        if (!ParseJsonBody(req, &in_value))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "请求体必须是 JSON");
+            return;
+        }
+
+        std::vector<std::string> pages;
+        if (in_value.isMember("page") && in_value["page"].isString())
+        {
+            pages.push_back(Trim(in_value["page"].asString()));
+        }
+        if (in_value.isMember("pages") && in_value["pages"].isArray())
+        {
+            for (const auto& item : in_value["pages"])
+            {
+                if (item.isString())
+                {
+                    pages.push_back(Trim(item.asString()));
+                }
+            }
+        }
+
+        if (pages.empty())
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "缺少 page 或 pages 字段");
+            return;
+        }
+
+        Json::Value invalidated(Json::arrayValue);
+        for (const auto& page : pages)
+        {
+            if (!IsSafeStaticPageName(page))
+            {
+                addCORSHeaders(rep);
+                ReplyBadRequest(rep, "页面路径不合法");
+                return;
+            }
+            if (ctl.InvalidateStaticHtmlCache(page))
+            {
+                invalidated.append(page);
+            }
+        }
+
+        response["success"] = true;
+        response["operator"] = user.email;
+        response["invalidated_pages"] = invalidated;
+        response["count"] = static_cast<Json::UInt64>(invalidated.size());
+
+        logger(INFO) << "[cache] static html invalidated by " << user.email
+                     << ", count=" << invalidated.size();
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
+
     svr.Get("/api/user/info", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         
@@ -818,6 +1168,30 @@ int main()
         rep.status = 200;
     });
 
+    svr.Options("/api/auth/send_code", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options("/api/auth/verify_code", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options("/api/user/password/login", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options("/api/user/password/set", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
     svr.Options(R"(/api/question/(\d+))", [&addCORSHeaders](const Request& req, Response& rep) {
         (void)req;
         addCORSHeaders(rep);
@@ -825,6 +1199,12 @@ int main()
     });
 
     svr.Options("/api/questions/cache/invalidate", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options("/api/static/cache/invalidate", [&addCORSHeaders](const Request& req, Response& rep) {
         (void)req;
         addCORSHeaders(rep);
         rep.status = 200;
