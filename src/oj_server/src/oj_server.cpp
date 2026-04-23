@@ -326,13 +326,15 @@ int main()
     };
 
     svr.set_mount_point("/pictures", HTML_PATH + std::string("/pictures"));
-    svr.set_mount_point("/js", HTML_PATH + std::string("/js"));
     svr.set_mount_point("/css", HTML_PATH + std::string("/css"));
     svr.set_mount_point("/spa", HTML_PATH + std::string("/spa"));
 
     svr.Get("/js/(.*)", [](const Request& req, Response& rep){
         std::string file = req.matches[1];
         std::string content = ReadHtmlFile(HTML_PATH + std::string("/js/") + file);
+        rep.set_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        rep.set_header("Pragma", "no-cache");
+        rep.set_header("Expires", "0");
         rep.set_content(content, "application/javascript;charset=utf-8");
     });
 
@@ -390,6 +392,18 @@ int main()
         
         html = InjectUserInfo(html, &user, isLoggedIn);
         
+        rep.set_content(html, "text/html;charset=utf-8");
+    });
+
+    svr.Get("/user/settings", [&ctl, &getCurrentUser](const Request& req, Response& rep){
+        std::string html;
+        ctl.GetStaticHtml("user/settings.html", &html);
+
+        ns_control::User user;
+        bool isLoggedIn = getCurrentUser(req, &user);
+
+        html = InjectUserInfo(html, &user, isLoggedIn);
+
         rep.set_content(html, "text/html;charset=utf-8");
     });
 
@@ -548,10 +562,16 @@ int main()
             name = Trim(in_value["name"].asString());
         }
 
+        std::string password;
+        if (in_value.isMember("password") && in_value["password"].isString())
+        {
+            password = in_value["password"].asString();
+        }
+
         ns_control::User user;
         bool is_new_user = false;
         std::string err_code;
-        bool ok = ctl.VerifyEmailAuthCodeAndLogin(email, code, name, &user, &is_new_user, &err_code);
+        bool ok = ctl.VerifyEmailAuthCodeAndLogin(email, code, name, password, &user, &is_new_user, &err_code);
 
         Json::Value response;
         response["success"] = ok;
@@ -844,6 +864,237 @@ int main()
             response["user"]["email"] = user.email;
             response["user"]["create_time"] = user.create_time;
             response["user"]["last_login"] = user.last_login;
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
+
+    svr.Post("/api/user/security/send_code", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value response;
+        ns_control::User current_user;
+        if (!getCurrentUser(req, &current_user))
+        {
+            response["success"] = false;
+            response["error_code"] = "UNAUTHORIZED";
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.status = 401;
+            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            return;
+        }
+
+        std::string err_code;
+        int retry_after_seconds = 0;
+        bool ok = ctl.SendEmailAuthCode(current_user.email, req.remote_addr, &err_code, &retry_after_seconds);
+
+        response["success"] = ok;
+        if (ok)
+        {
+            response["retry_after_seconds"] = retry_after_seconds;
+        }
+        else
+        {
+            response["error_code"] = err_code;
+            if (err_code == "TOO_MANY_REQUESTS" || err_code == "EMAIL_DAILY_LIMIT" || err_code == "IP_DAILY_LIMIT")
+            {
+                rep.status = 429;
+            }
+            else
+            {
+                rep.status = 400;
+            }
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
+
+    svr.Post("/api/user/email/change", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value response;
+        ns_control::User current_user;
+        if (!getCurrentUser(req, &current_user))
+        {
+            response["success"] = false;
+            response["error_code"] = "UNAUTHORIZED";
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.status = 401;
+            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            return;
+        }
+
+        Json::Value in_value;
+        if (!ParseJsonBody(req, &in_value))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "请求体必须是 JSON");
+            return;
+        }
+
+        if (!in_value.isMember("code") || !in_value["code"].isString())
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "验证码不能为空");
+            return;
+        }
+
+        std::string code = Trim(in_value["code"].asString());
+        if (!IsValidAuthCode(code))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "验证码格式不合法");
+            return;
+        }
+
+        std::string new_email;
+        if (!ExtractAndValidateEmail(in_value, &new_email))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "新邮箱格式不合法");
+            return;
+        }
+
+        ns_control::User updated_user;
+        std::string err_code;
+        bool ok = ctl.ChangeEmailWithCode(current_user, new_email, code, &updated_user, &err_code);
+
+        response["success"] = ok;
+        if (!ok)
+        {
+            response["error_code"] = err_code;
+            rep.status = (err_code == "ATTEMPTS_EXCEEDED") ? 429 : 400;
+        }
+        else
+        {
+            std::string cookie_header = req.get_header_value("Cookie");
+            ctl.DestroySessionByCookieHeader(cookie_header);
+            std::string session_id = ctl.CreateSession(updated_user.uid, updated_user.email);
+            rep.set_header("Set-Cookie", ctl.GetSetCookieHeader(session_id));
+
+            response["user"]["uid"] = updated_user.uid;
+            response["user"]["name"] = updated_user.name;
+            response["user"]["email"] = updated_user.email;
+            response["user"]["create_time"] = updated_user.create_time;
+            response["user"]["last_login"] = updated_user.last_login;
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
+
+    svr.Post("/api/user/password/change", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value response;
+        ns_control::User current_user;
+        if (!getCurrentUser(req, &current_user))
+        {
+            response["success"] = false;
+            response["error_code"] = "UNAUTHORIZED";
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.status = 401;
+            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            return;
+        }
+
+        Json::Value in_value;
+        if (!ParseJsonBody(req, &in_value))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "请求体必须是 JSON");
+            return;
+        }
+
+        if (!in_value.isMember("code") || !in_value["code"].isString())
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "验证码不能为空");
+            return;
+        }
+        std::string code = Trim(in_value["code"].asString());
+        if (!IsValidAuthCode(code))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "验证码格式不合法");
+            return;
+        }
+
+        std::string new_password;
+        if (!in_value.isMember("new_password") || !in_value["new_password"].isString())
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "新密码不能为空");
+            return;
+        }
+        new_password = in_value["new_password"].asString();
+
+        std::string err_code;
+        bool ok = ctl.ChangePasswordWithCode(current_user.email, code, new_password, &err_code);
+        response["success"] = ok;
+        if (!ok)
+        {
+            response["error_code"] = err_code;
+            rep.status = (err_code == "ATTEMPTS_EXCEEDED") ? 429 : 400;
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
+
+    svr.Post("/api/user/account/delete", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value response;
+        ns_control::User current_user;
+        if (!getCurrentUser(req, &current_user))
+        {
+            response["success"] = false;
+            response["error_code"] = "UNAUTHORIZED";
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.status = 401;
+            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            return;
+        }
+
+        Json::Value in_value;
+        if (!ParseJsonBody(req, &in_value))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "请求体必须是 JSON");
+            return;
+        }
+
+        if (!in_value.isMember("code") || !in_value["code"].isString())
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "验证码不能为空");
+            return;
+        }
+
+        std::string code = Trim(in_value["code"].asString());
+        if (!IsValidAuthCode(code))
+        {
+            addCORSHeaders(rep);
+            ReplyBadRequest(rep, "验证码格式不合法");
+            return;
+        }
+
+        std::string err_code;
+        bool ok = ctl.DeleteAccountWithCode(current_user.email, code, &err_code);
+        response["success"] = ok;
+        if (!ok)
+        {
+            response["error_code"] = err_code;
+            rep.status = (err_code == "ATTEMPTS_EXCEEDED") ? 429 : 400;
+        }
+        else
+        {
+            std::string cookie_header = req.get_header_value("Cookie");
+            ctl.DestroySessionByCookieHeader(cookie_header);
+            rep.set_header("Set-Cookie", ctl.GetClearCookieHeader());
         }
 
         Json::FastWriter writer;
@@ -1148,6 +1399,7 @@ int main()
         
         if (isLoggedIn) {
             response["success"] = true;
+            response["user"]["uid"] = user.uid;
             response["user"]["name"] = user.name;
             response["user"]["email"] = user.email;
             response["user"]["create_time"] = user.create_time;
@@ -1187,6 +1439,30 @@ int main()
     });
 
     svr.Options("/api/user/password/set", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options("/api/user/security/send_code", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options("/api/user/email/change", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options("/api/user/password/change", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options("/api/user/account/delete", [&addCORSHeaders](const Request& req, Response& rep) {
         (void)req;
         addCORSHeaders(rep);
         rep.status = 200;

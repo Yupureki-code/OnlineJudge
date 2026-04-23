@@ -463,12 +463,6 @@
             <input type="text" class="search-input" placeholder="搜索题目...">
         </div>
         <div class="nav">
-            <script>
-                if (typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO.isLoggedIn) {
-                    document.getElementById('user-auth').style.display = 'none';
-                    document.getElementById('user-profile').style.display = 'flex';
-                }
-            </script>
             <!-- 未登录状态 -->
             <div id="user-auth" style="display: block;">
                 <button class="auth-btn" id="sign-in-button">登录/注册</button>
@@ -487,8 +481,9 @@
             <div class="profile-header">
                 <img src="/pictures/head.jpg" class="avatar" alt="用户头像">
                 <div class="user-info">
-                    <h1>用户名</h1>
-                    <p style="color: rgba(244, 246, 240, 0.7);">邮箱：user@example.com</p>
+                    <h1 id="profile-name">用户名</h1>
+                    <p id="profile-email" style="color: rgba(244, 246, 240, 0.7);">邮箱：-</p>
+                    <p id="profile-uid" style="color: rgba(244, 246, 240, 0.7);">uid：-</p>
                     <div class="user-stats">
                         <div class="stat-item">
                             <div class="stat-value">0</div>
@@ -569,17 +564,38 @@
         // 初始化
         createRainLines();
 
-        // 使用服务端注入的用户信息（无延迟）
-        if (typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO.isLoggedIn) {
-            document.querySelector('.user-info h1').textContent = SERVER_USER_INFO.name || '用户名';
-            document.querySelector('.user-info p').textContent = `邮箱：${SERVER_USER_INFO.email || '未设置邮箱'}`;
+        async function syncProfileUserInfo() {
+            const nameEl = document.getElementById('profile-name');
+            const emailEl = document.getElementById('profile-email');
+            const uidEl = document.getElementById('profile-uid');
+
+            if (typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO.isLoggedIn) {
+                if (nameEl) nameEl.textContent = SERVER_USER_INFO.name || '用户名';
+                if (emailEl) emailEl.textContent = `邮箱：${SERVER_USER_INFO.email || '-'}`;
+                if (uidEl) uidEl.textContent = `uid：${SERVER_USER_INFO.uid || '-'}`;
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/info', { credentials: 'include' });
+                const data = await response.json();
+                if (data && data.success && data.user) {
+                    if (nameEl) nameEl.textContent = data.user.name || '用户名';
+                    if (emailEl) emailEl.textContent = `邮箱：${data.user.email || '-'}`;
+                    if (uidEl) uidEl.textContent = `uid：${data.user.uid || '-'}`;
+                }
+            } catch (error) {
+                console.error('加载用户信息失败:', error);
+            }
         }
+
+        syncProfileUserInfo();
     </script>
 
     
     
     
     <script src="../js/page-loading.js"></script>
-    <script src="../js/auth.js"></script>
+    <script src="/js/auth.js?v=20260423"></script>
 </body>
 </html>

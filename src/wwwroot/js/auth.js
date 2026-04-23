@@ -1,4 +1,4 @@
-// Unified auth script based on email verification code APIs.
+// Unified auth script: password login + email-code login/register.
 (function () {
     const state = {
         currentUser: null,
@@ -17,6 +17,13 @@
 
     function isValidCode(code) {
         return /^\d{6}$/.test(code);
+    }
+
+    function isStrongPassword(password) {
+        if (!password || password.length < 8 || password.length > 72) {
+            return false;
+        }
+        return /[A-Za-z]/.test(password) && /\d/.test(password);
     }
 
     function mapSendCodeError(errorCode, status) {
@@ -39,19 +46,38 @@
         if (status === 429 || errorCode === "ATTEMPTS_EXCEEDED") {
             return "验证失败次数过多，请重新获取验证码";
         }
-        if (errorCode === "CODE_NOT_FOUND") {
-            return "验证码不存在或已过期，请重新获取";
-        }
         if (errorCode === "CODE_MISMATCH") {
             return "验证码错误，请检查后重试";
         }
         if (errorCode === "CODE_EXPIRED") {
             return "验证码已过期，请重新获取";
         }
-        if (errorCode === "USER_CREATE_FAILED") {
-            return "自动创建账号失败，请稍后重试";
+        if (errorCode === "REGISTER_NAME_REQUIRED") {
+            return "新用户注册请填写用户名";
+        }
+        if (errorCode === "WEAK_PASSWORD") {
+            return "密码至少8位且同时包含字母和数字";
+        }
+        if (errorCode === "CREATE_USER_FAILED") {
+            return "注册失败，请稍后重试";
+        }
+        if (errorCode === "PASSWORD_HASH_FAILED" || errorCode === "UPDATE_PASSWORD_FAILED") {
+            return "密码设置失败，请稍后重试";
         }
         return "验证失败，请稍后重试";
+    }
+
+    function mapPasswordLoginError(errorCode) {
+        if (errorCode === "USER_NOT_FOUND") {
+            return "账号不存在，请先使用邮箱验证码注册";
+        }
+        if (errorCode === "PASSWORD_NOT_SET") {
+            return "该账号尚未设置密码，请使用验证码登录后在个人中心设置密码";
+        }
+        if (errorCode === "PASSWORD_MISMATCH") {
+            return "邮箱或密码错误";
+        }
+        return "密码登录失败，请稍后重试";
     }
 
     async function getJson(url) {
@@ -136,12 +162,21 @@
         msg.textContent = message || "";
     }
 
+    function getActiveAuthTab() {
+        const activeBtn = document.querySelector(".auth-tab-btn.active");
+        return activeBtn ? activeBtn.dataset.tab : "code";
+    }
+
     function setAuthBusy(isBusy) {
         const sendBtn = document.getElementById("auth-send-code");
         const verifyBtn = document.getElementById("auth-verify-code");
+        const passwordLoginBtn = document.getElementById("auth-password-login");
         const closeBtn = document.getElementById("auth-close");
+
         if (verifyBtn) verifyBtn.disabled = isBusy;
+        if (passwordLoginBtn) passwordLoginBtn.disabled = isBusy;
         if (closeBtn) closeBtn.disabled = isBusy;
+
         if (sendBtn && state.sendCodeCooldownLeft <= 0) {
             sendBtn.disabled = isBusy;
         }
@@ -179,6 +214,25 @@
         }, 1000);
     }
 
+    function switchAuthTab(tabName) {
+        const tabs = document.querySelectorAll(".auth-tab-btn");
+        tabs.forEach(function (btn) {
+            btn.classList.toggle("active", btn.dataset.tab === tabName);
+            btn.style.opacity = btn.classList.contains("active") ? "1" : "0.7";
+        });
+
+        const passwordPanel = document.getElementById("auth-password-panel");
+        const codePanel = document.getElementById("auth-code-panel");
+        if (passwordPanel) {
+            passwordPanel.style.display = tabName === "password" ? "flex" : "none";
+        }
+        if (codePanel) {
+            codePanel.style.display = tabName === "code" ? "flex" : "none";
+        }
+
+        setAuthMessage("", false);
+    }
+
     function buildAuthModal() {
         closeAuthModal();
 
@@ -187,7 +241,7 @@
         modal.style.cssText = [
             "position: fixed",
             "inset: 0",
-            "z-index: 10001",
+            "z-index: 2147483646",
             "display: flex",
             "align-items: center",
             "justify-content: center",
@@ -197,7 +251,9 @@
 
         const panel = document.createElement("div");
         panel.style.cssText = [
-            "width: min(92vw, 460px)",
+            "width: min(92vw, 500px)",
+            "position: relative",
+            "z-index: 2147483647",
             "padding: 24px",
             "border-radius: 14px",
             "background: rgba(40, 52, 40, 0.96)",
@@ -207,20 +263,35 @@
         ].join(";");
 
         panel.innerHTML = [
-            '<h3 style="margin:0 0 10px 0;font-weight:500;">邮箱验证码登录</h3>',
-            '<p style="margin:0 0 16px 0;font-size:12px;color:rgba(244,246,240,.75);">首次使用该邮箱会自动创建账号</p>',
-            '<div style="display:flex;flex-direction:column;gap:10px;">',
-            '<input id="auth-email" type="email" placeholder="请输入邮箱" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
+            '<h3 style="margin:0 0 10px 0;font-weight:500;">登录 / 注册</h3>',
+            '<p style="margin:0 0 16px 0;font-size:12px;color:rgba(244,246,240,.75);">支持密码登录，也支持邮箱验证码登录（新用户将自动注册）</p>',
+            '<div style="display:flex;gap:8px;margin-bottom:14px;">',
+            '<button class="auth-tab-btn active" data-tab="code" style="flex:1;padding:9px 10px;border-radius:8px;border:1px solid rgba(244,246,240,0.2);background:rgba(255,255,255,0.12);color:#F4F6F0;cursor:pointer;">邮箱验证码</button>',
+            '<button class="auth-tab-btn" data-tab="password" style="flex:1;padding:9px 10px;border-radius:8px;border:1px solid rgba(244,246,240,0.2);background:rgba(255,255,255,0.06);color:#F4F6F0;cursor:pointer;opacity:0.7;">邮箱密码</button>',
+            '</div>',
+
+            '<div id="auth-code-panel" style="display:flex;flex-direction:column;gap:10px;">',
+            '<input id="auth-code-email" type="email" placeholder="请输入邮箱" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
             '<div style="display:flex;gap:8px;">',
-            '<input id="auth-code" type="text" maxlength="6" inputmode="numeric" placeholder="请输入6位验证码" style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
+            '<input id="auth-code-value" type="text" maxlength="6" inputmode="numeric" placeholder="请输入6位验证码" style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
             '<button id="auth-send-code" style="padding:10px 12px;border-radius:8px;border:none;background:#2d7cf0;color:#fff;cursor:pointer;white-space:nowrap;">发送验证码</button>',
             '</div>',
-            '<input id="auth-name" type="text" placeholder="首次注册用户名（可选）" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
-            '<div id="auth-message" style="min-height:18px;font-size:12px;color:#b8f3be;"></div>',
-            '<div style="display:flex;gap:10px;justify-content:flex-end;">',
-            '<button id="auth-close" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:transparent;color:#F4F6F0;cursor:pointer;">取消</button>',
-            '<button id="auth-verify-code" style="padding:8px 12px;border-radius:8px;border:none;background:#4caf50;color:#fff;cursor:pointer;">登录 / 注册</button>',
+            '<input id="auth-register-name" type="text" placeholder="新用户注册用户名（必填）" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
+            '<input id="auth-register-password" type="password" placeholder="新用户注册密码（至少8位，字母+数字）" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
+            '<input id="auth-register-password-confirm" type="password" placeholder="确认注册密码" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
+            '<div style="font-size:12px;color:rgba(244,246,240,0.65);">说明：已有账号只需邮箱+验证码即可登录。新账号需额外填写用户名和密码。</div>',
+            '<button id="auth-verify-code" style="padding:10px 12px;border-radius:8px;border:none;background:#4caf50;color:#fff;cursor:pointer;">验证码登录 / 注册</button>',
             '</div>',
+
+            '<div id="auth-password-panel" style="display:none;flex-direction:column;gap:10px;">',
+            '<input id="auth-password-email" type="email" placeholder="请输入邮箱" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
+            '<input id="auth-password-value" type="password" placeholder="请输入密码" style="padding:10px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:rgba(255,255,255,0.06);color:#F4F6F0;" />',
+            '<button id="auth-password-login" style="padding:10px 12px;border-radius:8px;border:none;background:#2d7cf0;color:#fff;cursor:pointer;">密码登录</button>',
+            '</div>',
+
+            '<div id="auth-message" style="min-height:18px;font-size:12px;color:#b8f3be;margin-top:12px;"></div>',
+            '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">',
+            '<button id="auth-close" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(244,246,240,0.25);background:transparent;color:#F4F6F0;cursor:pointer;">取消</button>',
             '</div>'
         ].join("");
 
@@ -230,18 +301,28 @@
         const closeBtn = panel.querySelector("#auth-close");
         const sendBtn = panel.querySelector("#auth-send-code");
         const verifyBtn = panel.querySelector("#auth-verify-code");
-        const emailInput = panel.querySelector("#auth-email");
-        const codeInput = panel.querySelector("#auth-code");
+        const passwordLoginBtn = panel.querySelector("#auth-password-login");
+        const codeInput = panel.querySelector("#auth-code-value");
 
-        function readInputs() {
-            const email = trim(panel.querySelector("#auth-email")?.value);
-            const code = trim(panel.querySelector("#auth-code")?.value);
-            const name = trim(panel.querySelector("#auth-name")?.value);
-            return { email, code, name };
+        function readCodeInputs() {
+            return {
+                email: trim(panel.querySelector("#auth-code-email")?.value),
+                code: trim(panel.querySelector("#auth-code-value")?.value),
+                name: trim(panel.querySelector("#auth-register-name")?.value),
+                password: panel.querySelector("#auth-register-password")?.value || "",
+                confirmPassword: panel.querySelector("#auth-register-password-confirm")?.value || ""
+            };
+        }
+
+        function readPasswordInputs() {
+            return {
+                email: trim(panel.querySelector("#auth-password-email")?.value),
+                password: panel.querySelector("#auth-password-value")?.value || ""
+            };
         }
 
         async function onSendCode() {
-            const input = readInputs();
+            const input = readCodeInputs();
             if (!isValidEmail(input.email)) {
                 setAuthMessage("请输入合法邮箱", true);
                 return;
@@ -271,7 +352,7 @@
         }
 
         async function onVerifyCode() {
-            const input = readInputs();
+            const input = readCodeInputs();
             if (!isValidEmail(input.email)) {
                 setAuthMessage("请输入合法邮箱", true);
                 return;
@@ -281,6 +362,21 @@
                 return;
             }
 
+            if (input.password || input.confirmPassword || input.name) {
+                if (!input.name) {
+                    setAuthMessage("注册时请填写用户名", true);
+                    return;
+                }
+                if (!isStrongPassword(input.password)) {
+                    setAuthMessage("注册密码至少8位且包含字母和数字", true);
+                    return;
+                }
+                if (input.password !== input.confirmPassword) {
+                    setAuthMessage("两次输入的注册密码不一致", true);
+                    return;
+                }
+            }
+
             setAuthBusy(true);
             setAuthMessage("正在验证...", false);
 
@@ -288,7 +384,8 @@
                 const result = await postJson("/api/auth/verify_code", {
                     email: input.email,
                     code: input.code,
-                    name: input.name
+                    name: input.name,
+                    password: input.password
                 });
 
                 if (result.ok && result.data && result.data.success) {
@@ -320,47 +417,117 @@
             }
         }
 
+        async function onPasswordLogin() {
+            const input = readPasswordInputs();
+            if (!isValidEmail(input.email)) {
+                setAuthMessage("请输入合法邮箱", true);
+                return;
+            }
+            if (!input.password) {
+                setAuthMessage("请输入密码", true);
+                return;
+            }
+
+            setAuthBusy(true);
+            setAuthMessage("正在登录...", false);
+            try {
+                const result = await postJson("/api/user/password/login", {
+                    email: input.email,
+                    password: input.password
+                });
+
+                if (result.ok && result.data && result.data.success) {
+                    state.currentUser = result.data.user || null;
+                    closeAuthModal();
+                    await refreshAuthUI();
+                    window.dispatchEvent(new CustomEvent("oj-auth-changed", {
+                        detail: {
+                            user: state.currentUser,
+                            isNewUser: false
+                        }
+                    }));
+
+                    if (state.pendingRouteAfterLogin) {
+                        window.location.hash = state.pendingRouteAfterLogin;
+                        state.pendingRouteAfterLogin = "";
+                    }
+                    return;
+                }
+
+                setAuthMessage(mapPasswordLoginError(result.data?.error_code), true);
+            } catch (e) {
+                setAuthMessage("网络异常，请稍后重试", true);
+            } finally {
+                setAuthBusy(false);
+                updateSendCodeButton();
+            }
+        }
+
         if (closeBtn) {
             closeBtn.addEventListener("click", closeAuthModal);
         }
+
         modal.addEventListener("click", function (event) {
             if (event.target === modal) {
                 closeAuthModal();
             }
         });
+
+        panel.querySelectorAll(".auth-tab-btn").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                switchAuthTab(btn.dataset.tab);
+            });
+        });
+
         if (sendBtn) {
             sendBtn.addEventListener("click", onSendCode);
         }
+
         if (verifyBtn) {
             verifyBtn.addEventListener("click", onVerifyCode);
         }
-        if (emailInput) {
-            emailInput.addEventListener("keydown", function (event) {
-                if (event.key === "Enter") {
-                    event.preventDefault();
-                    onSendCode();
-                }
-            });
+
+        if (passwordLoginBtn) {
+            passwordLoginBtn.addEventListener("click", onPasswordLogin);
         }
+
+        panel.addEventListener("keydown", function (event) {
+            if (event.key !== "Enter") {
+                return;
+            }
+
+            const activeTab = getActiveAuthTab();
+            if (activeTab === "password") {
+                event.preventDefault();
+                onPasswordLogin();
+                return;
+            }
+
+            const targetId = event.target && event.target.id;
+            if (targetId === "auth-code-email") {
+                event.preventDefault();
+                onSendCode();
+                return;
+            }
+
+            event.preventDefault();
+            onVerifyCode();
+        });
+
         if (codeInput) {
-            codeInput.addEventListener("keydown", function (event) {
-                if (event.key === "Enter") {
-                    event.preventDefault();
-                    onVerifyCode();
-                }
-            });
             codeInput.addEventListener("input", function () {
                 codeInput.value = codeInput.value.replace(/\D/g, "").slice(0, 6);
             });
         }
 
         updateSendCodeButton();
+        switchAuthTab("code");
         return modal;
     }
 
     function openAuthModal(options) {
         const modal = buildAuthModal();
-        const emailInput = modal.querySelector("#auth-email");
+        const emailInput = modal.querySelector("#auth-code-email");
 
         if (options && options.fromRoute) {
             state.pendingRouteAfterLogin = options.fromRoute;
@@ -405,6 +572,13 @@
             return;
         }
 
+        const header = userProfile.closest(".header");
+        if (header) {
+            // Keep header stacking context above page content so the avatar dropdown is visible.
+            header.style.position = "relative";
+            header.style.zIndex = "30000";
+        }
+
         userProfile.style.display = "flex";
         userProfile.style.alignItems = "center";
         userProfile.innerHTML = "";
@@ -430,7 +604,7 @@
             "box-shadow:0 8px 32px rgba(0,0,0,0.3)",
             "padding:18px",
             "width:220px",
-            "z-index:10001",
+            "z-index:30001",
             "border:1px solid rgba(244,246,240,0.15)",
             "display:none"
         ].join(";");
@@ -443,6 +617,7 @@
             '</div>',
             '<div style="display:flex;flex-direction:column;gap:8px;">',
             '<button id="go-profile-btn" style="padding:9px 14px;border:1px solid rgba(244,246,240,0.2);border-radius:8px;background:rgba(255,255,255,0.08);color:#F4F6F0;cursor:pointer;">个人中心</button>',
+            '<button id="go-settings-btn" style="padding:9px 14px;border:1px solid rgba(244,246,240,0.2);border-radius:8px;background:rgba(255,255,255,0.08);color:#F4F6F0;cursor:pointer;">账户设置</button>',
             '<button id="sign-out-btn" style="padding:9px 14px;border:1px solid rgba(244,67,54,0.35);border-radius:8px;background:rgba(244,67,54,0.1);color:#F44336;cursor:pointer;">退出登录</button>',
             '</div>'
         ].join("");
@@ -471,11 +646,22 @@
         dropdown.addEventListener("mouseleave", hideDropdownDelay);
 
         const profileBtn = dropdown.querySelector("#go-profile-btn");
+        const settingsBtn = dropdown.querySelector("#go-settings-btn");
         const signOutBtn = dropdown.querySelector("#sign-out-btn");
 
         if (profileBtn) {
             profileBtn.onclick = function () {
+                // In SPA app, route to hash page so profile content comes from spa/pages/profile.html.
+                if (document.getElementById("page-content")) {
+                    window.location.hash = "#profile";
+                    return;
+                }
                 window.location.href = "/user/profile";
+            };
+        }
+        if (settingsBtn) {
+            settingsBtn.onclick = function () {
+                window.location.href = "/user/settings";
             };
         }
         if (signOutBtn) {

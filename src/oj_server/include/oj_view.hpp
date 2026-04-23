@@ -75,8 +75,9 @@ namespace ns_view
             //开始渲染html
             tpl->Expand(html, &root);
         }
-        bool GetStaticHtml(const std::string& name, std::string* html, bool* cache_hit = nullptr)
+        bool GetStaticHtml(const std::string& name, std::string* html, bool* cache_hit = nullptr, bool force_reload = false)
         {
+            if (!force_reload)
             {
                 std::lock_guard<std::mutex> lock(_html_cache_mtx);
                 auto it = _html_cache.find(name);
@@ -99,6 +100,7 @@ namespace ns_view
             in.close();
             if (cache_hit != nullptr) *cache_hit = false;
             *html = content;
+            if (!force_reload)
             {
                 std::lock_guard<std::mutex> lock(_html_cache_mtx);
                 _html_cache[name] = content;

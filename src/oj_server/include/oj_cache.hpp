@@ -54,13 +54,43 @@ namespace ns_cache
             return writer.write(json_value);
         }
     };
+
+    enum class SolutionStatus
+    {
+        pending,
+        approved,
+        rejected
+    };
+
+    enum class SolutionSort
+    {
+        latest,
+        hot
+    };
+
+    enum class SolutionActionType
+    {
+        none,
+        like,
+        favorite
+    };
+
     struct KeyContext
     {
+        // 现有题库列表缓存字段（保留）
         QueryStruct _query_hash;
-        int page;
-        int size;
+        int page = 1;
+        int size = 10;
         std::string list_version;
         std::string _page_name;
+
+        // solution 专用字段（新增）
+        std::string question_id;      // 题号或题目主键，与数据库保持一致
+        long long solution_id = 0;    // 题解ID
+        int user_id = 0;              // 当前用户ID（资格/互动状态用）
+        SolutionStatus status = SolutionStatus::approved;
+        SolutionSort sort = SolutionSort::latest;
+        SolutionActionType action_type = SolutionActionType::none;
     };
     class Cache
     {
@@ -70,7 +100,10 @@ namespace ns_cache
         public:
             enum class PageType{
                 kData,
-                kHtml
+                kHtml,
+                kList,
+                kEligibility,
+                kAction
             };
             virtual void Build(const KeyContext& context) = 0;
             virtual std::string GetCacheKeyString(Cache* cache) const = 0;
@@ -84,6 +117,9 @@ namespace ns_cache
                 {
                     case PageType::kData: return "data";
                     case PageType::kHtml: return "html";
+                    case PageType::kList: return "list";
+                    case PageType::kEligibility: return "eligibility";
+                    case PageType::kAction: return "action";
                     default: return "unknown";
                 }
             }
@@ -175,6 +211,92 @@ namespace ns_cache
               const std::string& version = "v1")
         :_redis(Redis(redis)), _business(business), _env(env), _version(version)
         {}
+
+        class CacheSolutionKey : public CacheKey
+        {
+        public:
+            void Build(const KeyContext& context) override
+            {
+                _question_id = context.question_id;
+                _solution_id = context.solution_id;
+                _user_id = context.user_id;
+                _status = context.status;
+                _sort = context.sort;
+                _page = context.page;
+                _size = context.size;
+                _list_version = context.list_version.empty() ? "1" : context.list_version;
+                _action_type = context.action_type;
+            }
+
+            std::string GetCacheKeyString(Cache* cache) const override
+            {
+                // 注意：依赖 PageType
+                switch (GetPageType())
+                {
+                    // 题解列表
+                    case PageType::kList:
+                        return cache->_business + ":" + cache->_env + ":" + cache->_version +
+                            ":solution:list:q:" + _question_id +
+                            ":status:" + SolutionStatusToString(_status) +
+                            ":sort:" + SolutionSortToString(_sort) +
+                            ":page:" + std::to_string(_page) +
+                            ":size:" + std::to_string(_size) +
+                            ":ver:" + _list_version;
+
+                    // 题解详情数据
+                    case PageType::kData:
+                        return cache->_business + ":" + cache->_env + ":" + cache->_version +
+                            ":solution:detail:sid:" + std::to_string(_solution_id);
+
+                    // 发布资格（该用户是否可发）
+                    case PageType::kEligibility:
+                        return cache->_business + ":" + cache->_env + ":" + cache->_version +
+                            ":solution:eligibility:user:" + std::to_string(_user_id) +
+                            ":q:" + _question_id;
+
+                    // 用户互动状态（是否点赞/收藏）
+                    case PageType::kAction:
+                        return cache->_business + ":" + cache->_env + ":" + cache->_version +
+                            ":solution:action:user:" + std::to_string(_user_id) +
+                            ":sid:" + std::to_string(_solution_id);
+
+                    default:
+                        return cache->_business + ":" + cache->_env + ":" + cache->_version + ":solution:unknown";
+                }
+            }
+
+        private:
+            static std::string SolutionStatusToString(SolutionStatus status)
+            {
+                switch (status)
+                {
+                    case SolutionStatus::pending: return "pending";
+                    case SolutionStatus::approved: return "approved";
+                    case SolutionStatus::rejected: return "rejected";
+                    default: return "approved";
+                }
+            }
+
+            static std::string SolutionSortToString(SolutionSort sort)
+            {
+                switch (sort)
+                {
+                    case SolutionSort::latest: return "latest";
+                    case SolutionSort::hot: return "hot";
+                    default: return "latest";
+                }
+            }
+
+            std::string _question_id;
+            long long _solution_id = 0;
+            int _user_id = 0;
+            SolutionStatus _status = SolutionStatus::approved;
+            SolutionSort _sort = SolutionSort::latest;
+            int _page = 1;
+            int _size = 10;
+            std::string _list_version;
+            SolutionActionType _action_type = SolutionActionType::none;
+        };
 
         bool GetQuestion(const std::shared_ptr<CacheDetailKey>& key, Question& question)
         {
@@ -480,6 +602,98 @@ namespace ns_cache
             context._page_name = _page_name;
             key->Build(context);
             return key;
+        }
+        std::shared_ptr<CacheSolutionKey> BuildSolutionCacheKey(const std::string& question_id,
+                                                                long long solution_id,
+                                                                int user_id,
+                                                                SolutionStatus status,
+                                                                SolutionSort sort,
+                                                                SolutionActionType action_type,
+                                                                int page,
+                                                                int size,
+                                                                const std::string& list_version,
+                                                                CacheKey::PageType page_type)
+        {
+            std::shared_ptr<CacheSolutionKey> key = std::make_shared<CacheSolutionKey>();
+            key->SetPageType(page_type);
+
+            KeyContext context;
+            context.question_id = question_id;
+            context.solution_id = solution_id;
+            context.user_id = user_id;
+            context.status = status;
+            context.sort = sort;
+            context.action_type = action_type;
+            context.page = page;
+            context.size = size;
+            context.list_version = list_version;
+
+            key->Build(context);
+            return key;
+        }
+        std::shared_ptr<CacheSolutionKey> BuildSolutionCacheKey(const std::string& question_id,
+                                                                int page,
+                                                                int size,
+                                                                const std::string& list_version,
+                                                                CacheKey::PageType page_type,
+                                                                SolutionStatus status = SolutionStatus::approved,
+                                                                SolutionSort sort = SolutionSort::latest)
+        {
+            return BuildSolutionCacheKey(question_id,
+                                         0,
+                                         0,
+                                         status,
+                                         sort,
+                                         SolutionActionType::none,
+                                         page,
+                                         size,
+                                         list_version,
+                                         page_type);
+        }
+
+        std::shared_ptr<CacheSolutionKey> BuildSolutionDetailCacheKey(long long solution_id)
+        {
+            return BuildSolutionCacheKey("",
+                                         solution_id,
+                                         0,
+                                         SolutionStatus::approved,
+                                         SolutionSort::latest,
+                                         SolutionActionType::none,
+                                         1,
+                                         10,
+                                         "1",
+                                         CacheKey::PageType::kData);
+        }
+
+        std::shared_ptr<CacheSolutionKey> BuildSolutionEligibilityCacheKey(const std::string& question_id,
+                                                                            int user_id)
+        {
+            return BuildSolutionCacheKey(question_id,
+                                         0,
+                                         user_id,
+                                         SolutionStatus::approved,
+                                         SolutionSort::latest,
+                                         SolutionActionType::none,
+                                         1,
+                                         10,
+                                         "1",
+                                         CacheKey::PageType::kEligibility);
+        }
+
+        std::shared_ptr<CacheSolutionKey> BuildSolutionActionCacheKey(long long solution_id,
+                                                                       int user_id,
+                                                                       SolutionActionType action_type = SolutionActionType::none)
+        {
+            return BuildSolutionCacheKey("",
+                                         solution_id,
+                                         user_id,
+                                         SolutionStatus::approved,
+                                         SolutionSort::latest,
+                                         action_type,
+                                         1,
+                                         10,
+                                         "1",
+                                         CacheKey::PageType::kAction);
         }
     private:
         int BuildJitteredTtl(int base_ttl, int jitter)

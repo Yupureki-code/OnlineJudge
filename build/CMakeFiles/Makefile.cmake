@@ -54,4 +54,5 @@ set(CMAKE_MAKEFILE_PRODUCTS
 set(CMAKE_DEPEND_INFO_FILES
   "src/compile_server/CMakeFiles/compile_server.dir/DependInfo.cmake"
   "src/oj_server/CMakeFiles/oj_server.dir/DependInfo.cmake"
+  "src/oj_server/CMakeFiles/oj_admin.dir/DependInfo.cmake"
   )

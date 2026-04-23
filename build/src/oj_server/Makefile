@@ -130,6 +130,44 @@ oj_server/fast:
 	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/build
 .PHONY : oj_server/fast
 
+# Convenience name for target.
+src/oj_server/CMakeFiles/oj_admin.dir/rule:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/oj_server/CMakeFiles/oj_admin.dir/rule
+.PHONY : src/oj_server/CMakeFiles/oj_admin.dir/rule
+
+# Convenience name for target.
+oj_admin: src/oj_server/CMakeFiles/oj_admin.dir/rule
+.PHONY : oj_admin
+
+# fast build rule for target.
+oj_admin/fast:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/build
+.PHONY : oj_admin/fast
+
+src/oj_admin.o: src/oj_admin.cpp.o
+.PHONY : src/oj_admin.o
+
+# target to build an object file
+src/oj_admin.cpp.o:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/src/oj_admin.cpp.o
+.PHONY : src/oj_admin.cpp.o
+
+src/oj_admin.i: src/oj_admin.cpp.i
+.PHONY : src/oj_admin.i
+
+# target to preprocess a source file
+src/oj_admin.cpp.i:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/src/oj_admin.cpp.i
+.PHONY : src/oj_admin.cpp.i
+
+src/oj_admin.s: src/oj_admin.cpp.s
+.PHONY : src/oj_admin.s
+
+# target to generate assembly for a file
+src/oj_admin.cpp.s:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/src/oj_admin.cpp.s
+.PHONY : src/oj_admin.cpp.s
+
 src/oj_server.o: src/oj_server.cpp.o
 .PHONY : src/oj_server.o
 
@@ -162,7 +200,11 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... oj_admin"
 	@echo "... oj_server"
+	@echo "... src/oj_admin.o"
+	@echo "... src/oj_admin.i"
+	@echo "... src/oj_admin.s"
 	@echo "... src/oj_server.o"
 	@echo "... src/oj_server.i"
 	@echo "... src/oj_server.s"

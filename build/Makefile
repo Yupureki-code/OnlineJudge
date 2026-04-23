@@ -142,6 +142,19 @@ oj_server/fast:
 	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/build
 .PHONY : oj_server/fast
 
+#=============================================================================
+# Target rules for targets named oj_admin
+
+# Build rule for target.
+oj_admin: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 oj_admin
+.PHONY : oj_admin
+
+# fast build rule for target.
+oj_admin/fast:
+	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/build
+.PHONY : oj_admin/fast
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -151,6 +164,7 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... compile_server"
+	@echo "... oj_admin"
 	@echo "... oj_server"
 .PHONY : help
 

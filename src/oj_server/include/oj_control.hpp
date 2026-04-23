@@ -301,11 +301,12 @@ namespace ns_control
         }
 
         bool VerifyEmailAuthCodeAndLogin(const std::string& email,
-                                         const std::string& code,
-                                         const std::string& optional_name,
-                                         User* user,
-                                         bool* is_new_user,
-                                         std::string* err_code)
+                         const std::string& code,
+                         const std::string& optional_name,
+                         const std::string& optional_password,
+                         User* user,
+                         bool* is_new_user,
+                         std::string* err_code)
         {
             constexpr int kCodeTtlSeconds = 300;
             constexpr int kMaxAttempts = 5;
@@ -370,7 +371,26 @@ namespace ns_control
                 bool exists = _model.CheckUser(email);
                 if (!exists)
                 {
-                    std::string name = BuildDefaultUserName(email, optional_name);
+                    std::string trimmed_name = TrimSpace(optional_name);
+                    if (trimmed_name.empty())
+                    {
+                        if (err_code != nullptr)
+                        {
+                            *err_code = "REGISTER_NAME_REQUIRED";
+                        }
+                        return false;
+                    }
+
+                    if (!IsPasswordStrongEnough(optional_password))
+                    {
+                        if (err_code != nullptr)
+                        {
+                            *err_code = "WEAK_PASSWORD";
+                        }
+                        return false;
+                    }
+
+                    std::string name = BuildDefaultUserName(email, trimmed_name);
                     if (!_model.CreateUser(name, email))
                     {
                         if (err_code != nullptr)
@@ -379,6 +399,26 @@ namespace ns_control
                         }
                         return false;
                     }
+
+                    std::string password_hash = BuildPasswordHash(optional_password);
+                    if (password_hash.empty())
+                    {
+                        if (err_code != nullptr)
+                        {
+                            *err_code = "PASSWORD_HASH_FAILED";
+                        }
+                        return false;
+                    }
+
+                    if (!_model.SetUserPassword(email, password_hash, PasswordAlgoTag()))
+                    {
+                        if (err_code != nullptr)
+                        {
+                            *err_code = "UPDATE_PASSWORD_FAILED";
+                        }
+                        return false;
+                    }
+
                     if (is_new_user != nullptr)
                     {
                         *is_new_user = true;
@@ -622,6 +662,168 @@ namespace ns_control
             return true;
         }
 
+        bool VerifyEmailAuthCode(const std::string& email,
+                                 const std::string& code,
+                                 std::string* err_code)
+        {
+            constexpr int kCodeTtlSeconds = 300;
+            constexpr int kMaxAttempts = 5;
+
+            try
+            {
+                auto cached_code = _auth_redis.get(BuildAuthCodeKey(email));
+                if (!cached_code)
+                {
+                    if (err_code != nullptr)
+                    {
+                        *err_code = "CODE_EXPIRED";
+                    }
+                    return false;
+                }
+
+                if (cached_code.value() != code)
+                {
+                    std::string attempts_key = BuildAuthAttemptsKey(email);
+                    long long attempts = _auth_redis.incr(attempts_key);
+                    if (attempts == 1)
+                    {
+                        _auth_redis.expire(attempts_key, kCodeTtlSeconds);
+                    }
+
+                    if (attempts >= kMaxAttempts)
+                    {
+                        _auth_redis.del(BuildAuthCodeKey(email));
+                        _auth_redis.del(attempts_key);
+                        if (err_code != nullptr)
+                        {
+                            *err_code = "ATTEMPTS_EXCEEDED";
+                        }
+                    }
+                    else
+                    {
+                        if (err_code != nullptr)
+                        {
+                            *err_code = "CODE_MISMATCH";
+                        }
+                    }
+                    return false;
+                }
+
+                _auth_redis.del(BuildAuthCodeKey(email));
+                _auth_redis.del(BuildAuthAttemptsKey(email));
+                return true;
+            }
+            catch (const sw::redis::Error& e)
+            {
+                logger(ERROR) << "Redis auth verify failed: " << e.what();
+                if (err_code != nullptr)
+                {
+                    *err_code = "REDIS_ERROR";
+                }
+                return false;
+            }
+        }
+
+        bool ChangeEmailWithCode(const User& current_user,
+                                 const std::string& new_email,
+                                 const std::string& code,
+                                 User* updated_user,
+                                 std::string* err_code)
+        {
+            if (new_email == current_user.email)
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "SAME_EMAIL";
+                }
+                return false;
+            }
+
+            std::string verify_err;
+            if (!VerifyEmailAuthCode(current_user.email, code, &verify_err))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = verify_err;
+                }
+                return false;
+            }
+
+            if (_model.CheckUser(new_email))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "EMAIL_ALREADY_EXISTS";
+                }
+                return false;
+            }
+
+            if (!_model.UpdateUserEmail(current_user.email, new_email))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "UPDATE_EMAIL_FAILED";
+                }
+                return false;
+            }
+
+            if (updated_user != nullptr)
+            {
+                if (!_model.GetUser(new_email, updated_user))
+                {
+                    if (err_code != nullptr)
+                    {
+                        *err_code = "LOAD_USER_FAILED";
+                    }
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        bool ChangePasswordWithCode(const std::string& email,
+                                    const std::string& code,
+                                    const std::string& new_password,
+                                    std::string* err_code)
+        {
+            std::string verify_err;
+            if (!VerifyEmailAuthCode(email, code, &verify_err))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = verify_err;
+                }
+                return false;
+            }
+
+            return SetPasswordForUser(email, new_password, err_code);
+        }
+
+        bool DeleteAccountWithCode(const std::string& email,
+                                   const std::string& code,
+                                   std::string* err_code)
+        {
+            std::string verify_err;
+            if (!VerifyEmailAuthCode(email, code, &verify_err))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = verify_err;
+                }
+                return false;
+            }
+
+            if (!_model.DeleteUserByEmail(email))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "DELETE_USER_FAILED";
+                }
+                return false;
+            }
+            return true;
+        }
+
         bool LoginWithPassword(const std::string& email,
                                const std::string& password,
                                User* user,
@@ -705,6 +907,18 @@ namespace ns_control
         }
         bool GetStaticHtml(const std::string& path, std::string* html)
         {
+            const bool disable_cache = (path == "user/profile.html" || path == "user/settings.html");
+            if (disable_cache)
+            {
+                bool view_cache_hit = false;
+                bool ok = _view.GetStaticHtml(path, html, &view_cache_hit, true);
+                if (ok)
+                {
+                    logger(INFO) << "[html_cache][static] bypass=1 page=" << path << " source=disk";
+                }
+                return ok;
+            }
+
             auto html_key = _model.BuildHtmlCacheKey(path, Cache::CacheKey::PageType::kHtml);
             if (_model.GetHtmlPage(html, html_key))
             {
@@ -918,11 +1132,17 @@ namespace ns_control
             return oss.str();
         }
 
+        std::string TrimSpace(const std::string& input) const
+        {
+            std::string out = input;
+            out.erase(out.begin(), std::find_if(out.begin(), out.end(), [](unsigned char ch){ return !std::isspace(ch); }));
+            out.erase(std::find_if(out.rbegin(), out.rend(), [](unsigned char ch){ return !std::isspace(ch); }).base(), out.end());
+            return out;
+        }
+
         std::string BuildDefaultUserName(const std::string& email, const std::string& optional_name) const
         {
-            std::string name = optional_name;
-            name.erase(name.begin(), std::find_if(name.begin(), name.end(), [](unsigned char ch){ return !std::isspace(ch); }));
-            name.erase(std::find_if(name.rbegin(), name.rend(), [](unsigned char ch){ return !std::isspace(ch); }).base(), name.end());
+            std::string name = TrimSpace(optional_name);
             if (!name.empty())
             {
                 if (name.size() > 64)

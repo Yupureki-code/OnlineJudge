@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>OJ 管理后台</title>
+    <style>
+        :root {
+            --bg: #0f1720;
+            --bg-soft: #17212d;
+            --panel: #1f2d3a;
+            --panel-2: #253747;
+            --text: #e5edf5;
+            --muted: #9ab0c4;
+            --brand: #57c084;
+            --brand-soft: rgba(87, 192, 132, 0.16);
+            --danger: #ee6b73;
+            --border: rgba(255, 255, 255, 0.12);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 15% 15%, rgba(87, 192, 132, 0.12), transparent 38%),
+                radial-gradient(circle at 90% 5%, rgba(116, 157, 240, 0.12), transparent 32%),
+                linear-gradient(145deg, #0c131b 0%, #121d28 48%, #0e1822 100%);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            border-right: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(18, 29, 40, 0.95), rgba(12, 19, 27, 0.95));
+            padding: 20px 16px;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .sub {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+
+        .nav-btn {
+            width: 100%;
+            text-align: left;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .nav-btn:hover,
+        .nav-btn.active {
+            background: var(--brand-soft);
+            border-color: rgba(87, 192, 132, 0.45);
+        }
+
+        .main {
+            padding: 20px;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 14px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            background: rgba(21, 32, 44, 0.72);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+
+        .user {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .logout {
+            border: 1px solid rgba(238, 107, 115, 0.5);
+            color: #ffd8da;
+            background: rgba(238, 107, 115, 0.12);
+            border-radius: 8px;
+            padding: 8px 10px;
+            cursor: pointer;
+        }
+
+        .content {
+            background: rgba(21, 32, 44, 0.72);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            overflow: auto;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .card {
+            background: linear-gradient(180deg, var(--panel), var(--panel-2));
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .card .label {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .card .value {
+            margin-top: 6px;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            margin: 8px 0 10px;
+        }
+
+        input[type="search"] {
+            width: 100%;
+            max-width: 360px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.02);
+            color: var(--text);
+            padding: 9px 10px;
+        }
+
+        button.action {
+            border: 1px solid rgba(87, 192, 132, 0.5);
+            background: var(--brand-soft);
+            color: #d8f7e5;
+            border-radius: 8px;
+            padding: 9px 12px;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            text-align: left;
+            padding: 10px 8px;
+            font-size: 13px;
+        }
+
+        th {
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .pagination {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .error {
+            color: #ffc3c7;
+            background: rgba(238, 107, 115, 0.14);
+            border: 1px solid rgba(238, 107, 115, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 900px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+            .cards { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="logo">Yupureki OJ</div>
+        <div class="sub">Admin Console</div>
+        <button class="nav-btn active" data-tab="overview">仪表盘</button>
+        <button class="nav-btn" data-tab="users">用户管理</button>
+        <button class="nav-btn" data-tab="questions">题目管理</button>
+    </aside>
+    <main class="main">
+        <div class="topbar">
+            <div id="admin-user" class="user">正在读取登录信息...</div>
+            <button id="logout-btn" class="logout">退出登录</button>
+        </div>
+        <section id="content" class="content"></section>
+    </main>
+</div>
+<script src="/admin/admin-app.js?v=20260423"></script>
+</body>
+</html>

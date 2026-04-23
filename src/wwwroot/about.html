@@ -621,12 +621,6 @@
                 <input type="text" class="search-input" placeholder="搜索题目...">
         </div>
         <div class="nav">
-            <script>
-                if (typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO.isLoggedIn) {
-                    document.getElementById('user-auth').style.display = 'none';
-                    document.getElementById('user-profile').style.display = 'flex';
-                }
-            </script>
             <!-- 未登录状态 -->
             <div id="user-auth" style="display: block;">
                 <button class="auth-btn" id="sign-in-button">登录/注册</button>
@@ -747,6 +741,6 @@
     
     
     <script src="/js/page-loading.js"></script>
-    <script src="./js/auth.js"></script>
+    <script src="/js/auth.js?v=20260423"></script>
 </body>
 </html>

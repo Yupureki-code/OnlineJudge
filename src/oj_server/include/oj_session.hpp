@@ -208,53 +208,46 @@ namespace ns_session
 
         bool ParseCookie(const std::string& cookie_header, std::string* session_id)
         {
-            if (cookie_header.empty())
-                return false;
-
-            std::string cookies = cookie_header;
-            size_t pos = 0;
-            
-            while ((pos = cookies.find(";")) != std::string::npos)
+            if (cookie_header.empty() || session_id == nullptr)
             {
-                std::string cookie = cookies.substr(0, pos);
-                size_t eq_pos = cookie.find("=");
+                return false;
+            }
+
+            size_t start = 0;
+            while (start < cookie_header.size())
+            {
+                size_t end = cookie_header.find(';', start);
+                std::string token = (end == std::string::npos)
+                    ? cookie_header.substr(start)
+                    : cookie_header.substr(start, end - start);
+
+                // trim leading/trailing spaces
+                size_t left = token.find_first_not_of(' ');
+                if (left == std::string::npos)
+                {
+                    if (end == std::string::npos) break;
+                    start = end + 1;
+                    continue;
+                }
+                size_t right = token.find_last_not_of(' ');
+                token = token.substr(left, right - left + 1);
+
+                size_t eq_pos = token.find('=');
                 if (eq_pos != std::string::npos)
                 {
-                    std::string name = cookie.substr(0, eq_pos);
-                    std::string value = cookie.substr(eq_pos + 1);
-                    
-                    while (name.size() > 0 && name[0] == ' ')
-                        name = name.substr(1);
-                    
+                    std::string name = token.substr(0, eq_pos);
+                    std::string value = token.substr(eq_pos + 1);
                     if (name == SESSION_COOKIE_NAME)
                     {
                         *session_id = value;
                         return true;
                     }
                 }
-                
-                if (pos + 2 < cookies.size())
-                    cookies = cookies.substr(pos + 2);
-                else
-                    break;
+
+                if (end == std::string::npos) break;
+                start = end + 1;
             }
 
-            size_t eq_pos = cookies.find("=");
-            if (eq_pos != std::string::npos)
-            {
-                std::string name = cookies.substr(0, eq_pos);
-                std::string value = cookies.substr(eq_pos + 1);
-                
-                while (name.size() > 0 && name[0] == ' ')
-                    name = name.substr(1);
-                
-                if (name == SESSION_COOKIE_NAME)
-                {
-                    *session_id = value;
-                    return true;
-                }
-            }
-            
             return false;
         }
     };
