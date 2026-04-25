@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Logger/logstrategy.h>
 #include <cstdio>
 #include <assert.h>
 #include <string>
@@ -33,9 +34,6 @@ namespace ns_control
     using namespace ns_util;
     using namespace ns_view;
     using namespace ns_session;
-
-    //使用ns_model中的User结构体
-    using User = ns_model::User;
 
     //表示后端编译服务器的类
     class Machine
@@ -205,7 +203,7 @@ namespace ns_control
         {}
 
         Model* GetModel() { return &_model; }
-
+        //发送邮箱验证码
         bool SendEmailAuthCode(const std::string& email, const std::string& client_ip, std::string* err_code, int* retry_after_seconds)
         {
             constexpr int kCodeTtlSeconds = 300;
@@ -270,7 +268,7 @@ namespace ns_control
                 _auth_redis.setex(BuildAuthCodeKey(email), kCodeTtlSeconds, code);
                 _auth_redis.del(BuildAuthAttemptsKey(email));
 
-                ns_mail::MailSendResult send_result = ns_mail::MailService::SendAuthCodeMail(email, code);
+                ns_mail::MailSendResult send_result = _mail.SendAuthCodeMail(email, code);
                 if (!send_result.ok)
                 {
                     _auth_redis.del(BuildAuthCodeKey(email));
@@ -451,12 +449,16 @@ namespace ns_control
         bool AllQuestions(std::string *html,
                           int page = 1,
                           int size = 5,
-                          const QueryStruct& query_hash = QueryStruct(),
+                          std::shared_ptr<QueryStruct> query_hash = nullptr,
                           const std::string& list_version = "1")
         {
+            //list_version参数目前没有实际作用，后续可以用来实现当题库发生变化时自动更新缓存的功能
+            //目前先直接使用_model.GetQuestionsListVersion()获取版本号，保证缓存一致性
             (void)list_version;
-            std::string effective_list_version = _model.GetListVersion();
+            std::string effective_list_version = _model.GetQuestionsListVersion();
             auto html_key = _model.BuildListCacheKey(query_hash, page, size, effective_list_version, Cache::CacheKey::PageType::kHtml);
+            //先在cache中找静态HTML页面，如果找到直接返回
+            //如果没有找到再查询数据并生成HTML页面，最后将生成的HTML页面写入cache供下次访问使用
             if(_model.GetHtmlPage(html, html_key))
             {
                 _model.RecordListHtmlCacheMetrics(true);
@@ -470,8 +472,8 @@ namespace ns_control
             int total_count = 0;
             int total_pages = 0;
             auto data_key = _model.BuildListCacheKey(query_hash, page, size, effective_list_version, Cache::CacheKey::PageType::kData);
-
-            if (_model.GetAllQuestions(data_key, page_questions, &total_count, &total_pages))
+            //先在cache中找数据，如果找到直接用数据生成HTML页面返回
+            if (_model.GetQuestionsByPage(data_key, page_questions, &total_count, &total_pages))
             {
                 int safe_page = page;
                 if (safe_page < 1) safe_page = 1;
@@ -879,6 +881,95 @@ namespace ns_control
             return true;
         }
 
+        bool LoginAdminWithIdAndPassword(int admin_id,
+                                         const std::string& password,
+                                         AdminAccount* admin,
+                                         User* user,
+                                         std::string* err_code)
+        {
+            if (admin == nullptr || user == nullptr)
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "INVALID_ARGUMENT";
+                }
+                return false;
+            }
+
+            if (admin_id <= 0 || password.empty())
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "INVALID_ARGUMENT";
+                }
+                return false;
+            }
+
+            if (!_model.GetAdminByAdminId(admin_id, admin))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "INVALID_CREDENTIALS";
+                }
+                return false;
+            }
+
+            if (!VerifyPasswordHash(password, admin->password_hash, PasswordAlgoTag()))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "INVALID_CREDENTIALS";
+                }
+                return false;
+            }
+
+            if (!_model.GetUserById(admin->uid, user))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "LOAD_USER_FAILED";
+                }
+                return false;
+            }
+
+            _model.UpdateLastLogin(user->email);
+            return true;
+        }
+
+        bool BuildSecurePasswordHash(const std::string& password,
+                                     std::string* password_hash,
+                                     std::string* err_code)
+        {
+            if (password_hash == nullptr)
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "INVALID_ARGUMENT";
+                }
+                return false;
+            }
+
+            if (!IsPasswordStrongEnough(password))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "WEAK_PASSWORD";
+                }
+                return false;
+            }
+
+            *password_hash = BuildPasswordHash(password);
+            if (password_hash->empty())
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "PASSWORD_HASH_FAILED";
+                }
+                return false;
+            }
+            return true;
+        }
+
         bool SaveQuestion(const Question& q)
         {
             return _model.SaveQuestion(q);
@@ -905,9 +996,11 @@ namespace ns_control
             logger(INFO) << "[cache] static html invalidated page=" << path;
             return true;
         }
+        //获取静态页面，优先级：redis缓存 > view内存缓存 > 磁盘文件
         bool GetStaticHtml(const std::string& path, std::string* html)
         {
-            const bool disable_cache = (path == "user/profile.html" || path == "user/settings.html");
+            //用户个性主页不应该缓存
+            const bool disable_cache = (path == "user/profile.html" || path == "user/settings.html" || path == "admin/index.html");
             if (disable_cache)
             {
                 bool view_cache_hit = false;
@@ -916,9 +1009,13 @@ namespace ns_control
                 {
                     logger(INFO) << "[html_cache][static] bypass=1 page=" << path << " source=disk";
                 }
+                else 
+                {
+                    logger(FATAL) << "[html_cache][static] bypass=0 page=" << path << " source=disk";
+                }
                 return ok;
             }
-
+            //其他页面正常使用缓存
             auto html_key = _model.BuildHtmlCacheKey(path, Cache::CacheKey::PageType::kHtml);
             if (_model.GetHtmlPage(html, html_key))
             {
@@ -1075,7 +1172,7 @@ namespace ns_control
         {
             return "oj:auth:attempts:" + email;
         }
-
+        //构建验证码发送冷却的redis key，格式为oj:auth:cooldown:{email}
         std::string BuildAuthCooldownKey(const std::string& email) const
         {
             return "oj:auth:cooldown:" + email;
@@ -1173,6 +1270,7 @@ namespace ns_control
         CentralConsole _console;
         SessionManager _session_manager;
         sw::redis::Redis _auth_redis;
+        ns_mail::Mail _mail;
 
     public:
         std::string CreateSession(int user_id, const std::string& email)
@@ -1194,20 +1292,23 @@ namespace ns_control
             }
         }
 
+        //通过session获取用户信息，失败返回false，成功返回true并将用户信息写入user参数
         bool GetSessionUser(const std::string& cookie_header, User* user)
         {
             std::string session_id;
+            //从cookie_header中解析出session_id，如果解析失败返回false
             if (!_session_manager.ParseCookie(cookie_header, &session_id))
             {
                 return false;
             }
 
             Session session;
+            //通过session_id获取session信息，如果获取失败返回false
             if (!_session_manager.GetSession(session_id, &session))
             {
                 return false;
             }
-
+            //通过session中的user_id在mysql中获取用户信息，如果获取失败返回false，成功返回true并将用户信息写入user参数
             return _model.GetUserById(session.user_id, user);
         }
 

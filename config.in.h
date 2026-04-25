@@ -35,6 +35,22 @@ namespace ns_runtime_cfg
 			return fallback;
 		}
 	}
+
+	inline int ParseIntOrDefault(const std::string& value, int fallback)
+	{
+		if (value.empty())
+		{
+			return fallback;
+		}
+		try
+		{
+			return std::stoi(value);
+		}
+		catch (...)
+		{
+			return fallback;
+		}
+	}
 }
 
 const std::string HTML_PATH = "@HTML_PATH@/";
@@ -48,16 +64,16 @@ const std::string host = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_HOST", "@HOST@")
 const std::string user = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_USER", "@USER@");
 const std::string passwd = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_PASS", "@PASSWD@");
 const std::string db = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_NAME", "@MYOJ@");
-const int port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_DB_PORT", std::stoi("@PORT@"));
+const int port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_DB_PORT", ns_runtime_cfg::ParseIntOrDefault("@PORT@", 3306));
 
 const std::string redis_addr = ns_runtime_cfg::GetEnvOrDefault("OJ_REDIS_ADDR", "@REDIS@");
 
 const std::string smtp_host = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_HOST", "@SMTP_HOST@");
-const int smtp_port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_SMTP_PORT", std::stoi("@SMTP_PORT@"));
+const int smtp_port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_SMTP_PORT", ns_runtime_cfg::ParseIntOrDefault("@SMTP_PORT@", 465));
 const std::string smtp_user = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_USER", "@SMTP_USER@");
 const std::string smtp_passwd = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_PASS", "@SMTP_PASSWD@");
 const std::string smtp_from = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_FROM", "@SMTP_FROM@");
 const bool smtp_ssl = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_SSL", "@SMTP_SSL@") == "true";
 
 const std::string admin_host = ns_runtime_cfg::GetEnvOrDefault("OJ_ADMIN_HOST", "@ADMIN_HOST@");
-const int admin_port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_ADMIN_PORT", std::stoi("@ADMIN_PORT@"));
+const int admin_port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_ADMIN_PORT", ns_runtime_cfg::ParseIntOrDefault("@ADMIN_PORT@", 8090));

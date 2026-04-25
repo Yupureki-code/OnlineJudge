@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>OJ 管理后台登录</title>
+    <style>
+        :root {
+            --bg-1: #09121a;
+            --bg-2: #122131;
+            --panel: rgba(12, 24, 35, 0.82);
+            --panel-border: rgba(255, 255, 255, 0.12);
+            --text: #edf4fa;
+            --muted: #9db2c6;
+            --accent: #7fd3a4;
+            --accent-strong: #a6efc4;
+            --danger: #ffb9be;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 20% 18%, rgba(127, 211, 164, 0.16), transparent 32%),
+                radial-gradient(circle at 82% 12%, rgba(122, 173, 230, 0.18), transparent 28%),
+                linear-gradient(150deg, var(--bg-1), var(--bg-2));
+        }
+
+        .shell {
+            width: min(980px, 100%);
+            display: grid;
+            grid-template-columns: minmax(280px, 1.15fr) minmax(320px, 0.95fr);
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            overflow: hidden;
+            background: rgba(6, 14, 22, 0.42);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.32);
+            backdrop-filter: blur(14px);
+        }
+
+        .intro {
+            padding: 44px 38px;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+                linear-gradient(140deg, rgba(127, 211, 164, 0.08), rgba(122, 173, 230, 0.08));
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            color: var(--accent-strong);
+            background: rgba(127, 211, 164, 0.12);
+            border: 1px solid rgba(127, 211, 164, 0.2);
+            font-size: 12px;
+            letter-spacing: 0.08em;
+        }
+
+        h1 {
+            margin: 20px 0 14px;
+            font-size: clamp(30px, 4vw, 44px);
+            line-height: 1.08;
+        }
+
+        .lead {
+            margin: 0;
+            max-width: 30em;
+            color: var(--muted);
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        .notes {
+            margin-top: 26px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .note {
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .panel {
+            padding: 34px 30px;
+            background: var(--panel);
+        }
+
+        .panel h2 {
+            margin: 4px 0 6px;
+            font-size: 24px;
+        }
+
+        .panel p {
+            margin: 0 0 22px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .field {
+            margin-bottom: 14px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .field input {
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            padding: 13px 14px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            font-size: 15px;
+            transition: border-color 0.15s ease, transform 0.15s ease;
+        }
+
+        .field input:focus {
+            outline: none;
+            border-color: rgba(127, 211, 164, 0.65);
+            transform: translateY(-1px);
+        }
+
+        .submit {
+            width: 100%;
+            margin-top: 6px;
+            border: none;
+            border-radius: 14px;
+            padding: 13px 14px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #092116;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            cursor: pointer;
+        }
+
+        .submit:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
+        .msg {
+            min-height: 22px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .msg.error {
+            color: var(--danger);
+        }
+
+        .msg.success {
+            color: var(--accent-strong);
+        }
+
+        @media (max-width: 860px) {
+            .shell {
+                grid-template-columns: 1fr;
+            }
+
+            .intro,
+            .panel {
+                padding: 26px 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <section class="intro">
+        <div class="eyebrow">ADMIN ONLY</div>
+        <h1>OnlineJudge 管理控制台</h1>
+        <p class="lead">这里仅接受管理员编号与密码登录。登录成功后会下发独立后台会话，并在 Redis 中保存约 1 小时。</p>
+        <div class="notes">
+            <div class="note">未持有有效后台会话时，主控制台页面不会直接暴露。</div>
+            <div class="note">管理员账户只能由超级管理员在后台创建与维护。</div>
+            <div class="note">如果你希望进一步收紧，可以继续把后台 CORS 从通配符改成精确域名。</div>
+        </div>
+    </section>
+    <section class="panel">
+        <h2>管理员登录</h2>
+        <p>请输入唯一管理员 ID 与对应密码。</p>
+        <div class="field">
+            <label for="admin-id">管理员 ID</label>
+            <input id="admin-id" type="number" min="1" placeholder="例如 1">
+        </div>
+        <div class="field">
+            <label for="admin-password">密码</label>
+            <input id="admin-password" type="password" placeholder="请输入管理员密码">
+        </div>
+        <button id="login-submit" class="submit">登录</button>
+        <div id="login-msg" class="msg"></div>
+    </section>
+</div>
+<script src="/admin/assets/admin-login.js?v=20260424"></script>
+</body>
+</html>

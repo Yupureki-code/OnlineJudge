@@ -1,35 +1,72 @@
 #pragma once
 
-#include <string>
-#include <sstream>
-#include <cstring>
-#include <mutex>
-#include <cstdlib>
 #include <algorithm>
 #include <cctype>
+#include <cstring>
+#include <cstdlib>
 #include <curl/curl.h>
 #include <Logger/logstrategy.h>
-#include "../../comm/config.h"
+#include <mutex>
+#include <sstream>
+#include <string>
+
+#include "../../comm/comm.hpp"
 
 namespace ns_mail
 {
     using namespace ns_log;
-
+    using namespace ns_util;
     struct MailSendResult
     {
         bool ok = false;
         std::string error;
     };
 
-    class MailService
+    namespace
     {
-    private:
-        static std::string TrimCopy(const std::string& input)
+        std::string NormalizeMailAddress(std::string email)
         {
-            std::string s = input;
-            s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch){ return !std::isspace(ch); }));
-            s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch){ return !std::isspace(ch); }).base(), s.end());
-            return s;
+            email = StringUtil::Trim(email);
+            if (!email.empty() && email.front() == '<' && email.back() == '>')
+            {
+                email = email.substr(1, email.size() - 2);
+            }
+            return email;
+        }
+
+        std::string BuildMailUrl()
+        {
+            std::ostringstream oss;
+            if (smtp_port == 587)
+            {
+                oss << "smtp://";
+            }
+            else if (smtp_ssl)
+            {
+                oss << "smtps://";
+            }
+            else
+            {
+                oss << "smtp://";
+            }
+            oss << smtp_host << ":" << smtp_port;
+            return oss.str();
+        }
+
+        std::string BuildFromAddress()
+        {
+            std::string user_email = NormalizeMailAddress(smtp_user);
+            std::string from_email = NormalizeMailAddress(smtp_from);
+            if (from_email.empty() || from_email == "null")
+            {
+                return user_email;
+            }
+            if (from_email != user_email)
+            {
+                logger(WARNING) << "smtp_from differs from smtp_user, fallback to smtp_user";
+                return user_email;
+            }
+            return from_email;
         }
 
         struct UploadStatus
@@ -43,7 +80,7 @@ namespace ns_mail
             std::string server_lines;
         };
 
-        static size_t PayloadSource(char* ptr, size_t size, size_t nmemb, void* userp)
+        size_t PayloadSource(char* ptr, size_t size, size_t nmemb, void* userp)
         {
             UploadStatus* upload = static_cast<UploadStatus*>(userp);
             size_t buffer_size = size * nmemb;
@@ -62,7 +99,7 @@ namespace ns_mail
             return copy_size;
         }
 
-        static int DebugCallback(CURL* handle, curl_infotype type, char* data, size_t size, void* userptr)
+        int DebugCallback(CURL* handle, curl_infotype type, char* data, size_t size, void* userptr)
         {
             (void)handle;
             if (userptr == nullptr || data == nullptr || size == 0)
@@ -70,12 +107,12 @@ namespace ns_mail
                 return 0;
             }
 
-            DebugStatus* dbg = static_cast<DebugStatus*>(userptr);
             if (type != CURLINFO_HEADER_IN)
             {
                 return 0;
             }
 
+            DebugStatus* dbg = static_cast<DebugStatus*>(userptr);
             std::string line(data, size);
             line.erase(std::remove(line.begin(), line.end(), '\r'), line.end());
             line.erase(std::remove(line.begin(), line.end(), '\n'), line.end());
@@ -91,59 +128,24 @@ namespace ns_mail
             }
             return 0;
         }
+    }
 
-        static std::string BuildMailUrl()
-        {
-            std::ostringstream oss;
-            // QQ SMTP over 587 should use smtp:// and then upgrade via STARTTLS.
-            if (smtp_port == 587)
-            {
-                oss << "smtp://";
-            }
-            else if (smtp_ssl)
-            {
-                oss << "smtps://";
-            }
-            else
-            {
-                oss << "smtp://";
-            }
-            oss << smtp_host << ":" << smtp_port;
-            return oss.str();
-        }
-
-        static std::string BuildFromAddress()
-        {
-            auto normalize = [](std::string email) {
-                email.erase(email.begin(), std::find_if(email.begin(), email.end(), [](unsigned char ch){ return !std::isspace(ch); }));
-                email.erase(std::find_if(email.rbegin(), email.rend(), [](unsigned char ch){ return !std::isspace(ch); }).base(), email.end());
-                if (!email.empty() && email.front() == '<' && email.back() == '>')
-                {
-                    email = email.substr(1, email.size() - 2);
-                }
-                return email;
-            };
-
-            std::string user_email = normalize(smtp_user);
-            std::string from_email = normalize(smtp_from);
-            if (from_email.empty() || from_email == "null")
-            {
-                return user_email;
-            }
-            if (from_email != user_email)
-            {
-                logger(WARNING) << "smtp_from differs from smtp_user, fallback to smtp_user";
-                return user_email;
-            }
-            return from_email;
-        }
-
+    class Mail
+    {
     public:
-        static MailSendResult SendAuthCodeMail(const std::string& to, const std::string& code)
+        Mail() = default;
+        ~Mail() = default;
+
+        Mail(const Mail&) = default;
+        Mail& operator=(const Mail&) = default;
+        Mail(Mail&&) = default;
+        Mail& operator=(Mail&&) = default;
+
+        MailSendResult SendAuthCodeMail(const std::string& to, const std::string& code)
         {
             MailSendResult result;
-            std::string username = TrimCopy(smtp_user);
-            std::string password = TrimCopy(smtp_passwd);
+            std::string username = StringUtil::Trim(smtp_user);
+            std::string password = StringUtil::Trim(smtp_passwd);
 
             if (smtp_host.empty() || smtp_host == "null" ||
                 username.empty() || username == "null" ||
@@ -152,18 +154,6 @@ namespace ns_mail
                 result.error = "smtp_not_configured";
                 return result;
             }
-
-            std::string from = BuildFromAddress();
-            std::ostringstream payload;
-            payload << "To: <" << to << ">\r\n";
-            payload << "From: <" << from << ">\r\n";
-            payload << "Subject: OnlineJudge 邮箱验证码\r\n";
-            payload << "Content-Type: text/plain; charset=UTF-8\r\n";
-            payload << "\r\n";
-            payload << "您正在登录 OnlineJudge。\r\n";
-            payload << "验证码：" << code << "\r\n";
-            payload << "有效期:5 分钟。\r\n";
-            payload << "如果不是您本人操作，请忽略此邮件。\r\n";
 
             static std::once_flag curl_init_once;
             std::call_once(curl_init_once, []() {
@@ -177,7 +167,18 @@ namespace ns_mail
                 return result;
             }
 
-            struct curl_slist* recipients = nullptr;
+            std::string from = BuildFromAddress();
+            std::ostringstream payload;
+            payload << "To: <" << to << ">\r\n";
+            payload << "From: <" << from << ">\r\n";
+            payload << "Subject: Yupureki-OJ 邮箱验证码\r\n";
+            payload << "Content-Type: text/plain; charset=UTF-8\r\n";
+            payload << "\r\n";
+            payload << "您正在登录 Yupureki-OJ。\r\n";
+            payload << "验证码：" << code << "\r\n";
+            payload << "有效期:5 分钟。\r\n";
+            payload << "如果不是您本人操作，请忽略此邮件。\r\n";
+
             UploadStatus upload;
             upload.payload = payload.str();
 
@@ -203,6 +204,8 @@ namespace ns_mail
             curl_easy_setopt(curl, CURLOPT_USE_SSL, use_ssl_mode);
             curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buffer);
             curl_easy_setopt(curl, CURLOPT_MAIL_FROM, from_mail.c_str());
+
+            struct curl_slist* recipients = nullptr;
             recipients = curl_slist_append(recipients, to_mail.c_str());
             curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
             curl_easy_setopt(curl, CURLOPT_READFUNCTION, PayloadSource);

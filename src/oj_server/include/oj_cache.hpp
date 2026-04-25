@@ -1,5 +1,6 @@
 #include <Logger/logstrategy.h>
 #include <httplib.h>
+#include <iterator>
 #include <jsoncpp/json/value.h>
 #include <memory>
 #include <mysql/mysql.h>
@@ -7,6 +8,8 @@
 #include <sstream>
 #include <ctime>
 #include <random>
+#include <sw/redis++/command.h>
+#include <sw/redis++/command_options.h>
 #include <sw/redis++/redis++.h>
 #include "../../comm/comm.hpp"
 
@@ -15,83 +18,6 @@ using namespace ns_log;
 
 namespace ns_cache
 {
-    struct Question
-    {
-        std::string number; //题号
-        std::string title;  //标题
-        std::string star;   //难度
-        std::string desc;   //描述
-        int cpu_limit;      //时间限制
-        int memory_limit;   //内存限制
-        std::string create_time; //创建时间
-        std::string update_time; //更新时间
-    };
-
-    struct QueryStruct
-    {
-        std::string id;
-        std::string title;
-        std::string difficulty;
-
-        QueryStruct() = default;
-
-        std::string ToString() const
-        {
-            std::ostringstream oss;
-            oss << "id=" << id
-                << ";title=" << title
-                << ";difficulty=" << difficulty;
-            return oss.str();
-        }
-
-        std::string ToJsonString() const
-        {
-            Json::Value json_value;
-            json_value["id"] = id;
-            json_value["title"] = title;
-            json_value["difficulty"] = difficulty;
-            Json::FastWriter writer;
-            return writer.write(json_value);
-        }
-    };
-
-    enum class SolutionStatus
-    {
-        pending,
-        approved,
-        rejected
-    };
-
-    enum class SolutionSort
-    {
-        latest,
-        hot
-    };
-
-    enum class SolutionActionType
-    {
-        none,
-        like,
-        favorite
-    };
-
-    struct KeyContext
-    {
-        // 现有题库列表缓存字段（保留）
-        QueryStruct _query_hash;
-        int page = 1;
-        int size = 10;
-        std::string list_version;
-        std::string _page_name;
-
-        // solution 专用字段（新增）
-        std::string question_id;      // 题号或题目主键，与数据库保持一致
-        long long solution_id = 0;    // 题解ID
-        int user_id = 0;              // 当前用户ID（资格/互动状态用）
-        SolutionStatus status = SolutionStatus::approved;
-        SolutionSort sort = SolutionSort::latest;
-        SolutionActionType action_type = SolutionActionType::none;
-    };
     class Cache
     {
     public:
@@ -155,18 +81,19 @@ namespace ns_cache
         public:
             void Build(const KeyContext& context)override
             {   
-                _query_hash = context._query_hash;
+                _query = context._query;
                 _page = context.page;
                 _size = context.size;
                 _list_version = context.list_version;
+                _list_type = context.list_type;
             }
             std::string GetCacheKeyString(Cache* cache) const override
-            {                
-                return cache->_business + ":" + cache->_env + ":" + cache->_version + ":list:" + PageTypeToString() + ":" + _query_hash.ToString() + ":" + std::to_string(_page) + ":" + std::to_string(_size) + ":" + _list_version;
-            }
-            const QueryStruct& GetQueryHash() const
             {
-                return _query_hash;
+               return cache->_business + ":" + cache->_env + ":" + cache->_version + ":list:" + EnumToStringUtil::ListToString(_list_type) + ":" + PageTypeToString() + ":" + _query->ToString() + ":" + std::to_string(_page) + ":" + std::to_string(_size) + ":" + _list_version;
+            }
+            std::shared_ptr<QueryStruct> GetQueryHash() const
+            {
+                return _query;
             }
             int GetPage() const
             {                
@@ -181,9 +108,10 @@ namespace ns_cache
                 return _list_version;
             }
         private:
-            QueryStruct _query_hash;
+            std::shared_ptr<QueryStruct> _query;
             int _page;
             int _size;
+            ListType _list_type;
             std::string _list_version;
         };
 
@@ -297,8 +225,95 @@ namespace ns_cache
             std::string _list_version;
             SolutionActionType _action_type = SolutionActionType::none;
         };
-
-        bool GetQuestion(const std::shared_ptr<CacheDetailKey>& key, Question& question)
+        bool SetStringByAnyKey(const std::string& key, const std::string& value, int expire_seconds)
+        {
+            try
+            {
+                _redis.setex(_business + ":" + _env + ":" + _version + ":" + key, expire_seconds, value);
+                return true;
+            }
+            catch (const sw::redis::Error &e)
+            {
+                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                return false;
+            }
+        }
+        bool GetStringByAnyKey(const std::string& key, std::string* value)
+        {
+            try
+            {
+                OptionalString result = _redis.get(_business + ":" + _env + ":" + _version + ":" + key);
+                if (result)
+                {
+                    *value = result.value();
+                    return true;
+                }
+                return false;
+            }
+            catch (const sw::redis::Error &e)
+            {
+                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                return false;
+            }
+        }
+        // 获取题目详情
+        // bool GetQuestionByZSet(const std::string& question_id, Question& question)
+        // {
+        //     const std::string key = _business + ":" + _env + ":" + _version + ":questions";
+        //     std::vector<std::string> question_json;
+        //     try 
+        //     {
+        //         _redis.zrangebyscore(question_id,BoundedInterval<double>(std::stod(question_id), std::stod(question_id),BoundType::CLOSED), std::back_inserter(question_json));
+        //         if (question_json.empty())
+        //         {
+        //             logger(ns_log::INFO) << "Cache miss for question " << question_id;
+        //             return false;
+        //         }
+        //         else
+        //         {
+        //             Json::CharReaderBuilder builder;
+        //             Json::Value json_value;
+        //             std::istringstream ss(question_json[0]);
+        //             if (Json::parseFromStream(builder, ss, &json_value, nullptr))
+        //             {
+        //                 question.number = json_value["number"].asString();
+        //                 question.title = json_value["title"].asString();
+        //                 question.star = json_value["star"].asString();
+        //                 logger(ns_log::INFO) << "Cache hit for question " << question_id;
+        //                 return true;
+        //             }
+        //             logger(ns_log::WARNING) << "Invalid cache payload for question " << question_id;
+        //             return false;
+        //         }
+        //     } 
+        //     catch (const std::exception &e)
+        //     {
+        //         logger(ns_log::ERROR) << "Exception: " << e.what();
+        //         return false;
+        //     }
+        // }
+        // bool SetQuestionByZSet(const Question& question)
+        // {
+        //     const std::string key = _business + ":" + _env + ":" + _version + ":questions";
+        //     Json::Value json_value;
+        //     json_value["number"] = question.number;
+        //     json_value["title"] = question.title;
+        //     json_value["star"] = question.star;
+        //     Json::FastWriter writer;
+        //     std::string json_str = writer.write(json_value);
+        //     try 
+        //     {
+        //         _redis.zadd(key, question.number, json_str);
+        //         logger(ns_log::INFO) << "Question " << question.number << " cached successfully in ZSet";
+        //         return true;
+        //     } 
+        //     catch (const sw::redis::Error &e) 
+        //     {
+        //         logger(ns_log::ERROR) << "Redis error: " << e.what();
+        //         return false;
+        //     }
+        // }
+        bool GetDetailedQuestion(const std::shared_ptr<CacheDetailKey>& key, Question& question)
         {
             std::string key_str = key->GetCacheKeyString(this);
             try 
@@ -350,8 +365,8 @@ namespace ns_cache
             
             }
         }
-
-        void SetQuestion(const std::shared_ptr<CacheDetailKey>& key, Question& question)
+        // 设置题目缓存
+        void SetDetailedQuestion(const std::shared_ptr<CacheDetailKey>& key, Question& question)
         {
             Json::Value json_value;
             json_value["number"] = question.number;
@@ -387,8 +402,8 @@ namespace ns_cache
                 logger(ns_log::ERROR) << "Redis error: " << e.what();
             }
         }
-
-        bool GetAllQuestions(const std::shared_ptr<CacheListKey>& key, std::vector<Question>& questions, int * total_count, int* total_pages)
+        //获取题目列表
+        bool GetQuestionsByPage(const std::shared_ptr<CacheListKey>& key, std::vector<Question>& questions, int * total_count, int* total_pages)
         {
             std::string key_str = key->GetCacheKeyString(this);
             try 
@@ -442,8 +457,102 @@ namespace ns_cache
                 return false;
             }
         }
-
-        void SetAllQuestions(const std::shared_ptr<CacheListKey>& key,
+        bool GetUsersByPage(const std::shared_ptr<CacheListKey>& key, std::vector<User>& users, int * total_count, int* total_pages)
+        {
+            std::string key_str = key->GetCacheKeyString(this);
+            try 
+            {                
+                if (_redis.exists(key_str))
+                {                    
+                    OptionalString result = _redis.get(key_str);
+                    if (result)                    
+                    {                        
+                        std::string json_str = result.value();
+                        Json::CharReaderBuilder builder;
+                        Json::Value json_value;
+                        std::istringstream ss(json_str);
+                        if (Json::parseFromStream(builder, ss, &json_value, nullptr))
+                        {                            
+                            if (total_count != nullptr && json_value.isMember("total_count"))
+                            {                                
+                                *total_count = json_value["total_count"].asInt();
+                            }
+                            if (total_pages != nullptr && json_value.isMember("total_pages"))
+                            {                                
+                                *total_pages = json_value["total_pages"].asInt();
+                            }
+                            if(json_value.isObject() && json_value.isMember("users") && json_value["users"].isArray())
+                            {                                
+                                for (const auto& item : json_value["users"])
+                                {                                    
+                                    User u;                                    
+                                    u.uid = item["uid"].asInt();
+                                    u.name = item["name"].asString();
+                                    u.email = item["email"].asString();
+                                    u.create_time = item["create_time"].asString();
+                                    u.last_login = item["last_login"].asString();
+                                    users.push_back(u);
+                                }                            
+                            }
+                        }
+                    }
+                    logger(ns_log::INFO) << "Cache hit for user list " << key->GetCacheKeyString(this);
+                    return true;
+                }
+                else
+                {                    
+                    logger(ns_log::INFO) << "Cache miss for user list " << key->GetCacheKeyString(this)  ;
+                    return false;
+                }
+            } 
+            catch (const sw::redis::Error &e)             
+            {                
+                logger(ns_log::ERROR) << "Redis error: " << e.what();
+            }
+            return false;
+        }
+        bool SetUsersByPage(const std::shared_ptr<CacheListKey>& key,
+                             std::vector<User>& users,
+                             int total_count,
+                             int total_pages)
+        {
+            std::string key_str = key->GetCacheKeyString(this);
+            Json::Value array_value(Json::arrayValue);
+            for (const auto& u : users)
+            {
+                Json::Value item;
+                item["uid"] = u.uid;
+                item["name"] = u.name;
+                item["email"] = u.email;
+                item["create_time"] = u.create_time;
+                item["last_login"] = u.last_login;
+                array_value.append(item);
+            }
+            Json::Value root(Json::objectValue);
+            root["query"] = key->GetQueryHash()->ToJsonString();
+            root["page"] = key->GetPage();
+            root["size"] = key->GetSize();
+            root["total_count"] = total_count;
+            root["total_pages"] = total_pages;
+            root["users"] = array_value;
+            root["list_version"] = key->GetListVersion();
+            Json::FastWriter writer;
+            std::string json_str = writer.write(root);
+            try 
+            {
+                int ttl = total_count <= 0 ? BuildJitteredTtl(60, 30) : BuildJitteredTtl(600, 120);
+                _redis.setex(key->GetCacheKeyString(this), ttl, json_str);
+                logger(ns_log::INFO) << "User list " << key->GetCacheKeyString(this) << " cached successfully";
+            } 
+            catch (const sw::redis::Error &e) 
+            {
+                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                return false;
+            }
+            return true;
+        }
+        // 设置题目列表缓存
+        void SetQuestionsByPage(const std::shared_ptr<CacheListKey>& key,
                              std::vector<Question>& questions,
                              int total_count,
                              int total_pages)
@@ -459,7 +568,7 @@ namespace ns_cache
                 array_value.append(item);
             }
             Json::Value root(Json::objectValue);
-            root["query"] = key->GetQueryHash().ToJsonString();
+            root["query"] = key->GetQueryHash()->ToJsonString();
             root["page"] = key->GetPage();
             root["size"] = key->GetSize();
             root["total_count"] = total_count;
@@ -479,10 +588,10 @@ namespace ns_cache
                 logger(ns_log::ERROR) << "Redis error: " << e.what();
             }
         }
-
-        std::string GetListVersion()
+        // 获取当前题库版本号
+        std::string GetListVersion(enum ListType type)
         {
-            const std::string key = _business + ":" + _env + ":" + _version + ":question:list:version";
+            const std::string key = _business + ":" + _env + ":" + _version + ":list:" + EnumToStringUtil::ListToString(type) + ":version";
             try
             {
                 OptionalString value = _redis.get(key);
@@ -499,10 +608,10 @@ namespace ns_cache
                 return "1";
             }
         }
-
-        std::string BumpListVersion()
+        // 题库发生变化时调用，更新版本号以自动使缓存失效
+        std::string BumpListVersion(enum ListType type)
         {
-            const std::string key = _business + ":" + _env + ":" + _version + ":question:list:version";
+            const std::string key = _business + ":" + _env + ":" + _version + ":list:" + EnumToStringUtil::ListToString(type) + ":version";
             try
             {
                 long long cur = _redis.incr(key);
@@ -514,6 +623,7 @@ namespace ns_cache
                 return "1";
             }
         }
+        //在redis中找到html资源
         bool GetHtmlPage(std::string *html, const std::shared_ptr<CacheKey>& key)
         {
             if(key->GetPageType() != CacheKey::PageType::kHtml)
@@ -539,6 +649,7 @@ namespace ns_cache
              logger(ns_log::INFO) << "Html page " << key_str << " cache miss";
              return false;
         }
+        //在redis中设置html资源
         void SetHtmlPage(std::string *html, const std::shared_ptr<CacheKey>& key)
         {
             if(key->GetPageType() != CacheKey::PageType::kHtml)
@@ -556,6 +667,7 @@ namespace ns_cache
                 logger(ns_log::ERROR) << "Redis error: " << e.what();
             }
         }
+        // 使缓存失效
         void InvalidatePage(const std::shared_ptr<CacheKey>& key)
         {
             if (!key)
@@ -573,12 +685,12 @@ namespace ns_cache
                 logger(ns_log::ERROR) << "Redis error: " << e.what();
             }
         }
-        std::shared_ptr<CacheListKey> BuildListCacheKey(const QueryStruct& query_struct, int page, int size, const std::string& list_version, CacheKey::PageType page_type)
+        std::shared_ptr<CacheListKey> BuildListCacheKey(const std::shared_ptr<QueryStruct>& query_struct, int page, int size, const std::string& list_version, CacheKey::PageType page_type)
         {
             std::shared_ptr<CacheListKey> key = std::make_shared<CacheListKey>();
             key->SetPageType(page_type);
             KeyContext context;
-            context._query_hash = query_struct;
+            context._query = query_struct;
             context.page = page;
             context.size = size;
             context.list_version = list_version;
@@ -695,7 +807,6 @@ namespace ns_cache
                                          "1",
                                          CacheKey::PageType::kAction);
         }
-    private:
         int BuildJitteredTtl(int base_ttl, int jitter)
         {
             if (base_ttl <= 1)
@@ -707,7 +818,7 @@ namespace ns_cache
             std::uniform_int_distribution<int> dist(0, jitter);
             return base_ttl + dist(rng);
         }
-
+    private:
         Redis _redis;
         std::string _business;
         std::string _env;

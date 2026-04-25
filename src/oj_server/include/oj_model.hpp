@@ -22,46 +22,6 @@ namespace ns_model
     using namespace ns_log;
     using namespace ns_cache;
     //用户属性
-    struct User
-    {
-        int uid; //用户ID
-        std::string name; //用户名
-        std::string email; //邮箱
-        std::string create_time; //创建时间
-        std::string last_login; //最后登录时间
-        std::string password_algo; //密码算法
-    };
-
-    struct UserListItem
-    {
-        int uid = 0;
-        std::string name;
-        std::string email;
-        std::string create_time;
-        std::string last_login;
-    };
-
-    struct AdminAccount
-    {
-        int admin_id = 0;
-        std::string password_hash;
-        int uid = 0;
-        std::string role;
-        std::string created_at;
-    };
-
-    struct AdminAuditLog
-    {
-        std::string request_id;
-        int operator_admin_id = 0;
-        int operator_uid = 0;
-        std::string operator_role;
-        std::string action;
-        std::string resource_type;
-        std::string result;
-        std::string payload_text;
-    };
-
     class Model
     {
     private:
@@ -153,7 +113,7 @@ namespace ns_model
                                      << " avg_ms=" << avg_ms;
             }
         }
-
+        // 记录静态HTML页面查询的指标数据
         void RecordHtmlStaticMetrics(bool cache_hit)
         {
             auto& m = Metrics();
@@ -204,7 +164,7 @@ namespace ns_model
 
             return MySqlConn(my, mysql_close);
         }
-
+        //对SQL字符串进行转义，防止SQL注入攻击
         std::string EscapeSqlString(const std::string& input, MYSQL* my)
         {
             std::string escaped;
@@ -246,16 +206,17 @@ namespace ns_model
             return out;
         }
 
-        QueryStruct NormalizeQuestionQuery(const QueryStruct& raw_query)
+        std::shared_ptr<QuestionQuery> NormalizeQuestionQuery(const std::shared_ptr<QueryStruct>& raw_query)
         {
-            QueryStruct normalized;
-            normalized.id = TrimCopy(raw_query.id);
-            normalized.title = TrimCopy(raw_query.title);
-            normalized.difficulty = LowerAscii(TrimCopy(raw_query.difficulty));
+            auto raw = std::dynamic_pointer_cast<QuestionQuery>(raw_query);
+            auto normalized = std::make_shared<QuestionQuery>();
+            normalized->id = TrimCopy(raw ? raw->id : "");
+            normalized->title = TrimCopy(raw ? raw->title : "");
+            normalized->star = LowerAscii(TrimCopy(raw ? raw->star : ""));
 
-            if (!normalized.id.empty() && !IsAllDigits(normalized.id))
+            if (!normalized->id.empty() && !IsAllDigits(normalized->id))
             {
-                normalized.id.clear();
+                normalized->id.clear();
             }
 
             return normalized;
@@ -332,7 +293,7 @@ namespace ns_model
             return true;
         }
 
-        bool QueryUsers(const std::string& sql, std::vector<UserListItem>* users)
+        bool QueryUsers(const std::string& sql, std::vector<User>* users)
         {
             if (users == nullptr)
             {
@@ -366,7 +327,7 @@ namespace ns_model
                 {
                     continue;
                 }
-                UserListItem item;
+                User item;
                 item.uid = row[0] == nullptr ? 0 : std::atoi(row[0]);
                 item.name = row[1] == nullptr ? "" : row[1];
                 item.email = row[2] == nullptr ? "" : row[2];
@@ -526,30 +487,32 @@ namespace ns_model
         }
 
         //构建题目列表查询的WHERE子句
-        std::string BuildQuestionWhereClause(const QueryStruct& query_hash, MYSQL* my)
+        std::string BuildQuestionWhereClause(const std::shared_ptr<QueryStruct>& query_hash, MYSQL* my)
         {
+            auto q = std::dynamic_pointer_cast<QuestionQuery>(query_hash);
+            if (!q) return "";
             //条件列表
             std::vector<std::string> clauses;
 
             // both 模式映射后会产生 id/title 同值，且 id 为纯数字，此时保持 OR 语义。
-            if (!query_hash.id.empty() &&
-                !query_hash.title.empty() &&
-                query_hash.id == query_hash.title &&
-                IsAllDigits(query_hash.id))
+            if (!q->id.empty() &&
+                !q->title.empty() &&
+                q->id == q->title &&
+                IsAllDigits(q->id))
             {
                 //id title内容相同，并且还都是纯数字，说明用户可能在同时搜索id和title，这时保持OR关系
-                std::string safe_title = EscapeSqlString(query_hash.title, my);
-                clauses.push_back("(id=" + query_hash.id + " or title like '%" + safe_title + "%')");
+                std::string safe_title = EscapeSqlString(q->title, my);
+                clauses.push_back("(id=" + q->id + " or title like '%" + safe_title + "%')");
             }
             else
             {
                 //id和title不同时存在，或者虽然同时存在但内容不同，或者虽然同时存在且内容相同但不是纯数字，这三种情况都保持AND关系
-                if (!query_hash.id.empty())
+                if (!q->id.empty())
                 {
-                    if (IsAllDigits(query_hash.id))
+                    if (IsAllDigits(q->id))
                     {
                         //纯数字才允许进入SQL
-                        clauses.push_back("id=" + query_hash.id);
+                        clauses.push_back("id=" + q->id);
                     }
                     else
                     {
@@ -558,18 +521,18 @@ namespace ns_model
                     }
                 }
 
-                if (!query_hash.title.empty())
+                if (!q->title.empty())
                 {
                     // title使用模糊匹配
-                    std::string safe_title = EscapeSqlString(query_hash.title, my);
+                    std::string safe_title = EscapeSqlString(q->title, my);
                     clauses.push_back("title like '%" + safe_title + "%'");
                 }
             }
 
             //如果difficulty不为空,会把英文难度映射成中文：
-            if (!query_hash.difficulty.empty())
+            if (!q->star.empty())
             {
-                std::string difficulty = query_hash.difficulty;
+                std::string difficulty = q->star;
                 if (difficulty == "simple") difficulty = "简单";
                 else if (difficulty == "medium") difficulty = "中等";
                 else if (difficulty == "hard") difficulty = "困难";
@@ -598,6 +561,10 @@ namespace ns_model
             }
 
             return where.str();
+        }
+        std::string BuildUserWhereClause(const std::shared_ptr<QueryStruct>& query_hash, MYSQL* my)
+        {
+            
         }
 
         //查询用户基础信息
@@ -690,7 +657,8 @@ namespace ns_model
                 return false;
             if(mysql_query(my.get(), sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL)<<"MySql执行错误!";
+                logger(ns_log::FATAL) << "MySql执行错误! errno=" << mysql_errno(my.get())
+                                      << " error=" << mysql_error(my.get());
                 return false;
             }
             return true;
@@ -736,15 +704,7 @@ namespace ns_model
             long long html_detail_misses = 0;
         };
 
-        bool GetAllQuestions(std::vector<Question>* questions)
-        {
-            if (questions == nullptr)
-                return false;
-
-            std::string sql = "select * from ";
-            sql += oj_questions;
-            return QueryMySql(sql, *questions);
-        }
+        // 在cache中获取静态HTML页面
         bool GetHtmlPage(std::string *html,
                          std::shared_ptr<Cache::CacheKey> key)
         {
@@ -773,7 +733,7 @@ namespace ns_model
         }
 
         //题库:得到一页内全部的题目
-        bool GetAllQuestions(std::shared_ptr<Cache::CacheListKey> key,
+        bool GetQuestionsByPage(std::shared_ptr<Cache::CacheListKey> key,
                              std::vector<Question>& questions,
                              int* total_count,
                              int* total_pages)
@@ -792,7 +752,7 @@ namespace ns_model
             //  缓存命中时，函数直接返回 true。
             //  这时 questions、total_count、total_pages 都会被缓存结果填好。
             //  同时记录一次“缓存命中”的指标。
-            if(_cache.GetAllQuestions(key,  questions,total_count, total_pages))
+            if(_cache.GetQuestionsByPage(key,  questions,total_count, total_pages))
             {
                 logger(ns_log::INFO) << "Cache hit for question list page " << key->GetCacheKeyString(&_cache);
                 auto end = std::chrono::steady_clock::now();
@@ -832,7 +792,7 @@ namespace ns_model
             {
                 *total_pages = 0;
                 questions.clear();
-                _cache.SetAllQuestions(key, questions,*total_count, *total_pages);
+                _cache.SetQuestionsByPage(key, questions,*total_count, *total_pages);
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 RecordListMetrics(false, true, cost_ms);
@@ -858,7 +818,7 @@ namespace ns_model
                 return false;
             }
             // 回填缓存
-            // 数据查出来后，会调用 _cache.SetAllQuestions(...) 写回 Redis。
+            // 数据查出来后，会调用 _cache.SetQuestionsByPage(...) 写回 Redis。
             // 缓存键里包含：
             // 查询条件
             // 页码
@@ -866,7 +826,7 @@ namespace ns_model
             // 列表版本号
             // 这样下次同样条件的请求就可以直接命中缓存。
             auto write_key = _cache.BuildListCacheKey(key->GetQueryHash(), safe_page, size, key->GetListVersion(), Cache::CacheKey::PageType::kData);
-            _cache.SetAllQuestions(write_key, questions, *total_count, *total_pages);
+            _cache.SetQuestionsByPage(write_key, questions, *total_count, *total_pages);
             auto end = std::chrono::steady_clock::now();
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
             RecordListMetrics(false, true, cost_ms);
@@ -881,13 +841,15 @@ namespace ns_model
             auto begin = std::chrono::steady_clock::now();
             if (!IsAllDigits(number))
             {
+                // number参数不合法，直接返回 false，并记录这次请求没有成功完成。
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 RecordDetailMetrics(false, false, cost_ms);
                 return false;
             }
             auto detail_key = _cache.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kData);
-            if(_cache.GetQuestion(detail_key, q))
+            // 先查缓存，缓存命中直接返回
+            if(_cache.GetDetailedQuestion(detail_key, q))
             {
                 logger(ns_log::INFO) << "Cache hit for question " << number;
                 auto end = std::chrono::steady_clock::now();
@@ -895,18 +857,23 @@ namespace ns_model
                 RecordDetailMetrics(true, false, cost_ms);
                 return true;
             }
+            // 缓存没命中就查数据库，先创建 MySQL 连接
             std::string sql = "select * from ";
             sql += oj_questions;
             sql += " where id=" + number;
             std::vector<Question> v;
             if (!QueryMySql(sql, v))
             {
+                //查询数据库失败，直接返回 false，并记录这次是回源失败。
                 _cache.SetQuestionNotFound(detail_key, number);
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 RecordDetailMetrics(false, true, cost_ms);
                 return false;
             }
+            // 数据库查询成功但没有找到这个题目，说明这个题目确实不存在。
+            // 为了避免缓存穿透攻击，应该把这个“空结果”也写入缓存（比如写一个特殊的值表示这个题目不存在
+            // 这样下次同样的请求就可以直接命中缓存，避免每次都打到数据库上来。
             if(v.size() != 1)
             {
                 _cache.SetQuestionNotFound(detail_key, number);
@@ -916,7 +883,7 @@ namespace ns_model
                 return false;
             }
             q = v[0];
-            _cache.SetQuestion(detail_key, q);
+            _cache.SetDetailedQuestion(detail_key, q);
             auto end = std::chrono::steady_clock::now();
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
             RecordDetailMetrics(false, true, cost_ms);
@@ -956,7 +923,7 @@ namespace ns_model
 
             Question cached = input;
             auto detail_key = _cache.BuildDetailCacheKey(input.number, Cache::CacheKey::PageType::kData);
-            _cache.SetQuestion(detail_key, cached);
+            _cache.SetDetailedQuestion(detail_key, cached);
             auto detail_html_key = _cache.BuildDetailCacheKey(input.number, Cache::CacheKey::PageType::kHtml);
             _cache.InvalidatePage(detail_html_key);
             TouchQuestionListVersion();
@@ -1058,27 +1025,59 @@ namespace ns_model
 
         bool GetUserCount(int* count)
         {
+            if(count == nullptr)
+            {
+                return false;
+            }
+            std::string key = "user_counts";
+            std::string value;
+            if(_cache.GetStringByAnyKey(key, &value))
+            {
+                *count = std::atoi(value.c_str());
+                logger(ns_log::INFO) << "Cache hit for user count";
+                return true;
+            }
             std::string sql = "select count(*) from " + oj_users;
-            return QueryCount(sql, count);
+            if(!QueryCount(sql, count))
+            {
+                return false;
+             }
+             _cache.SetStringByAnyKey(key, std::to_string(*count), _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
+             return true;
         }
 
         bool GetQuestionCount(int* count)
         {
+            if(count == nullptr)
+            {
+                return false;
+            }
+            std::string key = "question_counts";
+            std::string value;
+            if(_cache.GetStringByAnyKey(key, &value))
+            {
+                *count = std::atoi(value.c_str());
+                logger(ns_log::INFO) << "Cache hit for question count";
+                return true;
+            }
             std::string sql = "select count(*) from " + oj_questions;
-            return QueryCount(sql, count);
+            if(!QueryCount(sql, count))
+            {
+                return false;
+             }
+             _cache.SetStringByAnyKey(key, std::to_string(*count), _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
+             return true;
         }
-
-        bool GetUsersPaged(int page, int size, const std::string& keyword, std::vector<UserListItem>* users, int* total_count)
+        bool GetUsersPaged(std::shared_ptr<Cache::CacheListKey> key,std::vector<User>* users, int* total_count,int * total_pages)
         {
-            if (users == nullptr || total_count == nullptr)
+            if (users == nullptr || total_count == nullptr || total_pages == nullptr)
             {
                 return false;
             }
 
-            int safe_page = std::max(1, page);
-            int safe_size = std::max(1, std::min(size, 200));
+            int safe_page = std::max(1, key->GetPage());
+            int safe_size = std::max(1, key->GetSize());
             int offset = (safe_page - 1) * safe_size;
-
             auto my = CreateConnection();
             if (!my)
             {
@@ -1119,8 +1118,25 @@ namespace ns_model
 
         bool GetAdminCount(int* count)
         {
+            if(count == nullptr)
+            {
+                return false;
+            }
+            std::string key = "admin_counts";
+            std::string value;
+            if(_cache.GetStringByAnyKey(key, &value))
+            {
+                *count = std::atoi(value.c_str());
+                logger(ns_log::INFO) << "Cache hit for admin count";
+                return true;
+            }
             std::string sql = "select count(*) from " + AdminAccountsTable();
-            return QueryCount(sql, count);
+            if(!QueryCount(sql, count))
+            {
+                return false;
+             }
+             _cache.SetStringByAnyKey(key, std::to_string(*count), _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
+             return true;
         }
 
         bool GetRoleCount(const std::string& role, int* count)
@@ -1129,7 +1145,13 @@ namespace ns_model
             {
                 return false;
             }
-
+            std::string value;
+            if(_cache.GetStringByAnyKey(role, &value))
+            {
+                *count = std::atoi(value.c_str());
+                logger(ns_log::INFO) << "Cache hit for role count of role " << role;
+                return true;
+            }
             auto my = CreateConnection();
             if (!my)
             {
@@ -1138,7 +1160,12 @@ namespace ns_model
 
             std::string safe_role = EscapeSqlString(role, my.get());
             std::string sql = "select count(*) from " + AdminAccountsTable() + " where role='" + safe_role + "'";
-            return QueryCount(sql, count);
+            if(!QueryCount(sql, count))
+            {
+                return false;
+             }
+             _cache.SetStringByAnyKey(role, std::to_string(*count), _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
+             return true;
         }
 
         bool ListAdminsPaged(int page, int size, const std::string& keyword, std::vector<AdminAccount>* admins, int* total_count)
@@ -1225,6 +1252,7 @@ namespace ns_model
             auto my = CreateConnection();
             if (!my)
             {
+                logger(ns_log::FATAL) << "无法连接数据库，无法记录审计日志!";
                 return false;
             }
 
@@ -1399,18 +1427,18 @@ namespace ns_model
 
         // 题目写路径完成后调用该接口，统一触发列表版本递增。
         std::string TouchQuestionListVersion()
-        {
-            std::string version = _cache.BumpListVersion();
+        {   
+            std::string version = _cache.BumpListVersion(ListType::Questions);
             logger(ns_log::INFO) << "Question list version bumped to " << version;
             return version;
         }
-        std::string GetListVersion()
+        std::string GetQuestionsListVersion()
         {
-            return _cache.GetListVersion();
+            return _cache.GetListVersion(ListType::Questions);
         }
-        std::shared_ptr<Cache::CacheListKey> BuildListCacheKey(const QueryStruct& query_hash, int page, int size, const std::string& list_version, Cache::CacheKey::PageType page_type)
+        std::shared_ptr<Cache::CacheListKey> BuildListCacheKey(std::shared_ptr<QueryStruct>& query_hash, int page, int size, const std::string& list_version, Cache::CacheKey::PageType page_type)
         {
-            QueryStruct normalized_query = NormalizeQuestionQuery(query_hash);
+            auto normalized_query = NormalizeQuestionQuery(query_hash);
             return _cache.BuildListCacheKey(normalized_query, page, size, list_version, page_type);
         }
         std::shared_ptr<Cache::CacheDetailKey> BuildDetailCacheKey(const std::string& number, Cache::CacheKey::PageType page_type)

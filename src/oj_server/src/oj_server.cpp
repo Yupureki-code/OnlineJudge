@@ -1,142 +1,22 @@
 #include <httplib.h>
 #include "../include/oj_control.hpp"
+#include "../../comm/comm.hpp"
+#include <memory>
 #include <string>
-#include <fstream>
 #include <algorithm>
-#include <regex>
 #include <cctype>
 #include <chrono>
 
 using namespace httplib;
 using namespace ns_log;
+using namespace ns_util;
 
 namespace {
 
-std::string Trim(const std::string& s)
+//在request中提取查询信息，并注入到QueryStruct中
+std::shared_ptr<QueryStruct> ParseQuestionQuery(const Request& req)
 {
-    size_t start = 0;
-    while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start])))
-    {
-        ++start;
-    }
-
-    size_t end = s.size();
-    while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1])))
-    {
-        --end;
-    }
-
-    return s.substr(start, end - start);
-}
-
-bool IsValidEmail(const std::string& email)
-{
-    static const std::regex kEmailPattern(R"(^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$)");
-    return std::regex_match(email, kEmailPattern);
-}
-
-bool ParseJsonBody(const Request& req, Json::Value* out)
-{
-    if (out == nullptr || req.body.empty())
-    {
-        return false;
-    }
-
-    Json::CharReaderBuilder builder;
-    std::string errs;
-    std::istringstream ss(req.body);
-    return Json::parseFromStream(builder, ss, out, &errs);
-}
-
-bool IsSafeStaticPageName(const std::string& page_name)
-{
-    if (page_name.empty())
-    {
-        return false;
-    }
-    if (page_name.find("..") != std::string::npos)
-    {
-        return false;
-    }
-    if (page_name.front() == '/' || page_name.front() == '\\')
-    {
-        return false;
-    }
-    return true;
-}
-
-bool IsValidAuthCode(const std::string& code)
-{
-    if (code.size() != 6)
-    {
-        return false;
-    }
-    return std::all_of(code.begin(), code.end(), [](unsigned char ch){ return std::isdigit(ch); });
-}
-
-void ReplyBadRequest(Response& rep, const std::string& message)
-{
-    Json::Value response;
-    response["success"] = false;
-    response["error"] = message;
-    Json::FastWriter writer;
-    rep.status = 400;
-    rep.set_content(writer.write(response), "application/json;charset=utf-8");
-}
-
-bool ExtractAndValidateEmail(const Json::Value& in_value, std::string* email)
-{
-    if (email == nullptr || !in_value.isMember("email") || !in_value["email"].isString())
-    {
-        return false;
-    }
-
-    *email = Trim(in_value["email"].asString());
-    if (email->empty() || !IsValidEmail(*email))
-    {
-        return false;
-    }
-    return true;
-}
-
-bool ExtractAndValidatePassword(const Json::Value& in_value, std::string* password)
-{
-    if (password == nullptr || !in_value.isMember("password") || !in_value["password"].isString())
-    {
-        return false;
-    }
-
-    *password = in_value["password"].asString();
-    if (password->empty())
-    {
-        return false;
-    }
-    return true;
-}
-
-int ParsePositiveIntParam(const Request& req, const std::string& key, int default_value, int min_value, int max_value)
-{
-    if (!req.has_param(key))
-    {
-        return default_value;
-    }
-
-    try
-    {
-        int value = std::stoi(req.get_param_value(key));
-        if (value < min_value) return min_value;
-        if (value > max_value) return max_value;
-        return value;
-    }
-    catch (...)
-    {
-        return default_value;
-    }
-}
-
-ns_cache::QueryStruct ParseQuestionQuery(const Request& req)
-{
-    ns_cache::QueryStruct query;
+    std::shared_ptr<QuestionQuery> query = std::make_shared<QuestionQuery>();
     std::string query_mode = "title";
     std::string keyword;
 
@@ -153,53 +33,53 @@ ns_cache::QueryStruct ParseQuestionQuery(const Request& req)
             {
                 if (parsed.isMember("id") && parsed["id"].isString())
                 {
-                    query.id = Trim(parsed["id"].asString());
+                    query->id = StringUtil::Trim(parsed["id"].asString());
                 }
                 if (parsed.isMember("title") && parsed["title"].isString())
                 {
-                    query.title = Trim(parsed["title"].asString());
+                    query->title = StringUtil::Trim(parsed["title"].asString());
                 }
                 if (parsed.isMember("difficulty") && parsed["difficulty"].isString())
                 {
-                    query.difficulty = Trim(parsed["difficulty"].asString());
+                    query->star = StringUtil::Trim(parsed["difficulty"].asString());
                 }
                 if (parsed.isMember("query_mode") && parsed["query_mode"].isString())
                 {
-                    query_mode = Trim(parsed["query_mode"].asString());
+                    query_mode = StringUtil::Trim(parsed["query_mode"].asString());
                 }
                 if (parsed.isMember("keyword") && parsed["keyword"].isString())
                 {
-                    keyword = Trim(parsed["keyword"].asString());
+                    keyword = StringUtil::Trim(parsed["keyword"].asString());
                 }
             }
             else
             {
-                query.title = Trim(query_hash);
+                query->title = StringUtil::Trim(query_hash);
             }
         }
     }
 
     if (req.has_param("query_mode"))
     {
-        query_mode = Trim(req.get_param_value("query_mode"));
+        query_mode = StringUtil::Trim(req.get_param_value("query_mode"));
     }
 
     if (req.has_param("q"))
     {
-        keyword = Trim(req.get_param_value("q"));
+        keyword = StringUtil::Trim(req.get_param_value("q"));
     }
 
     if (req.has_param("id"))
     {
-        query.id = Trim(req.get_param_value("id"));
+        query->id = StringUtil::Trim(req.get_param_value("id"));
     }
     if (req.has_param("title"))
     {
-        query.title = Trim(req.get_param_value("title"));
+        query->title = StringUtil::Trim(req.get_param_value("title"));
     }
     if (req.has_param("difficulty"))
     {
-        query.difficulty = Trim(req.get_param_value("difficulty"));
+        query->star = StringUtil::Trim(req.get_param_value("difficulty"));
     }
 
     if (query_mode.empty())
@@ -211,25 +91,25 @@ ns_cache::QueryStruct ParseQuestionQuery(const Request& req)
     {
         if (query_mode == "id")
         {
-            query.id = keyword;
-            query.title.clear();
+            query->id = keyword;
+            query->title.clear();
         }
         else if (query_mode == "both")
         {
-            query.title = keyword;
+            query->title = keyword;
             if (std::all_of(keyword.begin(), keyword.end(), [](unsigned char ch){ return std::isdigit(ch); }))
             {
-                query.id = keyword;
+                query->id = keyword;
             }
             else
             {
-                query.id.clear();
+                query->id.clear();
             }
         }
         else
         {
-            query.title = keyword;
-            query.id.clear();
+            query->title = keyword;
+            query->id.clear();
         }
     }
 
@@ -238,40 +118,8 @@ ns_cache::QueryStruct ParseQuestionQuery(const Request& req)
 
 } // namespace
 
-std::string url_encode(const std::string &value) 
-{
-    std::string result;
-    result.reserve(value.size());
-    for (char c : value) 
-    {
-        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') 
-        {
-            result += c;
-        } 
-        else 
-        {
-            result += '%';
-            char hex[3];
-            snprintf(hex, sizeof(hex), "%02X", static_cast<unsigned char>(c));
-            result += hex;
-        }
-    }
-    return result;
-}
-
-std::string ReadHtmlFile(const std::string& path)
-{
-    std::ifstream in(path);
-    if (!in.is_open())
-    {
-        return "";
-    }
-    std::string html((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    in.close();
-    return html;
-}
-
-std::string InjectUserInfo(const std::string& html, ns_control::User* user, bool isLoggedIn)
+//向html中注入用户信息的脚本，供前端使用
+std::string InjectUserInfo(const std::string& html, User* user, bool isLoggedIn)
 {
     std::string result = html;
     
@@ -313,52 +161,54 @@ int main()
 {
     Server svr;
     ns_control::Control ctl;
-
+    //添加CORS响应头的函数，供后续路由使用
     auto addCORSHeaders = [](Response& rep) {
+        //添加CORS响应头，允许跨域访问
         rep.set_header("Access-Control-Allow-Origin", "*");
+        //允许的HTTP方法
         rep.set_header("Access-Control-Allow-Methods", "POST, GET, DELETE, OPTIONS");
+        //允许的HTTP请求头
         rep.set_header("Access-Control-Allow-Headers", "Content-Type");
     };
-
-    auto getCurrentUser = [&ctl](const Request& req, ns_control::User* user) -> bool {
+    //通过session获取用户信息的函数，供后续路由使用
+    auto getCurrentUser = [&ctl](const Request& req, User* user) -> bool {
         std::string cookie_header = req.get_header_value("Cookie");
         return ctl.GetSessionUser(cookie_header, user);
     };
-
+    //设置静态文件目录
     svr.set_mount_point("/pictures", HTML_PATH + std::string("/pictures"));
     svr.set_mount_point("/css", HTML_PATH + std::string("/css"));
     svr.set_mount_point("/spa", HTML_PATH + std::string("/spa"));
-
+    //设置路由和处理函数
     svr.Get("/js/(.*)", [](const Request& req, Response& rep){
         std::string file = req.matches[1];
-        std::string content = ReadHtmlFile(HTML_PATH + std::string("/js/") + file);
+        std::string content;
+        FileUtil::ReadFile(HTML_PATH + std::string("/js/") + file, &content);
         rep.set_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
         rep.set_header("Pragma", "no-cache");
         rep.set_header("Expires", "0");
         rep.set_content(content, "application/javascript;charset=utf-8");
     });
-
+    //根路由，返回首页HTML
     svr.Get("/", [&ctl, &getCurrentUser](const Request& req, Response& rep){
         std::string html;
         ctl.GetStaticHtml("index.html", &html);
-        ns_control::User user;
+        User user;
         bool isLoggedIn = getCurrentUser(req, &user);
-        
         html = InjectUserInfo(html, &user, isLoggedIn);
-        
         rep.set_content(html, "text/html;charset=utf-8");
     });
-
+    //访问题库的路由，返回题库HTML
     svr.Get("/all_questions", [&ctl, &getCurrentUser](const Request& req, Response& rep){
+        //解析查询参数，构建查询结构体
         auto begin = std::chrono::steady_clock::now();
-        int page = ParsePositiveIntParam(req, "page", 1, 1, 1000000);
-        int size = ParsePositiveIntParam(req, "size", 5, 1, 100);
-        ns_cache::QueryStruct query_hash = ParseQuestionQuery(req);
-
+        int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
+        int size = HttpUtil::ParsePositiveIntParam(req, "size", 5, 1, 100);
+        auto query_hash = ParseQuestionQuery(req);
         std::string html;
-        ctl.AllQuestions(&html, page, size, query_hash);
+        ctl.AllQuestions(&html, page, size, std::move(query_hash));
         
-        ns_control::User user;
+        User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
         html = InjectUserInfo(html, &user, isLoggedIn);
@@ -370,50 +220,50 @@ int main()
                      << " size=" << size
                      << " cost_ms=" << cost_ms;
     });
-
+    //关于页面路由，返回关于页面HTML
     svr.Get("/about", [&ctl, &getCurrentUser](const Request& req, Response& rep){
         std::string html;
         ctl.GetStaticHtml("about.html" , &html);
         
-        ns_control::User user;
+        User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
         html = InjectUserInfo(html, &user, isLoggedIn);
         
         rep.set_content(html, "text/html;charset=utf-8");
     });
-
+    //用户个人中心路由，返回个人中心页面HTML
     svr.Get("/user/profile", [&ctl, &getCurrentUser](const Request& req, Response& rep){
         std::string html;
         ctl.GetStaticHtml("user/profile.html", &html);
         
-        ns_control::User user;
+        User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
         html = InjectUserInfo(html, &user, isLoggedIn);
         
         rep.set_content(html, "text/html;charset=utf-8");
     });
-
+    //用户账户设置路由，返回账户设置HTML
     svr.Get("/user/settings", [&ctl, &getCurrentUser](const Request& req, Response& rep){
         std::string html;
         ctl.GetStaticHtml("user/settings.html", &html);
 
-        ns_control::User user;
+        User user;
         bool isLoggedIn = getCurrentUser(req, &user);
 
         html = InjectUserInfo(html, &user, isLoggedIn);
 
         rep.set_content(html, "text/html;charset=utf-8");
     });
-
+    //题目详情路由，返回题目详情HTML
     svr.Get(R"(/questions/(\d+)$)", [&ctl, &getCurrentUser](const Request& req,Response& rep){
         auto begin = std::chrono::steady_clock::now();
         std::string number = req.matches[1];
         std::string html;
         ctl.OneQuestion(number, &html);
         
-        ns_control::User user;
+        User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
         html = InjectUserInfo(html, &user, isLoggedIn);
@@ -423,42 +273,34 @@ int main()
         long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
         logger(INFO) << "[metrics][route] GET /questions/" << number << " cost_ms=" << cost_ms;
     }); 
-
+    // 判题结果页面路由，返回判题结果HTML
     svr.Get(R"(/judge_result\.html)", [&ctl, &getCurrentUser](const Request& req, Response& rep){
         std::string html;
         ctl.GetStaticHtml("judge_result.html", &html);
         
-        ns_control::User user;
+        User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
         html = InjectUserInfo(html, &user, isLoggedIn);
         
         rep.set_content(html, "text/html;charset=utf-8");
     });
-
-    svr.Get(R"(/one_question\.html)", [&ctl, &getCurrentUser](const Request& req, Response& rep){
-        std::string html;
-        ctl.GetStaticHtml("one_question.html", &html);
-        
-        ns_control::User user;
-        bool isLoggedIn = getCurrentUser(req, &user);
-        
-        html = InjectUserInfo(html, &user, isLoggedIn);
-        
-        rep.set_content(html, "text/html;charset=utf-8");
-    });
-
+    // 判题路由，接收代码和题目编号，返回判题结果后，前端调用judge_result路由
     svr.Post(R"(/judge/(\d+)$)", [&ctl](const Request& req,Response& rep){
        std::string number = req.matches[1];
         std::string result_json;
         
         std::string content_type = req.get_header_value("Content-Type");
         std::string in_json;
-        
-        if (content_type.find("application/json") != std::string::npos) {
-            in_json = req.body;
-        } else 
+        //支持两种传参方式：application/json的请求体，或者普通表单参数code
+        if (content_type.find("application/json") != std::string::npos)
         {
+            //请求体是JSON格式，直接使用请求体作为代码内容
+            in_json = req.body;
+        } 
+        else 
+        {
+            //请求体不是JSON格式，从表单参数中提取code参数作为代码内容
             auto it = req.params.find("code");
             if (it != req.params.end()) 
             {
@@ -473,26 +315,26 @@ int main()
                 return;
             }
         }
-        
+        //调用控制层的Judge函数进行判题，获取结果后重定向到判题结果页面，并通过URL参数传递结果数据
         ctl.Judge(number, in_json, &result_json);
-        std::string encoded_result = url_encode(result_json);
+        std::string encoded_result = HttpUtil::url_encode(result_json);
         rep.set_redirect("/judge_result.html?result=" + encoded_result + "&id=" + number);
     }); 
-
+    //发送邮箱验证码的路由
     svr.Post("/api/auth/send_code", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "请求体必须是 JSON");
+            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
             return;
         }
 
         std::string email;
-        if (!ExtractAndValidateEmail(in_value, &email))
+        if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "邮箱格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "邮箱格式不合法");
             return;
         }
 
@@ -526,40 +368,40 @@ int main()
 
     svr.Post("/api/auth/verify_code", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "请求体必须是 JSON");
+            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
             return;
         }
 
         std::string email;
-        if (!ExtractAndValidateEmail(in_value, &email))
+        if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "邮箱格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "邮箱格式不合法");
             return;
         }
 
         if (!in_value.isMember("code") || !in_value["code"].isString())
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "验证码不能为空");
+            HttpUtil::ReplyBadRequest(rep, "验证码不能为空");
             return;
         }
 
-        std::string code = Trim(in_value["code"].asString());
-        if (!IsValidAuthCode(code))
+        std::string code = StringUtil::Trim(in_value["code"].asString());
+        if (!StringUtil::IsValidAuthCode(code))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "验证码格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "验证码格式不合法");
             return;
         }
 
         std::string name;
         if (in_value.isMember("name") && in_value["name"].isString())
         {
-            name = Trim(in_value["name"].asString());
+            name = StringUtil::Trim(in_value["name"].asString());
         }
 
         std::string password;
@@ -568,7 +410,7 @@ int main()
             password = in_value["password"].asString();
         }
 
-        ns_control::User user;
+        User user;
         bool is_new_user = false;
         std::string err_code;
         bool ok = ctl.VerifyEmailAuthCodeAndLogin(email, code, name, password, &user, &is_new_user, &err_code);
@@ -608,18 +450,18 @@ int main()
 
     svr.Post("/api/user/check", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "无效的JSON请求体");
+            HttpUtil::ReplyBadRequest(rep, "无效的JSON请求体");
             return;
         }
 
         std::string email;
-        if (!ExtractAndValidateEmail(in_value, &email))
+        if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "邮箱格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "邮箱格式不合法");
             return;
         }
 
@@ -635,10 +477,10 @@ int main()
 
     svr.Post("/api/user/create", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "无效的JSON请求体");
+            HttpUtil::ReplyBadRequest(rep, "无效的JSON请求体");
             return;
         }
 
@@ -646,22 +488,22 @@ int main()
         if (!in_value.isMember("name") || !in_value["name"].isString())
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "用户名不能为空");
+            HttpUtil::ReplyBadRequest(rep, "用户名不能为空");
             return;
         }
-        name = Trim(in_value["name"].asString());
+        name = StringUtil::Trim(in_value["name"].asString());
         if (name.empty() || name.size() > 64)
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "用户名长度应为1-64个字符");
+            HttpUtil::ReplyBadRequest(rep, "用户名长度应为1-64个字符");
             return;
         }
 
         std::string email;
-        if (!ExtractAndValidateEmail(in_value, &email))
+        if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "邮箱格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "邮箱格式不合法");
             return;
         }
 
@@ -672,8 +514,8 @@ int main()
         
         if (response["created"].asBool())
         {
-            ns_control::User user;
-            if (ctl.GetUser(email, static_cast<ns_control::User*>(&user)))
+            User user;
+            if (ctl.GetUser(email, static_cast<User*>(&user)))
             {
                 std::string session_id = ctl.CreateSession(user.uid, email);
                 std::string cookie = ctl.GetSetCookieHeader(session_id);
@@ -690,18 +532,18 @@ int main()
 
     svr.Post("/api/user/get", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "无效的JSON请求体");
+            HttpUtil::ReplyBadRequest(rep, "无效的JSON请求体");
             return;
         }
 
         std::string email;
-        if (!ExtractAndValidateEmail(in_value, &email))
+        if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "邮箱格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "邮箱格式不合法");
             return;
         }
 
@@ -716,18 +558,18 @@ int main()
 
     svr.Post("/api/user/login", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "无效的JSON请求体");
+            HttpUtil::ReplyBadRequest(rep, "无效的JSON请求体");
             return;
         }
 
         std::string email;
-        if (!ExtractAndValidateEmail(in_value, &email))
+        if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "邮箱格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "邮箱格式不合法");
             return;
         }
         
@@ -737,8 +579,8 @@ int main()
         
         if (found && response["exists"].asBool())
         {
-            ns_control::User user;
-            if (ctl.GetUser(email, static_cast<ns_control::User*>(&user)))
+            User user;
+            if (ctl.GetUser(email, static_cast<User*>(&user)))
             {
                 std::string session_id = ctl.CreateSession(user.uid, email);
                 std::string cookie = ctl.GetSetCookieHeader(session_id);
@@ -755,7 +597,7 @@ int main()
 
     svr.Post("/api/user/logout", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         std::string cookie_header = req.get_header_value("Cookie");
-        ns_control::User user;
+        User user;
         if (ctl.GetSessionUser(cookie_header, &user))
         {
             ctl.DestroySessionByCookieHeader(cookie_header);
@@ -775,7 +617,7 @@ int main()
 
     svr.Post("/api/user/password/set", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
-        ns_control::User current_user;
+        User current_user;
         if (!getCurrentUser(req, &current_user))
         {
             response["success"] = false;
@@ -788,18 +630,18 @@ int main()
         }
 
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "请求体必须是 JSON");
+            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
             return;
         }
 
         std::string password;
-        if (!ExtractAndValidatePassword(in_value, &password))
+        if (!JsonUtil::ExtractAndValidatePassword(in_value, &password))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "密码不能为空");
+            HttpUtil::ReplyBadRequest(rep, "密码不能为空");
             return;
         }
 
@@ -819,30 +661,30 @@ int main()
 
     svr.Post("/api/user/password/login", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "请求体必须是 JSON");
+            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
             return;
         }
 
         std::string email;
-        if (!ExtractAndValidateEmail(in_value, &email))
+        if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "邮箱格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "邮箱格式不合法");
             return;
         }
 
         std::string password;
-        if (!ExtractAndValidatePassword(in_value, &password))
+        if (!JsonUtil::ExtractAndValidatePassword(in_value, &password))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "密码不能为空");
+            HttpUtil::ReplyBadRequest(rep, "密码不能为空");
             return;
         }
 
-        ns_control::User user;
+        User user;
         std::string err_code;
         bool ok = ctl.LoginWithPassword(email, password, &user, &err_code);
 
@@ -873,7 +715,7 @@ int main()
 
     svr.Post("/api/user/security/send_code", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
-        ns_control::User current_user;
+        User current_user;
         if (!getCurrentUser(req, &current_user))
         {
             response["success"] = false;
@@ -914,7 +756,7 @@ int main()
 
     svr.Post("/api/user/email/change", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
-        ns_control::User current_user;
+        User current_user;
         if (!getCurrentUser(req, &current_user))
         {
             response["success"] = false;
@@ -927,37 +769,37 @@ int main()
         }
 
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "请求体必须是 JSON");
+            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
             return;
         }
 
         if (!in_value.isMember("code") || !in_value["code"].isString())
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "验证码不能为空");
+            HttpUtil::ReplyBadRequest(rep, "验证码不能为空");
             return;
         }
 
-        std::string code = Trim(in_value["code"].asString());
-        if (!IsValidAuthCode(code))
+        std::string code = StringUtil::Trim(in_value["code"].asString());
+        if (!StringUtil::IsValidAuthCode(code))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "验证码格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "验证码格式不合法");
             return;
         }
 
         std::string new_email;
-        if (!ExtractAndValidateEmail(in_value, &new_email))
+        if (!JsonUtil::ExtractAndValidateEmail(in_value, &new_email))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "新邮箱格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "新邮箱格式不合法");
             return;
         }
 
-        ns_control::User updated_user;
+        User updated_user;
         std::string err_code;
         bool ok = ctl.ChangeEmailWithCode(current_user, new_email, code, &updated_user, &err_code);
 
@@ -988,7 +830,7 @@ int main()
 
     svr.Post("/api/user/password/change", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
-        ns_control::User current_user;
+        User current_user;
         if (!getCurrentUser(req, &current_user))
         {
             response["success"] = false;
@@ -1001,24 +843,24 @@ int main()
         }
 
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "请求体必须是 JSON");
+            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
             return;
         }
 
         if (!in_value.isMember("code") || !in_value["code"].isString())
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "验证码不能为空");
+            HttpUtil::ReplyBadRequest(rep, "验证码不能为空");
             return;
         }
-        std::string code = Trim(in_value["code"].asString());
-        if (!IsValidAuthCode(code))
+        std::string code = StringUtil::Trim(in_value["code"].asString());
+        if (!StringUtil::IsValidAuthCode(code))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "验证码格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "验证码格式不合法");
             return;
         }
 
@@ -1026,7 +868,7 @@ int main()
         if (!in_value.isMember("new_password") || !in_value["new_password"].isString())
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "新密码不能为空");
+            HttpUtil::ReplyBadRequest(rep, "新密码不能为空");
             return;
         }
         new_password = in_value["new_password"].asString();
@@ -1047,7 +889,7 @@ int main()
 
     svr.Post("/api/user/account/delete", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
-        ns_control::User current_user;
+        User current_user;
         if (!getCurrentUser(req, &current_user))
         {
             response["success"] = false;
@@ -1060,25 +902,25 @@ int main()
         }
 
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "请求体必须是 JSON");
+            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
             return;
         }
 
         if (!in_value.isMember("code") || !in_value["code"].isString())
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "验证码不能为空");
+            HttpUtil::HttpUtil::ReplyBadRequest(rep, "验证码不能为空");
             return;
         }
 
-        std::string code = Trim(in_value["code"].asString());
-        if (!IsValidAuthCode(code))
+        std::string code = StringUtil::Trim(in_value["code"].asString());
+        if (!StringUtil::IsValidAuthCode(code))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "验证码格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "验证码格式不合法");
             return;
         }
 
@@ -1102,35 +944,35 @@ int main()
         rep.set_content(writer.write(response), "application/json;charset=utf-8");
     });
 
-    svr.Get("/api/questions", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
-        Json::Value response;
-        std::vector<ns_model::Question> all;
+    // svr.Get("/api/questions", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    //     Json::Value response;
+    //     std::vector<Question> all;
         
-        if (ctl.GetModel()->GetAllQuestions(&all)) {
-            sort(all.begin(), all.end(), [](const ns_model::Question &q1, const ns_model::Question &q2){
-                return atoi(q1.number.c_str()) < atoi(q2.number.c_str());
-            });
+    //     if (ctl.GetModel()->GetAllQuestions(&all)) {
+    //         sort(all.begin(), all.end(), [](const Question &q1, const Question &q2){
+    //             return atoi(q1.number.c_str()) < atoi(q2.number.c_str());
+    //         });
             
-            Json::Value questions(Json::arrayValue);
-            for (const auto& q : all) {
-                Json::Value question;
-                question["number"] = q.number;
-                question["title"] = q.title;
-                question["star"] = q.star;
-                questions.append(question);
-            }
-            response["questions"] = questions;
-            response["success"] = true;
-        } else {
-            response["success"] = false;
-            response["questions"] = Json::Value(Json::arrayValue);
-        }
+    //         Json::Value questions(Json::arrayValue);
+    //         for (const auto& q : all) {
+    //             Json::Value question;
+    //             question["number"] = q.number;
+    //             question["title"] = q.title;
+    //             question["star"] = q.star;
+    //             questions.append(question);
+    //         }
+    //         response["questions"] = questions;
+    //         response["success"] = true;
+    //     } else {
+    //         response["success"] = false;
+    //         response["questions"] = Json::Value(Json::arrayValue);
+    //     }
         
-        Json::FastWriter writer;
-        std::string response_str = writer.write(response);
-        addCORSHeaders(rep);
-        rep.set_content(response_str, "application/json;charset=utf-8");
-    });
+    //     Json::FastWriter writer;
+    //     std::string response_str = writer.write(response);
+    //     addCORSHeaders(rep);
+    //     rep.set_content(response_str, "application/json;charset=utf-8");
+    // });
 
     svr.Get("/api/metrics/cache", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         (void)req;
@@ -1170,7 +1012,7 @@ int main()
     svr.Get(R"(/api/question/(\d+))", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         std::string number = req.matches[1];
-        ns_model::Question q;
+        Question q;
         
         if (ctl.GetModel()->GetOneQuestion(number, q)) {
             response["success"] = true;
@@ -1191,7 +1033,7 @@ int main()
 
     svr.Post("/api/questions", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
-        ns_control::User user;
+        User user;
         if (!getCurrentUser(req, &user))
         {
             response["success"] = false;
@@ -1204,10 +1046,10 @@ int main()
         }
 
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "请求体必须是 JSON");
+            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
             return;
         }
 
@@ -1219,22 +1061,22 @@ int main()
             !in_value.isMember("memory_limit") || !in_value["memory_limit"].isInt())
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "缺少必要字段(number/title/desc/star/cpu_limit/memory_limit)");
+            HttpUtil::ReplyBadRequest(rep, "缺少必要字段(number/title/desc/star/cpu_limit/memory_limit)");
             return;
         }
 
-        ns_model::Question q;
-        q.number = Trim(in_value["number"].asString());
-        q.title = Trim(in_value["title"].asString());
+        Question q;
+        q.number = StringUtil::Trim(in_value["number"].asString());
+        q.title = StringUtil::Trim(in_value["title"].asString());
         q.desc = in_value["desc"].asString();
-        q.star = Trim(in_value["star"].asString());
+        q.star = StringUtil::Trim(in_value["star"].asString());
         q.cpu_limit = in_value["cpu_limit"].asInt();
         q.memory_limit = in_value["memory_limit"].asInt();
 
         if (q.number.empty() || q.title.empty())
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "number/title 不能为空");
+            HttpUtil::ReplyBadRequest(rep, "number/title 不能为空");
             return;
         }
 
@@ -1258,7 +1100,7 @@ int main()
 
     svr.Delete(R"(/api/question/(\d+))", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
-        ns_control::User user;
+        User user;
         if (!getCurrentUser(req, &user))
         {
             response["success"] = false;
@@ -1293,7 +1135,7 @@ int main()
         (void)req;
         Json::Value response;
 
-        ns_control::User user;
+        User user;
         if (!getCurrentUser(req, &user))
         {
             response["success"] = false;
@@ -1320,7 +1162,7 @@ int main()
     svr.Post("/api/static/cache/invalidate", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
 
-        ns_control::User user;
+        User user;
         if (!getCurrentUser(req, &user))
         {
             response["success"] = false;
@@ -1333,17 +1175,17 @@ int main()
         }
 
         Json::Value in_value;
-        if (!ParseJsonBody(req, &in_value))
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "请求体必须是 JSON");
+            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
             return;
         }
 
         std::vector<std::string> pages;
         if (in_value.isMember("page") && in_value["page"].isString())
         {
-            pages.push_back(Trim(in_value["page"].asString()));
+            pages.push_back(StringUtil::Trim(in_value["page"].asString()));
         }
         if (in_value.isMember("pages") && in_value["pages"].isArray())
         {
@@ -1351,7 +1193,7 @@ int main()
             {
                 if (item.isString())
                 {
-                    pages.push_back(Trim(item.asString()));
+                    pages.push_back(StringUtil::Trim(item.asString()));
                 }
             }
         }
@@ -1359,17 +1201,17 @@ int main()
         if (pages.empty())
         {
             addCORSHeaders(rep);
-            ReplyBadRequest(rep, "缺少 page 或 pages 字段");
+            HttpUtil::ReplyBadRequest(rep, "缺少 page 或 pages 字段");
             return;
         }
 
         Json::Value invalidated(Json::arrayValue);
         for (const auto& page : pages)
         {
-            if (!IsSafeStaticPageName(page))
+            if (!StringUtil::IsSafeStaticPageName(page))
             {
                 addCORSHeaders(rep);
-                ReplyBadRequest(rep, "页面路径不合法");
+                HttpUtil::ReplyBadRequest(rep, "页面路径不合法");
                 return;
             }
             if (ctl.InvalidateStaticHtmlCache(page))
@@ -1394,7 +1236,7 @@ int main()
     svr.Get("/api/user/info", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         
-        ns_control::User user;
+        User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
         if (isLoggedIn) {

@@ -131,6 +131,7 @@ namespace ns_session
             return session_id;
         }
 
+        //通过 session_id 获取 session 信息，成功返回 true 并将 session 信息写入 session 参数，失败返回 false
         bool GetSession(const std::string& session_id, Session* session)
         {
             std::lock_guard<std::mutex> lock(_mtx);
@@ -142,6 +143,7 @@ namespace ns_session
 
             try
             {
+                //优先尝试从 Redis 获取 session 信息，如果 Redis 出现错误则回退到本地 map 获取
                 if (GetSessionFromRedis(session_id, session))
                 {
                     return true;
@@ -155,12 +157,14 @@ namespace ns_session
             auto it = _sessions.find(session_id);
             if (it == _sessions.end())
             {
+                //本地 map 中也没有找到 session 信息，返回 false
                 return false;
             }
 
             time_t now = time(nullptr);
             if (now - it->second.last_access_time > SESSION_EXPIRE_SECONDS)
             {
+                //session 已过期，从 Redis 和本地 map 中删除 session 信息，返回 false
                 _sessions.erase(it);
                 logger(INFO) << "Session 过期: " << session_id;
                 return false;
@@ -206,6 +210,7 @@ namespace ns_session
             return SESSION_COOKIE_NAME + "=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/";
         }
 
+        // 解析 Cookie 头，提取 session_id
         bool ParseCookie(const std::string& cookie_header, std::string* session_id)
         {
             if (cookie_header.empty() || session_id == nullptr)
@@ -214,6 +219,7 @@ namespace ns_session
             }
 
             size_t start = 0;
+            //示例cookie: "other_cookie=abc; oj_session_id=12345; another_cookie=xyz"
             while (start < cookie_header.size())
             {
                 size_t end = cookie_header.find(';', start);
@@ -221,7 +227,7 @@ namespace ns_session
                     ? cookie_header.substr(start)
                     : cookie_header.substr(start, end - start);
 
-                // trim leading/trailing spaces
+                //去掉;两边的空格
                 size_t left = token.find_first_not_of(' ');
                 if (left == std::string::npos)
                 {
@@ -231,7 +237,7 @@ namespace ns_session
                 }
                 size_t right = token.find_last_not_of(' ');
                 token = token.substr(left, right - left + 1);
-
+                //解析出name=value
                 size_t eq_pos = token.find('=');
                 if (eq_pos != std::string::npos)
                 {
@@ -239,6 +245,7 @@ namespace ns_session
                     std::string value = token.substr(eq_pos + 1);
                     if (name == SESSION_COOKIE_NAME)
                     {
+                        //找到了oj_session_id
                         *session_id = value;
                         return true;
                     }

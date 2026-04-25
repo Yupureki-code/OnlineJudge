@@ -117,20 +117,6 @@ depend:
 .PHONY : depend
 
 # Convenience name for target.
-src/oj_server/CMakeFiles/oj_server.dir/rule:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/oj_server/CMakeFiles/oj_server.dir/rule
-.PHONY : src/oj_server/CMakeFiles/oj_server.dir/rule
-
-# Convenience name for target.
-oj_server: src/oj_server/CMakeFiles/oj_server.dir/rule
-.PHONY : oj_server
-
-# fast build rule for target.
-oj_server/fast:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/build
-.PHONY : oj_server/fast
-
-# Convenience name for target.
 src/oj_server/CMakeFiles/oj_admin.dir/rule:
 	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/oj_server/CMakeFiles/oj_admin.dir/rule
 .PHONY : src/oj_server/CMakeFiles/oj_admin.dir/rule
@@ -168,30 +154,6 @@ src/oj_admin.cpp.s:
 	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/src/oj_admin.cpp.s
 .PHONY : src/oj_admin.cpp.s
 
-src/oj_server.o: src/oj_server.cpp.o
-.PHONY : src/oj_server.o
-
-# target to build an object file
-src/oj_server.cpp.o:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o
-.PHONY : src/oj_server.cpp.o
-
-src/oj_server.i: src/oj_server.cpp.i
-.PHONY : src/oj_server.i
-
-# target to preprocess a source file
-src/oj_server.cpp.i:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.i
-.PHONY : src/oj_server.cpp.i
-
-src/oj_server.s: src/oj_server.cpp.s
-.PHONY : src/oj_server.s
-
-# target to generate assembly for a file
-src/oj_server.cpp.s:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.s
-.PHONY : src/oj_server.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -201,13 +163,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... oj_admin"
-	@echo "... oj_server"
 	@echo "... src/oj_admin.o"
 	@echo "... src/oj_admin.i"
 	@echo "... src/oj_admin.s"
-	@echo "... src/oj_server.o"
-	@echo "... src/oj_server.i"
-	@echo "... src/oj_server.s"
 .PHONY : help
 
 

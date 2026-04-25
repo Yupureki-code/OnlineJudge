@@ -117,32 +117,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named compile_server
-
-# Build rule for target.
-compile_server: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 compile_server
-.PHONY : compile_server
-
-# fast build rule for target.
-compile_server/fast:
-	$(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/build
-.PHONY : compile_server/fast
-
-#=============================================================================
-# Target rules for targets named oj_server
-
-# Build rule for target.
-oj_server: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 oj_server
-.PHONY : oj_server
-
-# fast build rule for target.
-oj_server/fast:
-	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/build
-.PHONY : oj_server/fast
-
-#=============================================================================
 # Target rules for targets named oj_admin
 
 # Build rule for target.
@@ -163,9 +137,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... compile_server"
 	@echo "... oj_admin"
-	@echo "... oj_server"
 .PHONY : help
 
 

@@ -116,44 +116,6 @@ depend:
 	cd /home/yupureki/project/OnlineJudge/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
-# Convenience name for target.
-src/compile_server/CMakeFiles/compile_server.dir/rule:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/CMakeFiles/compile_server.dir/rule
-.PHONY : src/compile_server/CMakeFiles/compile_server.dir/rule
-
-# Convenience name for target.
-compile_server: src/compile_server/CMakeFiles/compile_server.dir/rule
-.PHONY : compile_server
-
-# fast build rule for target.
-compile_server/fast:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/build
-.PHONY : compile_server/fast
-
-src/compile_server.o: src/compile_server.cpp.o
-.PHONY : src/compile_server.o
-
-# target to build an object file
-src/compile_server.cpp.o:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o
-.PHONY : src/compile_server.cpp.o
-
-src/compile_server.i: src/compile_server.cpp.i
-.PHONY : src/compile_server.i
-
-# target to preprocess a source file
-src/compile_server.cpp.i:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.i
-.PHONY : src/compile_server.cpp.i
-
-src/compile_server.s: src/compile_server.cpp.s
-.PHONY : src/compile_server.s
-
-# target to generate assembly for a file
-src/compile_server.cpp.s:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.s
-.PHONY : src/compile_server.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -162,10 +124,6 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... compile_server"
-	@echo "... src/compile_server.o"
-	@echo "... src/compile_server.i"
-	@echo "... src/compile_server.s"
 .PHONY : help
 
 

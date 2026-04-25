@@ -1,258 +1,15 @@
 #include "../include/oj_admin.hpp"
-
+#include <Logger/logstrategy.h>
 #include <algorithm>
 #include <atomic>
 #include <cctype>
-#include <chrono>
-#include <fstream>
 #include <functional>
-#include <sstream>
+#include <streambuf>
 
 using namespace httplib;
 using namespace ns_log;
-
-namespace
-{
-constexpr const char* kAdminVersion = "v0.2.0";
-
-std::atomic<unsigned long long> g_request_seq{0};
-
-std::string Trim(const std::string& s)
-{
-	size_t start = 0;
-	while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start])))
-	{
-		++start;
-	}
-
-	size_t end = s.size();
-	while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1])))
-	{
-		--end;
-	}
-	return s.substr(start, end - start);
-}
-
-int ParsePositiveIntParam(const Request& req, const std::string& key, int default_value, int min_value, int max_value)
-{
-	if (!req.has_param(key))
-	{
-		return default_value;
-	}
-	try
-	{
-		int value = std::stoi(req.get_param_value(key));
-		if (value < min_value) return min_value;
-		if (value > max_value) return max_value;
-		return value;
-	}
-	catch (...)
-	{
-		return default_value;
-	}
-}
-
-bool ParseJsonBody(const Request& req, Json::Value* out)
-{
-	if (out == nullptr || req.body.empty())
-	{
-		return false;
-	}
-
-	Json::CharReaderBuilder builder;
-	std::string errs;
-	std::istringstream ss(req.body);
-	return Json::parseFromStream(builder, ss, out, &errs);
-}
-
-std::string BuildRequestId(const Request& req)
-{
-	std::string request_id = req.get_header_value("X-Request-Id");
-	if (!request_id.empty())
-	{
-		return request_id;
-	}
-
-	auto now = std::chrono::system_clock::now().time_since_epoch();
-	long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
-	unsigned long long seq = g_request_seq.fetch_add(1, std::memory_order_relaxed) + 1;
-	return "req_" + std::to_string(ms) + "_" + std::to_string(seq);
-}
-
-std::string ReadHtmlFile(const std::string& path)
-{
-	std::ifstream in(path);
-	if (!in.is_open())
-	{
-		return "";
-	}
-	std::string html((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-	in.close();
-	return html;
-}
-
-std::string InjectUserInfo(const std::string& html, ns_control::User* user, bool isLoggedIn)
-{
-	std::string result = html;
-
-	std::string userInfoScript = R"(<script>)";
-	userInfoScript += "var SERVER_USER_INFO = {";
-	userInfoScript += "isLoggedIn: " + std::string(isLoggedIn ? "true" : "false");
-	if (isLoggedIn && user)
-	{
-		userInfoScript += ", name: \"" + user->name + "\"";
-		userInfoScript += ", email: \"" + user->email + "\"";
-		userInfoScript += ", uid: " + std::to_string(user->uid);
-	}
-	userInfoScript += "};";
-	userInfoScript += "</script>";
-
-	size_t bodyEndPos = result.find("</body>");
-	if (bodyEndPos != std::string::npos)
-	{
-		result.insert(bodyEndPos, userInfoScript);
-	}
-	else
-	{
-		result += userInfoScript;
-	}
-
-	return result;
-}
-
-bool IsValidAdminRole(const std::string& role)
-{
-	return role == "super_admin" || role == "admin";
-}
-
-void ReplyBadRequest(Response& rep, const std::string& message)
-{
-	Json::Value response;
-	response["success"] = false;
-	response["error_code"] = "BAD_REQUEST";
-	response["message"] = message;
-	Json::FastWriter writer;
-	rep.status = 400;
-	rep.set_content(writer.write(response), "application/json;charset=utf-8");
-}
-
-bool BuildAdminOverview(ns_model::Model* model, int* question_count, int* user_count, int* admin_count)
-{
-	if (model == nullptr || question_count == nullptr || user_count == nullptr || admin_count == nullptr)
-	{
-		return false;
-	}
-
-	if (!model->GetQuestionCount(question_count))
-	{
-		return false;
-	}
-	if (!model->GetUserCount(user_count))
-	{
-		return false;
-	}
-	if (!model->GetAdminCount(admin_count))
-	{
-		return false;
-	}
-	return true;
-}
-
-bool RequireAdmin(ns_model::Model* model,
-				  const httplib::Request& req,
-				  ns_control::User* user,
-				  ns_model::AdminAccount* admin,
-				  const std::function<bool(const Request&, ns_control::User*)>& getCurrentUser,
-				  const std::function<void(Response&)>& addCORSHeaders,
-				  httplib::Response& rep,
-				  bool super_only = false)
-{
-	if (user == nullptr || admin == nullptr || model == nullptr)
-	{
-		return false;
-	}
-
-	if (!getCurrentUser(req, user))
-	{
-		Json::Value response;
-		response["success"] = false;
-		response["error_code"] = "UNAUTHORIZED";
-		Json::FastWriter writer;
-		addCORSHeaders(rep);
-		rep.status = 401;
-		rep.set_content(writer.write(response), "application/json;charset=utf-8");
-		return false;
-	}
-
-	if (!model->GetAdminByUid(user->uid, admin))
-	{
-		Json::Value response;
-		response["success"] = false;
-		response["error_code"] = "FORBIDDEN";
-		Json::FastWriter writer;
-		addCORSHeaders(rep);
-		rep.status = 403;
-		rep.set_content(writer.write(response), "application/json;charset=utf-8");
-		return false;
-	}
-
-	if (super_only && admin->role != "super_admin")
-	{
-		Json::Value response;
-		response["success"] = false;
-		response["error_code"] = "FORBIDDEN";
-		Json::FastWriter writer;
-		addCORSHeaders(rep);
-		rep.status = 403;
-		rep.set_content(writer.write(response), "application/json;charset=utf-8");
-		return false;
-	}
-
-	return true;
-}
-
-void TryWriteAudit(ns_model::Model* model,
-			 const std::string& request_id,
-			 const ns_model::AdminAccount& operator_admin,
-			 const std::string& action,
-			 const std::string& resource_type,
-			 const std::string& result,
-			 const Json::Value& payload)
-{
-	if (model == nullptr)
-	{
-		return;
-	}
-
-	Json::FastWriter writer;
-	ns_model::AdminAuditLog log;
-	log.request_id = request_id;
-	log.operator_admin_id = operator_admin.admin_id;
-	log.operator_uid = operator_admin.uid;
-	log.operator_role = operator_admin.role;
-	log.action = action;
-	log.resource_type = resource_type;
-	log.result = result;
-	log.payload_text = writer.write(payload);
-
-	if (!model->InsertAdminAuditLog(log))
-	{
-		logger(WARNING) << "failed to write admin audit log, request_id=" << request_id;
-	}
-}
-
-Json::Value BuildPayload(const Request& req, int status_code, const Json::Value& extra)
-{
-	Json::Value payload;
-	payload["path"] = req.path;
-	payload["method"] = req.method;
-	payload["ip"] = req.remote_addr;
-	payload["user_agent"] = req.get_header_value("User-Agent");
-	payload["status_code"] = status_code;
-	payload["extra"] = extra;
-	return payload;
-}
-}
+using namespace ns_admin;
+using namespace ns_util;
 
 namespace ns_admin
 {
@@ -267,19 +24,31 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_header("Access-Control-Allow-Headers", "Content-Type");
 	};
 
-	auto getCurrentUser = [this](const Request& req, ns_control::User* user) -> bool {
-		std::string cookie_header = req.get_header_value("Cookie");
-		return _ctl.GetSessionUser(cookie_header, user);
-	};
-
 	auto model = _ctl.GetModel();
+
+	auto getCurrentAdmin = [this, model](const Request& req, User* user, AdminAccount* admin) -> bool {
+		AdminSession session;
+		if (!_store.GetSessionByCookie(req.get_header_value("Cookie"), &session))
+		{
+			return false;
+		}
+		if (!model->GetAdminByAdminId(session.admin_id, admin))
+		{
+			return false;
+		}
+		if (admin->uid != session.uid)
+		{
+			return false;
+		}
+		return model->GetUserById(session.uid, user);
+	};
 
 	svr.Get("/healthz", [](const Request& req, Response& rep) {
 		(void)req;
 		rep.set_content("ok", "text/plain;charset=utf-8");
 	});
 
-	svr.Get("/api/admin/version", [&addCORSHeaders](const Request& req, Response& rep) {
+	svr.Get("/api/admin/version", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req;
 		Json::Value response;
 		response["success"] = true;
@@ -293,33 +62,161 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
-	svr.set_mount_point("/admin", HTML_PATH + std::string("/admin"));
+	svr.Post("/api/admin/auth/login", [this, model, addCORSHeaders](const Request& req, Response& rep) {
+		Json::Value response;
+		Json::Value in;
+		if (!JsonUtil::ParseJsonBody(req, &in))
+		{
+			addCORSHeaders(rep);
+			HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
+			return;
+		}
 
-	svr.Get("/admin", [this, &getCurrentUser](const Request& req, Response& rep){
+		int admin_id = 0;
+		if (!TryParseIntField(in, "admin_id", &admin_id) || admin_id <= 0)
+		{
+			addCORSHeaders(rep);
+			HttpUtil::ReplyBadRequest(rep, "admin_id 必须是正整数");
+			return;
+		}
+
+		if (!in.isMember("password") || !in["password"].isString())
+		{
+			addCORSHeaders(rep);
+			HttpUtil::ReplyBadRequest(rep, "password 不能为空");
+			return;
+		}
+		std::string password = in["password"].asString();
+
+		AdminAccount admin;
+		User user;
+		std::string err_code;
+		bool ok = _ctl.LoginAdminWithIdAndPassword(admin_id, password, &admin, &user, &err_code);
+		response["success"] = ok;
+		if (!ok)
+		{
+			response["error_code"] = err_code.empty() ? "LOGIN_FAILED" : err_code;
+			rep.status = 401;
+		}
+		else
+		{
+			std::string session_id = _store.CreateSession(admin);
+			rep.set_header("Set-Cookie", _store.BuildSetCookieHeader(session_id));
+			response["data"]["admin_id"] = admin.admin_id;
+			response["data"]["uid"] = admin.uid;
+			response["data"]["role"] = admin.role;
+			response["data"]["user"]["uid"] = user.uid;
+			response["data"]["user"]["name"] = user.name;
+			response["data"]["user"]["email"] = user.email;
+
+		}
+
+		Json::FastWriter writer;
+		addCORSHeaders(rep);
+		rep.set_content(writer.write(response), "application/json;charset=utf-8");
+	});
+
+	svr.Post("/api/admin/auth/logout", [this, addCORSHeaders](const Request& req, Response& rep) {
+		std::string cookie_header = req.get_header_value("Cookie");
+		_store.DestroySessionByCookie(cookie_header);
+		rep.set_header("Set-Cookie", _store.BuildClearCookieHeader());
+
+		Json::Value response;
+		response["success"] = true;
+		Json::FastWriter writer;
+		addCORSHeaders(rep);
+		rep.set_content(writer.write(response), "application/json;charset=utf-8");
+	});
+
+	svr.set_mount_point("/admin/assets", HTML_PATH + std::string("/admin"));
+
+	svr.Get("/", [](const Request& req, Response& rep) {
+		(void)req;
+		rep.status = 302;
+		rep.set_header("Location", "/admin/login");
+	});
+
+	svr.Get("/admin/login", [](const Request& req, Response& rep){
+		(void)req;
 		std::string html;
-		_ctl.GetStaticHtml("admin/index.html", &html);
-
-		ns_control::User user;
-		bool isLoggedIn = getCurrentUser(req, &user);
-
-		html = InjectUserInfo(html, &user, isLoggedIn);
+		if (!FileUtil::ReadFile(HTML_PATH+ "admin/login.html", &html))
+		{
+			rep.status = 500;
+			rep.set_content("admin login page load failed", "text/plain;charset=utf-8");
+			return;
+		}
+		if (html.empty())
+		{
+			rep.status = 500;
+			rep.set_content("admin login page load failed", "text/plain;charset=utf-8");
+			return;
+		}
+		rep.set_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+		rep.set_header("Pragma", "no-cache");
+		rep.set_header("Expires", "0");
 		rep.set_content(html, "text/html;charset=utf-8");
 	});
 
-	svr.Get("/api/admin/overview", [this, model, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+	auto serveAdminShell = [this, getCurrentAdmin](const Request& req, Response& rep) {
+		User current_user;
+		AdminAccount current_admin;
+		if (!getCurrentAdmin(req, &current_user, &current_admin))
+		{
+			rep.status = 404;
+			rep.set_content("Not Found", "text/plain;charset=utf-8");
+			return;
+		}
+		std::string html;
+		_ctl.GetStaticHtml("admin/index.html", &html);
+		if (html.empty())
+		{
+			rep.status = 500;
+			rep.set_content("admin index load failed", "text/plain;charset=utf-8");
+			logger(ns_log::FATAL)<<"failed to load admin index.html!";
+			return;
+		}
+		html = InjectUserInfo(html, &current_user, &current_admin, true);
+		rep.set_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+		rep.set_header("Pragma", "no-cache");
+		rep.set_header("Expires", "0");
+		rep.set_content(html, "text/html;charset=utf-8");
+	};
+
+	svr.Get("/admin", serveAdminShell);
+	svr.Get("/admin/users", serveAdminShell);
+	svr.Get("/admin/questions", serveAdminShell);
+	svr.Get("/admin/questions/new", serveAdminShell);
+	svr.Get(R"(/admin/questions/(\d+))", serveAdminShell);
+
+	svr.Get("/api/admin/overview", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
 		Json::Value response;
-		ns_control::User current_user;
-		ns_model::AdminAccount current_admin;
-		if (!RequireAdmin(model, req, &current_user, &current_admin, getCurrentUser, addCORSHeaders, rep, false))
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, false))
 		{
 			return;
 		}
 
 		int question_count = 0;
 		int user_count = 0;
+		int user_pages = 0;
 		int admin_count = 0;
+		int super_admin_count = 0;
+		int admin_role_count = 0;
+		int recent_audit_total = 0;
+		int recent_user_total = 0;
+		std::vector<AdminAuditLog> recent_audits;
+		std::vector<User> recent_users;
+		std::vector<Question> all_questions;
 		bool ok = BuildAdminOverview(model, &question_count, &user_count, &admin_count);
+		if (ok)
+		{
+			ok = model->GetRoleCount("super_admin", &super_admin_count)
+				&& model->GetRoleCount("admin", &admin_role_count)
+				&& model->ListAdminAuditLogsPaged(1, 5, "", 0, "", &recent_audits, &recent_audit_total)
+				&& model->GetUsersPaged(1, 5, "", &recent_users, &recent_user_total,&user_pages);
+		}
 		response["success"] = ok;
 		if (!ok)
 		{
@@ -329,13 +226,78 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		else
 		{
 			auto m = model->GetCacheMetricsSnapshot();
+			std::sort(all_questions.begin(), all_questions.end(), [](const Question& lhs, const Question& rhs) {
+				if (lhs.update_time != rhs.update_time)
+				{
+					return lhs.update_time > rhs.update_time;
+				}
+				return std::atoi(lhs.number.c_str()) > std::atoi(rhs.number.c_str());
+			});
+
 			response["data"]["question_count"] = question_count;
 			response["data"]["user_count"] = user_count;
 			response["data"]["admin_count"] = admin_count;
+			response["data"]["admin_roles"]["super_admin"] = super_admin_count;
+			response["data"]["admin_roles"]["admin"] = admin_role_count;
+			response["data"]["recent_audit_total"] = recent_audit_total;
 			response["data"]["cache"]["list_requests"] = Json::Int64(m.list_requests);
 			response["data"]["cache"]["list_hits"] = Json::Int64(m.list_hits);
+			response["data"]["cache"]["list_misses"] = Json::Int64(m.list_misses);
+			response["data"]["cache"]["list_db_fallbacks"] = Json::Int64(m.list_db_fallbacks);
+			response["data"]["cache"]["list_avg_ms"] = m.list_requests > 0 ? (static_cast<double>(m.list_total_ms) / static_cast<double>(m.list_requests)) : 0.0;
+			response["data"]["cache"]["list_hit_rate"] = CalcRate(m.list_hits, m.list_requests);
 			response["data"]["cache"]["detail_requests"] = Json::Int64(m.detail_requests);
 			response["data"]["cache"]["detail_hits"] = Json::Int64(m.detail_hits);
+			response["data"]["cache"]["detail_misses"] = Json::Int64(m.detail_misses);
+			response["data"]["cache"]["detail_db_fallbacks"] = Json::Int64(m.detail_db_fallbacks);
+			response["data"]["cache"]["detail_avg_ms"] = m.detail_requests > 0 ? (static_cast<double>(m.detail_total_ms) / static_cast<double>(m.detail_requests)) : 0.0;
+			response["data"]["cache"]["detail_hit_rate"] = CalcRate(m.detail_hits, m.detail_requests);
+			response["data"]["cache"]["html_static_hit_rate"] = CalcRate(m.html_static_hits, m.html_static_requests);
+			response["data"]["cache"]["html_list_hit_rate"] = CalcRate(m.html_list_hits, m.html_list_requests);
+			response["data"]["cache"]["html_detail_hit_rate"] = CalcRate(m.html_detail_hits, m.html_detail_requests);
+
+			Json::Value recent_user_rows(Json::arrayValue);
+			for (const auto& user : recent_users)
+			{
+				Json::Value item;
+				item["uid"] = user.uid;
+				item["name"] = user.name;
+				item["email"] = user.email;
+				item["create_time"] = user.create_time;
+				item["last_login"] = user.last_login;
+				recent_user_rows.append(item);
+			}
+			response["data"]["recent_users"] = recent_user_rows;
+
+			Json::Value recent_question_rows(Json::arrayValue);
+			for (size_t i = 0; i < std::min<size_t>(5, all_questions.size()); ++i)
+			{
+				const auto& q = all_questions[i];
+				Json::Value item;
+				item["number"] = q.number;
+				item["title"] = q.title;
+				item["star"] = q.star;
+				item["update_time"] = q.update_time;
+				item["create_time"] = q.create_time;
+				recent_question_rows.append(item);
+			}
+			response["data"]["recent_questions"] = recent_question_rows;
+
+			Json::Value recent_audit_rows(Json::arrayValue);
+			for (const auto& log : recent_audits)
+			{
+				Json::Value item;
+				item["request_id"] = log.request_id;
+				item["operator_admin_id"] = log.operator_admin_id;
+				item["operator_uid"] = log.operator_uid;
+				item["operator_role"] = log.operator_role;
+				item["action"] = log.action;
+				item["resource_type"] = log.resource_type;
+				item["result"] = log.result;
+				item["payload_text"] = log.payload_text;
+				recent_audit_rows.append(item);
+			}
+			response["data"]["recent_audits"] = recent_audit_rows;
 		}
 
 		Json::Value extra;
@@ -347,23 +309,24 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
-	svr.Get("/api/admin/users", [this, model, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+	svr.Get("/api/admin/users", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
 		Json::Value response;
-		ns_control::User current_user;
-		ns_model::AdminAccount current_admin;
-		if (!RequireAdmin(model, req, &current_user, &current_admin, getCurrentUser, addCORSHeaders, rep, false))
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, false))
 		{
 			return;
 		}
 
-		int page = ParsePositiveIntParam(req, "page", 1, 1, 1000000);
-		int size = ParsePositiveIntParam(req, "size", 20, 1, 200);
-		std::string keyword = req.has_param("q") ? Trim(req.get_param_value("q")) : "";
+		int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
+		int size = HttpUtil::ParsePositiveIntParam(req, "size", 20, 1, 200);
+		std::string keyword = req.has_param("q") ? StringUtil::Trim(req.get_param_value("q")) : "";
 
-		std::vector<ns_model::UserListItem> users;
+		std::vector<User> users;
 		int total_count = 0;
-		bool ok = model->GetUsersPaged(page, size, keyword, &users, &total_count);
+		int total_pages = 0;
+		bool ok = model->GetUsersPaged(page, size, keyword, &users, &total_count,&total_pages);
 
 		response["success"] = ok;
 		if (!ok)
@@ -401,22 +364,32 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
-	svr.Get("/api/admin/questions", [this, model, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+	svr.Get("/api/admin/questions", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
 		Json::Value response;
-		ns_control::User current_user;
-		ns_model::AdminAccount current_admin;
-		if (!RequireAdmin(model, req, &current_user, &current_admin, getCurrentUser, addCORSHeaders, rep, false))
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, false))
 		{
 			return;
 		}
 
-		int page = ParsePositiveIntParam(req, "page", 1, 1, 1000000);
-		int size = ParsePositiveIntParam(req, "size", 20, 1, 200);
-		std::string keyword = req.has_param("q") ? Trim(req.get_param_value("q")) : "";
+		int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
+		int size = HttpUtil::ParsePositiveIntParam(req, "size", 20, 1, 200);
+		std::string keyword = req.has_param("q") ? StringUtil::Trim(req.get_param_value("q")) : "";
 
-		std::vector<ns_model::Question> all;
-		bool ok = model->GetAllQuestions(&all);
+		std::vector<Question> all;
+		KeyContext context;
+		context._query = std::make_shared<QuestionQuery>();
+		context.page = 1;
+		context.size = 5;
+		context.list_version = model->GetQuestionsListVersion();
+		context.list_type = ListType::Questions;
+		std::shared_ptr<ns_cache::Cache::CacheListKey> key = std::make_shared<ns_cache::Cache::CacheListKey>();
+		key->Build(context);
+		int total_pages = 0;
+		int total_count = 0;
+		bool ok = model->GetQuestionsByPage(key, all, &total_count, &total_pages);
 		response["success"] = ok;
 		if (!ok)
 		{
@@ -427,7 +400,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		{
 			if (!keyword.empty())
 			{
-				std::vector<ns_model::Question> filtered;
+				std::vector<Question> filtered;
 				for (const auto& q : all)
 				{
 					if (q.number.find(keyword) != std::string::npos || q.title.find(keyword) != std::string::npos)
@@ -438,7 +411,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 				all.swap(filtered);
 			}
 
-			std::sort(all.begin(), all.end(), [](const ns_model::Question& a, const ns_model::Question& b){
+			std::sort(all.begin(), all.end(), [](const Question& a, const Question& b){
 				return std::atoi(a.number.c_str()) < std::atoi(b.number.c_str());
 			});
 
@@ -474,21 +447,194 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
-	svr.Get("/api/admin/accounts", [this, model, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+	svr.Get(R"(/api/admin/questions/(\d+))", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
 		Json::Value response;
-		ns_control::User current_user;
-		ns_model::AdminAccount current_admin;
-		if (!RequireAdmin(model, req, &current_user, &current_admin, getCurrentUser, addCORSHeaders, rep, true))
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, false))
 		{
 			return;
 		}
 
-		int page = ParsePositiveIntParam(req, "page", 1, 1, 1000000);
-		int size = ParsePositiveIntParam(req, "size", 20, 1, 200);
-		std::string keyword = req.has_param("q") ? Trim(req.get_param_value("q")) : "";
+		std::string number = std::string(req.matches[1]);
+		Question q;
+		bool ok = model->GetOneQuestion(number, q);
+		response["success"] = ok;
+		if (!ok)
+		{
+			response["error_code"] = "QUESTION_NOT_FOUND";
+			rep.status = 404;
+		}
+		else
+		{
+			response["data"]["number"] = q.number;
+			response["data"]["title"] = q.title;
+			response["data"]["desc"] = q.desc;
+			response["data"]["star"] = q.star;
+			response["data"]["cpu_limit"] = q.cpu_limit;
+			response["data"]["memory_limit"] = q.memory_limit;
+			response["data"]["create_time"] = q.create_time;
+			response["data"]["update_time"] = q.update_time;
+		}
 
-		std::vector<ns_model::AdminAccount> admins;
+		Json::Value extra;
+		extra["request_id"] = request_id;
+		extra["number"] = number;
+		TryWriteAudit(model, request_id, current_admin, "question.get", "question", ok ? "success" : "failed", BuildPayload(req, rep.status == 0 ? 200 : rep.status, extra));
+
+		Json::FastWriter writer;
+		addCORSHeaders(rep);
+		rep.set_content(writer.write(response), "application/json;charset=utf-8");
+	});
+
+	svr.Post("/api/admin/questions", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
+		std::string request_id = BuildRequestId(req);
+		Json::Value response;
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, false))
+		{
+			return;
+		}
+
+		Json::Value in;
+		if (!JsonUtil::ParseJsonBody(req, &in))
+		{
+			addCORSHeaders(rep);
+			HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
+			return;
+		}
+
+		Question q;
+		std::string err;
+		if (!BuildQuestionFromJson(in, &q, &err))
+		{
+			addCORSHeaders(rep);
+			HttpUtil::ReplyBadRequest(rep, err);
+			return;
+		}
+
+		bool ok = _ctl.SaveQuestion(q);
+		response["success"] = ok;
+		if (!ok)
+		{
+			response["error_code"] = "SAVE_QUESTION_FAILED";
+			rep.status = 500;
+		}
+		else
+		{
+			response["data"]["number"] = q.number;
+			response["data"]["title"] = q.title;
+		}
+
+		Json::Value extra;
+		extra["request_id"] = request_id;
+		extra["number"] = q.number;
+		extra["title"] = q.title;
+		TryWriteAudit(model, request_id, current_admin, "question.save", "question", ok ? "success" : "failed", BuildPayload(req, rep.status == 0 ? 200 : rep.status, extra));
+
+		Json::FastWriter writer;
+		addCORSHeaders(rep);
+		rep.set_content(writer.write(response), "application/json;charset=utf-8");
+	});
+
+	svr.Put(R"(/api/admin/questions/(\d+))", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
+		std::string request_id = BuildRequestId(req);
+		Json::Value response;
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, false))
+		{
+			return;
+		}
+
+		Json::Value in;
+		if (!JsonUtil::ParseJsonBody(req, &in))
+		{
+			addCORSHeaders(rep);
+			HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
+			return;
+		}
+
+		std::string number = std::string(req.matches[1]);
+		Question q;
+		std::string err;
+		if (!BuildQuestionFromJson(in, &q, &err, &number))
+		{
+			addCORSHeaders(rep);
+			HttpUtil::ReplyBadRequest(rep, err);
+			return;
+		}
+
+		bool ok = _ctl.SaveQuestion(q);
+		response["success"] = ok;
+		if (!ok)
+		{
+			response["error_code"] = "UPDATE_QUESTION_FAILED";
+			rep.status = 500;
+		}
+		else
+		{
+			response["data"]["number"] = q.number;
+			response["data"]["title"] = q.title;
+		}
+
+		Json::Value extra;
+		extra["request_id"] = request_id;
+		extra["number"] = q.number;
+		extra["title"] = q.title;
+		TryWriteAudit(model, request_id, current_admin, "question.update", "question", ok ? "success" : "failed", BuildPayload(req, rep.status == 0 ? 200 : rep.status, extra));
+
+		Json::FastWriter writer;
+		addCORSHeaders(rep);
+		rep.set_content(writer.write(response), "application/json;charset=utf-8");
+	});
+
+	svr.Delete(R"(/api/admin/questions/(\d+))", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
+		std::string request_id = BuildRequestId(req);
+		Json::Value response;
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, false))
+		{
+			return;
+		}
+
+		std::string number = std::string(req.matches[1]);
+		bool ok = _ctl.DeleteQuestion(number);
+		response["success"] = ok;
+		if (!ok)
+		{
+			response["error_code"] = "DELETE_QUESTION_FAILED";
+			rep.status = 500;
+		}
+
+		Json::Value extra;
+		extra["request_id"] = request_id;
+		extra["number"] = number;
+		TryWriteAudit(model, request_id, current_admin, "question.delete", "question", ok ? "success" : "failed", BuildPayload(req, rep.status == 0 ? 200 : rep.status, extra));
+
+		Json::FastWriter writer;
+		addCORSHeaders(rep);
+		rep.set_content(writer.write(response), "application/json;charset=utf-8");
+	});
+
+	svr.Get("/api/admin/accounts", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
+		std::string request_id = BuildRequestId(req);
+		Json::Value response;
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, true))
+		{
+			return;
+		}
+
+		int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
+		int size = HttpUtil::ParsePositiveIntParam(req, "size", 20, 1, 200);
+		std::string keyword = req.has_param("q") ? StringUtil::Trim(req.get_param_value("q")) : "";
+
+		std::vector<AdminAccount> admins;
 		int total_count = 0;
 		bool ok = model->ListAdminsPaged(page, size, keyword, &admins, &total_count);
 		response["success"] = ok;
@@ -526,18 +672,18 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
-	svr.Get(R"(/api/admin/accounts/(\d+))", [this, model, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+	svr.Get(R"(/api/admin/accounts/(\d+))", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
 		Json::Value response;
-		ns_control::User current_user;
-		ns_model::AdminAccount current_admin;
-		if (!RequireAdmin(model, req, &current_user, &current_admin, getCurrentUser, addCORSHeaders, rep, true))
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, true))
 		{
 			return;
 		}
 
 		int admin_id = std::atoi(std::string(req.matches[1]).c_str());
-		ns_model::AdminAccount target;
+		AdminAccount target;
 		bool ok = model->GetAdminByAdminId(admin_id, &target);
 		response["success"] = ok;
 		if (!ok)
@@ -563,33 +709,33 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
-	svr.Post("/api/admin/accounts", [this, model, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+	svr.Post("/api/admin/accounts", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
 		Json::Value response;
-		ns_control::User current_user;
-		ns_model::AdminAccount current_admin;
-		if (!RequireAdmin(model, req, &current_user, &current_admin, getCurrentUser, addCORSHeaders, rep, true))
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, true))
 		{
 			return;
 		}
 
 		Json::Value in;
-		if (!ParseJsonBody(req, &in))
+		if (!JsonUtil::ParseJsonBody(req, &in))
 		{
 			addCORSHeaders(rep);
-			ReplyBadRequest(rep, "请求体必须是 JSON");
+			HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
 			return;
 		}
 
 		if (!in.isMember("uid") || !in["uid"].isInt())
 		{
 			addCORSHeaders(rep);
-			ReplyBadRequest(rep, "uid 必须是整数");
+			HttpUtil::ReplyBadRequest(rep, "uid 必须是整数");
 			return;
 		}
 		int uid = in["uid"].asInt();
-		std::string role = in.isMember("role") && in["role"].isString() ? Trim(in["role"].asString()) : "admin";
-		std::string password_hash = in.isMember("password_hash") && in["password_hash"].isString() ? in["password_hash"].asString() : "";
+		std::string role = in.isMember("role") && in["role"].isString() ? StringUtil::Trim(in["role"].asString()) : "admin";
+		std::string password = in.isMember("password") && in["password"].isString() ? in["password"].asString() : "";
 
 		if (!IsValidAdminRole(role))
 		{
@@ -602,7 +748,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			return;
 		}
 
-		ns_control::User target_user;
+		User target_user;
 		if (!this->_ctl.GetModel()->GetUserById(uid, &target_user))
 		{
 			response["success"] = false;
@@ -614,7 +760,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			return;
 		}
 
-		ns_model::AdminAccount existing;
+		AdminAccount existing;
 		if (model->GetAdminByUid(uid, &existing))
 		{
 			response["success"] = false;
@@ -651,6 +797,19 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			}
 		}
 
+		std::string password_hash;
+		std::string hash_err;
+		if (!_ctl.BuildSecurePasswordHash(password, &password_hash, &hash_err))
+		{
+			response["success"] = false;
+			response["error_code"] = hash_err.empty() ? "PASSWORD_HASH_FAILED" : hash_err;
+			rep.status = 400;
+			Json::FastWriter writer;
+			addCORSHeaders(rep);
+			rep.set_content(writer.write(response), "application/json;charset=utf-8");
+			return;
+		}
+
 		bool ok = model->CreateAdminAccount(uid, password_hash, role);
 		response["success"] = ok;
 		if (!ok)
@@ -675,18 +834,18 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
-	svr.Put(R"(/api/admin/accounts/(\d+))", [this, model, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+	svr.Put(R"(/api/admin/accounts/(\d+))", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
 		Json::Value response;
-		ns_control::User current_user;
-		ns_model::AdminAccount current_admin;
-		if (!RequireAdmin(model, req, &current_user, &current_admin, getCurrentUser, addCORSHeaders, rep, true))
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, true))
 		{
 			return;
 		}
 
 		int target_admin_id = std::atoi(std::string(req.matches[1]).c_str());
-		ns_model::AdminAccount target;
+		AdminAccount target;
 		if (!model->GetAdminByAdminId(target_admin_id, &target))
 		{
 			response["success"] = false;
@@ -699,20 +858,20 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		}
 
 		Json::Value in;
-		if (!ParseJsonBody(req, &in))
+		if (!JsonUtil::ParseJsonBody(req, &in))
 		{
 			addCORSHeaders(rep);
-			ReplyBadRequest(rep, "请求体必须是 JSON");
+			HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
 			return;
 		}
 
 		if (!in.isMember("role") || !in["role"].isString())
 		{
 			addCORSHeaders(rep);
-			ReplyBadRequest(rep, "role 不能为空");
+			HttpUtil::ReplyBadRequest(rep, "role 不能为空");
 			return;
 		}
-		std::string new_role = Trim(in["role"].asString());
+		std::string new_role = StringUtil::Trim(in["role"].asString());
 		if (!IsValidAdminRole(new_role))
 		{
 			response["success"] = false;
@@ -800,18 +959,18 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
-	svr.Delete(R"(/api/admin/accounts/(\d+))", [this, model, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+	svr.Delete(R"(/api/admin/accounts/(\d+))", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
 		Json::Value response;
-		ns_control::User current_user;
-		ns_model::AdminAccount current_admin;
-		if (!RequireAdmin(model, req, &current_user, &current_admin, getCurrentUser, addCORSHeaders, rep, true))
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, true))
 		{
 			return;
 		}
 
 		int target_admin_id = std::atoi(std::string(req.matches[1]).c_str());
-		ns_model::AdminAccount target;
+		AdminAccount target;
 		if (!model->GetAdminByAdminId(target_admin_id, &target))
 		{
 			response["success"] = false;
@@ -868,23 +1027,23 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
-	svr.Get("/api/admin/audit/logs", [this, model, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+	svr.Get("/api/admin/audit/logs", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
 		Json::Value response;
-		ns_control::User current_user;
-		ns_model::AdminAccount current_admin;
-		if (!RequireAdmin(model, req, &current_user, &current_admin, getCurrentUser, addCORSHeaders, rep, false))
+		User current_user;
+		AdminAccount current_admin;
+		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, false))
 		{
 			return;
 		}
 
-		int page = ParsePositiveIntParam(req, "page", 1, 1, 1000000);
-		int size = ParsePositiveIntParam(req, "size", 20, 1, 200);
-		int operator_uid = ParsePositiveIntParam(req, "operator_uid", 0, 0, 2147483647);
-		std::string action = req.has_param("action") ? Trim(req.get_param_value("action")) : "";
-		std::string result = req.has_param("result") ? Trim(req.get_param_value("result")) : "";
+		int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
+		int size = HttpUtil::ParsePositiveIntParam(req, "size", 20, 1, 200);
+		int operator_uid = HttpUtil::ParsePositiveIntParam(req, "operator_uid", 0, 0, 2147483647);
+		std::string action = req.has_param("action") ? StringUtil::Trim(req.get_param_value("action")) : "";
+		std::string result = req.has_param("result") ? StringUtil::Trim(req.get_param_value("result")) : "";
 
-		std::vector<ns_model::AdminAuditLog> logs;
+		std::vector<AdminAuditLog> logs;
 		int total_count = 0;
 		bool ok = model->ListAdminAuditLogsPaged(page, size, action, operator_uid, result, &logs, &total_count);
 		response["success"] = ok;
@@ -926,68 +1085,68 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
-	svr.Post("/api/auth/logout", [this, &addCORSHeaders](const Request& req, Response& rep) {
-		(void)this;
-		std::string cookie_header = req.get_header_value("Cookie");
-		_ctl.DestroySessionByCookieHeader(cookie_header);
-		rep.set_header("Set-Cookie", _ctl.GetClearCookieHeader());
 
-		Json::Value response;
-		response["success"] = true;
-		Json::FastWriter writer;
-		addCORSHeaders(rep);
-		rep.set_content(writer.write(response), "application/json;charset=utf-8");
-	});
-
-	svr.Options("/api/admin/overview", [&addCORSHeaders](const Request& req, Response& rep) {
+	svr.Options("/api/admin/overview", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req;
 		addCORSHeaders(rep);
 		rep.status = 200;
 	});
 
-	svr.Options("/api/admin/users", [&addCORSHeaders](const Request& req, Response& rep) {
+	svr.Options("/api/admin/users", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req;
 		addCORSHeaders(rep);
 		rep.status = 200;
 	});
 
-	svr.Options("/api/admin/questions", [&addCORSHeaders](const Request& req, Response& rep) {
+	svr.Options("/api/admin/questions", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req;
 		addCORSHeaders(rep);
 		rep.status = 200;
 	});
 
-	svr.Options("/api/admin/version", [&addCORSHeaders](const Request& req, Response& rep) {
+	svr.Options(R"(/api/admin/questions/(\d+))", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req;
 		addCORSHeaders(rep);
 		rep.status = 200;
 	});
 
-	svr.Options("/api/admin/accounts", [&addCORSHeaders](const Request& req, Response& rep) {
+	svr.Options("/api/admin/version", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req;
 		addCORSHeaders(rep);
 		rep.status = 200;
 	});
 
-	svr.Options(R"(/api/admin/accounts/(\d+))", [&addCORSHeaders](const Request& req, Response& rep) {
+	svr.Options("/api/admin/auth/login", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req;
 		addCORSHeaders(rep);
 		rep.status = 200;
 	});
 
-	svr.Options("/api/admin/audit/logs", [&addCORSHeaders](const Request& req, Response& rep) {
+	svr.Options("/api/admin/auth/logout", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req;
 		addCORSHeaders(rep);
 		rep.status = 200;
 	});
 
-	svr.Options("/api/auth/logout", [&addCORSHeaders](const Request& req, Response& rep) {
+	svr.Options("/api/admin/accounts", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req;
 		addCORSHeaders(rep);
 		rep.status = 200;
 	});
 
-	svr.Options("/api/*", [&addCORSHeaders](const Request& req, Response& rep) {
+	svr.Options(R"(/api/admin/accounts/(\d+))", [addCORSHeaders](const Request& req, Response& rep) {
+		(void)req;
+		addCORSHeaders(rep);
+		rep.status = 200;
+	});
+
+	svr.Options("/api/admin/audit/logs", [addCORSHeaders](const Request& req, Response& rep) {
+		(void)req;
+		addCORSHeaders(rep);
+		rep.status = 200;
+	});
+
+	svr.Options("/api/*", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req;
 		addCORSHeaders(rep);
 		rep.status = 200;

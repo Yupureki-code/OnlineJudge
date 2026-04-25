@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>OJ 管理后台</title>
+    <title>OJ 管理控制台</title>
     <style>
         :root {
             --bg: #0f1720;
@@ -96,6 +96,17 @@
         .user {
             color: var(--muted);
             font-size: 14px;
+        }
+
+        .user-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .user-meta {
+            color: rgba(229, 237, 245, 0.65);
+            font-size: 12px;
         }
 
         .logout {
@@ -197,11 +208,195 @@
             margin-bottom: 10px;
         }
 
+        .page-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .page-head h2,
+        .panel h3 {
+            margin: 0;
+        }
+
+        .page-subtitle,
+        .muted {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: 2fr 1.15fr;
+            gap: 14px;
+        }
+
+        .stack {
+            display: grid;
+            gap: 14px;
+        }
+
+        .panel {
+            background: linear-gradient(180deg, rgba(31,45,58,0.92), rgba(22,33,45,0.92));
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .metric {
+            padding: 12px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .metric .k {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .metric .v {
+            margin-top: 6px;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .metric .s {
+            margin-top: 6px;
+            color: rgba(229, 237, 245, 0.65);
+            font-size: 12px;
+        }
+
+        .pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(87, 192, 132, 0.12);
+            border: 1px solid rgba(87, 192, 132, 0.25);
+            color: #d8f7e5;
+            font-size: 12px;
+        }
+
+        .ghost {
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            border-radius: 8px;
+            padding: 9px 12px;
+            cursor: pointer;
+        }
+
+        .table-compact th,
+        .table-compact td {
+            padding: 8px 6px;
+            font-size: 12px;
+        }
+
+        .status-ok,
+        .status-success {
+            color: #9ff0be;
+        }
+
+        .status-failed,
+        .status-error {
+            color: #ffc3c7;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 140px 1fr 140px 140px 140px;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .field-stack {
+            display: grid;
+            gap: 8px;
+        }
+
+        .field-stack label {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .field-stack input,
+        .field-stack textarea {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            color: var(--text);
+            padding: 10px 12px;
+        }
+
+        .field-stack textarea {
+            min-height: 220px;
+            resize: vertical;
+        }
+
+        .actions-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .actions-inline {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .empty {
+            color: var(--muted);
+            padding: 22px 12px;
+            text-align: center;
+            border: 1px dashed rgba(255,255,255,0.1);
+            border-radius: 12px;
+        }
+
         @media (max-width: 900px) {
             .layout { grid-template-columns: 1fr; }
             .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
             .cards { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+            .overview-grid { grid-template-columns: 1fr; }
+            .metric-grid { grid-template-columns: 1fr 1fr; }
+            .form-grid { grid-template-columns: 1fr 1fr; }
         }
+
+        @media (max-width: 640px) {
+            .topbar,
+            .page-head,
+            .actions-row,
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .metric-grid,
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -209,18 +404,21 @@
     <aside class="sidebar">
         <div class="logo">Yupureki OJ</div>
         <div class="sub">Admin Console</div>
-        <button class="nav-btn active" data-tab="overview">仪表盘</button>
-        <button class="nav-btn" data-tab="users">用户管理</button>
-        <button class="nav-btn" data-tab="questions">题目管理</button>
+        <button class="nav-btn active" data-path="/admin">仪表盘</button>
+        <button class="nav-btn" data-path="/admin/users">用户管理</button>
+        <button class="nav-btn" data-path="/admin/questions">题目管理</button>
     </aside>
     <main class="main">
         <div class="topbar">
-            <div id="admin-user" class="user">正在读取登录信息...</div>
+            <div class="user-wrap">
+                <div id="admin-user" class="user">正在读取登录信息...</div>
+                <div id="admin-user-meta" class="user-meta"></div>
+            </div>
             <button id="logout-btn" class="logout">退出登录</button>
         </div>
         <section id="content" class="content"></section>
     </main>
 </div>
-<script src="/admin/admin-app.js?v=20260423"></script>
+<script src="/admin/assets/admin-app.js?v=20260425"></script>
 </body>
 </html>

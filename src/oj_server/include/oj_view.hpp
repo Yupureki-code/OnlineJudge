@@ -77,8 +77,10 @@ namespace ns_view
         }
         bool GetStaticHtml(const std::string& name, std::string* html, bool* cache_hit = nullptr, bool force_reload = false)
         {
+            //force_reload为true时强制从磁盘加载，跳过view的缓存。用于用户个性主页等不适合缓存的页面。
             if (!force_reload)
             {
+                //不跳过view的缓存
                 std::lock_guard<std::mutex> lock(_html_cache_mtx);
                 auto it = _html_cache.find(name);
                 if (it != _html_cache.end())
@@ -88,7 +90,7 @@ namespace ns_view
                     return true;
                 }
             }
-
+            //force_reload为true或者view缓存未命中，继续从磁盘加载
             std::string path = HTML_PATH + "/" + name;
             std::ifstream in(path);
             if (!in.is_open())
@@ -108,7 +110,7 @@ namespace ns_view
             return true;
         }
     private:
-        std::unordered_map<std::string, std::string> _html_cache; //html缓存
+        std::unordered_map<std::string, std::string> _html_cache; //view本地html缓存
         std::mutex _html_cache_mtx;
     };
 };
