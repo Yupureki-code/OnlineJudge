@@ -564,7 +564,48 @@ namespace ns_model
         }
         std::string BuildUserWhereClause(const std::shared_ptr<QueryStruct>& query_hash, MYSQL* my)
         {
-            
+            if (!query_hash)
+            {
+                return "";
+            }
+            auto uq = std::dynamic_pointer_cast<UserQuery>(query_hash);
+            if (!uq)
+            {
+                return "";
+            }
+
+            std::vector<std::string> clauses;
+            if (uq->id > 0)
+            {
+                clauses.push_back("uid=" + std::to_string(uq->id));
+            }
+            if (!uq->name.empty())
+            {
+                std::string safe_name = EscapeSqlString(uq->name, my);
+                clauses.push_back("name like '%" + safe_name + "%'");
+            }
+            if (!uq->email.empty())
+            {
+                std::string safe_email = EscapeSqlString(uq->email, my);
+                clauses.push_back("email like '%" + safe_email + "%'");
+            }
+
+            if (clauses.empty())
+            {
+                return "";
+            }
+
+            std::ostringstream where;
+            where << " where ";
+            for (size_t i = 0; i < clauses.size(); ++i)
+            {
+                if (i != 0)
+                {
+                    where << " or ";
+                }
+                where << clauses[i];
+            }
+            return where.str();
         }
 
         //查询用户基础信息
@@ -715,6 +756,38 @@ namespace ns_model
         {
             _cache.SetHtmlPage(html, key);
         }
+
+        bool GetCachedStringByAnyKey(const std::string& key, std::string* value)
+        {
+            if (value == nullptr)
+            {
+                return false;
+            }
+            return _cache.GetStringByAnyKey(key, value);
+        }
+
+        bool SetCachedStringByAnyKey(const std::string& key, const std::string& value, int expire_seconds)
+        {
+            if (expire_seconds <= 0)
+            {
+                return false;
+            }
+            return _cache.SetStringByAnyKey(key, value, expire_seconds);
+        }
+
+        bool DeleteCachedStringByAnyKey(const std::string& key)
+        {
+            if (key.empty())
+            {
+                return false;
+            }
+            return _cache.DeleteStringByAnyKey(key);
+        }
+
+        int BuildCacheJitteredTtlSeconds(int base_seconds, int jitter_seconds)
+        {
+            return _cache.BuildJitteredTtl(base_seconds, jitter_seconds);
+        }
         void InvalidatePage(std::shared_ptr<Cache::CacheKey> key)
         {
             _cache.InvalidatePage(key);
@@ -825,7 +898,7 @@ namespace ns_model
             // 每页大小
             // 列表版本号
             // 这样下次同样条件的请求就可以直接命中缓存。
-            auto write_key = _cache.BuildListCacheKey(key->GetQueryHash(), safe_page, size, key->GetListVersion(), Cache::CacheKey::PageType::kData);
+            auto write_key = _cache.BuildListCacheKey(key->GetQueryHash(), safe_page, size, key->GetListVersion(), Cache::CacheKey::PageType::kData, key->GetListType());
             _cache.SetQuestionsByPage(write_key, questions, *total_count, *total_pages);
             auto end = std::chrono::steady_clock::now();
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
@@ -1070,38 +1143,80 @@ namespace ns_model
         }
         bool GetUsersPaged(std::shared_ptr<Cache::CacheListKey> key,std::vector<User>* users, int* total_count,int * total_pages)
         {
+            auto begin = std::chrono::steady_clock::now();
             if (users == nullptr || total_count == nullptr || total_pages == nullptr)
             {
+                auto end = std::chrono::steady_clock::now();
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                RecordListMetrics(false, false, cost_ms);
                 return false;
             }
 
-            int safe_page = std::max(1, key->GetPage());
-            int safe_size = std::max(1, key->GetSize());
-            int offset = (safe_page - 1) * safe_size;
+            if (_cache.GetUsersByPage(key, *users, total_count, total_pages))
+            {
+                logger(ns_log::INFO) << "Cache hit for user list page " << key->GetCacheKeyString(&_cache);
+                auto end = std::chrono::steady_clock::now();
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                RecordListMetrics(true, false, cost_ms);
+                return true;
+            }
+
             auto my = CreateConnection();
             if (!my)
             {
+                auto end = std::chrono::steady_clock::now();
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                RecordListMetrics(false, true, cost_ms);
                 return false;
             }
 
-            std::string where_clause;
-            if (!keyword.empty())
-            {
-                std::string safe_kw = EscapeSqlString(keyword, my.get());
-                where_clause = " where name like '%" + safe_kw + "%' or email like '%" + safe_kw + "%'";
-            }
+            std::string where_clause = BuildUserWhereClause(key->GetQueryHash(), my.get());
 
             std::string count_sql = "select count(*) from " + oj_users + where_clause;
             if (!QueryCount(count_sql, total_count))
             {
+                auto end = std::chrono::steady_clock::now();
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                RecordListMetrics(false, true, cost_ms);
                 return false;
             }
 
-            std::ostringstream sql;
-            sql << "select uid,name,email,create_time,last_login from " << oj_users
-                << where_clause
-                << " order by uid desc limit " << safe_size << " offset " << offset;
-            return QueryUsers(sql.str(), users);
+            if (*total_count <= 0)
+            {
+                *total_pages = 0;
+                users->clear();
+                _cache.SetUsersByPage(key, *users, *total_count, *total_pages);
+                auto end = std::chrono::steady_clock::now();
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                RecordListMetrics(false, true, cost_ms);
+                return true;
+            }
+
+            int size = key->GetSize();
+            int page = key->GetPage();
+            *total_pages = (*total_count + size - 1) / size;
+            int safe_page = std::min(page, *total_pages);
+            int offset = (safe_page - 1) * size;
+
+            std::ostringstream page_sql;
+            page_sql << "select uid,name,email,create_time,last_login from " << oj_users
+                     << where_clause
+                     << " order by uid desc limit " << size << " offset " << offset;
+
+            if (!QueryUsers(page_sql.str(), users))
+            {
+                auto end = std::chrono::steady_clock::now();
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                RecordListMetrics(false, true, cost_ms);
+                return false;
+            }
+
+            auto write_key = _cache.BuildListCacheKey(key->GetQueryHash(), safe_page, size, key->GetListVersion(), Cache::CacheKey::PageType::kData, key->GetListType());
+            _cache.SetUsersByPage(write_key, *users, *total_count, *total_pages);
+            auto end = std::chrono::steady_clock::now();
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+            RecordListMetrics(false, true, cost_ms);
+            return true;
         }
 
         bool GetAdminByUid(int uid, AdminAccount* admin)
@@ -1439,7 +1554,7 @@ namespace ns_model
         std::shared_ptr<Cache::CacheListKey> BuildListCacheKey(std::shared_ptr<QueryStruct>& query_hash, int page, int size, const std::string& list_version, Cache::CacheKey::PageType page_type)
         {
             auto normalized_query = NormalizeQuestionQuery(query_hash);
-            return _cache.BuildListCacheKey(normalized_query, page, size, list_version, page_type);
+            return _cache.BuildListCacheKey(normalized_query, page, size, list_version, page_type, ListType::Questions);
         }
         std::shared_ptr<Cache::CacheDetailKey> BuildDetailCacheKey(const std::string& number, Cache::CacheKey::PageType page_type)
         {

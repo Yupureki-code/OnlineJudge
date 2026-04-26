@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include <httplib.h>
+#include <jsoncpp/json/value.h>
 #include <memory>
 #include <string>
 #include <atomic>
@@ -18,6 +19,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <jsoncpp/json/json.h>
+#include "../oj_log/include/oj_log.hpp"
 
 using namespace httplib;
 
@@ -95,7 +97,7 @@ struct QuestionQuery : public QueryStruct
 
 struct UserQuery : public QueryStruct
 {
-    int id;
+    int id = 0;
     std::string name;
     std::string email;
     std::string ToString() const override
@@ -204,6 +206,7 @@ void Daemon(bool ischdir, bool isclose)
         }
     }
 }
+
 
 //工具类
 namespace ns_util
@@ -527,6 +530,52 @@ namespace ns_util
             {
                 return default_value;
             }
+            
         }
     };
+    class LogUtil
+    {
+    public:
+        static std::string BuildQueryJsonString(const KeyContext& context,bool cache_hit,const int line,const std::string& file_name)
+        {
+            Json::Value value;
+            value["page"] = context.page;
+            value["size"] = context.size;
+            value["filters"] = context._query ? context._query->ToJsonString() : "";
+            value["cache_hit"] = cache_hit;
+            Json::FastWriter writer;
+            return writer.write(value);
+        }
+        static std::string BuildDBHitJsonString(const std::string& redis_key,const std::string & mysql_key,bool cache_hit,bool mysql_hit,int cache_ms,int mysql_ms,const int line,const std::string& file_name)
+        {
+            Json::Value value;
+            value["redis_key"] = redis_key;
+            value["mysql_key"] = mysql_key;
+            value["cache_hit"] = cache_hit;
+            value["mysql_hit"] = mysql_hit;
+            value["cache_ms"] = cache_ms;
+            value["mysql_ms"] = mysql_ms;
+            Json::FastWriter writer;
+            return writer.write(value);
+        }
+        static std::string BuildModuleJsonString(const std::string& module_name,const std::string& func_name,const std::string& message,const int line,const std::string& file_name)
+        {
+            Json::Value value;
+            value["module_name"] = module_name;
+            value["func_name"] = func_name;
+            value["message"] = message;
+            value["line"] = line;
+            value["file_name"] = file_name;
+            Json::FastWriter writer;
+            return writer.write(value);
+        }
+        static int SendLog(ns_oj_log::LogServer::LogStruct log_struct,const std::string& ip,uint16_t port)
+        {
+            
+        }
+    };
+    #define BuildQueryJsonString(context,cache_hit) LogUtil::BuildQueryJsonString(context,cache_hit,__LINE__,__FILE__)
+    #define BuildDBHitJsonString(redis_key,mysql_key,cache_hit,mysql_hit,cache_ms,mysql_ms) LogUtil::BuildDBHitJsonString(redis_key,mysql_key,cache_hit,mysql_hit,cache_ms,mysql_ms,__LINE__,__FILE__)
+    #define BuildModuleJsonString(module_name, func_name, message) \
+            LogUtil::BuildModuleJsonString(module_name, func_name, message, __LINE__, __FILE__)
 };

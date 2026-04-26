@@ -1,9 +1,15 @@
 #pragma once
 
 #include <string>
+#include <deque>
+#include <thread>
+#include <condition_variable>
+#include <fstream>
+#include <cstdio>
 #include <httplib.h>
 #include "oj_control.hpp"
 #include "../../comm/comm.hpp"
+#include "../../comm/log_event.hpp"
 
 
 namespace ns_admin
@@ -19,6 +25,8 @@ namespace ns_admin
 		std::string session_id;
 		int admin_id = 0;
 		int uid = 0;
+		std::string name;
+		std::string email;
 		std::string role;
 		time_t create_time = 0;
 		time_t last_access_time = 0;
@@ -31,12 +39,14 @@ namespace ns_admin
 			: _redis_enabled(!redis_addr.empty())
 		{}
 
-		std::string CreateSession(const AdminAccount& admin)
+		std::string CreateSession(const AdminAccount& admin, const User& user)
 		{
 			AdminSession session;
 			session.session_id = GenerateSessionId();
 			session.admin_id = admin.admin_id;
 			session.uid = admin.uid;
+			session.name = user.name;
+			session.email = user.email;
 			session.role = admin.role;
 			session.create_time = time(nullptr);
 			session.last_access_time = session.create_time;
@@ -161,6 +171,8 @@ namespace ns_admin
 				std::unordered_map<std::string, std::string> fields;
 				fields["admin_id"] = std::to_string(session.admin_id);
 				fields["uid"] = std::to_string(session.uid);
+				fields["name"] = session.name;
+				fields["email"] = session.email;
 				fields["role"] = session.role;
 				fields["create_time"] = std::to_string(static_cast<long long>(session.create_time));
 				fields["last_access_time"] = std::to_string(static_cast<long long>(session.last_access_time));
@@ -214,9 +226,11 @@ namespace ns_admin
 
 				auto admin_id_it = fields.find("admin_id");
 				auto uid_it = fields.find("uid");
+				auto name_it = fields.find("name");
+				auto email_it = fields.find("email");
 				auto role_it = fields.find("role");
 				auto create_time_it = fields.find("create_time");
-				if (admin_id_it == fields.end() || uid_it == fields.end() || role_it == fields.end() || create_time_it == fields.end())
+				if (admin_id_it == fields.end() || uid_it == fields.end() || name_it == fields.end() || email_it == fields.end() || role_it == fields.end() || create_time_it == fields.end())
 				{
 					return false;
 				}
@@ -226,6 +240,8 @@ namespace ns_admin
 				{
 					session->admin_id = std::stoi(admin_id_it->second);
 					session->uid = std::stoi(uid_it->second);
+					session->name = name_it->second;
+					session->email = email_it->second;
 					session->role = role_it->second;
 					session->create_time = static_cast<time_t>(std::stoll(create_time_it->second));
 				}
@@ -346,6 +362,241 @@ namespace ns_admin
 	class AdminServer
 	{
 	private:
+		struct PendingAudit
+		{
+			std::string request_id;
+			AdminAccount operator_admin;
+			std::string action;
+			std::string resource_type;
+			std::string result;
+			std::string payload_text;
+			int retry_count = 0;
+		};
+
+		std::string SerializePendingAudit(const PendingAudit& item)
+		{
+			Json::Value root(Json::objectValue);
+			root["request_id"] = item.request_id;
+			root["admin_id"] = item.operator_admin.admin_id;
+			root["uid"] = item.operator_admin.uid;
+			root["role"] = item.operator_admin.role;
+			root["action"] = item.action;
+			root["resource_type"] = item.resource_type;
+			root["result"] = item.result;
+			root["payload_text"] = item.payload_text;
+			root["retry_count"] = item.retry_count;
+			Json::FastWriter writer;
+			return writer.write(root);
+		}
+
+		bool DeserializePendingAudit(const std::string& line, PendingAudit* out)
+		{
+			if (out == nullptr || line.empty())
+			{
+				return false;
+			}
+			Json::CharReaderBuilder builder;
+			Json::Value root;
+			std::string errs;
+			std::istringstream ss(line);
+			if (!Json::parseFromStream(builder, ss, &root, &errs) || !root.isObject())
+			{
+				return false;
+			}
+
+			out->request_id = root.isMember("request_id") ? root["request_id"].asString() : "";
+			out->operator_admin.admin_id = root.isMember("admin_id") ? root["admin_id"].asInt() : 0;
+			out->operator_admin.uid = root.isMember("uid") ? root["uid"].asInt() : 0;
+			out->operator_admin.role = root.isMember("role") ? root["role"].asString() : "";
+			out->action = root.isMember("action") ? root["action"].asString() : "";
+			out->resource_type = root.isMember("resource_type") ? root["resource_type"].asString() : "";
+			out->result = root.isMember("result") ? root["result"].asString() : "";
+			out->payload_text = root.isMember("payload_text") ? root["payload_text"].asString() : "";
+			out->retry_count = root.isMember("retry_count") ? root["retry_count"].asInt() : 0;
+			return !out->request_id.empty();
+		}
+
+		bool AppendAuditToSpool(const PendingAudit& item)
+		{
+			std::lock_guard<std::mutex> lock(_audit_spool_mtx);
+			std::ofstream fout(_audit_spool_path.c_str(), std::ios::app);
+			if (!fout.is_open())
+			{
+				logger(WARNING) << "failed to open audit spool file: " << _audit_spool_path;
+				return false;
+			}
+			fout << SerializePendingAudit(item);
+			return true;
+		}
+
+		void RecoverAuditFromSpool()
+		{
+			std::deque<PendingAudit> recovered;
+			{
+				std::lock_guard<std::mutex> lock(_audit_spool_mtx);
+				std::ifstream fin(_audit_spool_path.c_str());
+				if (!fin.is_open())
+				{
+					return;
+				}
+
+				std::string line;
+				while (std::getline(fin, line))
+				{
+					PendingAudit item;
+					if (DeserializePendingAudit(line, &item))
+					{
+						recovered.emplace_back(std::move(item));
+					}
+				}
+				fin.close();
+
+				std::ofstream trunc(_audit_spool_path.c_str(), std::ios::trunc);
+				(void)trunc;
+			}
+
+			for (auto& item : recovered)
+			{
+				if (!EnqueueAudit(PendingAudit(item)))
+				{
+					AppendAuditToSpool(item);
+				}
+			}
+			if (!recovered.empty())
+			{
+				logger(INFO) << "audit spool recovery loaded=" << recovered.size();
+			}
+		}
+
+		bool SendAuditToOjLog(const PendingAudit& item)
+		{
+			ns_log_event::LogEvent event;
+			event.ts_ms = ns_log_event::NowMs();
+			event.service = "oj_admin";
+			event.category = ns_log_event::LogCategory::audit;
+			event.level = (item.result == "success") ? ns_log::INFO : ns_log::WARNING;
+			event.request_id = item.request_id;
+			event.action = item.action;
+			event.resource_type = item.resource_type;
+			event.uid = item.operator_admin.uid;
+			event.admin_id = item.operator_admin.admin_id;
+
+			Json::Value payload(Json::objectValue);
+			payload["result"] = item.result;
+			payload["operator_role"] = item.operator_admin.role;
+
+			if (!item.payload_text.empty())
+			{
+				Json::CharReaderBuilder builder;
+				Json::Value parsed;
+				std::string errs;
+				std::istringstream ss(item.payload_text);
+				if (Json::parseFromStream(builder, ss, &parsed, &errs))
+				{
+					payload["detail"] = parsed;
+				}
+				else
+				{
+					payload["detail_text"] = item.payload_text;
+				}
+			}
+			event.payload = payload;
+
+			Json::FastWriter writer;
+			std::string body = writer.write(ns_log_event::ToJson(event));
+
+			httplib::Client cli(_oj_log_host, _oj_log_port);
+			cli.set_connection_timeout(0, 100000); // 100ms
+			cli.set_read_timeout(0, 100000); // 100ms
+			auto res = cli.Post("/api/logs/ingest", body, "application/json;charset=utf-8");
+			if (!res)
+			{
+				return false;
+			}
+			return res->status == 202 || res->status == 204 || res->status == 200;
+		}
+
+		void StartAuditWorker()
+		{
+			bool expected = false;
+			if (!_audit_running.compare_exchange_strong(expected, true, std::memory_order_relaxed))
+			{
+				return;
+			}
+			_audit_worker = std::thread([this]() {
+				RecoverAuditFromSpool();
+				for (;;)
+				{
+					PendingAudit item;
+					{
+						std::unique_lock<std::mutex> lock(_audit_mtx);
+						_audit_cv.wait(lock, [this]() {
+							return !_audit_running.load(std::memory_order_relaxed) || !_audit_queue.empty();
+						});
+
+						if (_audit_queue.empty())
+						{
+							if (!_audit_running.load(std::memory_order_relaxed))
+							{
+								break;
+							}
+							continue;
+						}
+
+						item = std::move(_audit_queue.front());
+						_audit_queue.pop_front();
+					}
+
+					if (g_admin_audit_disabled.load(std::memory_order_relaxed))
+					{
+						continue;
+					}
+
+					if (!SendAuditToOjLog(item))
+					{
+						if (item.retry_count < kAuditRetryMax)
+						{
+							PendingAudit retry_item = item;
+							retry_item.retry_count++;
+							if (!EnqueueAudit(std::move(retry_item)))
+							{
+								logger(WARNING) << "admin audit retry queue full, dropping event, request_id=" << item.request_id;
+							}
+						}
+						else
+						{
+							logger(WARNING) << "failed to deliver admin audit to oj_log after retries, dropping event, request_id=" << item.request_id;
+							AppendAuditToSpool(item);
+						}
+					}
+				}
+			});
+		}
+
+		void StopAuditWorker()
+		{
+			_audit_running.store(false, std::memory_order_relaxed);
+			_audit_cv.notify_all();
+			if (_audit_worker.joinable())
+			{
+				_audit_worker.join();
+			}
+		}
+
+		bool EnqueueAudit(PendingAudit&& item)
+		{
+			{
+				std::lock_guard<std::mutex> lock(_audit_mtx);
+				if (_audit_queue.size() >= kAuditQueueMax)
+				{
+					return false;
+				}
+				_audit_queue.emplace_back(std::move(item));
+			}
+			_audit_cv.notify_one();
+			return true;
+		}
+
 		//Json int字段解析
 	bool TryParseIntField(const Json::Value& in, const char* key, int* out)
 	{
@@ -597,32 +848,28 @@ namespace ns_admin
 		try
 		{
 			Json::FastWriter writer;
-			AdminAuditLog log;
-			log.request_id = request_id;
-			log.operator_admin_id = operator_admin.admin_id;
-			log.operator_uid = operator_admin.uid;
-			log.operator_role = operator_admin.role;
-			log.action = action;
-			log.resource_type = resource_type;
-			log.result = result;
-			log.payload_text = writer.write(payload);
+			PendingAudit item;
+			item.request_id = request_id;
+			item.operator_admin = operator_admin;
+			item.action = action;
+			item.resource_type = resource_type;
+			item.result = result;
+			item.payload_text = writer.write(payload);
 
-			if (!model->InsertAdminAuditLog(log))
+			if (!EnqueueAudit(PendingAudit(item)))
 			{
-				g_admin_audit_disabled.store(true, std::memory_order_relaxed);
-				logger(WARNING) << "failed to write admin audit log, disabled further audit writes, request_id=" << request_id;
+				logger(WARNING) << "admin audit queue full, fallback to spool, request_id=" << request_id;
+				AppendAuditToSpool(item);
 			}
 		}
 		catch (const std::exception& ex)
 		{
-			g_admin_audit_disabled.store(true, std::memory_order_relaxed);
-			logger(WARNING) << "admin audit threw exception, disabled further audit writes, request_id="
+			logger(WARNING) << "admin audit enqueue threw exception, request_id="
 							<< request_id << " what=" << ex.what();
 		}
 		catch (...)
 		{
-			g_admin_audit_disabled.store(true, std::memory_order_relaxed);
-			logger(WARNING) << "admin audit threw unknown exception, disabled further audit writes, request_id=" << request_id;
+			logger(WARNING) << "admin audit enqueue threw unknown exception, request_id=" << request_id;
 		}
 	}
 	//审计载荷构造
@@ -639,6 +886,7 @@ namespace ns_admin
 	}
 	public:
 		AdminServer();
+		~AdminServer();
 
 		void RegisterRoutes(httplib::Server& svr);
 		bool Start(const std::string& host = "0.0.0.0", int port = 8090);
@@ -647,7 +895,18 @@ namespace ns_admin
 		AdminSessionStore _store;
 		ns_control::Control _ctl;
 		std::atomic<unsigned long long> g_request_seq{0};
-		std::atomic<bool> g_admin_audit_disabled{false};	
+		std::atomic<bool> g_admin_audit_disabled{false};
+		static constexpr std::size_t kAuditQueueMax = 10000;
+		static constexpr int kAuditRetryMax = 3;
+		std::string _oj_log_host = ns_runtime_cfg::GetEnvOrDefault("OJ_LOG_HOST", "127.0.0.1");
+		int _oj_log_port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_LOG_PORT", 8100);
+		std::string _audit_spool_path = ns_runtime_cfg::GetEnvOrDefault("OJ_ADMIN_AUDIT_SPOOL", LOG_PATH + std::string("oj_admin_audit_spool.jsonl"));
+		std::mutex _audit_mtx;
+		std::condition_variable _audit_cv;
+		std::deque<PendingAudit> _audit_queue;
+		std::mutex _audit_spool_mtx;
+		std::atomic<bool> _audit_running{false};
+		std::thread _audit_worker;	
 	};
 }
 

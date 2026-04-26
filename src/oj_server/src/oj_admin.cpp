@@ -1,10 +1,8 @@
 #include "../include/oj_admin.hpp"
 #include <Logger/logstrategy.h>
 #include <algorithm>
-#include <atomic>
 #include <cctype>
 #include <functional>
-#include <streambuf>
 
 using namespace httplib;
 using namespace ns_log;
@@ -14,7 +12,14 @@ using namespace ns_util;
 namespace ns_admin
 {
 AdminServer::AdminServer()
-{}
+{
+	StartAuditWorker();
+}
+
+AdminServer::~AdminServer()
+{
+	StopAuditWorker();
+}
 
 void AdminServer::RegisterRoutes(httplib::Server& svr)
 {
@@ -26,21 +31,30 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 
 	auto model = _ctl.GetModel();
 
-	auto getCurrentAdmin = [this, model](const Request& req, User* user, AdminAccount* admin) -> bool {
+	auto getCurrentAdmin = [this](const Request& req, User* user, AdminAccount* admin) -> bool {
 		AdminSession session;
 		if (!_store.GetSessionByCookie(req.get_header_value("Cookie"), &session))
 		{
 			return false;
 		}
-		if (!model->GetAdminByAdminId(session.admin_id, admin))
+		if (session.admin_id <= 0 || session.uid <= 0)
 		{
 			return false;
 		}
-		if (admin->uid != session.uid)
+
+		if (admin != nullptr)
 		{
-			return false;
+			admin->admin_id = session.admin_id;
+			admin->uid = session.uid;
+			admin->role = session.role;
 		}
-		return model->GetUserById(session.uid, user);
+		if (user != nullptr)
+		{
+			user->uid = session.uid;
+			user->name = session.name;
+			user->email = session.email;
+		}
+		return true;
 	};
 
 	svr.Get("/healthz", [](const Request& req, Response& rep) {
@@ -100,7 +114,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		}
 		else
 		{
-			std::string session_id = _store.CreateSession(admin);
+			std::string session_id = _store.CreateSession(admin, user);
 			rep.set_header("Set-Cookie", _store.BuildSetCookieHeader(session_id));
 			response["data"]["admin_id"] = admin.admin_id;
 			response["data"]["uid"] = admin.uid;
@@ -190,11 +204,27 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 
 	svr.Get("/api/admin/overview", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
+		constexpr const char* kOverviewCacheKey = "admin:overview:snapshot";
+		constexpr int kOverviewCacheBaseTtlSeconds = 30;
+		constexpr int kOverviewCacheJitterSeconds = 10;
 		Json::Value response;
 		User current_user;
 		AdminAccount current_admin;
 		if (!RequireAdmin(req, &current_user, &current_admin, getCurrentAdmin, addCORSHeaders, rep, false))
 		{
+			return;
+		}
+
+		std::string cached_overview_json;
+		if (model->GetCachedStringByAnyKey(kOverviewCacheKey, &cached_overview_json))
+		{
+			Json::Value extra;
+			extra["request_id"] = request_id;
+			extra["cache_hit"] = true;
+			TryWriteAudit(model, request_id, current_admin, "admin.overview", "system", "success", BuildPayload(req, 200, extra));
+
+			addCORSHeaders(rep);
+			rep.set_content(cached_overview_json, "application/json;charset=utf-8");
 			return;
 		}
 
@@ -212,10 +242,19 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		bool ok = BuildAdminOverview(model, &question_count, &user_count, &admin_count);
 		if (ok)
 		{
+			KeyContext uctx;
+			uctx._query = std::make_shared<UserQuery>();
+			uctx.page = 1;
+			uctx.size = 5;
+			uctx.list_version = "1";
+			uctx.list_type = ListType::Users;
+			std::shared_ptr<ns_cache::Cache::CacheListKey> ukey = std::make_shared<ns_cache::Cache::CacheListKey>();
+			ukey->Build(uctx);
+
 			ok = model->GetRoleCount("super_admin", &super_admin_count)
 				&& model->GetRoleCount("admin", &admin_role_count)
 				&& model->ListAdminAuditLogsPaged(1, 5, "", 0, "", &recent_audits, &recent_audit_total)
-				&& model->GetUsersPaged(1, 5, "", &recent_users, &recent_user_total,&user_pages);
+				&& model->GetUsersPaged(ukey, &recent_users, &recent_user_total, &user_pages);
 		}
 		response["success"] = ok;
 		if (!ok)
@@ -298,10 +337,15 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 				recent_audit_rows.append(item);
 			}
 			response["data"]["recent_audits"] = recent_audit_rows;
+
+			Json::FastWriter cache_writer;
+			int ttl_seconds = model->BuildCacheJitteredTtlSeconds(kOverviewCacheBaseTtlSeconds, kOverviewCacheJitterSeconds);
+			model->SetCachedStringByAnyKey(kOverviewCacheKey, cache_writer.write(response), ttl_seconds);
 		}
 
 		Json::Value extra;
 		extra["request_id"] = request_id;
+		extra["cache_hit"] = false;
 		TryWriteAudit(model, request_id, current_admin, "admin.overview", "system", ok ? "success" : "failed", BuildPayload(req, rep.status == 0 ? 200 : rep.status, extra));
 
 		Json::FastWriter writer;
@@ -311,6 +355,9 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 
 	svr.Get("/api/admin/users", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
+		constexpr const char* kUsersListCachePrefix = "admin:users:list";
+		constexpr int kUsersListCacheBaseTtlSeconds = 30;
+		constexpr int kUsersListCacheJitterSeconds = 10;
 		Json::Value response;
 		User current_user;
 		AdminAccount current_admin;
@@ -322,11 +369,46 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
 		int size = HttpUtil::ParsePositiveIntParam(req, "size", 20, 1, 200);
 		std::string keyword = req.has_param("q") ? StringUtil::Trim(req.get_param_value("q")) : "";
+		std::size_t keyword_hash = std::hash<std::string>{}(keyword);
+		std::string users_cache_key = std::string(kUsersListCachePrefix)
+			+ ":p:" + std::to_string(page)
+			+ ":s:" + std::to_string(size)
+			+ ":q:" + std::to_string(keyword_hash);
+		std::string cached_users_json;
+		if (model->GetCachedStringByAnyKey(users_cache_key, &cached_users_json))
+		{
+			Json::Value extra;
+			extra["request_id"] = request_id;
+			extra["page"] = page;
+			extra["size"] = size;
+			extra["cache_hit"] = true;
+			TryWriteAudit(model, request_id, current_admin, "user.list", "user", "success", BuildPayload(req, 200, extra));
+
+			addCORSHeaders(rep);
+			rep.set_content(cached_users_json, "application/json;charset=utf-8");
+			return;
+		}
 
 		std::vector<User> users;
 		int total_count = 0;
 		int total_pages = 0;
-		bool ok = model->GetUsersPaged(page, size, keyword, &users, &total_count,&total_pages);
+		bool ok = [&]() -> bool {
+			auto query = std::make_shared<UserQuery>();
+			if (!keyword.empty())
+			{
+				query->name = keyword;
+				query->email = keyword;
+			}
+			KeyContext uctx;
+			uctx._query = query;
+			uctx.page = page;
+			uctx.size = size;
+			uctx.list_version = "1";
+			uctx.list_type = ListType::Users;
+			std::shared_ptr<ns_cache::Cache::CacheListKey> ukey = std::make_shared<ns_cache::Cache::CacheListKey>();
+			ukey->Build(uctx);
+			return model->GetUsersPaged(ukey, &users, &total_count, &total_pages);
+		}();
 
 		response["success"] = ok;
 		if (!ok)
@@ -351,12 +433,17 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 				rows.append(item);
 			}
 			response["data"]["rows"] = rows;
+
+			Json::FastWriter cache_writer;
+			int ttl_seconds = model->BuildCacheJitteredTtlSeconds(kUsersListCacheBaseTtlSeconds, kUsersListCacheJitterSeconds);
+			model->SetCachedStringByAnyKey(users_cache_key, cache_writer.write(response), ttl_seconds);
 		}
 
 		Json::Value extra;
 		extra["request_id"] = request_id;
 		extra["page"] = page;
 		extra["size"] = size;
+		extra["cache_hit"] = false;
 		TryWriteAudit(model, request_id, current_admin, "user.list", "user", ok ? "success" : "failed", BuildPayload(req, rep.status == 0 ? 200 : rep.status, extra));
 
 		Json::FastWriter writer;
@@ -366,6 +453,9 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 
 	svr.Get("/api/admin/questions", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
+		constexpr const char* kQuestionsListCachePrefix = "admin:questions:list";
+		constexpr int kQuestionsListCacheBaseTtlSeconds = 30;
+		constexpr int kQuestionsListCacheJitterSeconds = 10;
 		Json::Value response;
 		User current_user;
 		AdminAccount current_admin;
@@ -377,19 +467,46 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
 		int size = HttpUtil::ParsePositiveIntParam(req, "size", 20, 1, 200);
 		std::string keyword = req.has_param("q") ? StringUtil::Trim(req.get_param_value("q")) : "";
+		std::string questions_list_version = model->GetQuestionsListVersion();
+		std::size_t keyword_hash = std::hash<std::string>{}(keyword);
+		std::string questions_cache_key = std::string(kQuestionsListCachePrefix)
+			+ ":v:" + questions_list_version
+			+ ":p:" + std::to_string(page)
+			+ ":s:" + std::to_string(size)
+			+ ":q:" + std::to_string(keyword_hash);
+		std::string cached_questions_json;
+		if (model->GetCachedStringByAnyKey(questions_cache_key, &cached_questions_json))
+		{
+			Json::Value extra;
+			extra["request_id"] = request_id;
+			extra["page"] = page;
+			extra["size"] = size;
+			extra["cache_hit"] = true;
+			TryWriteAudit(model, request_id, current_admin, "question.list", "question", "success", BuildPayload(req, 200, extra));
 
-		std::vector<Question> all;
+			addCORSHeaders(rep);
+			rep.set_content(cached_questions_json, "application/json;charset=utf-8");
+			return;
+		}
+
+		std::vector<Question> rows;
 		KeyContext context;
-		context._query = std::make_shared<QuestionQuery>();
-		context.page = 1;
-		context.size = 5;
-		context.list_version = model->GetQuestionsListVersion();
+		auto query = std::make_shared<QuestionQuery>();
+		if (!keyword.empty())
+		{
+			query->title = keyword;
+			query->id = keyword;
+		}
+		context._query = query;
+		context.page = page;
+		context.size = size;
+		context.list_version = questions_list_version;
 		context.list_type = ListType::Questions;
 		std::shared_ptr<ns_cache::Cache::CacheListKey> key = std::make_shared<ns_cache::Cache::CacheListKey>();
 		key->Build(context);
 		int total_pages = 0;
 		int total_count = 0;
-		bool ok = model->GetQuestionsByPage(key, all, &total_count, &total_pages);
+		bool ok = model->GetQuestionsByPage(key, rows, &total_count, &total_pages);
 		response["success"] = ok;
 		if (!ok)
 		{
@@ -398,48 +515,33 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		}
 		else
 		{
-			if (!keyword.empty())
+			Json::Value json_rows(Json::arrayValue);
+			for (const auto& q : rows)
 			{
-				std::vector<Question> filtered;
-				for (const auto& q : all)
-				{
-					if (q.number.find(keyword) != std::string::npos || q.title.find(keyword) != std::string::npos)
-					{
-						filtered.push_back(q);
-					}
-				}
-				all.swap(filtered);
-			}
-
-			std::sort(all.begin(), all.end(), [](const Question& a, const Question& b){
-				return std::atoi(a.number.c_str()) < std::atoi(b.number.c_str());
-			});
-
-			int total_count = static_cast<int>(all.size());
-			int offset = (page - 1) * size;
-			Json::Value rows(Json::arrayValue);
-			for (int i = offset; i < std::min(offset + size, total_count); ++i)
-			{
-				const auto& q = all[i];
 				Json::Value item;
 				item["number"] = q.number;
 				item["title"] = q.title;
 				item["star"] = q.star;
 				item["cpu_limit"] = q.cpu_limit;
 				item["memory_limit"] = q.memory_limit;
-				rows.append(item);
+				json_rows.append(item);
 			}
 
 			response["data"]["page"] = page;
 			response["data"]["size"] = size;
 			response["data"]["total_count"] = total_count;
-			response["data"]["rows"] = rows;
+			response["data"]["rows"] = json_rows;
+
+			Json::FastWriter cache_writer;
+			int ttl_seconds = model->BuildCacheJitteredTtlSeconds(kQuestionsListCacheBaseTtlSeconds, kQuestionsListCacheJitterSeconds);
+			model->SetCachedStringByAnyKey(questions_cache_key, cache_writer.write(response), ttl_seconds);
 		}
 
 		Json::Value extra;
 		extra["request_id"] = request_id;
 		extra["page"] = page;
 		extra["size"] = size;
+		extra["cache_hit"] = false;
 		TryWriteAudit(model, request_id, current_admin, "question.list", "question", ok ? "success" : "failed", BuildPayload(req, rep.status == 0 ? 200 : rep.status, extra));
 
 		Json::FastWriter writer;
@@ -527,6 +629,10 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			response["data"]["number"] = q.number;
 			response["data"]["title"] = q.title;
 		}
+		if (ok)
+		{
+			model->DeleteCachedStringByAnyKey("admin:overview:snapshot");
+		}
 
 		Json::Value extra;
 		extra["request_id"] = request_id;
@@ -579,6 +685,10 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			response["data"]["number"] = q.number;
 			response["data"]["title"] = q.title;
 		}
+		if (ok)
+		{
+			model->DeleteCachedStringByAnyKey("admin:overview:snapshot");
+		}
 
 		Json::Value extra;
 		extra["request_id"] = request_id;
@@ -608,6 +718,10 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		{
 			response["error_code"] = "DELETE_QUESTION_FAILED";
 			rep.status = 500;
+		}
+		if (ok)
+		{
+			model->DeleteCachedStringByAnyKey("admin:overview:snapshot");
 		}
 
 		Json::Value extra;

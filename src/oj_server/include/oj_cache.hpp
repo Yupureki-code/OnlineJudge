@@ -107,6 +107,10 @@ namespace ns_cache
             {                
                 return _list_version;
             }
+            ListType GetListType() const
+            {
+                return _list_type;
+            }
         private:
             std::shared_ptr<QueryStruct> _query;
             int _page;
@@ -249,6 +253,19 @@ namespace ns_cache
                     return true;
                 }
                 return false;
+            }
+            catch (const sw::redis::Error &e)
+            {
+                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                return false;
+            }
+        }
+        bool DeleteStringByAnyKey(const std::string& key)
+        {
+            try
+            {
+                _redis.del(_business + ":" + _env + ":" + _version + ":" + key);
+                return true;
             }
             catch (const sw::redis::Error &e)
             {
@@ -685,7 +702,7 @@ namespace ns_cache
                 logger(ns_log::ERROR) << "Redis error: " << e.what();
             }
         }
-        std::shared_ptr<CacheListKey> BuildListCacheKey(const std::shared_ptr<QueryStruct>& query_struct, int page, int size, const std::string& list_version, CacheKey::PageType page_type)
+        std::shared_ptr<CacheListKey> BuildListCacheKey(const std::shared_ptr<QueryStruct>& query_struct, int page, int size, const std::string& list_version, CacheKey::PageType page_type, ListType list_type = ListType::Questions)
         {
             std::shared_ptr<CacheListKey> key = std::make_shared<CacheListKey>();
             key->SetPageType(page_type);
@@ -693,6 +710,7 @@ namespace ns_cache
             context._query = query_struct;
             context.page = page;
             context.size = size;
+            context.list_type = list_type;
             context.list_version = list_version;
             key->Build(context);
             return key;

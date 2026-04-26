@@ -999,8 +999,8 @@ namespace ns_control
         //获取静态页面，优先级：redis缓存 > view内存缓存 > 磁盘文件
         bool GetStaticHtml(const std::string& path, std::string* html)
         {
-            //用户个性主页不应该缓存
-            const bool disable_cache = (path == "user/profile.html" || path == "user/settings.html" || path == "admin/index.html");
+            //用户个性主页不应该缓存；后台壳页可缓存，用户信息在注入阶段单独动态拼接。
+            const bool disable_cache = (path == "user/profile.html" || path == "user/settings.html");
             if (disable_cache)
             {
                 bool view_cache_hit = false;
