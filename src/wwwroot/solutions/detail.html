@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题解详情 - Yupureki-OJ</title>
+    <link rel="preload" as="image" href="/pictures/preview.jpg">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            color: #F4F6F0;
+            background-color: #2D2F2C;
+            background-image: url('/pictures/preview.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        .background {
+            position: fixed;
+            inset: 0;
+            background-image: url('/pictures/preview.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(0.2px);
+            z-index: -1;
+        }
+
+        .rain-lines {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .rain-line {
+            position: absolute;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(244, 246, 240, 0.05));
+            animation: rain 3s linear infinite;
+        }
+
+        @keyframes rain {
+            from { transform: translateY(-100%); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            to { transform: translateY(100vh); opacity: 0; }
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(60, 80, 60, 0.15);
+            backdrop-filter: blur(20px);
+            padding: 10px 80px;
+            border: 1px solid rgba(244, 246, 240, 0.1);
+            position: relative;
+            z-index: 2;
+        }
+
+        .nav {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .nav a, .logo {
+            color: rgba(244, 246, 240, 0.85);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 0.04em;
+        }
+
+        .logo {
+            font-size: 24px;
+            letter-spacing: 0.1em;
+        }
+
+        .rain-toggle {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(244, 246, 240, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .rain-toggle::before {
+            content: '\u266A';
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+        }
+
+        .search-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 200px;
+            padding: 8px 12px;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #F4F6F0;
+            font-size: 14px;
+        }
+
+        .search-input::placeholder { color: rgba(244, 246, 240, 0.4); }
+        .search-input:focus { outline: none; border-color: rgba(244, 246, 240, 0.4); background: rgba(255, 255, 255, 0.08); }
+
+        .auth-btn {
+            padding: 12px 18px;
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(244, 246, 240, 0.85);
+            border: 1px solid rgba(244, 246, 240, 0.15);
+            border-radius: 999px;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .auth-btn:hover { background: rgba(255, 255, 255, 0.14); transform: translateY(-1px); }
+
+        .container {
+            max-width: 900px;
+            margin: 36px auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .detail-shell {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid rgba(244, 246, 240, 0.12);
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .back-link {
+            color: rgba(244, 246, 240, 0.6);
+            text-decoration: none;
+            font-size: 14px;
+            letter-spacing: 0.02em;
+            padding: 4px 0 16px 0;
+            display: inline-block;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover { color: #F4F6F0; }
+
+        .solution-header {
+            display: flex;
+            gap: 14px;
+            padding: 16px 0;
+        }
+
+        .solution-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(76, 175, 80, 0.15);
+            color: #4CAF50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .solution-meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .solution-author {
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .solution-title {
+            color: #F4F6F0;
+            font-size: 22px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .solution-actions {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(244, 246, 240, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(244, 246, 240, 0.7);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover { background: rgba(255, 255, 255, 0.1); color: #F4F6F0; }
+        .action-btn.active { background: rgba(76, 175, 80, 0.15); color: #4CAF50; border-color: rgba(76, 175, 80, 0.3); }
+
+        .divider {
+            border: none;
+            border-top: 1px solid rgba(244, 246, 240, 0.08);
+            margin: 0;
+        }
+
+        .solution-content {
+            padding: 24px 0;
+            color: rgba(244, 246, 240, 0.85);
+            line-height: 1.8;
+            font-size: 15px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            letter-spacing: 0.02em;
+        }
+
+        .loading { text-align: center; color: rgba(244, 246, 240, 0.5); padding: 60px 0; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: rgba(60, 80, 60, 0.95);
+            margin: 15% auto;
+            padding: 30px;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            color: #F4F6F0;
+            position: relative;
+        }
+
+        .close {
+            color: rgba(244, 246, 240, 0.6);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close:hover { color: #F4F6F0; }
+        .modal h2 { margin-bottom: 20px; font-size: 24px; font-weight: 300; text-align: center; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: rgba(244, 246, 240, 0.8); }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid rgba(244, 246, 240, 0.2); border-radius: 10px; background: rgba(255, 255, 255, 0.05); color: #F4F6F0; font-size: 14px; }
+        .form-group input:focus { outline: none; border-color: rgba(244, 246, 240, 0.4); background: rgba(255, 255, 255, 0.08); }
+        .form-group input::placeholder { color: rgba(244, 246, 240, 0.4); }
+        .submit-btn { width: 100%; padding: 14px; background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 10px; color: #4CAF50; font-size: 14px; cursor: pointer; }
+        .submit-btn:hover { background: rgba(76, 175, 80, 0.3); }
+
+        .page-loading-mask {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(24, 28, 24, 0.55);
+            backdrop-filter: blur(3px);
+            z-index: 99999;
+            transition: opacity 0.2s ease;
+        }
+
+        .page-loading-mask.hidden { opacity: 0; pointer-events: none; }
+
+        .page-loading-text {
+            color: #F4F6F0;
+            font-size: 18px;
+            letter-spacing: 0.08em;
+            padding: 12px 18px;
+            border: 1px solid rgba(244, 246, 240, 0.25);
+            border-radius: 12px;
+            background: rgba(24, 28, 24, 0.45);
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(244, 246, 240, 0.3); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(244, 246, 240, 0.5); }
+
+        @media (max-width: 960px) {
+            .header { flex-direction: column; gap: 10px; padding: 16px 24px; text-align: center; }
+            .nav { gap: 16px; flex-wrap: wrap; justify-content: center; }
+            .container { margin: 24px auto; padding: 0 16px; }
+            .detail-shell { padding: 20px; }
+            .solution-title { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="page-loading-mask" class="page-loading-mask">
+        <div class="page-loading-text">加载中...</div>
+    </div>
+
+    <div class="background"></div>
+    <div class="rain-lines" id="rainLines"></div>
+
+    <div class="header">
+        <div class="nav">
+            <img src="/pictures/icon.png" width="40" height="40" alt="logo">
+            <p class="logo">Yupureki-OJ</p>
+            <a href="/">首页</a>
+            <a href="/all_questions">题库</a>
+            <a href="/about">关于</a>
+            <div class="rain-toggle" id="rainToggle"></div>
+        </div>
+        <div class="search-container">
+            <input type="text" class="search-input" placeholder="搜索题目...">
+        </div>
+        <div class="nav">
+            <div id="user-auth" style="display: block;">
+                <button class="auth-btn" id="sign-in-button">登录/注册</button>
+            </div>
+            <div id="user-profile" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="detail-shell">
+            <a href="#" class="back-link" id="back-link">&larr; 全部题解</a>
+
+            <div class="solution-header">
+                <div class="solution-avatar" id="solution-avatar">?</div>
+                <div class="solution-meta">
+                    <div class="solution-author" id="solution-author">加载中...</div>
+                    <div class="solution-title" id="solution-title"></div>
+                    <div class="solution-actions" id="solution-actions">
+                        <button class="action-btn" id="like-btn">&#10084; <span id="like-count">0</span></button>
+                        <button class="action-btn" id="fav-btn">&#9733; <span id="fav-count">0</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="divider">
+
+            <div class="solution-content" id="solution-content">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="auth-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="modal-close">&times;</span>
+            <h2 id="modal-title">登录</h2>
+            <div id="modal-body">
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email" id="modal-email" placeholder="请输入邮箱">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="modal-password" placeholder="请输入密码">
+                </div>
+                <button class="submit-btn" id="modal-submit">登录</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/page-loading.js"></script>
+    <script src="/js/auth.js?v=20260423"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        (function() {
+            function createRainLines() {
+                var rainLines = document.getElementById('rainLines');
+                if (!rainLines) return;
+                for (var i = 0; i < 50; i++) {
+                    var line = document.createElement('div');
+                    line.className = 'rain-line';
+                    line.style.left = Math.random() * 100 + '%';
+                    line.style.height = Math.random() * 100 + 50 + 'px';
+                    line.style.animationDelay = Math.random() * 3 + 's';
+                    line.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    rainLines.appendChild(line);
+                }
+            }
+            createRainLines();
+
+            function getSolutionId() {
+                var m = window.location.pathname.match(/\/solutions\/(\d+)$/);
+                return m ? parseInt(m[1]) : 0;
+            }
+
+            var solutionId = getSolutionId();
+            if (!solutionId) {
+                document.getElementById('solution-content').textContent = '无效的题解ID';
+                return;
+            }
+
+            var questionId = '';
+            var isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
+
+            fetch('/api/solutions/' + solutionId, {credentials: 'include'})
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.success) {
+                        document.getElementById('solution-content').textContent = data.error_code || '加载失败';
+                        return;
+                    }
+
+                    questionId = data.question_id;
+                    var initial = (data.author_name && data.author_name.charAt(0)) || '?';
+                    document.getElementById('solution-avatar').textContent = initial;
+                    document.getElementById('solution-author').textContent = data.author_name || '匿名';
+                    document.getElementById('solution-title').textContent = data.title || '';
+                    document.getElementById('like-count').textContent = data.like_count || 0;
+                    document.getElementById('fav-count').textContent = data.favorite_count || 0;
+                    document.title = (data.title || '题解详情') + ' - Yupureki-OJ';
+
+                    // ← 全部题解：跳转到题目详情页的题解tab
+                    document.getElementById('back-link').href = '/questions/' + questionId + '#solutions-tab';
+                    document.getElementById('back-link').textContent = '\u2190 \u5168\u90e8\u9898\u89e3';
+
+                    var contentEl = document.getElementById('solution-content');
+                    if (typeof marked !== 'undefined' && data.content_md) {
+                        contentEl.innerHTML = marked.parse(data.content_md);
+                    } else {
+                        contentEl.textContent = data.content_md || '';
+                    }
+
+                    loadActions();
+                })
+                .catch(function(err) {
+                    document.getElementById('solution-content').textContent = '网络异常，请重试';
+                    console.error(err);
+                });
+
+            function loadActions() {
+                if (!isLoggedIn) {
+                    updateActionButtons(false, false);
+                    return;
+                }
+                fetch('/api/solutions/' + solutionId + '/actions', {credentials: 'include'})
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            updateActionButtons(data.liked, data.favorited);
+                        }
+                    })
+                    .catch(function() {});
+            }
+
+            function updateActionButtons(liked, favorited) {
+                var likeBtn = document.getElementById('like-btn');
+                var favBtn = document.getElementById('fav-btn');
+                if (liked) likeBtn.classList.add('active');
+                else likeBtn.classList.remove('active');
+                if (favorited) favBtn.classList.add('active');
+                else favBtn.classList.remove('active');
+            }
+
+            document.getElementById('like-btn').addEventListener('click', function() {
+                if (!isLoggedIn) {
+                    var signInButton = document.getElementById('sign-in-button');
+                    if (signInButton) signInButton.click();
+                    return;
+                }
+                fetch('/api/solutions/' + solutionId + '/like', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {'Content-Type': 'application/json'}
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        document.getElementById('like-count').textContent = data.like_count;
+                        updateActionButtons(data.liked, document.getElementById('fav-btn').classList.contains('active'));
+                    }
+                })
+                .catch(function() {});
+            });
+
+            document.getElementById('fav-btn').addEventListener('click', function() {
+                if (!isLoggedIn) {
+                    var signInButton = document.getElementById('sign-in-button');
+                    if (signInButton) signInButton.click();
+                    return;
+                }
+                fetch('/api/solutions/' + solutionId + '/favorite', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {'Content-Type': 'application/json'}
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        document.getElementById('fav-count').textContent = data.favorite_count;
+                        updateActionButtons(document.getElementById('like-btn').classList.contains('active'), data.favorited);
+                    }
+                })
+                .catch(function() {});
+            });
+        })();
+    </script>
+</body>
+</html>

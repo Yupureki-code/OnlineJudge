@@ -8,10 +8,6 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
   "/home/yupureki/project/OnlineJudge/CMakeLists.txt"
-  "/home/yupureki/project/OnlineJudge/Logger/CMakeLists.txt"
-  "/home/yupureki/project/OnlineJudge/Logger/LoggerConfig.cmake.in"
-  "/home/yupureki/project/OnlineJudge/Logger/include/logstrategy.h"
-  "/home/yupureki/project/OnlineJudge/Logger/include/logstrategy.hpp"
   "CMakeFiles/3.28.3/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.28.3/CMakeSystem.cmake"
   "/home/yupureki/project/OnlineJudge/config.in.h"
@@ -25,14 +21,12 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/usr/lib/x86_64-linux-gnu/cmake/spdlog/spdlogConfigTargets-none.cmake"
   "/usr/lib/x86_64-linux-gnu/cmake/spdlog/spdlogConfigTargets.cmake"
   "/usr/lib/x86_64-linux-gnu/cmake/spdlog/spdlogConfigVersion.cmake"
-  "/usr/share/cmake-3.28/Modules/BasicConfigVersion-SameMajorVersion.cmake.in"
   "/usr/share/cmake-3.28/Modules/CMakeCXXInformation.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeCommonLanguageInclude.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeFindDependencyMacro.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeGenericSystem.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeInitializeConfigs.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeLanguageInformation.cmake"
-  "/usr/share/cmake-3.28/Modules/CMakePackageConfigHelpers.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeSystemSpecificInformation.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeSystemSpecificInitialize.cmake"
   "/usr/share/cmake-3.28/Modules/CheckCXXSourceCompiles.cmake"
@@ -54,7 +48,6 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/usr/share/cmake-3.28/Modules/Platform/Linux.cmake"
   "/usr/share/cmake-3.28/Modules/Platform/UnixPaths.cmake"
   "/usr/share/cmake-3.28/Modules/SelectLibraryConfigurations.cmake"
-  "/usr/share/cmake-3.28/Modules/WriteBasicConfigVersionFile.cmake"
   )
 
 # The corresponding makefile is:
@@ -67,19 +60,13 @@ set(CMAKE_MAKEFILE_OUTPUTS
 set(CMAKE_MAKEFILE_PRODUCTS
   "/home/yupureki/project/OnlineJudge/src/comm/config.h"
   "CMakeFiles/CMakeDirectoryInformation.cmake"
-  "/home/yupureki/project/OnlineJudge/Logger/output/include/Logger/logstrategy.h"
-  "/home/yupureki/project/OnlineJudge/Logger/output/include/Logger/logstrategy.hpp"
-  "Logger/LoggerConfigVersion.cmake"
-  "Logger/LoggerConfig.cmake"
-  "Logger/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/compile_server/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/oj_server/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
-  "Logger/CMakeFiles/Logger_static.dir/DependInfo.cmake"
-  "Logger/CMakeFiles/Logger_shared.dir/DependInfo.cmake"
+  "src/compile_server/CMakeFiles/compile_server.dir/DependInfo.cmake"
+  "src/oj_server/CMakeFiles/oj_server.dir/DependInfo.cmake"
   "src/oj_server/CMakeFiles/oj_admin.dir/DependInfo.cmake"
-  "src/oj_server/CMakeFiles/oj_log.dir/DependInfo.cmake"
   )

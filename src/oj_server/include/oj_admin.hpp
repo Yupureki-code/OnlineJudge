@@ -3,13 +3,14 @@
 #include <string>
 #include <deque>
 #include <thread>
+#include <chrono>
 #include <condition_variable>
+#include <filesystem>
 #include <fstream>
 #include <cstdio>
 #include <httplib.h>
 #include "oj_control.hpp"
 #include "../../comm/comm.hpp"
-#include "../../comm/log_event.hpp"
 
 
 namespace ns_admin
@@ -362,6 +363,14 @@ namespace ns_admin
 	class AdminServer
 	{
 	private:
+			enum class AuditDeliveryStatus
+			{
+				Delivered = 0,
+				RetryableFailure,
+				PermanentFailure,
+				HealthDown
+			};
+
 		struct PendingAudit
 		{
 			std::string request_id;
@@ -419,6 +428,12 @@ namespace ns_admin
 		bool AppendAuditToSpool(const PendingAudit& item)
 		{
 			std::lock_guard<std::mutex> lock(_audit_spool_mtx);
+			std::filesystem::path dir = std::filesystem::path(_audit_spool_path).parent_path();
+			if (!dir.empty())
+			{
+				std::error_code ec;
+				std::filesystem::create_directories(dir, ec);
+			}
 			std::ofstream fout(_audit_spool_path.c_str(), std::ios::app);
 			if (!fout.is_open())
 			{
@@ -427,6 +442,70 @@ namespace ns_admin
 			}
 			fout << SerializePendingAudit(item);
 			return true;
+		}
+
+		bool AppendAuditToReject(const PendingAudit& item)
+		{
+			std::lock_guard<std::mutex> lock(_audit_reject_mtx);
+			std::filesystem::path dir = std::filesystem::path(_audit_reject_path).parent_path();
+			if (!dir.empty())
+			{
+				std::error_code ec;
+				std::filesystem::create_directories(dir, ec);
+			}
+			std::ofstream fout(_audit_reject_path.c_str(), std::ios::app);
+			if (!fout.is_open())
+			{
+				logger(WARNING) << "failed to open audit reject file: " << _audit_reject_path;
+				return false;
+			}
+
+			Json::Value root(Json::objectValue);
+			root["rejected_ts_ms"] = Json::Int64(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+			root["audit"] = SerializePendingAudit(item);
+
+			Json::StreamWriterBuilder builder;
+			builder["indentation"] = "";
+			fout << Json::writeString(builder, root) << '\n';
+			return true;
+		}
+
+		bool HasAuditSpoolEntries()
+		{
+			std::lock_guard<std::mutex> lock(_audit_spool_mtx);
+			std::ifstream fin(_audit_spool_path.c_str());
+			if (!fin.is_open())
+			{
+				return false;
+			}
+			return fin.peek() != std::ifstream::traits_type::eof();
+		}
+
+		bool IsOjLogHealthy()
+		{
+			try
+			{
+				httplib::Client client("http://" + _oj_log_host + ":" + std::to_string(_oj_log_port));
+				auto res = client.Get("/healthz");
+				return res && res->status == 200;
+			}
+			catch (...)
+			{
+				return false;
+			}
+		}
+
+		void RecoverAuditFromSpoolIfHealthy()
+		{
+			if (!HasAuditSpoolEntries())
+			{
+				return;
+			}
+			if (!IsOjLogHealthy())
+			{
+				return;
+			}
+			RecoverAuditFromSpool();
 		}
 
 		void RecoverAuditFromSpool()
@@ -468,19 +547,8 @@ namespace ns_admin
 			}
 		}
 
-		bool SendAuditToOjLog(const PendingAudit& item)
+		AuditDeliveryStatus SendAuditToOjLog(const PendingAudit& item)
 		{
-			ns_log_event::LogEvent event;
-			event.ts_ms = ns_log_event::NowMs();
-			event.service = "oj_admin";
-			event.category = ns_log_event::LogCategory::audit;
-			event.level = (item.result == "success") ? ns_log::INFO : ns_log::WARNING;
-			event.request_id = item.request_id;
-			event.action = item.action;
-			event.resource_type = item.resource_type;
-			event.uid = item.operator_admin.uid;
-			event.admin_id = item.operator_admin.admin_id;
-
 			Json::Value payload(Json::objectValue);
 			payload["result"] = item.result;
 			payload["operator_role"] = item.operator_admin.role;
@@ -500,20 +568,55 @@ namespace ns_admin
 					payload["detail_text"] = item.payload_text;
 				}
 			}
-			event.payload = payload;
 
-			Json::FastWriter writer;
-			std::string body = writer.write(ns_log_event::ToJson(event));
+			Json::Value audit_entry(Json::objectValue);
+			audit_entry["source"] = "oj_admin";
+			audit_entry["request_id"] = item.request_id;
+			audit_entry["admin_id"] = item.operator_admin.admin_id;
+			audit_entry["uid"] = item.operator_admin.uid;
+			audit_entry["action"] = item.action;
+			audit_entry["resource_type"] = item.resource_type;
+			audit_entry["payload"] = payload;
+			audit_entry["level"] = (item.result == "success") ? "INFO" : "WARNING";
+			audit_entry["message"] = std::string("admin audit ") + item.result;
 
-			httplib::Client cli(_oj_log_host, _oj_log_port);
-			cli.set_connection_timeout(0, 100000); // 100ms
-			cli.set_read_timeout(0, 100000); // 100ms
-			auto res = cli.Post("/api/logs/ingest", body, "application/json;charset=utf-8");
-			if (!res)
+			Json::StreamWriterBuilder wbuilder;
+			wbuilder["indentation"] = "";
+			std::string body = Json::writeString(wbuilder, audit_entry);
+
+			try
 			{
-				return false;
+				httplib::Client client("http://" + _oj_log_host + ":" + std::to_string(_oj_log_port));
+				client.set_connection_timeout(2);
+				client.set_read_timeout(5);
+				auto res = client.Post("/log", body, "application/json");
+				if (res && res->status == 200)
+				{
+					return AuditDeliveryStatus::Delivered;
+				}
+				if (res && (res->status == 400 || res->status == 413))
+				{
+					logger(WARNING) << "admin audit permanent failure, request_id=" << item.request_id
+									<< " status=" << res->status;
+					return AuditDeliveryStatus::PermanentFailure;
+				}
 			}
-			return res->status == 202 || res->status == 204 || res->status == 200;
+			catch (const std::exception& ex)
+			{
+				logger(WARNING) << "admin audit http exception: " << ex.what();
+			}
+			catch (...)
+			{
+				logger(WARNING) << "admin audit http unknown exception";
+			}
+
+			if (!IsOjLogHealthy())
+			{
+				logger(WARNING) << "admin audit oj_log health probe failed, request_id=" << item.request_id;
+				return AuditDeliveryStatus::HealthDown;
+			}
+
+			return AuditDeliveryStatus::RetryableFailure;
 		}
 
 		void StartAuditWorker()
@@ -530,9 +633,11 @@ namespace ns_admin
 					PendingAudit item;
 					{
 						std::unique_lock<std::mutex> lock(_audit_mtx);
-						_audit_cv.wait(lock, [this]() {
-							return !_audit_running.load(std::memory_order_relaxed) || !_audit_queue.empty();
-						});
+						_audit_cv.wait_for(lock,
+							std::chrono::milliseconds(kAuditSpoolReplayIntervalMs),
+							[this]() {
+								return !_audit_running.load(std::memory_order_relaxed) || !_audit_queue.empty();
+							});
 
 						if (_audit_queue.empty())
 						{
@@ -540,6 +645,8 @@ namespace ns_admin
 							{
 								break;
 							}
+							lock.unlock();
+							RecoverAuditFromSpoolIfHealthy();
 							continue;
 						}
 
@@ -552,22 +659,43 @@ namespace ns_admin
 						continue;
 					}
 
-					if (!SendAuditToOjLog(item))
+					AuditDeliveryStatus delivery_status = SendAuditToOjLog(item);
+					if (delivery_status == AuditDeliveryStatus::Delivered)
 					{
-						if (item.retry_count < kAuditRetryMax)
+						continue;
+					}
+
+					if (delivery_status == AuditDeliveryStatus::HealthDown)
+					{
+						logger(WARNING) << "admin audit fallback to spool after oj_log health probe failed, request_id=" << item.request_id;
+						AppendAuditToSpool(item);
+						continue;
+					}
+
+					if (delivery_status == AuditDeliveryStatus::PermanentFailure)
+					{
+						logger(ERROR) << "admin audit permanent rejection, append to reject file, request_id=" << item.request_id;
+						if (!AppendAuditToReject(item))
 						{
-							PendingAudit retry_item = item;
-							retry_item.retry_count++;
-							if (!EnqueueAudit(std::move(retry_item)))
-							{
-								logger(WARNING) << "admin audit retry queue full, dropping event, request_id=" << item.request_id;
-							}
+							logger(ERROR) << "admin audit reject write failed, request_id=" << item.request_id;
 						}
-						else
+						continue;
+					}
+
+					if (item.retry_count < kAuditRetryMax)
+					{
+						PendingAudit retry_item = item;
+						retry_item.retry_count++;
+						if (!EnqueueAudit(std::move(retry_item)))
 						{
-							logger(WARNING) << "failed to deliver admin audit to oj_log after retries, dropping event, request_id=" << item.request_id;
+							logger(WARNING) << "admin audit retry queue full, fallback to spool, request_id=" << item.request_id;
 							AppendAuditToSpool(item);
 						}
+					}
+					else
+					{
+						logger(WARNING) << "failed to deliver admin audit to oj_log after retries, fallback to spool, request_id=" << item.request_id;
+						AppendAuditToSpool(item);
 					}
 				}
 			});
@@ -898,13 +1026,16 @@ namespace ns_admin
 		std::atomic<bool> g_admin_audit_disabled{false};
 		static constexpr std::size_t kAuditQueueMax = 10000;
 		static constexpr int kAuditRetryMax = 3;
+		static constexpr int kAuditSpoolReplayIntervalMs = 5000;
 		std::string _oj_log_host = ns_runtime_cfg::GetEnvOrDefault("OJ_LOG_HOST", "127.0.0.1");
 		int _oj_log_port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_LOG_PORT", 8100);
 		std::string _audit_spool_path = ns_runtime_cfg::GetEnvOrDefault("OJ_ADMIN_AUDIT_SPOOL", LOG_PATH + std::string("oj_admin_audit_spool.jsonl"));
+		std::string _audit_reject_path = ns_runtime_cfg::GetEnvOrDefault("OJ_ADMIN_AUDIT_REJECT", LOG_PATH + std::string("oj_admin_audit_reject.jsonl"));
 		std::mutex _audit_mtx;
 		std::condition_variable _audit_cv;
 		std::deque<PendingAudit> _audit_queue;
 		std::mutex _audit_spool_mtx;
+		std::mutex _audit_reject_mtx;
 		std::atomic<bool> _audit_running{false};
 		std::thread _audit_worker;	
 	};

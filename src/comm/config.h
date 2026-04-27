@@ -66,7 +66,7 @@ const std::string passwd = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_PASS", "passwo
 const std::string db = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_NAME", "myoj");
 const int port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_DB_PORT", ns_runtime_cfg::ParseIntOrDefault("3306", 3306));
 
-const std::string redis_addr = ns_runtime_cfg::GetEnvOrDefault("OJ_REDIS_ADDR", "");
+const std::string redis_addr = ns_runtime_cfg::GetEnvOrDefault("OJ_REDIS_ADDR", "tcp://127.0.0.1:6379");
 
 const std::string smtp_host = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_HOST", "smtp.qq.com");
 const int smtp_port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_SMTP_PORT", ns_runtime_cfg::ParseIntOrDefault("465", 465));

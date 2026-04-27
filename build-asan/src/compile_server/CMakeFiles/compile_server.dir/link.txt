@@ -1,1 +1,0 @@
-/usr/bin/c++ -fsanitize=address -fno-omit-frame-pointer -g -fsanitize=address CMakeFiles/compile_server.dir/src/compile_server.cpp.o -o /home/yupureki/project/OnlineJudge/output/compile_server  -lpthread -lmysqlclient -ljsoncpp -lctemplate -lcpp-httplib -lLogger 

@@ -503,6 +503,50 @@
             border: 1px solid rgba(244, 246, 240, 0.1);
             flex: 1;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .content-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(244, 246, 240, 0.1);
+            flex-shrink: 0;
+        }
+
+        .content-tab {
+            padding: 8px 20px;
+            cursor: pointer;
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+        }
+
+        .content-tab:hover {
+            color: rgba(244, 246, 240, 0.8);
+        }
+
+        .content-tab.active {
+            color: #F4F6F0;
+            border-bottom-color: rgba(244, 246, 240, 0.6);
+        }
+
+        .tab-content {
+            display: none;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         .section-title {
@@ -821,7 +865,7 @@
             width: 250px;
         }
         .jump-option{
-            width: 190px;
+            width: 320px;
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
@@ -831,6 +875,115 @@
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
+        }
+
+        .solution-item {
+            display: flex;
+            gap: 14px;
+            padding: 16px 0;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-radius: 8px;
+        }
+        .solution-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .solution-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(76, 175, 80, 0.15);
+            color: #4CAF50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+        .solution-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .solution-author {
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        .solution-title-text {
+            color: #F4F6F0;
+            font-size: 15px;
+            font-weight: 400;
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .solution-excerpt {
+            color: rgba(244, 246, 240, 0.5);
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 8px;
+        }
+        .solution-stats {
+            display: flex;
+            gap: 16px;
+            color: rgba(244, 246, 240, 0.5);
+            font-size: 12px;
+        }
+        .solution-divider {
+            border: none;
+            border-top: 1px solid rgba(244, 246, 240, 0.08);
+            margin: 0;
+        }
+        .publish-solution-btn {
+            display: inline-block;
+            padding: 8px 20px;
+            background: rgba(76, 175, 80, 0.15);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 8px;
+            color: #4CAF50;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            margin-bottom: 16px;
+            transition: all 0.2s ease;
+        }
+        .publish-solution-btn:hover {
+            background: rgba(76, 175, 80, 0.25);
+        }
+        .solutions-pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 12px;
+        }
+        .solutions-pagination button {
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(244,246,240,0.12);
+            border-radius: 6px;
+            color: rgba(244,246,240,0.7);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .solutions-pagination button:hover {
+            background: rgba(255,255,255,0.1);
+            color: #F4F6F0;
+        }
+        .solutions-pagination button:disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+        .solutions-pagination span {
+            color: rgba(244,246,240,0.5);
+            font-size: 13px;
         }
 
 
@@ -871,8 +1024,6 @@
         </div>
     </div>
 
-
-    </div>
     <div class="container">
         <div class="question-section" id="questionSection">
                 <div class="question-header">
@@ -893,8 +1044,18 @@
                     </div>
                 </div>
                 <div class="content-section">
-                    <h2 class="section-title">题目描述</h2>
-                    <div class="description">{{desc}}</div>
+                    <div class="content-tabs">
+                        <button class="content-tab active" data-tab="desc">题目描述</button>
+                        <button class="content-tab" data-tab="solutions">题解</button>
+                    </div>
+                    <div class="tab-content active" id="tab-desc">
+                        <div class="description">{{desc}}</div>
+                    </div>
+                    <div class="tab-content" id="tab-solutions">
+                        <div id="solutions-container">
+                            <div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">加载中...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -920,6 +1081,7 @@
                             </div>
                             <div class="jump-option">
                                 <a href="/all_questions" class="option-btn">返回题库</a>
+                                <a href="/questions/{{number}}/solutions/new" class="option-btn" id="publish-solution-link">发布题解</a>
                                 <button type="submit" class="submit-btn">提交代码</button>
                             </div>
                         </div>
@@ -1089,6 +1251,134 @@
 
         // 初始化
         createRainLines();
+
+        const publishSolutionLink = document.getElementById('publish-solution-link');
+        if (publishSolutionLink) {
+            publishSolutionLink.addEventListener('click', function(e) {
+                const isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
+                if (isLoggedIn) {
+                    return;
+                }
+
+                e.preventDefault();
+                const signInButton = document.getElementById('sign-in-button');
+                if (signInButton) {
+                    signInButton.click();
+                }
+            });
+        }
+
+        // Tab switching
+        (function() {
+            var tabs = document.querySelectorAll('.content-tab');
+            var tabDesc = document.getElementById('tab-desc');
+            var tabSolutions = document.getElementById('tab-solutions');
+            var questionId = (function() {
+                var m = window.location.pathname.match(/\/questions\/(\d+)/);
+                return m ? m[1] : '';
+            })();
+            var solutionsLoaded = false;
+            var solutionsPage = 1;
+            var solutionsSort = 'latest';
+
+            function activateTab(target) {
+                tabs.forEach(function(t) { t.classList.remove('active'); });
+                var tab = document.querySelector('.content-tab[data-tab="' + target + '"]');
+                if (tab) tab.classList.add('active');
+                tabDesc.classList.toggle('active', target === 'desc');
+                tabSolutions.classList.toggle('active', target === 'solutions');
+            }
+
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    var target = tab.getAttribute('data-tab');
+                    activateTab(target);
+                    if (target === 'solutions' && !solutionsLoaded && questionId) {
+                        loadSolutions(questionId, 1, solutionsSort);
+                        solutionsLoaded = true;
+                    }
+                });
+            });
+
+            // 支持URL hash自动切换到题解tab
+            if (window.location.hash === '#solutions-tab' && questionId) {
+                activateTab('solutions');
+                loadSolutions(questionId, 1, solutionsSort);
+                solutionsLoaded = true;
+            }
+
+            // 检查用户是否通过该题
+            function loadPassStatus(qid) {
+                var container = document.getElementById('solutions-container');
+                fetch('/api/question/' + qid + '/pass_status', {credentials:'include'})
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        var statusHtml = '';
+                        if (data.logged_in) {
+                            if (data.passed) {
+                                statusHtml = '<div style="padding:12px 16px;margin-bottom:16px;border-radius:10px;background:rgba(76,175,80,0.12);border:1px solid rgba(76,175,80,0.25);display:flex;align-items:center;justify-content:space-between;">';
+                                statusHtml += '<span style="color:#90ee90;font-size:13px;">恭喜你通过了该题！</span>';
+                                statusHtml += '<a href="/questions/' + qid + '/solutions/new" class="publish-solution-btn" style="margin-bottom:0;">发布题解</a>';
+                                statusHtml += '</div>';
+                            } else {
+                                statusHtml = '<div style="padding:12px 16px;margin-bottom:16px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(244,246,240,0.1);color:rgba(244,246,240,0.6);font-size:13px;text-align:center;">你还未通过该题，赶紧试试吧！</div>';
+                            }
+                        }
+                        container.setAttribute('data-pass-status', statusHtml);
+                    })
+                    .catch(function() {});
+            }
+
+            window.loadSolutions = function(qid, page, sort) {
+                solutionsPage = page;
+                solutionsSort = sort || 'latest';
+                var container = document.getElementById('solutions-container');
+                container.innerHTML = '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">加载中...</div>';
+
+                // 异步加载pass状态
+                loadPassStatus(qid);
+
+                fetch('/api/questions/' + qid + '/solutions?page=' + solutionsPage + '&size=10&sort=' + solutionsSort, {credentials:'include'})
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        var passStatusHtml = container.getAttribute('data-pass-status') || '';
+                        if (!data.success) {
+                            container.innerHTML = passStatusHtml + '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">暂无题解</div>';
+                            return;
+                        }
+                        var solutions = data.solutions || [];
+                        if (solutions.length === 0) {
+                            container.innerHTML = passStatusHtml + '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">暂无题解，来做第一个吧！</div>';
+                            return;
+                        }
+                        var html = passStatusHtml;
+                        solutions.forEach(function(s) {
+                            var initial = (s.author_name && s.author_name.charAt(0)) || '?';
+                            var excerpt = s.content_md ? s.content_md.substring(0, 100).replace(/\n/g, ' ') + '...' : '';
+                            html += '<div class="solution-item" onclick="window.location.href=\'/solutions/' + s.id + '\'">';
+                            html += '<div class="solution-avatar">' + initial + '</div>';
+                            html += '<div class="solution-info">';
+                            html += '<div class="solution-author">' + (s.author_name || '') + '</div>';
+                            html += '<div class="solution-title-text">' + (s.title || '') + '</div>';
+                            html += '<div class="solution-excerpt">' + excerpt + '</div>';
+                            html += '<div class="solution-stats"><span>\u2764 ' + s.like_count + '</span><span>\ud83d\udcac ' + s.comment_count + '</span><span>\u2b50 ' + s.favorite_count + '</span></div>';
+                            html += '</div></div>';
+                            html += '<hr class="solution-divider">';
+                        });
+                        if (data.total_pages > 1) {
+                            html += '<div class="solutions-pagination">';
+                            html += '<button onclick="loadSolutions(\'' + qid + '\',' + Math.max(1, solutionsPage - 1) + ',\'' + solutionsSort + '\')"' + (solutionsPage <= 1 ? ' disabled' : '') + '>上一页</button>';
+                            html += '<span>' + solutionsPage + ' / ' + data.total_pages + '</span>';
+                            html += '<button onclick="loadSolutions(\'' + qid + '\',' + Math.min(data.total_pages, solutionsPage + 1) + ',\'' + solutionsSort + '\')"' + (solutionsPage >= data.total_pages ? ' disabled' : '') + '>下一页</button>';
+                            html += '</div>';
+                        }
+                        container.innerHTML = html;
+                    })
+                    .catch(function() {
+                        container.innerHTML = '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">加载失败，请重试</div>';
+                    });
+            };
+        })();
     </script>
 
     

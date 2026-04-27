@@ -85,51 +85,6 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
 
-# Special rule for the target list_install_components
-list_install_components:
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Available install components are: \"Unspecified\""
-.PHONY : list_install_components
-
-# Special rule for the target list_install_components
-list_install_components/fast: list_install_components
-.PHONY : list_install_components/fast
-
-# Special rule for the target install
-install: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
-	/usr/bin/cmake -P cmake_install.cmake
-.PHONY : install
-
-# Special rule for the target install
-install/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
-	/usr/bin/cmake -P cmake_install.cmake
-.PHONY : install/fast
-
-# Special rule for the target install/local
-install/local: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
-	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
-.PHONY : install/local
-
-# Special rule for the target install/local
-install/local/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
-	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
-.PHONY : install/local/fast
-
-# Special rule for the target install/strip
-install/strip: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
-	/usr/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
-.PHONY : install/strip
-
-# Special rule for the target install/strip
-install/strip/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
-	/usr/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
-.PHONY : install/strip/fast
-
 # The main all target
 all: cmake_check_build_system
 	cd /home/yupureki/project/OnlineJudge/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles /home/yupureki/project/OnlineJudge/build/src/oj_server//CMakeFiles/progress.marks
@@ -162,6 +117,20 @@ depend:
 .PHONY : depend
 
 # Convenience name for target.
+src/oj_server/CMakeFiles/oj_server.dir/rule:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/oj_server/CMakeFiles/oj_server.dir/rule
+.PHONY : src/oj_server/CMakeFiles/oj_server.dir/rule
+
+# Convenience name for target.
+oj_server: src/oj_server/CMakeFiles/oj_server.dir/rule
+.PHONY : oj_server
+
+# fast build rule for target.
+oj_server/fast:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/build
+.PHONY : oj_server/fast
+
+# Convenience name for target.
 src/oj_server/CMakeFiles/oj_admin.dir/rule:
 	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/oj_server/CMakeFiles/oj_admin.dir/rule
 .PHONY : src/oj_server/CMakeFiles/oj_admin.dir/rule
@@ -174,20 +143,6 @@ oj_admin: src/oj_server/CMakeFiles/oj_admin.dir/rule
 oj_admin/fast:
 	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/build
 .PHONY : oj_admin/fast
-
-# Convenience name for target.
-src/oj_server/CMakeFiles/oj_log.dir/rule:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/oj_server/CMakeFiles/oj_log.dir/rule
-.PHONY : src/oj_server/CMakeFiles/oj_log.dir/rule
-
-# Convenience name for target.
-oj_log: src/oj_server/CMakeFiles/oj_log.dir/rule
-.PHONY : oj_log
-
-# fast build rule for target.
-oj_log/fast:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_log.dir/build.make src/oj_server/CMakeFiles/oj_log.dir/build
-.PHONY : oj_log/fast
 
 src/oj_admin.o: src/oj_admin.cpp.o
 .PHONY : src/oj_admin.o
@@ -213,29 +168,29 @@ src/oj_admin.cpp.s:
 	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/src/oj_admin.cpp.s
 .PHONY : src/oj_admin.cpp.s
 
-src/oj_log.o: src/oj_log.cpp.o
-.PHONY : src/oj_log.o
+src/oj_server.o: src/oj_server.cpp.o
+.PHONY : src/oj_server.o
 
 # target to build an object file
-src/oj_log.cpp.o:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_log.dir/build.make src/oj_server/CMakeFiles/oj_log.dir/src/oj_log.cpp.o
-.PHONY : src/oj_log.cpp.o
+src/oj_server.cpp.o:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o
+.PHONY : src/oj_server.cpp.o
 
-src/oj_log.i: src/oj_log.cpp.i
-.PHONY : src/oj_log.i
+src/oj_server.i: src/oj_server.cpp.i
+.PHONY : src/oj_server.i
 
 # target to preprocess a source file
-src/oj_log.cpp.i:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_log.dir/build.make src/oj_server/CMakeFiles/oj_log.dir/src/oj_log.cpp.i
-.PHONY : src/oj_log.cpp.i
+src/oj_server.cpp.i:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.i
+.PHONY : src/oj_server.cpp.i
 
-src/oj_log.s: src/oj_log.cpp.s
-.PHONY : src/oj_log.s
+src/oj_server.s: src/oj_server.cpp.s
+.PHONY : src/oj_server.s
 
 # target to generate assembly for a file
-src/oj_log.cpp.s:
-	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_log.dir/build.make src/oj_server/CMakeFiles/oj_log.dir/src/oj_log.cpp.s
-.PHONY : src/oj_log.cpp.s
+src/oj_server.cpp.s:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.s
+.PHONY : src/oj_server.cpp.s
 
 # Help Target
 help:
@@ -244,19 +199,15 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
-	@echo "... install"
-	@echo "... install/local"
-	@echo "... install/strip"
-	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... oj_admin"
-	@echo "... oj_log"
+	@echo "... oj_server"
 	@echo "... src/oj_admin.o"
 	@echo "... src/oj_admin.i"
 	@echo "... src/oj_admin.s"
-	@echo "... src/oj_log.o"
-	@echo "... src/oj_log.i"
-	@echo "... src/oj_log.s"
+	@echo "... src/oj_server.o"
+	@echo "... src/oj_server.i"
+	@echo "... src/oj_server.s"
 .PHONY : help
 
 

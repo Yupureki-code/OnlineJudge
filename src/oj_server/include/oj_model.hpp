@@ -10,6 +10,7 @@
 #include <sstream>
 #include <chrono>
 #include <atomic>
+#include <map>
 #include <Logger/logstrategy.h>
 #include "../../comm/comm.hpp"
 #include "oj_cache.hpp"
@@ -706,9 +707,37 @@ namespace ns_model
         }
 
     public:
+        std::string SolutionStatusToDbString(SolutionStatus status)
+        {
+            switch (status)
+            {
+                case SolutionStatus::pending:
+                    return "pending";
+                case SolutionStatus::approved:
+                    return "approved";
+                case SolutionStatus::rejected:
+                    return "rejected";
+                default:
+                    return "approved";
+            }
+        }
+
+        SolutionStatus DbStringToSolutionStatus(const std::string& s)
+        {
+            if (s == "pending") return SolutionStatus::pending;
+            if (s == "rejected") return SolutionStatus::rejected;
+            return SolutionStatus::approved;
+        }
+
         const std::string& AdminAccountsTable() const
         {
             static const std::string table = "admin_accounts";
+            return table;
+        }
+
+        const std::string& SolutionsTable() const
+        {
+            static const std::string table = "solutions";
             return table;
         }
 
@@ -1021,6 +1050,407 @@ namespace ns_model
             auto detail_html_key = _cache.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kHtml);
             _cache.InvalidatePage(detail_html_key);
             TouchQuestionListVersion();
+            return true;
+        }
+
+        bool CreateSolution(const Solution& input, unsigned long long* solution_id = nullptr)
+        {
+            if (input.question_id.empty() || input.user_id <= 0)
+            {
+                return false;
+            }
+
+            std::string trimmed_title = TrimCopy(input.title);
+            std::string trimmed_content = TrimCopy(input.content_md);
+            if (trimmed_title.empty() || trimmed_content.empty())
+            {
+                return false;
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            std::string safe_question_id = EscapeSqlString(input.question_id, my.get());
+            std::string safe_title = EscapeSqlString(trimmed_title, my.get());
+            std::string safe_content = EscapeSqlString(trimmed_content, my.get());
+            std::string safe_status = EscapeSqlString(SolutionStatusToDbString(input.status), my.get());
+
+            std::ostringstream sql;
+            sql << "insert into " << SolutionsTable()
+                << " (question_id, user_id, title, content_md, like_count, favorite_count, comment_count, status, created_at, updated_at) values ('"
+                << safe_question_id << "', "
+                << input.user_id << ", '"
+                << safe_title << "', '"
+                << safe_content << "', 0, 0, 0, '"
+                << safe_status << "', NOW(), NOW())";
+
+            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql执行错误! errno=" << mysql_errno(my.get())
+                                      << " error=" << mysql_error(my.get());
+                return false;
+            }
+
+            if (solution_id != nullptr)
+            {
+                *solution_id = static_cast<unsigned long long>(mysql_insert_id(my.get()));
+            }
+            return true;
+        }
+
+        const std::string& SolutionActionsTable() const
+        {
+            static const std::string table = "solution_actions";
+            return table;
+        }
+
+        bool GetSolutionsByPage(const std::string& question_id,
+                                const std::string& status_filter,
+                                const std::string& sort_order,
+                                int page,
+                                int size,
+                                std::vector<Solution>* solutions,
+                                int* total_count,
+                                int* total_pages)
+        {
+            if (solutions == nullptr || total_count == nullptr || total_pages == nullptr)
+            {
+                return false;
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            std::string safe_qid = EscapeSqlString(question_id, my.get());
+            std::string safe_status = EscapeSqlString(status_filter, my.get());
+
+            std::string where_clause = " where question_id='" + safe_qid + "'";
+            if (!safe_status.empty())
+            {
+                where_clause += " and status='" + safe_status + "'";
+            }
+
+            std::string count_sql = "select count(*) from " + SolutionsTable() + where_clause;
+            if (!QueryCount(count_sql, total_count))
+            {
+                return false;
+            }
+
+            if (*total_count <= 0)
+            {
+                *total_pages = 0;
+                solutions->clear();
+                return true;
+            }
+
+            int safe_page = std::max(1, page);
+            int safe_size = std::max(1, std::min(size, 50));
+            *total_pages = (*total_count + safe_size - 1) / safe_size;
+            int safe_page_clamped = std::min(safe_page, *total_pages);
+            int offset = (safe_page_clamped - 1) * safe_size;
+
+            std::string order_clause = " order by id asc";
+            if (sort_order == "hot")
+            {
+                order_clause = " order by like_count desc, id asc";
+            }
+
+            std::ostringstream page_sql;
+            page_sql << "select id, question_id, user_id, title, like_count, favorite_count, comment_count, status, created_at, updated_at from "
+                      << SolutionsTable()
+                      << where_clause
+                      << order_clause
+                      << " limit " << safe_size << " offset " << offset;
+
+            MYSQL_RES* res = nullptr;
+            if (mysql_query(my.get(), page_sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql题解列表查询错误!";
+                return false;
+            }
+
+            res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql题解列表结果集为空!";
+                return false;
+            }
+
+            int rows = mysql_num_rows(res);
+            solutions->clear();
+            solutions->reserve(rows);
+            for (int i = 0; i < rows; ++i)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row == nullptr) continue;
+
+                Solution s;
+                s.id = (row[0] != nullptr) ? std::stoull(row[0]) : 0;
+                s.question_id = (row[1] != nullptr) ? row[1] : "";
+                s.user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
+                s.title = (row[3] != nullptr) ? row[3] : "";
+                s.like_count = (row[4] != nullptr) ? static_cast<unsigned int>(std::atoi(row[4])) : 0;
+                s.favorite_count = (row[5] != nullptr) ? static_cast<unsigned int>(std::atoi(row[5])) : 0;
+                s.comment_count = (row[6] != nullptr) ? static_cast<unsigned int>(std::atoi(row[6])) : 0;
+                s.status = (row[7] != nullptr) ? DbStringToSolutionStatus(row[7]) : SolutionStatus::approved;
+                s.created_at = (row[8] != nullptr) ? row[8] : "";
+                s.updated_at = (row[9] != nullptr) ? row[9] : "";
+                solutions->push_back(s);
+            }
+
+            mysql_free_result(res);
+            return true;
+        }
+
+        bool GetSolutionById(long long solution_id, Solution* solution)
+        {
+            if (solution == nullptr)
+            {
+                return false;
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            std::ostringstream sql;
+            sql << "select id, question_id, user_id, title, content_md, like_count, favorite_count, comment_count, status, created_at, updated_at from "
+                << SolutionsTable() << " where id=" << solution_id;
+
+            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql题解详情查询错误!";
+                return false;
+            }
+
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql题解详情结果集为空!";
+                return false;
+            }
+
+            int rows = mysql_num_rows(res);
+            if (rows != 1)
+            {
+                mysql_free_result(res);
+                return false;
+            }
+
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row == nullptr)
+            {
+                mysql_free_result(res);
+                return false;
+            }
+
+            solution->id = (row[0] != nullptr) ? std::stoull(row[0]) : 0;
+            solution->question_id = (row[1] != nullptr) ? row[1] : "";
+            solution->user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
+            solution->title = (row[3] != nullptr) ? row[3] : "";
+            solution->content_md = (row[4] != nullptr) ? row[4] : "";
+            solution->like_count = (row[5] != nullptr) ? static_cast<unsigned int>(std::atoi(row[5])) : 0;
+            solution->favorite_count = (row[6] != nullptr) ? static_cast<unsigned int>(std::atoi(row[6])) : 0;
+            solution->comment_count = (row[7] != nullptr) ? static_cast<unsigned int>(std::atoi(row[7])) : 0;
+            solution->status = (row[8] != nullptr) ? DbStringToSolutionStatus(row[8]) : SolutionStatus::approved;
+            solution->created_at = (row[9] != nullptr) ? row[9] : "";
+            solution->updated_at = (row[10] != nullptr) ? row[10] : "";
+
+            mysql_free_result(res);
+            return true;
+        }
+
+        bool ToggleSolutionAction(long long solution_id, int user_id, const std::string& action_type,
+                                   bool* now_active, unsigned int* new_count)
+        {
+            if (now_active == nullptr || new_count == nullptr)
+            {
+                return false;
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            std::string safe_action = EscapeSqlString(action_type, my.get());
+
+            std::string count_column;
+            if (action_type == "like")
+            {
+                count_column = "like_count";
+            }
+            else if (action_type == "favorite")
+            {
+                count_column = "favorite_count";
+            }
+            else
+            {
+                return false;
+            }
+
+            std::ostringstream check_sql;
+            check_sql << "select id from " << SolutionActionsTable()
+                      << " where solution_id=" << solution_id
+                      << " and user_id=" << user_id
+                      << " and action_type='" << safe_action << "'";
+
+            if (mysql_query(my.get(), check_sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询交互记录错误!";
+                return false;
+            }
+
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql交互记录结果集为空!";
+                return false;
+            }
+
+            int exist_rows = mysql_num_rows(res);
+            mysql_free_result(res);
+
+            if (exist_rows > 0)
+            {
+                std::ostringstream del_sql;
+                del_sql << "delete from " << SolutionActionsTable()
+                        << " where solution_id=" << solution_id
+                        << " and user_id=" << user_id
+                        << " and action_type='" << safe_action << "'";
+
+                if (mysql_query(my.get(), del_sql.str().c_str()) != 0)
+                {
+                    logger(ns_log::FATAL) << "MySql删除交互记录错误!";
+                    return false;
+                }
+
+                std::ostringstream dec_sql;
+                dec_sql << "update " << SolutionsTable()
+                        << " set " << count_column << "=" << count_column << "-1"
+                        << " where id=" << solution_id;
+
+                if (mysql_query(my.get(), dec_sql.str().c_str()) != 0)
+                {
+                    logger(ns_log::FATAL) << "MySql更新计数错误!";
+                    return false;
+                }
+
+                *now_active = false;
+            }
+            else
+            {
+                std::ostringstream ins_sql;
+                ins_sql << "insert into " << SolutionActionsTable()
+                        << " (solution_id, user_id, action_type, created_at) values ("
+                        << solution_id << ", " << user_id << ", '" << safe_action << "', NOW())";
+
+                if (mysql_query(my.get(), ins_sql.str().c_str()) != 0)
+                {
+                    logger(ns_log::FATAL) << "MySql插入交互记录错误!";
+                    return false;
+                }
+
+                std::ostringstream inc_sql;
+                inc_sql << "update " << SolutionsTable()
+                        << " set " << count_column << "=" << count_column << "+1"
+                        << " where id=" << solution_id;
+
+                if (mysql_query(my.get(), inc_sql.str().c_str()) != 0)
+                {
+                    logger(ns_log::FATAL) << "MySql更新计数错误!";
+                    return false;
+                }
+
+                *now_active = true;
+            }
+
+            std::ostringstream cnt_sql;
+            cnt_sql << "select " << count_column << " from " << SolutionsTable() << " where id=" << solution_id;
+
+            if (mysql_query(my.get(), cnt_sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询计数错误!";
+                return false;
+            }
+
+            MYSQL_RES* cnt_res = mysql_store_result(my.get());
+            if (cnt_res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql计数结果集为空!";
+                return false;
+            }
+
+            MYSQL_ROW cnt_row = mysql_fetch_row(cnt_res);
+            if (cnt_row == nullptr || cnt_row[0] == nullptr)
+            {
+                mysql_free_result(cnt_res);
+                return false;
+            }
+
+            *new_count = static_cast<unsigned int>(std::atoi(cnt_row[0]));
+            mysql_free_result(cnt_res);
+            return true;
+        }
+
+        bool GetUserActionsForSolutions(int user_id, const std::vector<long long>& solution_ids,
+                                        std::map<long long, std::map<std::string, bool>>& actions)
+        {
+            if (solution_ids.empty())
+            {
+                return true;
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            std::ostringstream ids_stream;
+            for (size_t i = 0; i < solution_ids.size(); ++i)
+            {
+                if (i > 0) ids_stream << ",";
+                ids_stream << solution_ids[i];
+            }
+
+            std::ostringstream sql;
+            sql << "select solution_id, action_type from " << SolutionActionsTable()
+                << " where user_id=" << user_id
+                << " and solution_id in (" << ids_stream.str() << ")";
+
+            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询用户交互记录错误!";
+                return false;
+            }
+
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql用户交互记录结果集为空!";
+                return false;
+            }
+
+            for (int i = 0; i < mysql_num_rows(res); ++i)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row == nullptr) continue;
+                long long sid = std::stoll(row[0]);
+                std::string atype = row[1] ? row[1] : "";
+                actions[sid][atype] = true;
+            }
+
+            mysql_free_result(res);
             return true;
         }
 
@@ -1508,6 +1938,49 @@ namespace ns_model
             std::string safe_email = EscapeSqlString(email, my.get());
             std::string sql = "delete from " + oj_users + " where email='" + safe_email + "'";
             return ExecuteSql(sql);
+        }
+
+        bool GetUserByName(const std::string& name, User* user)
+        {
+            auto my = CreateConnection();
+            if(!my)
+                return false;
+
+            std::string safe_name = EscapeSqlString(name, my.get());
+            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where name='" + safe_name + "'";
+            return QueryUser(sql, user);
+        }
+
+        bool RecordUserSubmit(int user_id, const std::string& question_id, const std::string& result_json, bool is_pass)
+        {
+            auto my = CreateConnection();
+            if (!my)
+                return false;
+
+            std::string safe_qid = EscapeSqlString(question_id, my.get());
+            std::string safe_json = EscapeSqlString(result_json, my.get());
+
+            std::ostringstream sql;
+            sql << "insert into user_submits (user_id, question_id, result_json, is_pass, action_time) values ("
+                << user_id << ", '" << safe_qid << "', '" << safe_json << "', " << (is_pass ? 1 : 0) << ", NOW())";
+            return ExecuteSql(sql.str());
+        }
+
+        bool HasUserPassedQuestion(int user_id, const std::string& question_id)
+        {
+            auto my = CreateConnection();
+            if (!my)
+                return false;
+
+            std::string safe_qid = EscapeSqlString(question_id, my.get());
+            std::ostringstream sql;
+            sql << "select count(*) from user_submits where user_id=" << user_id
+                << " and question_id='" << safe_qid << "' and is_pass=1";
+
+            int count = 0;
+            if (!QueryCount(sql.str(), &count))
+                return false;
+            return count > 0;
         }
 
         CacheMetricsSnapshot GetCacheMetricsSnapshot() const

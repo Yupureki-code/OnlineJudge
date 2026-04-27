@@ -1,6 +1,7 @@
 #include <Logger/logstrategy.h>
 #include <httplib.h>
 #include <iterator>
+#include <jsoncpp/json/reader.h>
 #include <jsoncpp/json/value.h>
 #include <memory>
 #include <mysql/mysql.h>
@@ -346,7 +347,6 @@ namespace ns_cache
                             logger(ns_log::INFO) << "Null cache hit for question " << key_str;
                             return false;
                         }
-
                         Json::CharReaderBuilder builder;
                         Json::Value json_value;
                         std::istringstream ss(json_str);

@@ -63,45 +63,25 @@ CMAKE_BINARY_DIR = /home/yupureki/project/OnlineJudge/build
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: Logger/all
 all: src/compile_server/all
 all: src/oj_server/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
-preinstall: Logger/preinstall
 preinstall: src/compile_server/preinstall
 preinstall: src/oj_server/preinstall
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: Logger/clean
 clean: src/compile_server/clean
 clean: src/oj_server/clean
 .PHONY : clean
 
 #=============================================================================
-# Directory level rules for directory Logger
-
-# Recursive "all" directory target.
-Logger/all: Logger/CMakeFiles/Logger_static.dir/all
-Logger/all: Logger/CMakeFiles/Logger_shared.dir/all
-.PHONY : Logger/all
-
-# Recursive "preinstall" directory target.
-Logger/preinstall:
-.PHONY : Logger/preinstall
-
-# Recursive "clean" directory target.
-Logger/clean: Logger/CMakeFiles/Logger_static.dir/clean
-Logger/clean: Logger/CMakeFiles/Logger_shared.dir/clean
-.PHONY : Logger/clean
-
-#=============================================================================
 # Directory level rules for directory src/compile_server
 
 # Recursive "all" directory target.
-src/compile_server/all:
+src/compile_server/all: src/compile_server/CMakeFiles/compile_server.dir/all
 .PHONY : src/compile_server/all
 
 # Recursive "preinstall" directory target.
@@ -109,15 +89,15 @@ src/compile_server/preinstall:
 .PHONY : src/compile_server/preinstall
 
 # Recursive "clean" directory target.
-src/compile_server/clean:
+src/compile_server/clean: src/compile_server/CMakeFiles/compile_server.dir/clean
 .PHONY : src/compile_server/clean
 
 #=============================================================================
 # Directory level rules for directory src/oj_server
 
 # Recursive "all" directory target.
+src/oj_server/all: src/oj_server/CMakeFiles/oj_server.dir/all
 src/oj_server/all: src/oj_server/CMakeFiles/oj_admin.dir/all
-src/oj_server/all: src/oj_server/CMakeFiles/oj_log.dir/all
 .PHONY : src/oj_server/all
 
 # Recursive "preinstall" directory target.
@@ -125,75 +105,75 @@ src/oj_server/preinstall:
 .PHONY : src/oj_server/preinstall
 
 # Recursive "clean" directory target.
+src/oj_server/clean: src/oj_server/CMakeFiles/oj_server.dir/clean
 src/oj_server/clean: src/oj_server/CMakeFiles/oj_admin.dir/clean
-src/oj_server/clean: src/oj_server/CMakeFiles/oj_log.dir/clean
 .PHONY : src/oj_server/clean
 
 #=============================================================================
-# Target rules for target Logger/CMakeFiles/Logger_static.dir
+# Target rules for target src/compile_server/CMakeFiles/compile_server.dir
 
 # All Build rule for target.
-Logger/CMakeFiles/Logger_static.dir/all:
-	$(MAKE) $(MAKESILENT) -f Logger/CMakeFiles/Logger_static.dir/build.make Logger/CMakeFiles/Logger_static.dir/depend
-	$(MAKE) $(MAKESILENT) -f Logger/CMakeFiles/Logger_static.dir/build.make Logger/CMakeFiles/Logger_static.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=3,4 "Built target Logger_static"
-.PHONY : Logger/CMakeFiles/Logger_static.dir/all
+src/compile_server/CMakeFiles/compile_server.dir/all:
+	$(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/depend
+	$(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=1,2 "Built target compile_server"
+.PHONY : src/compile_server/CMakeFiles/compile_server.dir/all
 
 # Build rule for subdir invocation for target.
-Logger/CMakeFiles/Logger_static.dir/rule: cmake_check_build_system
+src/compile_server/CMakeFiles/compile_server.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 2
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Logger/CMakeFiles/Logger_static.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/CMakeFiles/compile_server.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 0
-.PHONY : Logger/CMakeFiles/Logger_static.dir/rule
+.PHONY : src/compile_server/CMakeFiles/compile_server.dir/rule
 
 # Convenience name for target.
-Logger_static: Logger/CMakeFiles/Logger_static.dir/rule
-.PHONY : Logger_static
+compile_server: src/compile_server/CMakeFiles/compile_server.dir/rule
+.PHONY : compile_server
 
 # clean rule for target.
-Logger/CMakeFiles/Logger_static.dir/clean:
-	$(MAKE) $(MAKESILENT) -f Logger/CMakeFiles/Logger_static.dir/build.make Logger/CMakeFiles/Logger_static.dir/clean
-.PHONY : Logger/CMakeFiles/Logger_static.dir/clean
+src/compile_server/CMakeFiles/compile_server.dir/clean:
+	$(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/clean
+.PHONY : src/compile_server/CMakeFiles/compile_server.dir/clean
 
 #=============================================================================
-# Target rules for target Logger/CMakeFiles/Logger_shared.dir
+# Target rules for target src/oj_server/CMakeFiles/oj_server.dir
 
 # All Build rule for target.
-Logger/CMakeFiles/Logger_shared.dir/all:
-	$(MAKE) $(MAKESILENT) -f Logger/CMakeFiles/Logger_shared.dir/build.make Logger/CMakeFiles/Logger_shared.dir/depend
-	$(MAKE) $(MAKESILENT) -f Logger/CMakeFiles/Logger_shared.dir/build.make Logger/CMakeFiles/Logger_shared.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=1,2 "Built target Logger_shared"
-.PHONY : Logger/CMakeFiles/Logger_shared.dir/all
+src/oj_server/CMakeFiles/oj_server.dir/all:
+	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/depend
+	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=5,6 "Built target oj_server"
+.PHONY : src/oj_server/CMakeFiles/oj_server.dir/all
 
 # Build rule for subdir invocation for target.
-Logger/CMakeFiles/Logger_shared.dir/rule: cmake_check_build_system
+src/oj_server/CMakeFiles/oj_server.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 2
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Logger/CMakeFiles/Logger_shared.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/oj_server/CMakeFiles/oj_server.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 0
-.PHONY : Logger/CMakeFiles/Logger_shared.dir/rule
+.PHONY : src/oj_server/CMakeFiles/oj_server.dir/rule
 
 # Convenience name for target.
-Logger_shared: Logger/CMakeFiles/Logger_shared.dir/rule
-.PHONY : Logger_shared
+oj_server: src/oj_server/CMakeFiles/oj_server.dir/rule
+.PHONY : oj_server
 
 # clean rule for target.
-Logger/CMakeFiles/Logger_shared.dir/clean:
-	$(MAKE) $(MAKESILENT) -f Logger/CMakeFiles/Logger_shared.dir/build.make Logger/CMakeFiles/Logger_shared.dir/clean
-.PHONY : Logger/CMakeFiles/Logger_shared.dir/clean
+src/oj_server/CMakeFiles/oj_server.dir/clean:
+	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/clean
+.PHONY : src/oj_server/CMakeFiles/oj_server.dir/clean
 
 #=============================================================================
 # Target rules for target src/oj_server/CMakeFiles/oj_admin.dir
 
 # All Build rule for target.
-src/oj_server/CMakeFiles/oj_admin.dir/all: Logger/CMakeFiles/Logger_shared.dir/all
+src/oj_server/CMakeFiles/oj_admin.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=5,6 "Built target oj_admin"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=3,4 "Built target oj_admin"
 .PHONY : src/oj_server/CMakeFiles/oj_admin.dir/all
 
 # Build rule for subdir invocation for target.
 src/oj_server/CMakeFiles/oj_admin.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 4
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 2
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/oj_server/CMakeFiles/oj_admin.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 0
 .PHONY : src/oj_server/CMakeFiles/oj_admin.dir/rule
@@ -206,32 +186,6 @@ oj_admin: src/oj_server/CMakeFiles/oj_admin.dir/rule
 src/oj_server/CMakeFiles/oj_admin.dir/clean:
 	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/clean
 .PHONY : src/oj_server/CMakeFiles/oj_admin.dir/clean
-
-#=============================================================================
-# Target rules for target src/oj_server/CMakeFiles/oj_log.dir
-
-# All Build rule for target.
-src/oj_server/CMakeFiles/oj_log.dir/all: Logger/CMakeFiles/Logger_shared.dir/all
-	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_log.dir/build.make src/oj_server/CMakeFiles/oj_log.dir/depend
-	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_log.dir/build.make src/oj_server/CMakeFiles/oj_log.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=7,8 "Built target oj_log"
-.PHONY : src/oj_server/CMakeFiles/oj_log.dir/all
-
-# Build rule for subdir invocation for target.
-src/oj_server/CMakeFiles/oj_log.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 4
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/oj_server/CMakeFiles/oj_log.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 0
-.PHONY : src/oj_server/CMakeFiles/oj_log.dir/rule
-
-# Convenience name for target.
-oj_log: src/oj_server/CMakeFiles/oj_log.dir/rule
-.PHONY : oj_log
-
-# clean rule for target.
-src/oj_server/CMakeFiles/oj_log.dir/clean:
-	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_log.dir/build.make src/oj_server/CMakeFiles/oj_log.dir/clean
-.PHONY : src/oj_server/CMakeFiles/oj_log.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

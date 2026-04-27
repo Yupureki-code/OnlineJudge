@@ -16,8 +16,5 @@ set(ADMIN_PORT "8090" CACHE STRING "admin server bind port")
 configure_file(${CMAKE_SOURCE_DIR}/config.in.h ${CMAKE_SOURCE_DIR}/src/comm/config.h)
 
 # 添加子目录
-if(OJ_USE_LOCAL_LOGGER)
-	add_subdirectory(Logger)
-endif()
 add_subdirectory(src/compile_server)
 add_subdirectory(src/oj_server)

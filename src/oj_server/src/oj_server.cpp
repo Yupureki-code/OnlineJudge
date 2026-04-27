@@ -183,7 +183,7 @@ int main()
     svr.Get("/js/(.*)", [](const Request& req, Response& rep){
         std::string file = req.matches[1];
         std::string content;
-        FileUtil::ReadFile(HTML_PATH + std::string("/js/") + file, &content);
+        FileUtil::ReadFile(HTML_PATH + std::string("/js/") + file, &content, true);
         rep.set_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
         rep.set_header("Pragma", "no-cache");
         rep.set_header("Expires", "0");
@@ -273,6 +273,31 @@ int main()
         long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
         logger(INFO) << "[metrics][route] GET /questions/" << number << " cost_ms=" << cost_ms;
     }); 
+    // 发布题解页面路由，返回独立发布页面HTML
+    svr.Get(R"(/questions/(\d+)/solutions/new$)", [&ctl, &getCurrentUser](const Request& req, Response& rep){
+        std::string html;
+        ctl.GetStaticHtml("solutions/new.html", &html);
+
+        User user;
+        bool isLoggedIn = getCurrentUser(req, &user);
+
+        html = InjectUserInfo(html, &user, isLoggedIn);
+
+        rep.set_content(html, "text/html;charset=utf-8");
+    });
+
+    svr.Get(R"(/solutions/(\d+)$)", [&ctl, &getCurrentUser](const Request& req, Response& rep){
+        std::string html;
+        ctl.GetStaticHtml("solutions/detail.html", &html);
+
+        User user;
+        bool isLoggedIn = getCurrentUser(req, &user);
+
+        html = InjectUserInfo(html, &user, isLoggedIn);
+
+        rep.set_content(html, "text/html;charset=utf-8");
+    });
+
     // 判题结果页面路由，返回判题结果HTML
     svr.Get(R"(/judge_result\.html)", [&ctl, &getCurrentUser](const Request& req, Response& rep){
         std::string html;
@@ -286,7 +311,7 @@ int main()
         rep.set_content(html, "text/html;charset=utf-8");
     });
     // 判题路由，接收代码和题目编号，返回判题结果后，前端调用judge_result路由
-    svr.Post(R"(/judge/(\d+)$)", [&ctl](const Request& req,Response& rep){
+    svr.Post(R"(/judge/(\d+)$)", [&ctl, &getCurrentUser](const Request& req,Response& rep){
        std::string number = req.matches[1];
         std::string result_json;
         
@@ -317,6 +342,45 @@ int main()
         }
         //调用控制层的Judge函数进行判题，获取结果后重定向到判题结果页面，并通过URL参数传递结果数据
         ctl.Judge(number, in_json, &result_json);
+        
+        // 记录用户提交记录
+        // compile_server 返回的 status 是空格分隔的字符串 (例: "AC AC AC ")
+        // is_pass = 所有测试用例都是 "AC"
+        User current_user;
+        if (getCurrentUser(req, &current_user))
+        {
+            bool is_pass = false;
+            if (!result_json.empty())
+            {
+                Json::Value result_value;
+                Json::Reader reader;
+                if (reader.parse(result_json, result_value) && result_value.isMember("status"))
+                {
+                    std::string status_str = result_value["status"].asString();
+                    // 按空格分词，检查是否全部为 "AC"
+                    is_pass = true;
+                    std::string token;
+                    for (char ch : status_str)
+                    {
+                        if (ch == ' ')
+                        {
+                            if (!token.empty() && token != "AC")
+                            {
+                                is_pass = false;
+                                break;
+                            }
+                            token.clear();
+                        }
+                        else
+                        {
+                            token += ch;
+                        }
+                    }
+                }
+            }
+            ctl.GetModel()->RecordUserSubmit(current_user.uid, number, result_json, is_pass);
+        }
+        
         std::string encoded_result = HttpUtil::url_encode(result_json);
         rep.set_redirect("/judge_result.html?result=" + encoded_result + "&id=" + number);
     }); 
@@ -668,11 +732,26 @@ int main()
             return;
         }
 
-        std::string email;
-        if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
+        std::string login_id;
+        if (in_value.isMember("email") && in_value["email"].isString())
+        {
+            login_id = StringUtil::Trim(in_value["email"].asString());
+        }
+        else if (in_value.isMember("username") && in_value["username"].isString())
+        {
+            login_id = StringUtil::Trim(in_value["username"].asString());
+        }
+        else
         {
             addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "邮箱格式不合法");
+            HttpUtil::ReplyBadRequest(rep, "请输入用户名或邮箱");
+            return;
+        }
+
+        if (login_id.empty())
+        {
+            addCORSHeaders(rep);
+            HttpUtil::ReplyBadRequest(rep, "用户名或邮箱不能为空");
             return;
         }
 
@@ -686,7 +765,7 @@ int main()
 
         User user;
         std::string err_code;
-        bool ok = ctl.LoginWithPassword(email, password, &user, &err_code);
+        bool ok = ctl.LoginWithPassword(login_id, password, &user, &err_code);
 
         Json::Value response;
         response["success"] = ok;
@@ -1031,6 +1110,104 @@ int main()
         rep.set_content(response_str, "application/json;charset=utf-8");
     });
 
+    svr.Get(R"(/api/question/(\d+)/pass_status$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value response;
+        User current_user;
+        if (!getCurrentUser(req, &current_user))
+        {
+            response["success"] = true;
+            response["passed"] = false;
+            response["logged_in"] = false;
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            return;
+        }
+
+        std::string question_id = req.matches[1];
+        bool passed = ctl.HasUserPassedQuestion(current_user.uid, question_id);
+        response["success"] = true;
+        response["passed"] = passed;
+        response["logged_in"] = true;
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
+
+    svr.Post(R"(/api/questions/(\d+)/solutions$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value response;
+
+        User current_user;
+        if (!getCurrentUser(req, &current_user))
+        {
+            response["success"] = false;
+            response["error_code"] = "UNAUTHORIZED";
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.status = 401;
+            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            return;
+        }
+
+        Json::Value in_value;
+        if (!JsonUtil::ParseJsonBody(req, &in_value))
+        {
+            addCORSHeaders(rep);
+            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
+            return;
+        }
+
+        if (!in_value.isMember("title") || !in_value["title"].isString())
+        {
+            addCORSHeaders(rep);
+            HttpUtil::ReplyBadRequest(rep, "标题不能为空");
+            return;
+        }
+
+        if (!in_value.isMember("content_md") || !in_value["content_md"].isString())
+        {
+            addCORSHeaders(rep);
+            HttpUtil::ReplyBadRequest(rep, "题解内容不能为空");
+            return;
+        }
+
+        const std::string question_id = req.matches[1];
+        const std::string title = in_value["title"].asString();
+        const std::string content_md = in_value["content_md"].asString();
+
+        unsigned long long solution_id = 0;
+        std::string err_code;
+        bool ok = ctl.PublishSolution(question_id, current_user, title, content_md, &solution_id, &err_code);
+
+        response["success"] = ok;
+        if (!ok)
+        {
+            response["error_code"] = err_code;
+            if (err_code == "QUESTION_NOT_FOUND")
+            {
+                rep.status = 404;
+            }
+            else if (err_code == "UNAUTHORIZED")
+            {
+                rep.status = 401;
+            }
+            else
+            {
+                rep.status = 400;
+            }
+        }
+        else
+        {
+            response["solution_id"] = Json::UInt64(solution_id);
+            response["question_id"] = question_id;
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
+
     svr.Post("/api/questions", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User user;
@@ -1311,6 +1488,193 @@ int main()
     });
 
     svr.Options(R"(/api/question/(\d+))", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options(R"(/api/question/(\d+)/pass_status$)", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options(R"(/api/questions/(\d+)/solutions$)", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Get(R"(/api/questions/(\d+)/solutions$)", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+        std::string question_id = req.matches[1];
+
+        std::string status = req.has_param("status") ? req.get_param_value("status") : "approved";
+        std::string sort = req.has_param("sort") ? req.get_param_value("sort") : "latest";
+        int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 100);
+        int size = HttpUtil::ParsePositiveIntParam(req, "size", 10, 1, 50);
+
+        Json::Value result;
+        std::string err_code;
+        bool ok = ctl.GetSolutionList(question_id, status, sort, page, size, &result, &err_code);
+
+        if (!ok)
+        {
+            result["success"] = false;
+            result["error_code"] = err_code;
+            if (err_code == "QUESTION_NOT_FOUND")
+            {
+                rep.status = 404;
+            }
+            else
+            {
+                rep.status = 500;
+            }
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(result), "application/json;charset=utf-8");
+    });
+
+    svr.Get(R"(/api/solutions/(\d+)$)", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+        long long solution_id = std::stoll(req.matches[1]);
+
+        Json::Value result;
+        std::string err_code;
+        bool ok = ctl.GetSolutionDetail(solution_id, &result, &err_code);
+
+        if (!ok)
+        {
+            result["success"] = false;
+            result["error_code"] = err_code;
+            if (err_code == "SOLUTION_NOT_FOUND")
+            {
+                rep.status = 404;
+            }
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(result), "application/json;charset=utf-8");
+    });
+
+    svr.Post(R"(/api/solutions/(\d+)/like$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value result;
+        User current_user;
+        if (!getCurrentUser(req, &current_user))
+        {
+            result["success"] = false;
+            result["error_code"] = "UNAUTHORIZED";
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.status = 401;
+            rep.set_content(writer.write(result), "application/json;charset=utf-8");
+            return;
+        }
+
+        long long solution_id = std::stoll(req.matches[1]);
+        std::string err_code;
+        bool ok = ctl.ToggleLike(solution_id, current_user, &result, &err_code);
+
+        if (!ok)
+        {
+            result["success"] = false;
+            result["error_code"] = err_code;
+            if (err_code == "SOLUTION_NOT_FOUND")
+            {
+                rep.status = 404;
+            }
+            else
+            {
+                rep.status = 500;
+            }
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(result), "application/json;charset=utf-8");
+    });
+
+    svr.Post(R"(/api/solutions/(\d+)/favorite$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value result;
+        User current_user;
+        if (!getCurrentUser(req, &current_user))
+        {
+            result["success"] = false;
+            result["error_code"] = "UNAUTHORIZED";
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.status = 401;
+            rep.set_content(writer.write(result), "application/json;charset=utf-8");
+            return;
+        }
+
+        long long solution_id = std::stoll(req.matches[1]);
+        std::string err_code;
+        bool ok = ctl.ToggleFavorite(solution_id, current_user, &result, &err_code);
+
+        if (!ok)
+        {
+            result["success"] = false;
+            result["error_code"] = err_code;
+            if (err_code == "SOLUTION_NOT_FOUND")
+            {
+                rep.status = 404;
+            }
+            else
+            {
+                rep.status = 500;
+            }
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(result), "application/json;charset=utf-8");
+    });
+
+    svr.Get(R"(/api/solutions/(\d+)/actions$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+        long long solution_id = std::stoll(req.matches[1]);
+
+        Json::Value result;
+        User current_user;
+        bool logged_in = getCurrentUser(req, &current_user);
+
+        if (logged_in)
+        {
+            ctl.GetUserSolutionActions(solution_id, current_user.uid, &result);
+            result["success"] = true;
+        }
+        else
+        {
+            result["success"] = true;
+            result["liked"] = false;
+            result["favorited"] = false;
+        }
+
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(result), "application/json;charset=utf-8");
+    });
+
+    svr.Options(R"(/api/solutions/(\d+)/like$)", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options(R"(/api/solutions/(\d+)/favorite$)", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options(R"(/api/solutions/(\d+)$)", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 200;
+    });
+
+    svr.Options(R"(/api/solutions/(\d+)/actions$)", [&addCORSHeaders](const Request& req, Response& rep) {
         (void)req;
         addCORSHeaders(rep);
         rep.status = 200;
