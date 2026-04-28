@@ -286,7 +286,7 @@
             line-height: 1.7;
         }
 
-        #editormd {
+        #vditor-editor {
             border-radius: 18px;
             overflow: hidden;
             min-height: 420px;
@@ -320,7 +320,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/editor.md@1.5.0/css/editormd.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vditor@3.10.5/dist/index.css">
 </head>
 <body>
     <div id="page-loading-mask" class="page-loading-mask">
@@ -354,7 +354,6 @@
         <div class="editor-shell">
             <div>
                 <h1 class="page-title">发布题解</h1>
-                <p class="page-subtitle">先把思路讲清楚，再落到实现细节。这里先支持 Markdown 纯文本发布，后续可以无缝替换为 Editor.md 编辑器。</p>
             </div>
 
             <div class="question-badge" id="question-badge">正在加载题目信息...</div>
@@ -371,13 +370,7 @@
 
                 <div>
                     <label class="field-label" for="solution-content">题解正文</label>
-                    <div id="editormd">
-                        <textarea id="solution-content" style="display:none;"></textarea>
-                    </div>
-                </div>
-
-                <div class="hint-box">
-                    支持 Markdown 语法。题解列表、详情页、点赞收藏已可用。
+                    <div id="vditor-editor"></div>
                 </div>
 
                 <div id="publish-message" class="message-box"></div>
@@ -395,159 +388,11 @@
         </div>
     </div>
 
-    <script>
-        function createRainLines() {
-            const rainLines = document.getElementById('rainLines');
-            if (!rainLines) return;
-
-            const lineCount = 50;
-            for (let i = 0; i < lineCount; i++) {
-                const line = document.createElement('div');
-                line.className = 'rain-line';
-                line.style.left = Math.random() * 100 + '%';
-                line.style.height = Math.random() * 100 + 50 + 'px';
-                line.style.animationDelay = Math.random() * 3 + 's';
-                line.style.animationDuration = (Math.random() * 2 + 2) + 's';
-                rainLines.appendChild(line);
-            }
-        }
-
-        function getQuestionIdFromPath() {
-            const match = window.location.pathname.match(/\/questions\/(\d+)\/solutions\/new$/);
-            return match ? match[1] : '';
-        }
-
-        function setMessage(text, isSuccess) {
-            const node = document.getElementById('publish-message');
-            if (!node) return;
-            node.textContent = text || '';
-            node.className = 'message-box ' + (isSuccess ? 'success' : 'error');
-        }
-
-        async function loadQuestionMeta(questionId) {
-            const badge = document.getElementById('question-badge');
-            const backLink = document.getElementById('back-to-question');
-            if (backLink) {
-                backLink.href = '/questions/' + questionId;
-            }
-
-            try {
-                const response = await fetch('/api/question/' + questionId, { credentials: 'include' });
-                const data = await response.json();
-                if (data && data.success && data.question) {
-                    badge.textContent = '题目 #' + data.question.number + ' · ' + data.question.title;
-                    document.title = '发布题解 - ' + data.question.title + ' - Yupureki-OJ';
-                    return;
-                }
-            } catch (error) {
-                console.error('加载题目信息失败', error);
-            }
-
-            badge.textContent = '题目信息加载失败';
-        }
-
-        function setupLoginState() {
-            const isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
-            const loginRequired = document.getElementById('login-required');
-            const formShell = document.getElementById('publish-form-shell');
-            const submitButton = document.getElementById('submit-solution');
-
-            if (!isLoggedIn) {
-                if (loginRequired) loginRequired.style.display = 'block';
-                if (formShell) formShell.style.opacity = '0.55';
-                if (submitButton) submitButton.disabled = true;
-                setMessage('请先登录后再发布题解', false);
-            }
-        }
-
-        async function publishSolution() {
-            const questionId = getQuestionIdFromPath();
-            const titleNode = document.getElementById('solution-title');
-            const contentNode = document.getElementById('solution-content');
-            const submitButton = document.getElementById('submit-solution');
-
-            const title = titleNode ? titleNode.value.trim() : '';
-            const content = contentNode ? contentNode.value.trim() : '';
-
-            if (!title) {
-                setMessage('请输入题解标题', false);
-                return;
-            }
-            if (title.length > 30) {
-                setMessage('标题不能超过30个字符', false);
-                return;
-            }
-            if (!content) {
-                setMessage('请输入题解内容', false);
-                return;
-            }
-
-            setMessage('正在发布...', true);
-            if (submitButton) submitButton.disabled = true;
-
-            try {
-                const response = await fetch('/api/questions/' + questionId + '/solutions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        title: title,
-                        content_md: content
-                    })
-                });
-
-                const data = await response.json();
-                if (response.ok && data && data.success) {
-                    setMessage('发布成功，正在返回题目页...', true);
-                    window.setTimeout(function() {
-                        window.location.href = '/questions/' + questionId;
-                    }, 900);
-                    return;
-                }
-
-                const errCode = data && data.error_code ? data.error_code : '';
-                if (errCode === 'UNAUTHORIZED') setMessage('请先登录后再发布题解', false);
-                else if (errCode === 'QUESTION_NOT_FOUND') setMessage('题目不存在，无法发布题解', false);
-                else if (errCode === 'TITLE_REQUIRED') setMessage('请输入题解标题', false);
-                else if (errCode === 'TITLE_TOO_LONG') setMessage('标题不能超过30个字符', false);
-                else if (errCode === 'CONTENT_REQUIRED') setMessage('请输入题解内容', false);
-                else setMessage('发布失败，请稍后重试', false);
-            } catch (error) {
-                console.error('发布题解失败', error);
-                setMessage('网络异常，发布失败', false);
-            } finally {
-                if (submitButton) submitButton.disabled = false;
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            createRainLines();
-            const questionId = getQuestionIdFromPath();
-            if (questionId) {
-                loadQuestionMeta(questionId);
-            } else {
-                setMessage('无法识别题号', false);
-            }
-
-            setupLoginState();
-
-            document.getElementById('reset-form')?.addEventListener('click', function() {
-                const titleNode = document.getElementById('solution-title');
-                const contentNode = document.getElementById('solution-content');
-                if (titleNode) titleNode.value = '';
-                if (contentNode) contentNode.value = '';
-                setMessage('', true);
-            });
-
-            document.getElementById('submit-solution')?.addEventListener('click', publishSolution);
-        });
-    </script>
-
     <script src="/js/page-loading.js"></script>
     <script src="/js/auth.js?v=20260423"></script>
-    <script src="https://cdn.jsdelivr.net/npm/editor.md@1.5.0/editormd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vditor@3.10.5/dist/index.min.js"></script>
     <script>
-        var editorInstance = null;
+        var vditor = null;
 
         function createRainLines() {
             const rainLines = document.getElementById('rainLines');
@@ -575,14 +420,6 @@
             if (!node) return;
             node.textContent = text || '';
             node.className = 'message-box ' + (isSuccess ? 'success' : 'error');
-        }
-
-        function getMarkdownContent() {
-            if (editorInstance) {
-                return editorInstance.getMarkdown();
-            }
-            const ta = document.getElementById('solution-content');
-            return ta ? ta.value : '';
         }
 
         async function loadQuestionMeta(questionId) {
@@ -627,7 +464,7 @@
             const submitButton = document.getElementById('submit-solution');
 
             const title = titleNode ? titleNode.value.trim() : '';
-            const content_md = getMarkdownContent().trim();
+            const content_md = vditor ? vditor.getValue().trim() : '';
 
             if (!title) {
                 setMessage('请输入题解标题', false);
@@ -667,6 +504,7 @@
 
                 const errCode = data && data.error_code ? data.error_code : '';
                 if (errCode === 'UNAUTHORIZED') setMessage('请先登录后再发布题解', false);
+                else if (errCode === 'NOT_PASSED') setMessage('你还未通过该题，无法发布题解', false);
                 else if (errCode === 'QUESTION_NOT_FOUND') setMessage('题目不存在，无法发布题解', false);
                 else if (errCode === 'TITLE_REQUIRED') setMessage('请输入题解标题', false);
                 else if (errCode === 'TITLE_TOO_LONG') setMessage('标题不能超过30个字符', false);
@@ -693,40 +531,34 @@
 
             const isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
 
-            if (typeof editormd !== 'undefined') {
-                editorInstance = editormd('editormd', {
-                    width: '100%',
-                    height: 420,
-                    path: 'https://cdn.jsdelivr.net/npm/editor.md@1.5.0/lib/',
-                    theme: 'dark',
-                    previewTheme: 'dark',
-                    editorTheme: 'pastel-on-dark',
-                    markdown: '',
-                    codeFold: true,
-                    syncScrolling: 'single',
-                    saveHTMLToTextarea: false,
-                    searchReplace: true,
-                    emoji: false,
-                    taskList: true,
-                    tocm: true,
-                    imageUpload: false,
-                    toolbarAutoFixed: false,
-                    readOnly: !isLoggedIn,
-                    onchange: function() {
-                        var ta = document.getElementById('solution-content');
-                        if (ta) ta.value = this.getMarkdown();
+            vditor = new Vditor('vditor-editor', {
+                height: 500,
+                mode: 'ir',
+                theme: 'dark',
+                icon: 'material',
+                cache: { enable: false },
+                preview: { theme: { current: 'dark' } },
+                toolbar: [
+                    'headings', 'bold', 'italic', '|',
+                    'list', 'ordered-list', 'check', '|',
+                    'quote', 'code', 'inline-code', '|',
+                    'link', 'table', '|',
+                    'undo', 'redo', '|',
+                    'fullscreen', 'preview'
+                ],
+                after: function() {
+                    if (!isLoggedIn) {
+                        vditor.disabled();
                     }
-                });
-            }
+                }
+            });
 
             document.getElementById('reset-form')?.addEventListener('click', function() {
                 const titleNode = document.getElementById('solution-title');
                 if (titleNode) titleNode.value = '';
-                if (editorInstance) {
-                    editorInstance.setMarkdown('');
+                if (vditor) {
+                    vditor.setValue('');
                 }
-                var ta = document.getElementById('solution-content');
-                if (ta) ta.value = '';
                 setMessage('', true);
             });
 

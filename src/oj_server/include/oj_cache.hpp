@@ -141,7 +141,7 @@ namespace ns_cache
         Cache(const std::string& redis = redis_addr,
               const std::string& business = "oj",
               const std::string& env = "prod",
-              const std::string& version = "v1")
+              const std::string& version = "v2")
         :_redis(Redis(redis)), _business(business), _env(env), _version(version)
         {}
 

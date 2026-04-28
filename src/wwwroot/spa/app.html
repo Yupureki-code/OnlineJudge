@@ -208,6 +208,39 @@
             color: rgba(244, 246, 240, 0.4);
         }
 
+        .search-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            margin-left: 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(244, 246, 240, 0.15);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .search-icon:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(244, 246, 240, 0.3);
+        }
+
+        .search-icon svg {
+            width: 14px;
+            height: 14px;
+            stroke: rgba(244, 246, 240, 0.7);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .search-icon:hover svg {
+            stroke: #F4F6F0;
+        }
+
 
 
 
@@ -273,7 +306,10 @@
             <a href="#about">关于</a>
         </div>
         <div class="search-container">
-            <input type="text" class="search-input" placeholder="搜索题目...">
+            <input type="text" id="navbar-search" class="search-input" placeholder="搜索题目...">
+            <div class="search-icon" id="navbar-search-icon" title="搜索">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
         </div>
         <div class="nav">
             <div id="user-auth" style="display: block;">
@@ -296,5 +332,34 @@
     <script src="./js/spa-router.js"></script>
     <script src="/js/page-loading.js"></script>
     <script src="/js/auth.js?v=20260423"></script>
+    <script>
+        (function() {
+            function navigateToSearch(keyword) {
+                var q = encodeURIComponent(keyword.trim());
+                if (q) {
+                    window.location.href = '/all_questions?q=' + q;
+                }
+            }
+
+            var searchInput = document.getElementById('navbar-search');
+            var searchIcon = document.getElementById('navbar-search-icon');
+
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        navigateToSearch(this.value);
+                    }
+                });
+            }
+
+            if (searchIcon) {
+                searchIcon.addEventListener('click', function() {
+                    if (searchInput) {
+                        navigateToSearch(searchInput.value);
+                    }
+                });
+            }
+        })();
+    </script>
 </body>
 </html>

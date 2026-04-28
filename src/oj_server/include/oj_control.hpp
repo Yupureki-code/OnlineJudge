@@ -15,6 +15,7 @@
 #include <sstream>
 #include <array>
 #include <iomanip>
+#include <sys/stat.h>
 #include "oj_model.hpp"
 #include "oj_mail.hpp"
 #include "oj_view.hpp"
@@ -494,22 +495,11 @@ namespace ns_control
         //获取单个题目
         bool OneQuestion(const std::string &number, std::string *html)
         {
-            auto html_key = _model.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kHtml);
-            if (_model.GetHtmlPage(html, html_key))
-            {
-                _model.RecordDetailHtmlCacheMetrics(true);
-                logger(INFO) << "[html_cache][one_question] hit=1 qid=" << number;
-                return true;
-            }
-            _model.RecordDetailHtmlCacheMetrics(false);
-            logger(INFO) << "[html_cache][one_question] hit=0 qid=" << number;
-
             bool ret = true;
             Question q;
             if (_model.GetOneQuestion(number, q))
             {
                 _view.OneExpandHtml(q, html);
-                _model.SetHtmlPage(html, html_key);
             }
             else
             {
@@ -519,7 +509,10 @@ namespace ns_control
             return ret;
         }
         //判断题目正确，调用主机责任链
-        void Judge(const std::string& number,const std::string& in_json,std::string* out_json)
+        // Forward optional custom_input/output to the compile server
+        void Judge(const std::string& number,const std::string& in_json,std::string* out_json,
+                   const std::string& custom_input = "",
+                   const std::string& custom_output = "")
         {
             Question q;
             _model.GetOneQuestion(number, q);
@@ -527,9 +520,16 @@ namespace ns_control
             Json::Value in_value;
             reader.parse(in_json, in_value);
             std::string code = in_value["code"].asString();
-             Json::Value compile_value;
+            Json::Value compile_value;
             compile_value["id"] = number;
             compile_value["code"] = code;
+            // Forward custom test input/output to the compile server when provided
+            if (!custom_input.empty()) {
+                compile_value["custom_input"] = custom_input;
+            }
+            if (!custom_output.empty()) {
+                compile_value["custom_output"] = custom_output;
+            }
             Json::FastWriter writer;
             std::string compile_string = writer.write(compile_value);
             while(true)
@@ -1002,11 +1002,11 @@ namespace ns_control
         }
 
         bool PublishSolution(const std::string& question_id,
-                             const User& current_user,
-                             const std::string& title,
-                             const std::string& content_md,
-                             unsigned long long* solution_id,
-                             std::string* err_code)
+                              const User& current_user,
+                              const std::string& title,
+                              const std::string& content_md,
+                              unsigned long long* solution_id,
+                              std::string* err_code)
         {
             if (current_user.uid <= 0)
             {
@@ -1033,6 +1033,15 @@ namespace ns_control
                 if (err_code != nullptr)
                 {
                     *err_code = "QUESTION_NOT_FOUND";
+                }
+                return false;
+            }
+
+            if (!_model.HasUserPassedQuestion(current_user.uid, trimmed_question_id))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "NOT_PASSED";
                 }
                 return false;
             }
@@ -1071,7 +1080,7 @@ namespace ns_control
             solution.user_id = current_user.uid;
             solution.title = trimmed_title;
             solution.content_md = trimmed_content;
-            solution.status = SolutionStatus::pending;
+            solution.status = SolutionStatus::approved;
 
             if (!_model.CreateSolution(solution, solution_id))
             {
@@ -1082,6 +1091,364 @@ namespace ns_control
                 return false;
             }
 
+            return true;
+        }
+
+        // Comments: create a new comment for a solution (supports nesting via parent_id)
+        bool PostComment(unsigned long long solution_id,
+                         const User& current_user,
+                         const std::string& content,
+                         Json::Value* result,
+                         std::string* err_code,
+                         unsigned long long parent_id = 0)
+        {
+            if (result == nullptr || err_code == nullptr)
+            {
+                return false;
+            }
+            // Authorization check
+            if (current_user.uid <= 0)
+            {
+                *err_code = "UNAUTHORIZED";
+                return false;
+            }
+
+            std::string trimmed = TrimSpace(content);
+            if (trimmed.empty())
+            {
+                *err_code = "CONTENT_REQUIRED";
+                return false;
+            }
+            if (trimmed.size() > 1000)
+            {
+                *err_code = "CONTENT_TOO_LONG";
+                return false;
+            }
+
+            // Check solution exists
+            Solution dummy;
+            if (!_model.GetSolutionById(solution_id, &dummy))
+            {
+                *err_code = "SOLUTION_NOT_FOUND";
+                return false;
+            }
+
+            Comment c;
+            c.solution_id = solution_id;
+            c.user_id = current_user.uid;
+            c.content = trimmed;
+            c.is_edited = false;
+            // nesting support
+            c.parent_id = parent_id;
+            unsigned long long reply_to_user_id = 0;
+            if (parent_id > 0)
+            {
+                // fetch parent to fill reply_to_user_id and validate same solution
+                Comment parent;
+                if (_model.GetCommentById(parent_id, &parent))
+                {
+                    reply_to_user_id = parent.user_id;
+                    // ensure the parent belongs to the same solution
+                    if (parent.solution_id != solution_id)
+                    {
+                        *err_code = "INVALID_PARENT_SOLUTION";
+                        return false;
+                    }
+                }
+            }
+            c.reply_to_user_id = static_cast<int>(reply_to_user_id);
+
+            unsigned long long new_id = 0;
+            if (!_model.CreateComment(c, &new_id))
+            {
+                *err_code = "CREATE_FAILED";
+                return false;
+            }
+
+            // fetch comment to fill response details
+            Comment created;
+            if (_model.GetCommentById(new_id, &created))
+            {
+                result->clear();
+                (*result) ["success"] = true;
+                (*result)["id"] = Json::UInt64(created.id);
+                (*result)["solution_id"] = Json::UInt64(created.solution_id);
+                (*result)["user_id"] = created.user_id;
+                (*result)["content"] = created.content;
+                (*result)["is_edited"] = created.is_edited;
+                (*result)["created_at"] = created.created_at;
+                // author name
+                User author;
+                if (_model.GetUserById(created.user_id, &author))
+                {
+                    (*result)["author_name"] = author.name;
+                (*result)["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
+                }
+                else
+                {
+                    (*result)["author_name"] = "";
+                    (*result)["author_avatar"] = "/pictures/head.jpg";
+                }
+            }
+            else
+            {
+                // Fallback minimal success payload
+                result->clear();
+                (*result)["success"] = true;
+                (*result)["id"] = Json::UInt64(new_id);
+                (*result)["solution_id"] = Json::UInt64(solution_id);
+                (*result)["content"] = trimmed;
+            }
+            return true;
+        }
+
+        // Comments: get comments for a solution with pagination
+        bool GetComments(unsigned long long solution_id, int page, int size,
+                         Json::Value* result, std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+            {
+                return false;
+            }
+            std::vector<Comment> comments;
+            int total_count = 0;
+            if (!_model.GetCommentsBySolutionId(solution_id, page, size, &comments, &total_count))
+            {
+                *err_code = "DB_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            (*result)["total"] = total_count;
+            int total_pages = (size > 0) ? ((total_count + size - 1) / size) : 0;
+            (*result)["total_pages"] = total_pages;
+            (*result)["page"] = std::max(1, page);
+            (*result)["size"] = size;
+
+            Json::Value list(Json::arrayValue);
+            for (const auto& c : comments)
+            {
+                Json::Value item;
+                item["id"] = Json::UInt64(c.id);
+                item["solution_id"] = Json::UInt64(c.solution_id);
+                item["user_id"] = c.user_id;
+                item["content"] = c.content;
+                item["is_edited"] = c.is_edited;
+                item["created_at"] = c.created_at;
+                item["updated_at"] = c.updated_at;
+                User author;
+                if (_model.GetUserById(c.user_id, &author))
+                {
+                    item["author_name"] = author.name;
+                    item["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
+                }
+                else
+                {
+                    item["author_name"] = "";
+                    item["author_avatar"] = "/pictures/head.jpg";
+                }
+                list.append(item);
+            }
+            (*result)["comments"] = list;
+            return true;
+        }
+
+        // Comments: get top-level comments for a solution with reply counts
+        bool GetTopLevelComments(unsigned long long solution_id, int page, int size,
+                                 Json::Value* result, std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+            {
+                return false;
+            }
+            std::vector<Comment> comments;
+            int total_count = 0;
+            // fetch top-level comments only
+            if (!_model.GetCommentsBySolutionId(solution_id, page, size, &comments, &total_count))
+            {
+                *err_code = "DB_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            (*result)["total"] = total_count;
+            int total_pages = (size > 0) ? ((total_count + size - 1) / size) : 0;
+            (*result)["total_pages"] = total_pages;
+            (*result)["page"] = std::max(1, page);
+            (*result)["size"] = size;
+
+            Json::Value list(Json::arrayValue);
+            for (const auto& c : comments)
+            {
+                Json::Value item;
+                item["id"] = Json::UInt64(c.id);
+                item["solution_id"] = Json::UInt64(c.solution_id);
+                item["user_id"] = c.user_id;
+                item["content"] = c.content;
+                item["is_edited"] = c.is_edited;
+                item["created_at"] = c.created_at;
+                item["updated_at"] = c.updated_at;
+                // author info
+                User author;
+                if (_model.GetUserById(c.user_id, &author))
+                {
+                    item["author_name"] = author.name;
+                    item["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
+                }
+                else
+                {
+                    item["author_name"] = "";
+                    item["author_avatar"] = "/pictures/head.jpg";
+                }
+                // reply count for this top-level comment
+                std::vector<Comment> tmp_replies;
+                int tmp_total = 0;
+                if (_model.GetCommentReplies(c.id, 1, 1000000, &tmp_replies, &tmp_total))
+                {
+                    item["reply_count"] = tmp_total;
+                }
+                else
+                {
+                    item["reply_count"] = 0;
+                }
+                list.append(item);
+            }
+            (*result)["comments"] = list;
+            return true;
+        }
+
+        // Comments: get replies for a given top-level comment (child comments)
+        bool GetCommentReplies(unsigned long long parent_id, int page, int size,
+                               Json::Value* result, std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+            {
+                return false;
+            }
+            std::vector<Comment> replies;
+            int total_count = 0;
+            if (!_model.GetCommentReplies(parent_id, page, size, &replies, &total_count))
+            {
+                *err_code = "DB_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            (*result)["total"] = total_count;
+            int total_pages = (size > 0) ? ((total_count + size - 1) / size) : 0;
+            (*result)["total_pages"] = total_pages;
+            (*result)["page"] = std::max(1, page);
+            (*result)["size"] = size;
+
+            Json::Value list(Json::arrayValue);
+            for (const auto& r : replies)
+            {
+                Json::Value item;
+                item["id"] = Json::UInt64(r.id);
+                item["solution_id"] = Json::UInt64(r.solution_id);
+                item["user_id"] = r.user_id;
+                item["content"] = r.content;
+                item["is_edited"] = r.is_edited;
+                item["created_at"] = r.created_at;
+                item["updated_at"] = r.updated_at;
+                User author;
+                if (_model.GetUserById(r.user_id, &author))
+                {
+                    item["author_name"] = author.name;
+                    item["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
+                }
+                else
+                {
+                    item["author_name"] = "";
+                    item["author_avatar"] = "/pictures/head.jpg";
+                }
+                list.append(item);
+            }
+            (*result)["comments"] = list;
+            return true;
+        }
+
+        // Comments: edit a comment (owner only)
+        bool EditComment(unsigned long long comment_id, const User& current_user,
+                         const std::string& content, Json::Value* result, std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+            {
+                return false;
+            }
+            std::string trimmed = TrimSpace(content);
+            if (trimmed.empty())
+            {
+                *err_code = "CONTENT_REQUIRED";
+                return false;
+            }
+            if (trimmed.size() > 1000)
+            {
+                *err_code = "CONTENT_TOO_LONG";
+                return false;
+            }
+
+            Comment c;
+            if (!_model.GetCommentById(comment_id, &c))
+            {
+                *err_code = "NOT_FOUND";
+                return false;
+            }
+            if (c.user_id != current_user.uid)
+            {
+                *err_code = "FORBIDDEN";
+                return false;
+            }
+
+            if (!_model.UpdateComment(comment_id, current_user.uid, trimmed))
+            {
+                *err_code = "UPDATE_FAILED";
+                return false;
+            }
+
+            Comment updated;
+            if (_model.GetCommentById(comment_id, &updated))
+            {
+                (*result)["success"] = true;
+                (*result)["id"] = Json::UInt64(updated.id);
+                (*result)["content"] = updated.content;
+                (*result)["is_edited"] = updated.is_edited;
+                (*result)["updated_at"] = updated.updated_at;
+            }
+            else
+            {
+                (*result)["success"] = true;
+                (*result)["id"] = Json::UInt64(comment_id);
+            }
+            return true;
+        }
+
+        // Comments: delete a comment (owner or admin)
+        bool DeleteComment(unsigned long long comment_id, const User& current_user,
+                           Json::Value* result, std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+            {
+                return false;
+            }
+            Comment c;
+            if (!_model.GetCommentById(comment_id, &c))
+            {
+                *err_code = "NOT_FOUND";
+                return false;
+            }
+            bool is_admin = _model.GetAdminByUid(current_user.uid);
+            if (c.user_id != current_user.uid && !is_admin)
+            {
+                *err_code = "FORBIDDEN";
+                return false;
+            }
+            if (!_model.DeleteComment(comment_id, current_user.uid, is_admin))
+            {
+                *err_code = "DELETE_FAILED";
+                return false;
+            }
+            (*result)["success"] = true;
             return true;
         }
 
@@ -1158,6 +1525,7 @@ namespace ns_control
                 item["question_id"] = s.question_id;
                 item["user_id"] = s.user_id;
                 item["title"] = s.title;
+                item["content_md"] = s.content_md;
                 item["like_count"] = s.like_count;
                 item["favorite_count"] = s.favorite_count;
                 item["comment_count"] = s.comment_count;
@@ -1168,10 +1536,12 @@ namespace ns_control
                 if (_model.GetUserById(s.user_id, &author))
                 {
                     item["author_name"] = author.name;
+                    item["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
                 }
                 else
                 {
                     item["author_name"] = "";
+                    item["author_avatar"] = "/pictures/head.jpg";
                 }
 
                 items.append(item);
@@ -1213,10 +1583,12 @@ namespace ns_control
             if (_model.GetUserById(solution.user_id, &author))
             {
                 (*result)["author_name"] = author.name;
+                (*result)["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
             }
             else
             {
                 (*result)["author_name"] = "";
+                (*result)["author_avatar"] = "/pictures/head.jpg";
             }
 
             return true;
@@ -1295,7 +1667,7 @@ namespace ns_control
             (*result)["favorite_count"] = new_count;
             return true;
         }
-
+        
         bool GetUserSolutionActions(long long solution_id,
                                     int user_id,
                                     Json::Value* result)
@@ -1314,6 +1686,115 @@ namespace ns_control
 
             (*result)["liked"] = actions.count(solution_id) > 0 && actions[solution_id].count("like") > 0;
             (*result)["favorited"] = actions.count(solution_id) > 0 && actions[solution_id].count("favorite") > 0;
+            return true;
+        }
+
+        // Comments: toggle like on a comment
+        bool ToggleCommentLike(unsigned long long comment_id,
+                               const User& current_user,
+                               Json::Value* result,
+                               std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+            {
+                return false;
+            }
+
+            if (current_user.uid <= 0)
+            {
+                *err_code = "UNAUTHORIZED";
+                return false;
+            }
+
+            Comment c;
+            if (!_model.GetCommentById(comment_id, &c))
+            {
+                *err_code = "COMMENT_NOT_FOUND";
+                return false;
+            }
+
+            bool now_active = false;
+            unsigned int new_count = 0;
+            if (!_model.ToggleCommentAction(comment_id, current_user.uid, "like", &now_active, &new_count))
+            {
+                *err_code = "DB_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            (*result)["liked"] = now_active;
+            (*result)["like_count"] = new_count;
+            return true;
+        }
+
+        // Comments: toggle favorite on a comment
+        bool ToggleCommentFavorite(unsigned long long comment_id,
+                                   const User& current_user,
+                                   Json::Value* result,
+                                   std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+            {
+                return false;
+            }
+
+            if (current_user.uid <= 0)
+            {
+                *err_code = "UNAUTHORIZED";
+                return false;
+            }
+
+            Comment c;
+            if (!_model.GetCommentById(comment_id, &c))
+            {
+                *err_code = "COMMENT_NOT_FOUND";
+                return false;
+            }
+
+            bool now_active = false;
+            unsigned int new_count = 0;
+            if (!_model.ToggleCommentAction(comment_id, current_user.uid, "favorite", &now_active, &new_count))
+            {
+                *err_code = "DB_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            (*result)["favorited"] = now_active;
+            (*result)["favorite_count"] = new_count;
+            return true;
+        }
+
+        // Comments: get actions for multiple comments for a user
+        bool GetCommentActions(const std::vector<unsigned long long>& comment_ids,
+                               int user_id,
+                               Json::Value* result)
+        {
+            if (result == nullptr)
+            {
+                return false;
+            }
+            std::map<unsigned long long, std::map<std::string, bool>> actions;
+            if (!_model.GetCommentActions(comment_ids, user_id, &actions))
+            {
+                return false;
+            }
+
+            (*result)["success"] = true;
+            Json::Value actions_json(Json::objectValue);
+            for (const auto& kv : actions)
+            {
+                Json::Value item(Json::objectValue);
+                auto cid = kv.first;
+                const auto& map = kv.second;
+                auto it_like = map.find("like");
+                auto it_fav = map.find("favorite");
+                item["like"] = (it_like != map.end()) ? it_like->second : false;
+                item["favorite"] = (it_fav != map.end()) ? it_fav->second : false;
+                // use string key to avoid JSONCPP index type issues
+                actions_json[std::to_string(cid)] = item;
+            }
+            (*result)["actions"] = actions_json;
             return true;
         }
 
@@ -1658,6 +2139,216 @@ namespace ns_control
         {
             return _session_manager.GetClearCookieHeader();
         }
+
+        bool UploadAvatar(const User& current_user, const std::string& file_content, const std::string& content_type, Json::Value* result, std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+                return false;
+
+            static const size_t kMaxAvatarSize = 2 * 1024 * 1024;
+            static const std::vector<std::string> kAllowedTypes = {"image/jpeg", "image/png", "image/gif", "image/webp"};
+
+            bool type_allowed = false;
+            for (const auto& t : kAllowedTypes)
+            {
+                if (content_type == t)
+                {
+                    type_allowed = true;
+                    break;
+                }
+            }
+            if (!type_allowed)
+            {
+                *err_code = "INVALID_TYPE";
+                return false;
+            }
+
+            if (file_content.size() > kMaxAvatarSize)
+            {
+                *err_code = "FILE_TOO_LARGE";
+                return false;
+            }
+
+            std::string ext;
+            if (content_type == "image/jpeg") ext = "jpg";
+            else if (content_type == "image/png") ext = "png";
+            else if (content_type == "image/gif") ext = "gif";
+            else ext = "webp";
+
+            std::string filename = std::to_string(current_user.uid) + "_" + ns_util::TimeUtil::GetTimeMs() + "." + ext;
+            std::string relative_path = std::string("/pictures/avatars/") + filename;
+            std::string absolute_dir = std::string(HTML_PATH) + "pictures/avatars/";
+
+            struct stat st;
+            if (stat(absolute_dir.c_str(), &st) != 0)
+            {
+                mkdir(absolute_dir.c_str(), 0755);
+            }
+
+            std::string absolute_path = std::string(HTML_PATH) + relative_path.substr(1);
+            if (!ns_util::FileUtil::WriteFile(absolute_path, file_content))
+            {
+                *err_code = "SAVE_FAILED";
+                return false;
+            }
+
+            if (!_model.UpdateUserAvatar(current_user.uid, relative_path))
+            {
+                unlink(absolute_path.c_str());
+                *err_code = "DB_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            (*result)["avatar_url"] = relative_path;
+            _model.SetCachedStringByAnyKey("avatar:user:" + std::to_string(current_user.uid), relative_path, 3600);
+            return true;
+        }
+
+        bool DeleteAvatar(const User& current_user, Json::Value* result, std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+                return false;
+
+            if (!_model.UpdateUserAvatar(current_user.uid, ""))
+            {
+                *err_code = "DB_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            _model.SetCachedStringByAnyKey("avatar:user:" + std::to_string(current_user.uid), "", 3600);
+            return true;
+        }
+
+        bool GetUserSubmits(const std::string& question_id, const User& current_user, Json::Value* result, std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+                return false;
+
+            Json::Value submits(Json::arrayValue);
+            if (!_model.GetUserSubmitsByQuestion(current_user.uid, question_id, &submits))
+            {
+                *err_code = "DB_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            (*result)["submits"] = submits;
+            return true;
+        }
+
+        bool GetSampleTests(const std::string& question_id, Json::Value* result, std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+                return false;
+
+            Question q;
+            if (!_model.GetOneQuestion(question_id, q))
+            {
+                *err_code = "QUESTION_NOT_FOUND";
+                return false;
+            }
+
+            Json::Value tests(Json::arrayValue);
+            if (!_model.GetSampleTestsByQuestionId(question_id, &tests))
+            {
+                *err_code = "DB_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            (*result)["tests"] = tests;
+            return true;
+        }
+
+        bool RunSingleTest(const std::string& question_id, const std::string& code,
+                          int test_case_id, const std::string& test_type,
+                          const std::string& custom_input,
+                          const User& current_user,
+                          Json::Value* result, std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+                return false;
+
+            std::string test_input;
+            std::string test_output;
+
+            if (test_type == "sample")
+            {
+                if (!_model.GetTestById(test_case_id, question_id, &test_input, &test_output))
+                {
+                    *err_code = "TEST_NOT_FOUND";
+                    return false;
+                }
+            }
+            else if (test_type == "custom")
+            {
+                test_input = custom_input;
+                test_output = "";
+            }
+            else
+            {
+                *err_code = "INVALID_TEST_TYPE";
+                return false;
+            }
+
+            Question q;
+            if (!_model.GetOneQuestion(question_id, q))
+            {
+                *err_code = "QUESTION_NOT_FOUND";
+                return false;
+            }
+
+            Json::Value compile_value;
+            compile_value["id"] = question_id;
+            compile_value["code"] = code;
+            Json::FastWriter writer;
+            std::string compile_string = writer.write(compile_value);
+
+            std::string out_json;
+            // Forward custom_input and custom_output to judge path
+            Judge(question_id, compile_string, &out_json, test_input, test_output);
+
+            Json::Value judge_result;
+            Json::Reader reader;
+            if (!reader.parse(out_json, judge_result))
+            {
+                *err_code = "JUDGE_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            (*result)["status"] = judge_result.isMember("status") ? judge_result["status"].asString() : "UNKNOWN";
+            (*result)["desc"] = judge_result.isMember("desc") ? judge_result["desc"].asString() : "";
+            if (judge_result.isMember("stdout"))
+            {
+                (*result)["stdout"] = judge_result["stdout"].asString();
+            }
+            if (judge_result.isMember("stderr"))
+            {
+                (*result)["stderr"] = judge_result["stderr"].asString();
+            }
+            (*result)["input"] = test_input;
+            (*result)["expected_output"] = test_output;
+            return true;
+        }
+
+        bool GetUserStats(const User& current_user, Json::Value* result, std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+                return false;
+
+            Json::Value stats;
+            if (!_model.GetUserStats(current_user.uid, &stats))
+            {
+                *err_code = "DB_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            (*result)["stats"] = stats;
+            return true;
+        }
     };
 };
-

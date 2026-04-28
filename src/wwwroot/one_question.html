@@ -682,6 +682,126 @@
             transform: translateY(-2px);
         }
 
+        .test-panel, .submit-panel {
+            background: #2D2F2C;
+            border-radius: 10px;
+            padding: 16px;
+            color: #F4F6F0;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .test-panel h4, .submit-panel h4 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            color: #F4F6F0;
+            border-bottom: 1px solid rgba(244, 246, 240, 0.15);
+            padding-bottom: 8px;
+        }
+
+        .test-case-item {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+
+        .test-case-item .label {
+            color: #4CAF50;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .test-case-item pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 6px;
+            margin: 4px 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .test-case-select {
+            margin-bottom: 12px;
+        }
+
+        .test-case-select select {
+            background: rgba(255, 255, 255, 0.1);
+            color: #F4F6F0;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        .submit-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .submit-item .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-right: 12px;
+        }
+
+        .submit-item .status-badge.pass {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+
+        .submit-item .status-badge.fail {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .submit-item .submit-time {
+            color: rgba(244, 246, 240, 0.5);
+            font-size: 12px;
+            margin-left: auto;
+        }
+
+        .test-result-panel {
+            margin-top: 12px;
+        }
+
+        .test-result-panel .result-status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .test-result-panel .result-status.pass {
+            background: rgba(76, 175, 80, 0.15);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+        }
+
+        .test-result-panel .result-status.fail {
+            background: rgba(244, 67, 54, 0.15);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            color: #f44336;
+        }
+
+        .test-result-panel .result-section {
+            margin-top: 12px;
+        }
+
+        .test-result-panel .result-section pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
         .info-box {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
@@ -986,6 +1106,698 @@
             font-size: 13px;
         }
 
+        /* Inline solution detail */
+        #solution-content-area {
+            display: none;
+        }
+        #solution-content-area.active {
+            display: block;
+        }
+        .sol-detail-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(244,246,240,0.6);
+            font-size: 14px;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            padding: 4px 0 16px 0;
+            transition: color 0.2s;
+            background: none;
+            border: none;
+            font-family: inherit;
+        }
+        .sol-detail-back:hover {
+            color: #F4F6F0;
+        }
+        .sol-detail-header {
+            display: flex;
+            gap: 14px;
+            padding: 16px 0;
+        }
+        .sol-detail-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(76,175,80,0.15);
+            color: #4CAF50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+        .sol-detail-meta {
+            flex: 1;
+            min-width: 0;
+        }
+        .sol-detail-author {
+            color: rgba(244,246,240,0.6);
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        .sol-detail-title {
+            color: #F4F6F0;
+            font-size: 22px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+        .sol-detail-actions {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+        }
+        .sol-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(244,246,240,0.12);
+            background: rgba(255,255,255,0.05);
+            color: rgba(244,246,240,0.7);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .sol-action-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: #F4F6F0;
+        }
+        .sol-action-btn.active {
+            background: rgba(76,175,80,0.15);
+            color: #4CAF50;
+            border-color: rgba(76,175,80,0.3);
+        }
+        .sol-detail-divider {
+            border: none;
+            border-top: 1px solid rgba(244,246,240,0.08);
+            margin: 0;
+        }
+        .sol-detail-body {
+            padding: 24px 0;
+            color: rgba(244,246,240,0.85);
+            line-height: 1.8;
+            font-size: 15px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            letter-spacing: 0.02em;
+        }
+        .sol-detail-body h1,.sol-detail-body h2,.sol-detail-body h3,.sol-detail-body h4 {
+            color: #F4F6F0;
+            margin: 16px 0 8px 0;
+        }
+        .sol-detail-body code {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .sol-detail-body pre {
+            background: rgba(0,0,0,0.3);
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+        .sol-detail-body pre code {
+            background: none;
+            padding: 0;
+        }
+        .sol-detail-body a {
+            color: #4CAF50;
+        }
+        .sol-detail-body blockquote {
+            border-left: 3px solid rgba(76,175,80,0.4);
+            padding-left: 12px;
+            color: rgba(244,246,240,0.7);
+            margin: 12px 0;
+        }
+        .sol-detail-body ul,.sol-detail-body ol {
+            padding-left: 20px;
+            margin: 8px 0;
+        }
+        .sol-detail-body img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        .sol-detail-body table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 12px 0;
+        }
+        .sol-detail-body th,.sol-detail-body td {
+            border: 1px solid rgba(244,246,240,0.15);
+            padding: 8px 12px;
+        }
+        .sol-detail-body th {
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* Inline comments */
+        .sol-comments-section {
+            margin-top: 24px;
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+        }
+        .sol-comments-section h3 {
+            color: #F4F6F0;
+            margin-bottom: 16px;
+            font-size: 16px;
+            font-weight: 400;
+        }
+        .sol-comment-textarea {
+            width: 100%;
+            min-height: 80px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(76,175,80,0.3);
+            border-radius: 8px;
+            padding: 12px;
+            color: #F4F6F0;
+            resize: vertical;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        .sol-comment-textarea:focus {
+            outline: none;
+            border-color: rgba(76,175,80,0.5);
+        }
+        .sol-comment-textarea::placeholder {
+            color: rgba(244,246,240,0.4);
+        }
+        .sol-comment-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
+        .sol-char-count {
+            color: rgba(244,246,240,0.5);
+            font-size: 12px;
+        }
+        .sol-submit-comment-btn {
+            background: rgba(76,175,80,0.9);
+            color: #000;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        .sol-submit-comment-btn:hover {
+            background: rgba(76,175,80,1);
+        }
+        .sol-comment-item {
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .sol-comment-item:last-child {
+            border-bottom: none;
+        }
+        .sol-comment-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        .sol-comment-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(76,175,80,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #F4F6F0;
+            font-weight: bold;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        .sol-comment-author {
+            color: #F4F6F0;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .sol-comment-time {
+            color: rgba(244,246,240,0.5);
+            font-size: 12px;
+        }
+        .sol-comment-edited {
+            color: rgba(244,246,240,0.4);
+            font-size: 12px;
+            margin-left: 4px;
+        }
+        .sol-comment-content {
+            color: rgba(244,246,240,0.9);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            font-size: 14px;
+            margin-left: 42px;
+        }
+        .sol-comment-actions {
+            margin-left: 42px;
+            margin-top: 6px;
+        }
+        .sol-comment-actions button {
+            background: transparent;
+            border: 1px solid rgba(76,175,80,0.5);
+            color: rgba(76,175,80,0.9);
+            padding: 3px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 6px;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .sol-comment-actions button:hover {
+            background: rgba(76,175,80,0.15);
+        }
+        .sol-login-prompt {
+            color: rgba(244,246,240,0.6);
+            font-size: 13px;
+            text-align: center;
+            padding: 12px 0;
+        }
+        .sol-login-prompt a {
+            color: #4CAF50;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .sol-login-prompt a:hover {
+            color: #81C784;
+        }
+        .sol-comments-loading {
+            text-align: center;
+            color: rgba(244,246,240,0.5);
+            padding: 20px 0;
+            font-size: 13px;
+        }
+        .sol-detail-loading {
+            text-align: center;
+            color: rgba(244,246,240,0.5);
+            padding: 60px 0;
+        }
+
+    /* Bottom Panel */
+        .bottom-panel {
+            display: none;
+            margin-top: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(244, 246, 240, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+            animation: fadeIn 0.3s ease;
+            max-height: 350px;
+            flex-shrink: 0;
+        }
+
+        .bottom-panel.visible {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(244, 246, 240, 0.1);
+            flex-shrink: 0;
+        }
+
+        .panel-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .panel-tab {
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: rgba(244, 246, 240, 0.5);
+            font-size: 12px;
+            background: none;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            letter-spacing: 0.02em;
+        }
+
+        .panel-tab.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #F4F6F0;
+            border-color: rgba(244, 246, 240, 0.2);
+        }
+
+        .panel-tab:hover {
+            color: rgba(244, 246, 240, 0.8);
+        }
+
+        .panel-close {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: none;
+            border: none;
+            color: rgba(244, 246, 240, 0.4);
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+
+        .panel-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #F4F6F0;
+        }
+
+        .panel-body {
+            overflow-y: auto;
+            padding: 14px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .panel-loading, .panel-empty, .panel-error {
+            text-align: center;
+            padding: 24px 0;
+            font-size: 13px;
+        }
+
+        .panel-loading { color: rgba(244, 246, 240, 0.5); }
+        .panel-empty { color: rgba(244, 246, 240, 0.4); }
+        .panel-error { color: #F44336; }
+
+        /* Test Cases */
+        .test-case-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .test-case-item {
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(244, 246, 240, 0.08);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .test-case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: rgba(244, 246, 240, 0.8);
+            transition: background 0.2s ease;
+        }
+
+        .test-case-header:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .test-case-toggle {
+            font-size: 11px;
+            color: rgba(244, 246, 240, 0.4);
+        }
+
+        .test-case-body {
+            display: none;
+            padding: 0 12px 12px;
+        }
+
+        .test-case-body.expanded {
+            display: block;
+        }
+
+        .test-case-label {
+            font-size: 11px;
+            color: rgba(244, 246, 240, 0.4);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .test-case-content {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: rgba(244, 246, 240, 0.85);
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        .test-case-radio {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border: 1px solid rgba(244, 246, 240, 0.3);
+            border-radius: 50%;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+            vertical-align: middle;
+        }
+
+        .test-case-radio:checked {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .test-case-radio:checked::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #4CAF50;
+        }
+
+        /* Custom Input */
+        .custom-input-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(244, 246, 240, 0.08);
+        }
+
+        .custom-input-section textarea {
+            width: 100%;
+            min-height: 60px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(244, 246, 240, 0.15);
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: #F4F6F0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            resize: vertical;
+            margin-top: 8px;
+        }
+
+        .custom-input-section textarea:focus {
+            outline: none;
+            border-color: rgba(244, 246, 240, 0.3);
+        }
+
+        .custom-input-section textarea::placeholder {
+            color: rgba(244, 246, 240, 0.3);
+        }
+
+        /* Run Test Button */
+        .run-test-btn {
+            padding: 6px 16px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 6px;
+            color: #4CAF50;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0.02em;
+        }
+
+        .run-test-btn:hover {
+            background: rgba(76, 175, 80, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .run-test-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Test Results */
+        .test-result-item {
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(244, 246, 240, 0.08);
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+        }
+
+        .test-result-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .test-result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .result-status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+        }
+
+        .result-status-badge.pass {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .result-status-badge.fail {
+            background: rgba(244, 67, 54, 0.2);
+            color: #F44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+
+        .result-status-badge.error {
+            background: rgba(255, 152, 0, 0.2);
+            color: #FF9800;
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
+        .result-output-section {
+            margin-top: 8px;
+        }
+
+        .result-output-label {
+            font-size: 11px;
+            color: rgba(244, 246, 240, 0.4);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .result-output-content {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: rgba(244, 246, 240, 0.85);
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        /* Submission Records */
+        .submission-record-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .submission-record-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(244, 246, 240, 0.08);
+            border-radius: 8px;
+            transition: background 0.2s ease;
+        }
+
+        .submission-record-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .submission-record-left {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .submission-record-time {
+            font-size: 12px;
+            color: rgba(244, 246, 240, 0.5);
+        }
+
+        .submission-record-summary {
+            font-size: 13px;
+            color: rgba(244, 246, 240, 0.8);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+        }
+
+        .submission-record-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 400;
+            flex-shrink: 0;
+            letter-spacing: 0.02em;
+        }
+
+        .badge-pass {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .badge-fail {
+            background: rgba(244, 67, 54, 0.2);
+            color: #F44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+
+        /* Option button active state */
+        .option-btn.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(244, 246, 240, 0.3);
+            color: #F4F6F0;
+        }
+
+        @media (max-width: 768px) {
+            .bottom-panel {
+                max-height: 280px;
+            }
+            .submission-record-summary {
+                max-width: 160px;
+            }
+            .test-case-body .test-case-content {
+                font-size: 11px;
+            }
+        }
 
     </style>
 </head>
@@ -1055,6 +1867,7 @@
                         <div id="solutions-container">
                             <div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">加载中...</div>
                         </div>
+                        <div id="solution-content-area"></div>
                     </div>
                 </div>
             </div>
@@ -1075,9 +1888,9 @@
                         <div class="resizer-vertical" id="verticalResizer"></div>
                         <div class="submit-section" style="flex: 1; min-height: 100px;">
                             <div class="info-option">
-                                <button type="button" class="option-btn">测试结果</button>
-                                <button type="button" class="option-btn">测试用例</button>
-                                <button type="button" class="option-btn">提交记录</button>
+                                <button type="button" class="option-btn" id="btn-test-result">测试结果</button>
+                                <button type="button" class="option-btn" id="btn-test-cases">测试用例</button>
+                                <button type="button" class="option-btn" id="btn-submit-history">提交记录</button>
                             </div>
                             <div class="jump-option">
                                 <a href="/all_questions" class="option-btn">返回题库</a>
@@ -1087,10 +1900,24 @@
                         </div>
                         <textarea name="code" id="code" style="display: none;"></textarea>
                     </form>
+            <div id="bottom-panel" class="bottom-panel">
+                <div class="panel-header">
+                    <div class="panel-tabs">
+                        <button class="panel-tab active" data-panel-tab="test-cases">测试用例</button>
+                        <button class="panel-tab" data-panel-tab="test-results">测试结果</button>
+                        <button class="panel-tab" data-panel-tab="submissions">提交记录</button>
+                    </div>
+                    <button class="panel-close" id="panel-close" title="关闭">&times;</button>
+                </div>
+                <div class="panel-body" id="panel-body">
+                    <div class="panel-empty">点击上方按钮开始</div>
+                </div>
+            </div>
             </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.13/ace.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         // 涟漪效果
         const interactiveElements = document.querySelectorAll('a, button, .rain-toggle');
@@ -1310,74 +2137,864 @@
             // 检查用户是否通过该题
             function loadPassStatus(qid) {
                 var container = document.getElementById('solutions-container');
-                fetch('/api/question/' + qid + '/pass_status', {credentials:'include'})
+                return fetch('/api/question/' + qid + '/pass_status', {credentials:'include'})
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
                         var statusHtml = '';
                         if (data.logged_in) {
                             if (data.passed) {
                                 statusHtml = '<div style="padding:12px 16px;margin-bottom:16px;border-radius:10px;background:rgba(76,175,80,0.12);border:1px solid rgba(76,175,80,0.25);display:flex;align-items:center;justify-content:space-between;">';
-                                statusHtml += '<span style="color:#90ee90;font-size:13px;">恭喜你通过了该题！</span>';
-                                statusHtml += '<a href="/questions/' + qid + '/solutions/new" class="publish-solution-btn" style="margin-bottom:0;">发布题解</a>';
+                                statusHtml += '<span style="color:#90ee90;font-size:13px;">\u606d\u559c\u4f60\u901a\u8fc7\u4e86\u8be5\u9898\uff01</span>';
+                                statusHtml += '<a href="/questions/' + qid + '/solutions/new" class="publish-solution-btn" style="margin-bottom:0;">\u53d1\u5e03\u9898\u89e3</a>';
                                 statusHtml += '</div>';
                             } else {
-                                statusHtml = '<div style="padding:12px 16px;margin-bottom:16px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(244,246,240,0.1);color:rgba(244,246,240,0.6);font-size:13px;text-align:center;">你还未通过该题，赶紧试试吧！</div>';
+                                statusHtml = '<div style="padding:12px 16px;margin-bottom:16px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(244,246,240,0.1);color:rgba(244,246,240,0.6);font-size:13px;text-align:center;">\u4f60\u8fd8\u672a\u901a\u8fc7\u8be5\u9898\uff0c\u8d76\u7d27\u8bd5\u8bd5\u5427\uff01</div>';
                             }
                         }
-                        container.setAttribute('data-pass-status', statusHtml);
+                        return statusHtml;
                     })
-                    .catch(function() {});
+                    .catch(function() {
+                        return '';
+                    });
             }
 
             window.loadSolutions = function(qid, page, sort) {
                 solutionsPage = page;
                 solutionsSort = sort || 'latest';
                 var container = document.getElementById('solutions-container');
-                container.innerHTML = '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">加载中...</div>';
+                container.innerHTML = '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">\u52a0\u8f7d\u4e2d...</div>';
 
-                // 异步加载pass状态
-                loadPassStatus(qid);
+                // 先加载 pass 状态，再加载题解列表
+                loadPassStatus(qid).then(function(passStatusHtml) {
+                    fetch('/api/questions/' + qid + '/solutions?page=' + solutionsPage + '&size=10&sort=' + solutionsSort, {credentials:'include'})
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (!data.success) {
+                                container.innerHTML = passStatusHtml + '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">\u6682\u65e0\u9898\u89e3</div>';
+                                return;
+                            }
+                            var solutions = data.solutions || [];
+                            if (solutions.length === 0) {
+                                container.innerHTML = passStatusHtml + '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">\u6682\u65e0\u9898\u89e3\uff0c\u6765\u505a\u7b2c\u4e00\u4e2a\u5427\uff01</div>';
+                                return;
+                            }
+                            var html = passStatusHtml;
+                            solutions.forEach(function(s) {
+                                var initial = (s.author_name && s.author_name.charAt(0)) || '?';
+                                var excerpt = s.content_md ? s.content_md.substring(0, 100).replace(/\n/g, ' ') + '...' : '';
+                                html += '<div class="solution-item" onclick="showSolutionDetail(' + s.id + ')">';
+                                html += '<div class="solution-avatar">' + initial + '</div>';
+                                html += '<div class="solution-info">';
+                                html += '<div class="solution-author">' + (s.author_name || '') + '</div>';
+                                html += '<div class="solution-title-text">' + (s.title || '') + '</div>';
+                                html += '<div class="solution-excerpt">' + excerpt + '</div>';
+                                html += '<div class="solution-stats"><span>\u2764 ' + s.like_count + '</span><span>\ud83d\udcac ' + s.comment_count + '</span><span>\u2b50 ' + s.favorite_count + '</span></div>';
+                                html += '</div></div>';
+                                html += '<hr class="solution-divider">';
+                            });
+                            if (data.total_pages > 1) {
+                                html += '<div class="solutions-pagination">';
+                                html += '<button onclick="loadSolutions(\'' + qid + '\',' + Math.max(1, solutionsPage - 1) + ',\'' + solutionsSort + '\')"' + (solutionsPage <= 1 ? ' disabled' : '') + '>\u4e0a\u4e00\u9875</button>';
+                                html += '<span>' + solutionsPage + ' / ' + data.total_pages + '</span>';
+                                html += '<button onclick="loadSolutions(\'' + qid + '\',' + Math.min(data.total_pages, solutionsPage + 1) + ',\'' + solutionsSort + '\')"' + (solutionsPage >= data.total_pages ? ' disabled' : '') + '>\u4e0b\u4e00\u9875</button>';
+                                html += '</div>';
+                            }
+                            container.innerHTML = html;
+                        })
+                        .catch(function() {
+                            container.innerHTML = passStatusHtml + '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5</div>';
+                        });
+                });
+            };
+        })();
 
-                fetch('/api/questions/' + qid + '/solutions?page=' + solutionsPage + '&size=10&sort=' + solutionsSort, {credentials:'include'})
+        // ── Inline solution detail ──
+        (function() {
+            var currentDetailId = null;
+            var commentCurrentUser = null;
+            var commentPage = 1;
+            var commentHasMore = true;
+            var commentIsLoading = false;
+
+            function getQuestionId() {
+                var m = window.location.pathname.match(/\/questions\/(\d+)/);
+                return m ? m[1] : '';
+            }
+
+            function formatRelativeTime(timestamp) {
+                var date = new Date(timestamp);
+                var now = new Date();
+                var diff = Math.floor((now - date) / 1000);
+                if (diff < 60) return '\u521a\u521a';
+                if (diff < 3600) return Math.floor(diff / 60) + '\u5206\u949f\u524d';
+                if (diff < 86400) return Math.floor(diff / 3600) + '\u5c0f\u65f6\u524d';
+                if (diff < 604800) return Math.floor(diff / 86400) + '\u5929\u524d';
+                return date.toLocaleDateString('zh-CN');
+            }
+
+            function escapeHtml(str) {
+                var div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            window.showSolutionDetail = function(solutionId) {
+                currentDetailId = solutionId;
+                var solutionsContainer = document.getElementById('solutions-container');
+                var detailArea = document.getElementById('solution-content-area');
+
+                // Show loading state
+                detailArea.innerHTML = '<div class="sol-detail-loading">\u52a0\u8f7d\u4e2d...</div>';
+                detailArea.classList.add('active');
+                solutionsContainer.style.display = 'none';
+
+                // Update URL
+                var qid = getQuestionId();
+                history.pushState({ solutionDetail: solutionId }, '', '/questions/' + qid + '/solutions/' + solutionId);
+
+                // Fetch solution detail
+                fetch('/api/solutions/' + solutionId, { credentials: 'include' })
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
-                        var passStatusHtml = container.getAttribute('data-pass-status') || '';
                         if (!data.success) {
-                            container.innerHTML = passStatusHtml + '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">暂无题解</div>';
+                            detailArea.innerHTML = '<div class="sol-detail-loading">' + (data.error_code || '\u52a0\u8f7d\u5931\u8d25') + '</div>';
                             return;
                         }
-                        var solutions = data.solutions || [];
-                        if (solutions.length === 0) {
-                            container.innerHTML = passStatusHtml + '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">暂无题解，来做第一个吧！</div>';
-                            return;
-                        }
-                        var html = passStatusHtml;
-                        solutions.forEach(function(s) {
-                            var initial = (s.author_name && s.author_name.charAt(0)) || '?';
-                            var excerpt = s.content_md ? s.content_md.substring(0, 100).replace(/\n/g, ' ') + '...' : '';
-                            html += '<div class="solution-item" onclick="window.location.href=\'/solutions/' + s.id + '\'">';
-                            html += '<div class="solution-avatar">' + initial + '</div>';
-                            html += '<div class="solution-info">';
-                            html += '<div class="solution-author">' + (s.author_name || '') + '</div>';
-                            html += '<div class="solution-title-text">' + (s.title || '') + '</div>';
-                            html += '<div class="solution-excerpt">' + excerpt + '</div>';
-                            html += '<div class="solution-stats"><span>\u2764 ' + s.like_count + '</span><span>\ud83d\udcac ' + s.comment_count + '</span><span>\u2b50 ' + s.favorite_count + '</span></div>';
-                            html += '</div></div>';
-                            html += '<hr class="solution-divider">';
-                        });
-                        if (data.total_pages > 1) {
-                            html += '<div class="solutions-pagination">';
-                            html += '<button onclick="loadSolutions(\'' + qid + '\',' + Math.max(1, solutionsPage - 1) + ',\'' + solutionsSort + '\')"' + (solutionsPage <= 1 ? ' disabled' : '') + '>上一页</button>';
-                            html += '<span>' + solutionsPage + ' / ' + data.total_pages + '</span>';
-                            html += '<button onclick="loadSolutions(\'' + qid + '\',' + Math.min(data.total_pages, solutionsPage + 1) + ',\'' + solutionsSort + '\')"' + (solutionsPage >= data.total_pages ? ' disabled' : '') + '>下一页</button>';
-                            html += '</div>';
-                        }
-                        container.innerHTML = html;
+                        renderSolutionDetail(data);
+                        loadDetailActions(solutionId);
+                        loadDetailComments(solutionId, 1);
                     })
                     .catch(function() {
-                        container.innerHTML = '<div style="text-align:center;color:rgba(244,246,240,0.5);padding:40px 0;">加载失败，请重试</div>';
+                        detailArea.innerHTML = '<div class="sol-detail-loading">\u7f51\u7edc\u5f02\u5e38\uff0c\u8bf7\u91cd\u8bd5</div>';
                     });
             };
+
+            function renderSolutionDetail(data) {
+                var detailArea = document.getElementById('solution-content-area');
+                var initial = (data.author_name && data.author_name.charAt(0)) || '?';
+                var contentHtml = '';
+                if (typeof marked !== 'undefined' && data.content_md) {
+                    contentHtml = marked.parse(data.content_md);
+                } else {
+                    contentHtml = '<pre>' + escapeHtml(data.content_md || '') + '</pre>';
+                }
+
+                var html = '';
+                html += '<button class="sol-detail-back" onclick="hideSolutionDetail()">&larr; \u8fd4\u56de\u9898\u89e3\u5217\u8868</button>';
+                html += '<div class="sol-detail-header">';
+                html += '<div class="sol-detail-avatar">' + escapeHtml(initial) + '</div>';
+                html += '<div class="sol-detail-meta">';
+                html += '<div class="sol-detail-author">' + escapeHtml(data.author_name || '\u533f\u540d') + '</div>';
+                html += '<div class="sol-detail-title">' + escapeHtml(data.title || '') + '</div>';
+                html += '<div class="sol-detail-actions">';
+                html += '<button class="sol-action-btn" id="sol-like-btn" onclick="toggleDetailLike(' + data.id + ')">&#10084; <span id="sol-like-count">' + (data.like_count || 0) + '</span></button>';
+                html += '<button class="sol-action-btn" id="sol-fav-btn" onclick="toggleDetailFav(' + data.id + ')">&#9733; <span id="sol-fav-count">' + (data.favorite_count || 0) + '</span></button>';
+                html += '</div></div></div>';
+                html += '<hr class="sol-detail-divider">';
+                html += '<div class="sol-detail-body">' + contentHtml + '</div>';
+                html += '<div class="sol-comments-section" id="sol-comments-section">';
+                html += '<h3>\u8bc4\u8bba\u533a <span id="sol-comment-count">(0)</span></h3>';
+                html += '<div id="sol-comment-input-area"></div>';
+                html += '<div id="sol-comment-list"></div>';
+                html += '<div id="sol-comment-loading" class="sol-comments-loading" style="display:none;">\u52a0\u8f7d\u4e2d...</div>';
+                html += '<div id="sol-comment-no-more" class="sol-comments-loading" style="display:none;">\u6ca1\u6709\u66f4\u591a\u8bc4\u8bba\u4e86</div>';
+                html += '</div>';
+
+                detailArea.innerHTML = html;
+                initCommentInput();
+            }
+
+            function loadDetailActions(solutionId) {
+                var isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
+                if (!isLoggedIn) return;
+
+                fetch('/api/solutions/' + solutionId + '/actions', { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            updateDetailActionButtons(data.liked, data.favorited);
+                        }
+                    })
+                    .catch(function() {});
+            }
+
+            function updateDetailActionButtons(liked, favorited) {
+                var likeBtn = document.getElementById('sol-like-btn');
+                var favBtn = document.getElementById('sol-fav-btn');
+                if (!likeBtn || !favBtn) return;
+                if (liked) likeBtn.classList.add('active');
+                else likeBtn.classList.remove('active');
+                if (favorited) favBtn.classList.add('active');
+                else favBtn.classList.remove('active');
+            }
+
+            window.toggleDetailLike = function(solutionId) {
+                var isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
+                if (!isLoggedIn) {
+                    var signInButton = document.getElementById('sign-in-button');
+                    if (signInButton) signInButton.click();
+                    return;
+                }
+                fetch('/api/solutions/' + solutionId + '/like', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        var countEl = document.getElementById('sol-like-count');
+                        if (countEl) countEl.textContent = data.like_count;
+                        var favBtn = document.getElementById('sol-fav-btn');
+                        updateDetailActionButtons(data.liked, favBtn ? favBtn.classList.contains('active') : false);
+                    }
+                })
+                .catch(function() {});
+            };
+
+            window.toggleDetailFav = function(solutionId) {
+                var isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
+                if (!isLoggedIn) {
+                    var signInButton = document.getElementById('sign-in-button');
+                    if (signInButton) signInButton.click();
+                    return;
+                }
+                fetch('/api/solutions/' + solutionId + '/favorite', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        var countEl = document.getElementById('sol-fav-count');
+                        if (countEl) countEl.textContent = data.favorite_count;
+                        var likeBtn = document.getElementById('sol-like-btn');
+                        updateDetailActionButtons(likeBtn ? likeBtn.classList.contains('active') : false, data.favorited);
+                    }
+                })
+                .catch(function() {});
+            };
+
+            // ── Comments ──
+            function initCommentInput() {
+                var inputArea = document.getElementById('sol-comment-input-area');
+                if (!inputArea) return;
+
+                var isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
+                if (isLoggedIn) {
+                    // Check user info for comment ownership
+                    fetch('/api/user/info', { credentials: 'include' })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (data.success) {
+                                commentCurrentUser = data.user;
+                                inputArea.innerHTML = '<textarea class="sol-comment-textarea" id="sol-comment-textarea" maxlength="1000" placeholder="\u8f93\u5165\u8bc4\u8bba..."></textarea>'
+                                    + '<div class="sol-comment-meta"><span class="sol-char-count" id="sol-char-count">0/1000</span>'
+                                    + '<button class="sol-submit-comment-btn" id="sol-submit-comment">\u53d1\u8868</button></div>';
+                                document.getElementById('sol-comment-textarea').addEventListener('input', function(e) {
+                                    document.getElementById('sol-char-count').textContent = e.target.value.length + '/1000';
+                                });
+                                document.getElementById('sol-submit-comment').addEventListener('click', function() {
+                                    submitDetailComment(currentDetailId);
+                                });
+                            } else {
+                                commentCurrentUser = null;
+                                inputArea.innerHTML = '<div class="sol-login-prompt"><a href="#" onclick="document.getElementById(\'sign-in-button\').click(); return false;">\u767b\u5f55</a>\u540e\u53ef\u53d1\u8868\u8bc4\u8bba</div>';
+                            }
+                        })
+                        .catch(function() {
+                            inputArea.innerHTML = '<div class="sol-login-prompt"><a href="#" onclick="document.getElementById(\'sign-in-button\').click(); return false;">\u767b\u5f55</a>\u540e\u53ef\u53d1\u8868\u8bc4\u8bba</div>';
+                        });
+                } else {
+                    inputArea.innerHTML = '<div class="sol-login-prompt"><a href="#" onclick="document.getElementById(\'sign-in-button\').click(); return false;">\u767b\u5f55</a>\u540e\u53ef\u53d1\u8868\u8bc4\u8bba</div>';
+                }
+            }
+
+            function loadDetailComments(solutionId, page) {
+                if (commentIsLoading || !commentHasMore) return;
+                commentIsLoading = true;
+                var loadingEl = document.getElementById('sol-comment-loading');
+                if (loadingEl) loadingEl.style.display = 'block';
+
+                fetch('/api/solutions/' + solutionId + '/comments?page=' + page + '&size=20', { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            var countEl = document.getElementById('sol-comment-count');
+                            if (countEl) countEl.textContent = '(\u5171 ' + data.total + ' \u6761\u8bc4\u8bba)';
+                            if (page === 1) {
+                                var listEl = document.getElementById('sol-comment-list');
+                                if (listEl) listEl.innerHTML = '';
+                            }
+                            data.comments.forEach(function(comment) {
+                                renderDetailComment(comment);
+                            });
+                            commentHasMore = page < data.total_pages;
+                            commentPage = page;
+                            if (!commentHasMore) {
+                                var noMoreEl = document.getElementById('sol-comment-no-more');
+                                if (noMoreEl) noMoreEl.style.display = 'block';
+                            }
+                        }
+                    })
+                    .catch(function(e) {
+                        console.error('\u52a0\u8f7d\u8bc4\u8bba\u5931\u8d25:', e);
+                    })
+                    .finally(function() {
+                        commentIsLoading = false;
+                        if (loadingEl) loadingEl.style.display = 'none';
+                    });
+            }
+
+            function renderDetailComment(comment) {
+                var listEl = document.getElementById('sol-comment-list');
+                if (!listEl) return;
+
+                var isOwner = commentCurrentUser && commentCurrentUser.uid === comment.user_id;
+                var canDelete = isOwner || (commentCurrentUser && commentCurrentUser.is_admin);
+
+                var div = document.createElement('div');
+                div.className = 'sol-comment-item';
+                div.dataset.commentId = comment.id;
+
+                var headerHtml = '<div class="sol-comment-header">';
+                headerHtml += '<div class="sol-comment-avatar">' + escapeHtml((comment.author_name || '?').charAt(0).toUpperCase()) + '</div>';
+                headerHtml += '<span class="sol-comment-author">' + escapeHtml(comment.author_name || '\u533f\u540d') + '</span>';
+                headerHtml += '<span class="sol-comment-time">' + formatRelativeTime(comment.created_at) + '</span>';
+                if (comment.is_edited) {
+                    headerHtml += '<span class="sol-comment-edited">(\u5df2\u7f16\u8f91)</span>';
+                }
+                headerHtml += '</div>';
+
+                var contentHtml = '<div class="sol-comment-content">' + escapeHtml(comment.content) + '</div>';
+
+                var actionsHtml = '';
+                if (isOwner || canDelete) {
+                    actionsHtml = '<div class="sol-comment-actions">';
+                    if (isOwner) {
+                        actionsHtml += '<button onclick="editDetailComment(' + comment.id + ', \'' + escapeHtml(comment.content).replace(/'/g, "\\'") + '\')">\u7f16\u8f91</button>';
+                    }
+                    if (canDelete) {
+                        actionsHtml += '<button onclick="deleteDetailComment(' + comment.id + ')">\u5220\u9664</button>';
+                    }
+                    actionsHtml += '</div>';
+                }
+
+                div.innerHTML = headerHtml + contentHtml + actionsHtml;
+                listEl.appendChild(div);
+            }
+
+            window.editDetailComment = function(commentId, currentContent) {
+                var newContent = prompt('\u7f16\u8f91\u8bc4\u8bba:', currentContent);
+                if (newContent === null || newContent.trim() === currentContent) return;
+                if (newContent.trim().length > 1000) {
+                    alert('\u8bc4\u8bba\u5185\u5bb9\u4e0d\u80fd\u8d85\u8fc71000\u5b57');
+                    return;
+                }
+                fetch('/api/comments/' + commentId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ content: newContent.trim() })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        commentHasMore = true;
+                        commentPage = 1;
+                        var noMoreEl = document.getElementById('sol-comment-no-more');
+                        if (noMoreEl) noMoreEl.style.display = 'none';
+                        loadDetailComments(currentDetailId, 1);
+                    } else {
+                        alert(data.error_code === 'FORBIDDEN' ? '\u65e0\u6743\u64cd\u4f5c' : '\u7f16\u8f91\u5931\u8d25');
+                    }
+                })
+                .catch(function() { alert('\u7f51\u7edc\u9519\u8bef\uff0c\u8bf7\u91cd\u8bd5'); });
+            };
+
+            window.deleteDetailComment = function(commentId) {
+                if (!confirm('\u786e\u5b9a\u8981\u5220\u9664\u8fd9\u6761\u8bc4\u8bba\u5417\uff1f')) return;
+                fetch('/api/comments/' + commentId, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        commentHasMore = true;
+                        commentPage = 1;
+                        var noMoreEl = document.getElementById('sol-comment-no-more');
+                        if (noMoreEl) noMoreEl.style.display = 'none';
+                        loadDetailComments(currentDetailId, 1);
+                    } else {
+                        alert(data.error_code === 'FORBIDDEN' ? '\u65e0\u6743\u64cd\u4f5c' : '\u5220\u9664\u5931\u8d25');
+                    }
+                })
+                .catch(function() { alert('\u7f51\u7edc\u9519\u8bef\uff0c\u8bf7\u91cd\u8bd5'); });
+            };
+
+            function submitDetailComment(solutionId) {
+                var textarea = document.getElementById('sol-comment-textarea');
+                if (!textarea) return;
+                var content = textarea.value.trim();
+                if (!content) {
+                    alert('\u8bc4\u8bba\u5185\u5bb9\u4e0d\u80fd\u4e3a\u7a7a');
+                    return;
+                }
+                if (content.length > 1000) {
+                    alert('\u8bc4\u8bba\u5185\u5bb9\u4e0d\u80fd\u8d85\u8fc71000\u5b57');
+                    return;
+                }
+                fetch('/api/solutions/' + solutionId + '/comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ content: content })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        textarea.value = '';
+                        var charCount = document.getElementById('sol-char-count');
+                        if (charCount) charCount.textContent = '0/1000';
+                        commentHasMore = true;
+                        commentPage = 1;
+                        var noMoreEl = document.getElementById('sol-comment-no-more');
+                        if (noMoreEl) noMoreEl.style.display = 'none';
+                        loadDetailComments(solutionId, 1);
+                    } else {
+                        alert(data.error_code === 'UNAUTHORIZED' ? '\u8bf7\u5148\u767b\u5f55' : '\u53d1\u5e03\u5931\u8d25');
+                    }
+                })
+                .catch(function() { alert('\u7f51\u7edc\u9519\u8bef\uff0c\u8bf7\u91cd\u8bd5'); });
+            }
+
+            window.hideSolutionDetail = function() {
+                var solutionsContainer = document.getElementById('solutions-container');
+                var detailArea = document.getElementById('solution-content-area');
+
+                detailArea.classList.remove('active');
+                detailArea.innerHTML = '';
+                solutionsContainer.style.display = '';
+
+                currentDetailId = null;
+                commentCurrentUser = null;
+                commentPage = 1;
+                commentHasMore = true;
+                commentIsLoading = false;
+
+                // Update URL back to question page
+                var qid = getQuestionId();
+                history.pushState({}, '', '/questions/' + qid + '#solutions-tab');
+            };
+
+            // Handle browser back/forward
+            window.addEventListener('popstate', function(e) {
+                if (e.state && e.state.solutionDetail) {
+                    // User navigated forward to a solution detail
+                    showSolutionDetail(e.state.solutionDetail);
+                } else {
+                    // User navigated back to the list
+                    var solutionsContainer = document.getElementById('solutions-container');
+                    var detailArea = document.getElementById('solution-content-area');
+                    if (detailArea.classList.contains('active')) {
+                        detailArea.classList.remove('active');
+                        detailArea.innerHTML = '';
+                        solutionsContainer.style.display = '';
+                        currentDetailId = null;
+                    }
+                }
+            });
+
+            // Scroll-based comment loading
+            var commentScrollContainer = document.getElementById('tab-solutions');
+            if (commentScrollContainer) {
+                commentScrollContainer.addEventListener('scroll', function() {
+                    if (!currentDetailId) return;
+                    var el = commentScrollContainer;
+                    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 50) {
+                        if (!commentIsLoading && commentHasMore) {
+                            loadDetailComments(currentDetailId, commentPage + 1);
+                        }
+                    }
+                });
+            }
+        })();
+
+        // Bottom Panel - Test Cases, Test Results, Submissions
+        (function() {
+            var questionId = (function() {
+                var m = window.location.pathname.match(/\/questions\/(\d+)/);
+                return m ? m[1] : '';
+            })();
+
+            var panel = document.getElementById('bottom-panel');
+            var panelBody = document.getElementById('panel-body');
+            var panelTabs = panel ? panel.querySelectorAll('.panel-tab') : [];
+            var panelClose = document.getElementById('panel-close');
+            var btnTestResult = document.getElementById('btn-test-result');
+            var btnTestCases = document.getElementById('btn-test-cases');
+            var btnSubmissions = document.getElementById('btn-submit-history');
+
+            var currentPanelTab = null;
+            var sampleTests = [];
+            var selectedTestId = null;
+            var testType = 'sample';
+            var lastTestResults = null;
+
+            if (!panel || !questionId) return;
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                var div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            function showPanel(tabName) {
+                if (currentPanelTab === tabName && panel.classList.contains('visible')) {
+                    hidePanel();
+                    return;
+                }
+                currentPanelTab = tabName;
+                panel.classList.add('visible');
+                updatePanelTabs();
+                updateOptionBtns();
+                loadPanelContent();
+            }
+
+            function hidePanel() {
+                panel.classList.remove('visible');
+                currentPanelTab = null;
+                updateOptionBtns();
+            }
+
+            function updatePanelTabs() {
+                panelTabs.forEach(function(tab) {
+                    var tabName = tab.getAttribute('data-panel-tab');
+                    tab.classList.toggle('active', tabName === currentPanelTab);
+                });
+            }
+
+            function updateOptionBtns() {
+                [btnTestResult, btnTestCases, btnSubmissions].forEach(function(btn) {
+                    if (btn) btn.classList.remove('active');
+                });
+                if (currentPanelTab === 'test-results' && btnTestResult) btnTestResult.classList.add('active');
+                if (currentPanelTab === 'test-cases' && btnTestCases) btnTestCases.classList.add('active');
+                if (currentPanelTab === 'submissions' && btnSubmissions) btnSubmissions.classList.add('active');
+            }
+
+            function loadPanelContent() {
+                if (currentPanelTab === 'test-cases') {
+                    loadSampleTests();
+                } else if (currentPanelTab === 'test-results') {
+                    renderTestResults();
+                } else if (currentPanelTab === 'submissions') {
+                    loadSubmissions();
+                }
+            }
+
+            // Panel tab clicks
+            panelTabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    currentPanelTab = tab.getAttribute('data-panel-tab');
+                    updatePanelTabs();
+                    updateOptionBtns();
+                    loadPanelContent();
+                });
+            });
+
+            // Close button
+            if (panelClose) {
+                panelClose.addEventListener('click', hidePanel);
+            }
+
+            // Option button clicks
+            if (btnTestCases) {
+                btnTestCases.addEventListener('click', function() { showPanel('test-cases'); });
+            }
+            if (btnTestResult) {
+                btnTestResult.addEventListener('click', function() { showPanel('test-results'); });
+            }
+            if (btnSubmissions) {
+                btnSubmissions.addEventListener('click', function() { showPanel('submissions'); });
+            }
+
+            // ---- Test Cases ----
+            function loadSampleTests() {
+                panelBody.innerHTML = '<div class="panel-loading">加载中...</div>';
+                fetch('/api/question/' + questionId + '/sample_tests', { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success && data.tests && data.tests.length > 0) {
+                            sampleTests = data.tests;
+                            if (!selectedTestId && sampleTests.length > 0) {
+                                selectedTestId = sampleTests[0].id;
+                            }
+                            testType = 'sample';
+                            renderTestCases();
+                        } else if (data.success && (!data.tests || data.tests.length === 0)) {
+                            sampleTests = [];
+                            renderTestCases();
+                        } else {
+                            panelBody.innerHTML = '<div class="panel-error">加载失败，请重试</div>';
+                        }
+                    })
+                    .catch(function() {
+                        panelBody.innerHTML = '<div class="panel-error">加载失败，请重试</div>';
+                    });
+            }
+
+            function renderTestCases() {
+                var html = '';
+
+                if (sampleTests.length > 0) {
+                    html += '<div class="test-case-list">';
+                    sampleTests.forEach(function(tc, idx) {
+                        var isChecked = (tc.id === selectedTestId && testType === 'sample') ? 'checked' : '';
+                        html += '<div class="test-case-item">';
+                        html += '<div class="test-case-header" onclick="window._toggleTestCase(' + idx + ')">';
+                        html += '<div style="display:flex;align-items:center;gap:8px;">';
+                        html += '<input type="radio" name="test-case-select" class="test-case-radio" value="' + tc.id + '" ' + isChecked + ' onclick="event.stopPropagation();window._selectTestCase(' + tc.id + ')">';
+                        html += '<span>测试用例 #' + (idx + 1) + (tc.is_sample ? ' (示例)' : '') + '</span>';
+                        html += '</div>';
+                        html += '<span class="test-case-toggle" id="tc-toggle-' + idx + '">展开 ▼</span>';
+                        html += '</div>';
+                        html += '<div class="test-case-body" id="tc-body-' + idx + '">';
+                        html += '<div style="display:flex;gap:12px;">';
+                        html += '<div style="flex:1;min-width:0;">';
+                        html += '<div class="test-case-label">输入</div>';
+                        html += '<div class="test-case-content">' + escapeHtml(tc.input || '(空)') + '</div>';
+                        html += '</div>';
+                        html += '<div style="flex:1;min-width:0;">';
+                        html += '<div class="test-case-label">期望输出</div>';
+                        html += '<div class="test-case-content">' + escapeHtml(tc.output || tc.expected_output || '(空)') + '</div>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                } else {
+                    html += '<div class="panel-empty">暂无示例测试用例</div>';
+                }
+
+                // Custom input section
+                html += '<div class="custom-input-section">';
+                html += '<div style="font-size:13px;color:rgba(244,246,240,0.7);margin-bottom:4px;">自定义输入</div>';
+                html += '<textarea id="custom-test-input" placeholder="输入自定义测试数据..."></textarea>';
+                html += '<div style="margin-top:8px;display:flex;justify-content:flex-end;gap:8px;">';
+                if (sampleTests.length > 0) {
+                    html += '<button class="run-test-btn" onclick="window._runSampleTest()">运行选中用例</button>';
+                }
+                html += '<button class="run-test-btn" onclick="window._runCustomTest()">运行自定义测试</button>';
+                html += '</div>';
+                html += '</div>';
+
+                panelBody.innerHTML = html;
+            }
+
+            window._toggleTestCase = function(idx) {
+                var body = document.getElementById('tc-body-' + idx);
+                var toggle = document.getElementById('tc-toggle-' + idx);
+                if (body) {
+                    body.classList.toggle('expanded');
+                }
+                if (toggle) {
+                    toggle.textContent = body && body.classList.contains('expanded') ? '收起 ▲' : '展开 ▼';
+                }
+            };
+
+            window._selectTestCase = function(id) {
+                selectedTestId = id;
+                testType = 'sample';
+            };
+
+            window._runSampleTest = function() {
+                if (!selectedTestId) {
+                    alert('请先选择一个测试用例');
+                    return;
+                }
+                var code = editor.getValue();
+                if (!code || !code.trim()) {
+                    alert('请先编写代码');
+                    return;
+                }
+                runTest(code, 'sample', selectedTestId, null);
+            };
+
+            window._runCustomTest = function() {
+                var customInput = document.getElementById('custom-test-input');
+                var input = customInput ? customInput.value : '';
+                if (!input.trim()) {
+                    alert('请输入自定义测试数据');
+                    return;
+                }
+                var code = editor.getValue();
+                if (!code || !code.trim()) {
+                    alert('请先编写代码');
+                    return;
+                }
+                runTest(code, 'custom', null, input);
+            };
+
+            // ---- Run Test ----
+            function runTest(code, type, testCaseId, customInput) {
+                panelBody.innerHTML = '<div class="panel-loading">运行中...</div>';
+                currentPanelTab = 'test-results';
+                updatePanelTabs();
+                updateOptionBtns();
+
+                var body = { code: code, test_type: type };
+                if (type === 'sample' && testCaseId) {
+                    body.test_case_id = testCaseId;
+                }
+                if (type === 'custom' && customInput) {
+                    body.custom_input = customInput;
+                }
+
+                fetch('/api/question/' + questionId + '/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(body)
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    lastTestResults = data;
+                    renderTestResults();
+                })
+                .catch(function(err) {
+                    panelBody.innerHTML = '<div class="panel-error">运行失败: ' + escapeHtml(err.message || '网络错误') + '</div>';
+                });
+            }
+
+            function renderTestResults() {
+                if (!lastTestResults) {
+                    panelBody.innerHTML = '<div class="panel-empty">暂无测试结果，请先运行测试</div>';
+                    return;
+                }
+
+                var data = lastTestResults;
+                if (!data.success) {
+                    panelBody.innerHTML = '<div class="panel-error">' + escapeHtml(data.reason || data.message || data.desc || '测试失败') + '</div>';
+                    return;
+                }
+
+                var status = data.status || '未知';
+                var statusClass = 'error';
+                var statusText = status;
+
+                if (status === 'Accept' || status === 'Accepted' || status === 'AC' || status === 'passed') {
+                    statusClass = 'pass';
+                    statusText = '通过 ✓';
+                } else if (status === 'Wrong Answer' || status === 'WA') {
+                    statusClass = 'fail';
+                    statusText = '答案错误 ✗';
+                } else if (status === 'Compile Error' || status === 'CE') {
+                    statusClass = 'error';
+                    statusText = '编译错误';
+                } else if (status === 'Runtime Error' || status === 'RE') {
+                    statusClass = 'error';
+                    statusText = '运行时错误';
+                } else if (status === 'Time Limit Exceeded' || status === 'TLE') {
+                    statusClass = 'error';
+                    statusText = '超时';
+                }
+
+                var html = '<div class="test-result-item">';
+                html += '<div class="test-result-header">';
+                html += '<span class="result-status-badge ' + statusClass + '">' + statusText + '</span>';
+                html += '</div>';
+
+                if (data.desc) {
+                    html += '<div style="font-size:12px;color:rgba(244,246,240,0.6);margin-top:6px;">' + escapeHtml(data.desc) + '</div>';
+                }
+
+                if (data.stderr) {
+                    html += '<div class="result-output-section">';
+                    html += '<div class="result-output-label">错误输出</div>';
+                    html += '<div class="result-output-content" style="color:#F44336;">' + escapeHtml(data.stderr) + '</div>';
+                    html += '</div>';
+                }
+
+                if (data.stdout !== undefined && data.stdout !== null) {
+                    html += '<div class="result-output-section">';
+                    html += '<div class="result-output-label">你的输出</div>';
+                    html += '<div class="result-output-content">' + escapeHtml(data.stdout || '(空)') + '</div>';
+                    html += '</div>';
+                }
+
+                if (data.expected_output !== undefined && data.expected_output !== null) {
+                    html += '<div class="result-output-section">';
+                    html += '<div class="result-output-label">期望输出</div>';
+                    html += '<div class="result-output-content">' + escapeHtml(data.expected_output || '(空)') + '</div>';
+                    html += '</div>';
+                }
+
+                if (data.input) {
+                    html += '<div class="result-output-section">';
+                    html += '<div class="result-output-label">输入</div>';
+                    html += '<div class="result-output-content">' + escapeHtml(data.input) + '</div>';
+                    html += '</div>';
+                }
+
+                html += '</div>';
+                panelBody.innerHTML = html;
+            }
+
+            // ---- Submissions ----
+            function loadSubmissions() {
+                panelBody.innerHTML = '<div class="panel-loading">加载中...</div>';
+                fetch('/api/question/' + questionId + '/submits', { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success && data.submits && data.submits.length > 0) {
+                            renderSubmissions(data.submits);
+                        } else if (data.success && (!data.submits || data.submits.length === 0)) {
+                            panelBody.innerHTML = '<div class="panel-empty">暂无提交记录</div>';
+                        } else {
+                            panelBody.innerHTML = '<div class="panel-error">加载失败，请重试</div>';
+                        }
+                    })
+                    .catch(function() {
+                        panelBody.innerHTML = '<div class="panel-error">加载失败，请重试</div>';
+                    });
+            }
+
+            function renderSubmissions(submits) {
+                var html = '<div class="submission-record-list">';
+                submits.forEach(function(s) {
+                    var isPass = s.is_pass;
+                    var badgeClass = isPass ? 'badge-pass' : 'badge-fail';
+                    var badgeText = isPass ? '通过' : '未通过';
+
+                    var summary = '';
+                    try {
+                        var rj = typeof s.result_json === 'string' ? JSON.parse(s.result_json) : s.result_json;
+                        summary = rj.status || rj.desc || '';
+                    } catch(e) {
+                        summary = s.result_json || '';
+                    }
+
+                    var time = s.action_time || '';
+                    if (time && time.length > 19) {
+                        time = time.substring(0, 19).replace('T', ' ');
+                    }
+
+                    html += '<div class="submission-record-item">';
+                    html += '<div class="submission-record-left">';
+                    html += '<div class="submission-record-time">' + escapeHtml(time) + '</div>';
+                    html += '<div class="submission-record-summary">' + escapeHtml(summary) + '</div>';
+                    html += '</div>';
+                    html += '<span class="submission-record-badge ' + badgeClass + '">' + badgeText + '</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                panelBody.innerHTML = html;
+            }
         })();
     </script>
 

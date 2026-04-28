@@ -234,12 +234,124 @@
             margin-bottom: 30px;
         }
 
+        .avatar-wrapper {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            flex-shrink: 0;
+        }
+
         .avatar {
             width: 120px;
             height: 120px;
             border-radius: 50%;
             border: 3px solid rgba(244, 246, 240, 0.2);
+            object-fit: cover;
+            display: block;
+            cursor: pointer;
+            transition: filter 0.3s ease, transform 0.3s ease;
         }
+
+        .avatar:hover {
+            filter: brightness(0.7);
+            transform: scale(1.03);
+        }
+
+        .avatar-overlay {
+            position: absolute;
+            inset: 3px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(24, 28, 24, 0.45);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .avatar-wrapper:hover .avatar-overlay {
+            opacity: 1;
+        }
+
+        .avatar-overlay-text {
+            color: #F4F6F0;
+            font-size: 12px;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .avatar-loading {
+            position: absolute;
+            inset: 3px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(24, 28, 24, 0.65);
+            backdrop-filter: blur(2px);
+        }
+
+        .avatar-loading.active {
+            display: flex;
+        }
+
+        .avatar-spinner {
+            width: 28px;
+            height: 28px;
+            border: 2px solid rgba(244, 246, 240, 0.2);
+            border-top-color: #4CAF50;
+            border-radius: 50%;
+            animation: avatar-spin 0.7s linear infinite;
+        }
+
+        @keyframes avatar-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .avatar-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+
+        .avatar-delete-btn {
+            padding: 5px 14px;
+            background: rgba(244, 67, 54, 0.15);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            border-radius: 50px;
+            color: #F44336;
+            font-size: 12px;
+            font-weight: 300;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.02em;
+        }
+
+        .avatar-delete-btn:hover {
+            background: rgba(244, 67, 54, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .avatar-delete-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .avatar-msg {
+            font-size: 12px;
+            min-height: 16px;
+            margin-top: 6px;
+            text-align: center;
+            letter-spacing: 0.02em;
+        }
+
+        .avatar-msg.success { color: #b8f3be; }
+        .avatar-msg.error { color: #ffb0b0; }
 
         .user-info h1 {
             font-size: 32px;
@@ -320,9 +432,15 @@
             gap: 5px;
         }
 
-        .submission-problem {
+        .submission-title {
             font-size: 16px;
             color: #F4F6F0;
+        }
+
+        .submission-star {
+            font-size: 12px;
+            color: #FFD700;
+            letter-spacing: 2px;
         }
 
         .submission-time {
@@ -331,6 +449,12 @@
         }
 
         .submission-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-badge {
             font-size: 14px;
             font-weight: 400;
             padding: 6px 16px;
@@ -338,6 +462,18 @@
             background: rgba(76, 175, 80, 0.2);
             color: #4CAF50;
             border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .status-badge.pass {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+            border-color: rgba(76, 175, 80, 0.3);
+        }
+
+        .status-badge.fail {
+            background: rgba(244, 67, 54, 0.2);
+            color: #F44336;
+            border-color: rgba(244, 67, 54, 0.3);
         }
 
         .status-wa {
@@ -476,33 +612,46 @@
     <div class="container">
         <div class="user-profile">
             <div class="profile-header">
-                <img src="/pictures/head.jpg" class="avatar" alt="用户头像">
+                <div class="avatar-wrapper" id="avatar-wrapper">
+                    <img src="/pictures/head.jpg" class="avatar" id="profile-avatar" alt="用户头像" title="点击更换头像">
+                    <div class="avatar-overlay" id="avatar-overlay">
+                        <span class="avatar-overlay-text">更换头像</span>
+                    </div>
+                    <div class="avatar-loading" id="avatar-loading">
+                        <div class="avatar-spinner"></div>
+                    </div>
+                    <input type="file" id="avatar-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
+                </div>
                 <div class="user-info">
                     <h1 id="profile-name">用户名</h1>
                     <p id="profile-email" style="color: rgba(244, 246, 240, 0.7);">邮箱：-</p>
                     <p id="profile-uid" style="color: rgba(244, 246, 240, 0.7);">uid：-</p>
-                    <div class="user-stats">
+<div class="user-stats">
                         <div class="stat-item">
-                            <div class="stat-value">0</div>
+                            <div class="stat-value" id="stat-passed">0</div>
                             <div class="stat-label">已解决题目</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value">0</div>
+                            <div class="stat-value" id="stat-total">0</div>
                             <div class="stat-label">总提交数</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value">100%</div>
+                            <div class="stat-value" id="stat-accuracy">0%</div>
                             <div class="stat-label">正确率</div>
                         </div>
                     </div>
                     <button class="logout-btn" id="logout-btn">退出登录</button>
+                    <div class="avatar-actions">
+                        <button class="avatar-delete-btn" id="avatar-delete-btn" style="display:none;">删除头像</button>
+                    </div>
+                    <div class="avatar-msg" id="avatar-msg"></div>
                 </div>
             </div>
         </div>
         
         <div class="section">
             <h2 class="section-title">最近提交</h2>
-            <div class="submission-list">
+            <div class="submission-list" id="recent-submits-list">
             </div>
         </div>
         
@@ -570,6 +719,10 @@
                 if (nameEl) nameEl.textContent = SERVER_USER_INFO.name || '用户名';
                 if (emailEl) emailEl.textContent = `邮箱：${SERVER_USER_INFO.email || '-'}`;
                 if (uidEl) uidEl.textContent = `uid：${SERVER_USER_INFO.uid || '-'}`;
+                if (SERVER_USER_INFO.avatar_url) {
+                    updateAvatarSrc(SERVER_USER_INFO.avatar_url);
+                }
+                loadUserStats();
                 return;
             }
 
@@ -580,11 +733,192 @@
                     if (nameEl) nameEl.textContent = data.user.name || '用户名';
                     if (emailEl) emailEl.textContent = `邮箱：${data.user.email || '-'}`;
                     if (uidEl) uidEl.textContent = `uid：${data.user.uid || '-'}`;
+                    if (data.user.avatar_url) {
+                        updateAvatarSrc(data.user.avatar_url);
+                    }
+                    loadUserStats();
                 }
             } catch (error) {
                 console.error('加载用户信息失败:', error);
             }
         }
+
+        async function loadUserStats() {
+            try {
+                const response = await fetch('/api/user/stats', { credentials: 'include' });
+                const data = await response.json();
+                if (data && data.success && data.stats) {
+                    document.getElementById('stat-passed').textContent = data.stats.passed_questions || 0;
+                    document.getElementById('stat-total').textContent = data.stats.total_submits || 0;
+                    var acc = data.stats.accuracy !== undefined ? data.stats.accuracy : 0;
+                    document.getElementById('stat-accuracy').textContent = (acc * 100).toFixed(1) + '%';
+                    renderRecentSubmits(data.stats.recent_submits || []);
+                }
+            } catch (error) {
+                console.error('加载用户统计失败:', error);
+            }
+        }
+
+        function renderRecentSubmits(submits) {
+            var container = document.getElementById('recent-submits-list');
+            if (!container) return;
+            if (submits.length === 0) {
+                container.innerHTML = '<div style="color:rgba(244,246,240,0.4);padding:20px 0;text-align:center;">暂无提交记录</div>';
+                return;
+            }
+            var html = '';
+            submits.forEach(function(s) {
+                var isPass = s.is_pass === true || s.is_pass === 1;
+                var statusClass = isPass ? 'pass' : 'fail';
+                var statusText = isPass ? '通过' : '未通过';
+                var borderColor = isPass ? '#4CAF50' : '#F44336';
+                var time = s.action_time || '';
+                if (time && time.length > 19) {
+                    time = time.substring(0, 19).replace('T', ' ');
+                }
+                var title = s.title || ('题目 #' + (s.question_id || ''));
+                var starHtml = '';
+                if (s.star) {
+                    starHtml = ' <span class="difficulty-badge difficulty-' + s.star + '" style="font-size:11px;padding:2px 8px;margin-left:6px;">' + s.star + '</span>';
+                }
+                html += '<div class="submission-item" style="border-left-color:' + borderColor + '">';
+                html += '<div class="submission-info">';
+                html += '<div class="submission-problem">' + escapeHtml(title) + starHtml + '</div>';
+                html += '<div class="submission-time">' + escapeHtml(time) + '</div>';
+                html += '</div>';
+                html += '<span class="status-badge ' + statusClass + '">' + statusText + '</span>';
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        const DEFAULT_AVATAR = '/pictures/head.jpg';
+        const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2MB
+
+        function setAvatarMsg(text, isError) {
+            const el = document.getElementById('avatar-msg');
+            if (!el) return;
+            el.textContent = text || '';
+            el.className = 'avatar-msg ' + (isError ? 'error' : 'success');
+            if (text) {
+                setTimeout(function() {
+                    if (el.textContent === text) el.textContent = '';
+                }, 4000);
+            }
+        }
+
+        function setAvatarLoading(active) {
+            const loading = document.getElementById('avatar-loading');
+            const avatar = document.getElementById('profile-avatar');
+            const deleteBtn = document.getElementById('avatar-delete-btn');
+            if (loading) loading.classList.toggle('active', active);
+            if (avatar) avatar.style.pointerEvents = active ? 'none' : '';
+            if (deleteBtn) deleteBtn.disabled = active;
+        }
+
+        function updateAvatarSrc(url) {
+            const avatar = document.getElementById('profile-avatar');
+            const deleteBtn = document.getElementById('avatar-delete-btn');
+            if (avatar) {
+                avatar.src = url || DEFAULT_AVATAR;
+            }
+            if (deleteBtn) {
+                deleteBtn.style.display = (!url || url === DEFAULT_AVATAR) ? 'none' : '';
+            }
+        }
+
+        // Click avatar → trigger file input
+        document.getElementById('avatar-wrapper').addEventListener('click', function(e) {
+            if (e.target.closest('#avatar-delete-btn')) return;
+            const loading = document.getElementById('avatar-loading');
+            if (loading && loading.classList.contains('active')) return;
+            document.getElementById('avatar-input').click();
+        });
+
+        // File selected → upload
+        document.getElementById('avatar-input').addEventListener('change', function() {
+            const file = this.files && this.files[0];
+            if (!file) return;
+            this.value = '';
+
+            if (file.size > MAX_AVATAR_SIZE) {
+                setAvatarMsg('文件大小不能超过 2MB', true);
+                return;
+            }
+
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                setAvatarMsg('仅支持 JPG、PNG、GIF、WebP 格式', true);
+                return;
+            }
+
+            setAvatarMsg('上传中...', false);
+            setAvatarLoading(true);
+
+            var formData = new FormData();
+            formData.append('avatar', file);
+
+            fetch('/api/user/avatar', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            }).then(function(response) {
+                return response.json().then(function(data) {
+                    return { ok: response.ok, status: response.status, data: data };
+                });
+            }).then(function(result) {
+                setAvatarLoading(false);
+                if (result.ok && result.data && result.data.success) {
+                    var newUrl = result.data.avatar_url || '';
+                    updateAvatarSrc(newUrl);
+                    setAvatarMsg('头像更新成功', false);
+                } else {
+                    var errMsg = '上传失败，请重试';
+                    if (result.data && result.data.error_code === 'FILE_TOO_LARGE') errMsg = '文件大小不能超过 2MB';
+                    else if (result.data && result.data.error_code === 'INVALID_FILE_TYPE') errMsg = '不支持的文件格式';
+                    else if (result.data && result.data.error_code === 'NOT_LOGGED_IN') errMsg = '请先登录';
+                    setAvatarMsg(errMsg, true);
+                }
+            }).catch(function() {
+                setAvatarLoading(false);
+                setAvatarMsg('网络异常，请稍后重试', true);
+            });
+        });
+
+        // Delete avatar
+        document.getElementById('avatar-delete-btn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (this.disabled) return;
+            if (!window.confirm('确定要删除当前头像吗？')) return;
+
+            setAvatarMsg('删除中...', false);
+            setAvatarLoading(true);
+
+            fetch('/api/user/avatar', {
+                method: 'DELETE',
+                credentials: 'include'
+            }).then(function(response) {
+                return response.json().then(function(data) {
+                    return { ok: response.ok, data: data };
+                });
+            }).then(function(result) {
+                setAvatarLoading(false);
+                if (result.ok && result.data && result.data.success) {
+                    updateAvatarSrc(DEFAULT_AVATAR);
+                    setAvatarMsg('头像已删除', false);
+                } else {
+                    setAvatarMsg('删除失败，请重试', true);
+                }
+            }).catch(function() {
+                setAvatarLoading(false);
+                setAvatarMsg('网络异常，请稍后重试', true);
+            });
+        });
 
         syncProfileUserInfo();
     </script>

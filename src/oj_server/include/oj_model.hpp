@@ -231,7 +231,7 @@ namespace ns_model
                 return false;
             if(mysql_query(my.get(), sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL)<<"MySql查询错误!";
+                logger(ns_log::FATAL)<<"MySql查询错误: "<<mysql_error(my.get());
                 return false;
             }
             MYSQL_RES* res = mysql_store_result(my.get());
@@ -332,8 +332,9 @@ namespace ns_model
                 item.uid = row[0] == nullptr ? 0 : std::atoi(row[0]);
                 item.name = row[1] == nullptr ? "" : row[1];
                 item.email = row[2] == nullptr ? "" : row[2];
-                item.create_time = row[3] == nullptr ? "" : row[3];
-                item.last_login = row[4] == nullptr ? "" : row[4];
+                item.avatar_path = row[3] == nullptr ? "" : row[3];
+                item.create_time = row[4] == nullptr ? "" : row[4];
+                item.last_login = row[5] == nullptr ? "" : row[5];
                 users->push_back(item);
             }
 
@@ -617,7 +618,7 @@ namespace ns_model
                 return false;
             if(mysql_query(my.get(), sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL)<<"MySql查询错误!";
+                logger(ns_log::FATAL)<<"MySql查询错误: "<<mysql_error(my.get());
                 return false;
             }
             MYSQL_RES* res = mysql_store_result(my.get());
@@ -641,9 +642,10 @@ namespace ns_model
             user->uid = atoi(row[0]);
             user->name = row[1];
             user->email = row[2];
-            user->create_time = row[3];
-            user->last_login = row[4];
-            user->password_algo = row[5] == nullptr ? "" : row[5];
+            user->avatar_path = row[3] == nullptr ? "" : row[3];
+            user->create_time = row[4];
+            user->last_login = row[5];
+            user->password_algo = row[6] == nullptr ? "" : row[6];
             mysql_free_result(res);
             return true;
         }
@@ -660,7 +662,7 @@ namespace ns_model
                 return false;
             if(mysql_query(my.get(), sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL) << "MySql查询错误!";
+                logger(ns_log::FATAL) << "MySql查询错误: " << mysql_error(my.get());
                 return false;
             }
 
@@ -1098,6 +1100,22 @@ namespace ns_model
             {
                 *solution_id = static_cast<unsigned long long>(mysql_insert_id(my.get()));
             }
+
+            // Invalidate solution list cache for this question (common combinations)
+            auto list_key_latest = _cache.BuildSolutionCacheKey(
+                input.question_id, 1, 10, "1",
+                Cache::CacheKey::PageType::kList,
+                SolutionStatus::approved, SolutionSort::latest);
+            _cache.DeleteStringByAnyKey(list_key_latest->GetCacheKeyString(&_cache));
+
+            auto list_key_hot = _cache.BuildSolutionCacheKey(
+                input.question_id, 1, 10, "1",
+                Cache::CacheKey::PageType::kList,
+                SolutionStatus::approved, SolutionSort::hot);
+            _cache.DeleteStringByAnyKey(list_key_hot->GetCacheKeyString(&_cache));
+
+            logger(ns_log::INFO) << "Invalidated solution list cache for question " << input.question_id;
+
             return true;
         }
 
@@ -1119,6 +1137,60 @@ namespace ns_model
             if (solutions == nullptr || total_count == nullptr || total_pages == nullptr)
             {
                 return false;
+            }
+
+            // Build cache key for solution list
+            SolutionStatus status = SolutionStatus::approved;
+            if (status_filter == "pending")
+                status = SolutionStatus::pending;
+            else if (status_filter == "rejected")
+                status = SolutionStatus::rejected;
+
+            SolutionSort sort = SolutionSort::latest;
+            if (sort_order == "hot")
+                sort = SolutionSort::hot;
+
+            auto cache_key = _cache.BuildSolutionCacheKey(question_id, page, size, "1",
+                                                          Cache::CacheKey::PageType::kList,
+                                                          status, sort);
+
+            // Try to read from cache
+            std::string cached_json;
+            if (_cache.GetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), &cached_json))
+            {
+                // Cache hit: parse JSON and populate results
+                Json::CharReaderBuilder builder;
+                Json::Value json_value;
+                std::istringstream ss(cached_json);
+                if (Json::parseFromStream(builder, ss, &json_value, nullptr))
+                {
+                    if (json_value.isMember("total"))
+                        *total_count = json_value["total"].asInt();
+                    if (json_value.isMember("total_pages"))
+                        *total_pages = json_value["total_pages"].asInt();
+
+                    if (json_value.isMember("solutions") && json_value["solutions"].isArray())
+                    {
+                        for (const auto& item : json_value["solutions"])
+                        {
+                            Solution s;
+                            s.id = item["id"].asUInt64();
+                            s.question_id = item["question_id"].asString();
+                            s.user_id = item["user_id"].asInt();
+                            s.title = item["title"].asString();
+                            s.content_md = item["content_md"].asString();
+                            s.like_count = item["like_count"].asUInt();
+                            s.favorite_count = item["favorite_count"].asUInt();
+                            s.comment_count = item["comment_count"].asUInt();
+                            s.status = DbStringToSolutionStatus(item["status"].asString());
+                            s.created_at = item["created_at"].asString();
+                            s.updated_at = item["updated_at"].asString();
+                            solutions->push_back(s);
+                        }
+                    }
+                    logger(ns_log::INFO) << "Cache hit for solution list " << cache_key->GetCacheKeyString(&_cache);
+                    return true;
+                }
             }
 
             auto my = CreateConnection();
@@ -1162,7 +1234,7 @@ namespace ns_model
             }
 
             std::ostringstream page_sql;
-            page_sql << "select id, question_id, user_id, title, like_count, favorite_count, comment_count, status, created_at, updated_at from "
+            page_sql << "select id, question_id, user_id, title, content_md, like_count, favorite_count, comment_count, status, created_at, updated_at from "
                       << SolutionsTable()
                       << where_clause
                       << order_clause
@@ -1191,20 +1263,54 @@ namespace ns_model
                 if (row == nullptr) continue;
 
                 Solution s;
-                s.id = (row[0] != nullptr) ? std::stoull(row[0]) : 0;
+                try
+                {
+                    s.id = (row[0] != nullptr) ? std::stoull(row[0]) : 0;
+                }
+                catch (const std::exception&) { s.id = 0; }
                 s.question_id = (row[1] != nullptr) ? row[1] : "";
                 s.user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
                 s.title = (row[3] != nullptr) ? row[3] : "";
-                s.like_count = (row[4] != nullptr) ? static_cast<unsigned int>(std::atoi(row[4])) : 0;
-                s.favorite_count = (row[5] != nullptr) ? static_cast<unsigned int>(std::atoi(row[5])) : 0;
-                s.comment_count = (row[6] != nullptr) ? static_cast<unsigned int>(std::atoi(row[6])) : 0;
-                s.status = (row[7] != nullptr) ? DbStringToSolutionStatus(row[7]) : SolutionStatus::approved;
-                s.created_at = (row[8] != nullptr) ? row[8] : "";
-                s.updated_at = (row[9] != nullptr) ? row[9] : "";
+                s.content_md = (row[4] != nullptr) ? row[4] : "";
+                s.like_count = (row[5] != nullptr) ? static_cast<unsigned int>(std::atoi(row[5])) : 0;
+                s.favorite_count = (row[6] != nullptr) ? static_cast<unsigned int>(std::atoi(row[6])) : 0;
+                s.comment_count = (row[7] != nullptr) ? static_cast<unsigned int>(std::atoi(row[7])) : 0;
+                s.status = (row[8] != nullptr) ? DbStringToSolutionStatus(row[8]) : SolutionStatus::approved;
+                s.created_at = (row[9] != nullptr) ? row[9] : "";
+                s.updated_at = (row[10] != nullptr) ? row[10] : "";
                 solutions->push_back(s);
             }
 
             mysql_free_result(res);
+
+            // Write to cache
+            Json::Value root(Json::objectValue);
+            root["total"] = *total_count;
+            root["total_pages"] = *total_pages;
+            Json::Value array_value(Json::arrayValue);
+            for (const auto& s : *solutions)
+            {
+                Json::Value item;
+                item["id"] = static_cast<Json::UInt64>(s.id);
+                item["question_id"] = s.question_id;
+                item["user_id"] = s.user_id;
+                item["title"] = s.title;
+                item["content_md"] = s.content_md;
+                item["like_count"] = s.like_count;
+                item["favorite_count"] = s.favorite_count;
+                item["comment_count"] = s.comment_count;
+                item["status"] = SolutionStatusToDbString(s.status);
+                item["created_at"] = s.created_at;
+                item["updated_at"] = s.updated_at;
+                array_value.append(item);
+            }
+            root["solutions"] = array_value;
+            Json::FastWriter writer;
+            std::string json_str = writer.write(root);
+            _cache.SetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), json_str,
+                                     _cache.BuildJitteredTtl(600, 120));
+            logger(ns_log::INFO) << "Cache miss for solution list, written to cache " << cache_key->GetCacheKeyString(&_cache);
+
             return true;
         }
 
@@ -1213,6 +1319,34 @@ namespace ns_model
             if (solution == nullptr)
             {
                 return false;
+            }
+
+            // Build cache key for solution detail
+            auto cache_key = _cache.BuildSolutionDetailCacheKey(solution_id);
+
+            // Try to read from cache
+            std::string cached_json;
+            if (_cache.GetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), &cached_json))
+            {
+                Json::CharReaderBuilder builder;
+                Json::Value json_value;
+                std::istringstream ss(cached_json);
+                if (Json::parseFromStream(builder, ss, &json_value, nullptr))
+                {
+                    solution->id = json_value["id"].asUInt64();
+                    solution->question_id = json_value["question_id"].asString();
+                    solution->user_id = json_value["user_id"].asInt();
+                    solution->title = json_value["title"].asString();
+                    solution->content_md = json_value["content_md"].asString();
+                    solution->like_count = json_value["like_count"].asUInt();
+                    solution->favorite_count = json_value["favorite_count"].asUInt();
+                    solution->comment_count = json_value["comment_count"].asUInt();
+                    solution->status = DbStringToSolutionStatus(json_value["status"].asString());
+                    solution->created_at = json_value["created_at"].asString();
+                    solution->updated_at = json_value["updated_at"].asString();
+                    logger(ns_log::INFO) << "Cache hit for solution detail " << cache_key->GetCacheKeyString(&_cache);
+                    return true;
+                }
             }
 
             auto my = CreateConnection();
@@ -1252,7 +1386,12 @@ namespace ns_model
                 return false;
             }
 
-            solution->id = (row[0] != nullptr) ? std::stoull(row[0]) : 0;
+            solution->id = 0;
+            try
+            {
+                if (row[0] != nullptr) solution->id = std::stoull(row[0]);
+            }
+            catch (const std::exception&) { solution->id = 0; }
             solution->question_id = (row[1] != nullptr) ? row[1] : "";
             solution->user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
             solution->title = (row[3] != nullptr) ? row[3] : "";
@@ -1265,9 +1404,643 @@ namespace ns_model
             solution->updated_at = (row[10] != nullptr) ? row[10] : "";
 
             mysql_free_result(res);
+
+            // Write to cache
+            Json::Value json_value;
+            json_value["id"] = static_cast<Json::UInt64>(solution->id);
+            json_value["question_id"] = solution->question_id;
+            json_value["user_id"] = solution->user_id;
+            json_value["title"] = solution->title;
+            json_value["content_md"] = solution->content_md;
+            json_value["like_count"] = solution->like_count;
+            json_value["favorite_count"] = solution->favorite_count;
+            json_value["comment_count"] = solution->comment_count;
+            json_value["status"] = SolutionStatusToDbString(solution->status);
+            json_value["created_at"] = solution->created_at;
+            json_value["updated_at"] = solution->updated_at;
+            Json::FastWriter writer;
+            std::string json_str = writer.write(json_value);
+            _cache.SetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), json_str,
+                                     _cache.BuildJitteredTtl(600, 120));
+            logger(ns_log::INFO) << "Cache miss for solution detail, written to cache " << cache_key->GetCacheKeyString(&_cache);
+
             return true;
         }
 
+        // Comments: get comments by a solution with pagination (top-level only by default)
+        bool GetCommentsBySolutionId(unsigned long long solution_id, int page, int size,
+                                     std::vector<Comment>* comments, int* total_count)
+        {
+            if (comments == nullptr || total_count == nullptr)
+            {
+                return false;
+            }
+
+            // Build cache key: comment:list:sid:{solution_id}:page:{page}:size:{size}
+            std::string cache_key = "comment:list:sid:" + std::to_string(solution_id)
+                                  + ":page:" + std::to_string(page)
+                                  + ":size:" + std::to_string(size);
+
+            // Try to read from cache
+            std::string cached_json;
+            if (_cache.GetStringByAnyKey(cache_key, &cached_json))
+            {
+                // Cache hit: parse JSON and populate results
+                Json::CharReaderBuilder builder;
+                Json::Value json_value;
+                std::istringstream ss(cached_json);
+                if (Json::parseFromStream(builder, ss, &json_value, nullptr))
+                {
+                    if (json_value.isMember("total"))
+                        *total_count = json_value["total"].asInt();
+
+                    if (json_value.isMember("comments") && json_value["comments"].isArray())
+                    {
+                        for (const auto& item : json_value["comments"])
+                        {
+                            Comment c;
+                            c.id = item["id"].asUInt64();
+                            c.solution_id = item["solution_id"].asUInt64();
+                            c.user_id = item["user_id"].asInt();
+                            c.content = item["content"].asString();
+                            c.is_edited = item["is_edited"].asBool();
+                            c.parent_id = item["parent_id"].asUInt64();
+                            c.reply_to_user_id = item["reply_to_user_id"].asInt();
+                            c.like_count = item["like_count"].asUInt();
+                            c.favorite_count = item["favorite_count"].asUInt();
+                            c.created_at = item["created_at"].asString();
+                            c.updated_at = item["updated_at"].asString();
+                            c.reply_to_user_name = item["reply_to_user_name"].asString();
+                            comments->push_back(c);
+                        }
+                    }
+                    logger(ns_log::INFO) << "Cache hit for comment list " << cache_key;
+                    return true;
+                }
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            // paging parameters
+            int safe_page = std::max(1, page);
+            int safe_size = std::max(1, size);
+            int offset = (safe_page - 1) * safe_size;
+
+            // top-level comments only (parent_id NULL or 0)
+            std::string count_sql = "select count(*) from solution_comments where solution_id=" + std::to_string(solution_id) + " and (parent_id IS NULL OR parent_id = 0)";
+            if (!QueryCount(count_sql, total_count))
+            {
+                return false;
+            }
+            if (*total_count <= 0)
+            {
+                comments->clear();
+                return true;
+            }
+
+            std::ostringstream sql;
+            // include counts for replies and the reply_to information
+            sql << "select c.id, c.solution_id, c.user_id, c.content, c.is_edited, c.parent_id, c.reply_to_user_id, c.like_count, c.favorite_count, c.created_at, c.updated_at, u.name AS author_name, ru.name AS reply_to_user_name "
+                << "from solution_comments c LEFT JOIN users u ON c.user_id = u.uid LEFT JOIN users ru ON c.reply_to_user_id = ru.uid "
+                << "where c.solution_id=" << solution_id
+                << " and (c.parent_id IS NULL OR c.parent_id = 0)"
+                << " ORDER BY c.created_at ASC LIMIT " << safe_size << " OFFSET " << offset;
+
+            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询题解评论错误!";
+                return false;
+            }
+
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql题解评论结果集为空!";
+                return false;
+            }
+
+            int rows = mysql_num_rows(res);
+            comments->clear();
+            comments->reserve(rows);
+            for (int i = 0; i < rows; ++i)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row == nullptr)
+                {
+                    continue;
+                }
+                Comment c;
+                try
+                {
+                    c.id = (row[0] != nullptr) ? std::stoull(row[0]) : 0;
+                    c.solution_id = (row[1] != nullptr) ? std::stoull(row[1]) : 0;
+                }
+                catch (const std::exception&) { c.id = 0; c.solution_id = 0; }
+                c.user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
+                c.content = (row[3] != nullptr) ? row[3] : "";
+                c.is_edited = (row[4] != nullptr) ? (std::atoi(row[4]) != 0) : false;
+                c.parent_id = (row[5] != nullptr) ? static_cast<unsigned long long>(std::stoull(row[5])) : 0;
+                c.reply_to_user_id = (row[6] != nullptr) ? std::atoi(row[6]) : 0;
+                c.like_count = (row[7] != nullptr) ? static_cast<unsigned int>(std::atoi(row[7])) : 0;
+                c.favorite_count = (row[8] != nullptr) ? static_cast<unsigned int>(std::atoi(row[8])) : 0;
+                c.created_at = (row[9] != nullptr) ? row[9] : "";
+                c.updated_at = (row[10] != nullptr) ? row[10] : "";
+                c.reply_to_user_name = (row[12] != nullptr) ? row[12] : "";
+                // row[11] is author_name, not stored in Comment struct
+                comments->push_back(c);
+            }
+            // Optional: retrieve reply counts for top-level comments (nested <= 2 levels)
+            // This is a best-effort lookup; counts are not stored in Comment struct.
+            std::vector<unsigned long long> top_level_ids;
+            top_level_ids.reserve(comments->size());
+            for (const auto& cc : *comments) {
+                if (cc.parent_id == 0) top_level_ids.push_back(cc.id);
+            }
+            if (!top_level_ids.empty()) {
+                std::ostringstream idlist;
+                for (size_t i = 0; i < top_level_ids.size(); ++i) {
+                    if (i) idlist << ",";
+                    idlist << top_level_ids[i];
+                }
+                std::string group_sql = "select parent_id, count(*) as cnt from solution_comments where parent_id in (" + idlist.str() + ") group by parent_id";
+                if (mysql_query(my.get(), group_sql.c_str()) == 0)
+                {
+                    MYSQL_RES* res2 = mysql_store_result(my.get());
+                    if (res2 != nullptr)
+                    {
+                        // read and discard counts; UI can fetch via separate API if needed
+                        mysql_free_result(res2);
+                    }
+                }
+            }
+            mysql_free_result(res);
+
+            // Write to cache
+            Json::Value root(Json::objectValue);
+            root["total"] = *total_count;
+            Json::Value array_value(Json::arrayValue);
+            for (const auto& c : *comments)
+            {
+                Json::Value item;
+                item["id"] = static_cast<Json::UInt64>(c.id);
+                item["solution_id"] = static_cast<Json::UInt64>(c.solution_id);
+                item["user_id"] = c.user_id;
+                item["content"] = c.content;
+                item["is_edited"] = c.is_edited;
+                item["parent_id"] = static_cast<Json::UInt64>(c.parent_id);
+                item["reply_to_user_id"] = c.reply_to_user_id;
+                item["like_count"] = c.like_count;
+                item["favorite_count"] = c.favorite_count;
+                item["created_at"] = c.created_at;
+                item["updated_at"] = c.updated_at;
+                item["reply_to_user_name"] = c.reply_to_user_name;
+                array_value.append(item);
+            }
+            root["comments"] = array_value;
+            Json::FastWriter writer;
+            std::string json_str = writer.write(root);
+            _cache.SetStringByAnyKey(cache_key, json_str, _cache.BuildJitteredTtl(300, 60));
+            logger(ns_log::INFO) << "Cache miss for comment list, written to cache " << cache_key;
+
+            return true;
+        }
+
+        // Comments: create a new comment
+        bool CreateComment(const Comment& comment, unsigned long long* comment_id = nullptr)
+        {
+            if (comment.solution_id == 0 || comment.user_id <= 0)
+            {
+                return false;
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            std::string safe_content = EscapeSqlString(comment.content, my.get());
+            // if replying to a comment, ensure parent exists and is part of the same solution
+            if (comment.parent_id > 0)
+            {
+                unsigned long long parent_solution_id = 0;
+                std::string get_sql = "select solution_id from solution_comments where id=" + std::to_string(comment.parent_id);
+                if (mysql_query(my.get(), get_sql.c_str()) != 0)
+                {
+                    logger(ns_log::FATAL) << "MySql查询父评论所属题解错误!";
+                    return false;
+                }
+                MYSQL_RES* res_parent = mysql_store_result(my.get());
+                if (res_parent == nullptr)
+                {
+                    logger(ns_log::FATAL) << "MySql父评论所属题解结果集为空!";
+                    return false;
+                }
+                MYSQL_ROW row_parent = mysql_fetch_row(res_parent);
+                if (row_parent == nullptr || row_parent[0] == nullptr)
+                {
+                    mysql_free_result(res_parent);
+                    return false;
+                }
+                try
+                {
+                    parent_solution_id = std::stoull(row_parent[0]);
+                }
+                catch (const std::exception&){
+                    mysql_free_result(res_parent);
+                    return false;
+                }
+                mysql_free_result(res_parent);
+                if (parent_solution_id != comment.solution_id)
+                {
+                    // parent belongs to different solution
+                    return false;
+                }
+            }
+            std::ostringstream sql;
+            // Insert with optional parent and reply_to fields
+            sql << "insert into solution_comments (solution_id, user_id, content, is_edited, parent_id, reply_to_user_id, like_count, favorite_count, created_at, updated_at) values (" 
+                << comment.solution_id << ", " << comment.user_id << ", '" << safe_content << "', 0, "
+                << comment.parent_id << ", " << comment.reply_to_user_id << ", " << comment.like_count << ", " << comment.favorite_count << ", NOW(), NOW())";
+
+            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql执行错误! errno=" << mysql_errno(my.get())
+                                      << " error=" << mysql_error(my.get());
+                return false;
+            }
+
+            if (comment_id != nullptr)
+            {
+                *comment_id = static_cast<unsigned long long>(mysql_insert_id(my.get()));
+            }
+
+            // Get the question_id for cache invalidation
+            std::string question_id;
+            {
+                std::string q_sql = "select question_id from " + SolutionsTable() + " where id=" + std::to_string(comment.solution_id);
+                if (mysql_query(my.get(), q_sql.c_str()) == 0)
+                {
+                    MYSQL_RES* q_res = mysql_store_result(my.get());
+                    if (q_res != nullptr)
+                    {
+                        MYSQL_ROW q_row = mysql_fetch_row(q_res);
+                        if (q_row != nullptr && q_row[0] != nullptr)
+                        {
+                            question_id = q_row[0];
+                        }
+                        mysql_free_result(q_res);
+                    }
+                }
+            }
+
+            // update comment count on the related solution
+            std::ostringstream upd;
+            upd << "update " << SolutionsTable() << " set comment_count = comment_count + 1 where id = "
+                << comment.solution_id;
+            if (!ExecuteSql(upd.str()))
+            {
+                return false;
+            }
+
+            // Invalidate solution list cache since comment_count changed
+            if (!question_id.empty())
+            {
+                auto list_key = _cache.BuildSolutionCacheKey(
+                    question_id, 1, 10, "1",
+                    Cache::CacheKey::PageType::kList,
+                    SolutionStatus::approved, SolutionSort::latest);
+                _cache.DeleteStringByAnyKey(list_key->GetCacheKeyString(&_cache));
+                logger(ns_log::INFO) << "Invalidated solution list cache after comment creation for question " << question_id;
+            }
+
+            // Invalidate comment list cache for this solution
+            std::string comment_list_key_prefix = "comment:list:sid:" + std::to_string(comment.solution_id);
+            _cache.DeleteStringByAnyKey(comment_list_key_prefix + ":page:1:size:10");
+            _cache.DeleteStringByAnyKey(comment_list_key_prefix + ":page:1:size:20");
+            _cache.DeleteStringByAnyKey(comment_list_key_prefix + ":page:1:size:50");
+            logger(ns_log::INFO) << "Invalidated comment list cache for solution " << comment.solution_id;
+
+            return true;
+        }
+
+        // Comments: get a single comment by id
+        bool GetCommentById(unsigned long long comment_id, Comment* comment)
+        {
+            if (comment == nullptr)
+            {
+                return false;
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            std::ostringstream sql;
+            sql << "select c.id, c.solution_id, c.user_id, c.content, c.is_edited, c.parent_id, c.reply_to_user_id, c.like_count, c.favorite_count, c.created_at, c.updated_at, u.name AS author_name, ru.name AS reply_to_user_name from solution_comments c LEFT JOIN users u ON c.user_id = u.uid LEFT JOIN users ru ON c.reply_to_user_id = ru.uid where c.id="
+                << comment_id;
+
+            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql评论详情查询错误!";
+                return false;
+            }
+
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql评论详情结果集为空!";
+                return false;
+            }
+
+            int rows = mysql_num_rows(res);
+            if (rows != 1)
+            {
+                mysql_free_result(res);
+                return false;
+            }
+
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row == nullptr)
+            {
+                mysql_free_result(res);
+                return false;
+            }
+            comment->id = 0;
+            comment->solution_id = 0;
+            try
+            {
+                if (row[0] != nullptr) comment->id = std::stoull(row[0]);
+                if (row[1] != nullptr) comment->solution_id = std::stoull(row[1]);
+            }
+            catch (const std::exception&) { comment->id = 0; comment->solution_id = 0; }
+            comment->user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
+            comment->content = (row[3] != nullptr) ? row[3] : "";
+            comment->is_edited = (row[4] != nullptr) ? (std::atoi(row[4]) != 0) : false;
+            comment->parent_id = (row[5] != nullptr) ? static_cast<unsigned long long>(std::stoull(row[5])) : 0;
+            comment->reply_to_user_id = (row[6] != nullptr) ? std::atoi(row[6]) : 0;
+            comment->like_count = (row[7] != nullptr) ? static_cast<unsigned int>(std::atoi(row[7])) : 0;
+            comment->favorite_count = (row[8] != nullptr) ? static_cast<unsigned int>(std::atoi(row[8])) : 0;
+            comment->created_at = (row[9] != nullptr) ? row[9] : "";
+            comment->updated_at = (row[10] != nullptr) ? row[10] : "";
+            comment->reply_to_user_name = (row[12] != nullptr) ? row[12] : "";
+            // row[11] is author_name; not stored in Comment struct
+            mysql_free_result(res);
+            return true;
+        }
+
+        // Comments: get replies for a given top-level comment
+        bool GetCommentReplies(unsigned long long parent_id, int page, int size,
+                               std::vector<Comment>* replies, int* total_count)
+        {
+            if (replies == nullptr || total_count == nullptr)
+            {
+                return false;
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            int safe_page = std::max(1, page);
+            int safe_size = std::max(1, size);
+            int offset = (safe_page - 1) * safe_size;
+
+            // total count for this parent comment
+            std::string count_sql = "select count(*) from solution_comments where parent_id=" + std::to_string(parent_id);
+            if (!QueryCount(count_sql, total_count))
+            {
+                return false;
+            }
+            if (*total_count <= 0)
+            {
+                replies->clear();
+                return true;
+            }
+
+            std::ostringstream sql;
+            sql << "select c.id, c.solution_id, c.user_id, c.content, c.is_edited, c.parent_id, c.reply_to_user_id, c.like_count, c.favorite_count, c.created_at, c.updated_at, u.name AS author_name, ru.name AS reply_to_user_name "
+                << "from solution_comments c LEFT JOIN users u ON c.user_id = u.uid LEFT JOIN users ru ON c.reply_to_user_id = ru.uid "
+                << "where c.parent_id=" << parent_id
+                << " order by c.created_at ASC LIMIT " << safe_size << " OFFSET " << offset;
+
+            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询题解评论回复错误!";
+                return false;
+            }
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql题解评论回复结果集为空!";
+                return false;
+            }
+            int rows = mysql_num_rows(res);
+            replies->clear();
+            replies->reserve(rows);
+            for (int i = 0; i < rows; ++i)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row == nullptr) continue;
+                Comment c;
+                try
+                {
+                    c.id = (row[0] != nullptr) ? std::stoull(row[0]) : 0;
+                    c.solution_id = (row[1] != nullptr) ? std::stoull(row[1]) : 0;
+                }
+                catch (const std::exception&) { c.id = 0; c.solution_id = 0; }
+                c.user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
+                c.content = (row[3] != nullptr) ? row[3] : "";
+                c.is_edited = (row[4] != nullptr) ? (std::atoi(row[4]) != 0) : false;
+                c.parent_id = (row[5] != nullptr) ? static_cast<unsigned long long>(std::stoull(row[5])) : 0;
+                c.reply_to_user_id = (row[6] != nullptr) ? std::atoi(row[6]) : 0;
+                c.like_count = (row[7] != nullptr) ? static_cast<unsigned int>(std::atoi(row[7])) : 0;
+                c.favorite_count = (row[8] != nullptr) ? static_cast<unsigned int>(std::atoi(row[8])) : 0;
+                c.created_at = (row[9] != nullptr) ? row[9] : "";
+                c.updated_at = (row[10] != nullptr) ? row[10] : "";
+                c.reply_to_user_name = (row[12] != nullptr) ? row[12] : "";
+                replies->push_back(c);
+            }
+            mysql_free_result(res);
+            return true;
+        }
+
+        // Comments: update a comment (ownership check included)
+        bool UpdateComment(unsigned long long comment_id, int user_id, const std::string& content)
+        {
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            std::string safe_content = EscapeSqlString(content, my.get());
+            std::ostringstream sql;
+            sql << "update solution_comments set content='" << safe_content
+                << "', is_edited = 1, updated_at = NOW() where id = " << comment_id
+                << " and user_id = " << user_id;
+
+            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql更新评论错误!";
+                return false;
+            }
+            if (mysql_affected_rows(my.get()) == 0)
+            {
+                // no rows updated => wrong owner or not found
+                return false;
+            }
+            return true;
+        }
+
+        // Comments: delete a comment (admin override supported) with cascade delete for replies
+        bool DeleteComment(unsigned long long comment_id, int user_id, bool is_admin = false)
+        {
+            // first fetch the related solution_id
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            unsigned long long solution_id = 0;
+            {
+                std::string get_sql = "select solution_id from solution_comments where id=" + std::to_string(comment_id);
+                if (mysql_query(my.get(), get_sql.c_str()) != 0)
+                {
+                    logger(ns_log::FATAL) << "MySql查询评论所属题解错误! errno=" << mysql_errno(my.get())
+                                          << " error=" << mysql_error(my.get());
+                    return false;
+                }
+                MYSQL_RES* res = mysql_store_result(my.get());
+                if (res == nullptr)
+                {
+                    logger(ns_log::FATAL) << "MySql评论所属题解查询结果集为空!";
+                    return false;
+                }
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row != nullptr && row[0] != nullptr)
+                {
+                    try
+                    {
+                        solution_id = std::stoull(row[0]);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        logger(ns_log::ERROR) << "stoull failed for solution_id: " << e.what();
+                        mysql_free_result(res);
+                        return false;
+                    }
+                }
+                mysql_free_result(res);
+            }
+            if (solution_id == 0)
+            {
+                return false;
+            }
+
+            // count children for cascade delete
+            int child_count = 0;
+            {
+                std::string cnt_sql = "select count(*) from solution_comments where parent_id=" + std::to_string(comment_id);
+                if (!QueryCount(cnt_sql, &child_count))
+                {
+                    return false;
+                }
+            }
+
+            // delete children first
+            std::ostringstream del_children;
+            del_children << "delete from solution_comments where parent_id=" << comment_id;
+            if (mysql_query(my.get(), del_children.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql删除子评论错误! errno=" << mysql_errno(my.get())
+                                      << " error=" << mysql_error(my.get());
+                return false;
+            }
+            // delete main comment
+            std::ostringstream del_sql;
+            if (is_admin)
+            {
+                del_sql << "delete from solution_comments where id=" << comment_id;
+            }
+            else
+            {
+                del_sql << "delete from solution_comments where id=" << comment_id << " and user_id=" << user_id;
+            }
+            if (mysql_query(my.get(), del_sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql删除评论错误! errno=" << mysql_errno(my.get())
+                                      << " error=" << mysql_error(my.get());
+                return false;
+            }
+            // Properly consume the DELETE result to keep the connection clean
+            {
+                MYSQL_RES* discard = mysql_store_result(my.get());
+                if (discard != nullptr)
+                {
+                    mysql_free_result(discard);
+                }
+            }
+
+            // Get the question_id for cache invalidation
+            std::string question_id;
+            {
+                std::string q_sql = "select question_id from " + SolutionsTable() + " where id=" + std::to_string(solution_id);
+                if (mysql_query(my.get(), q_sql.c_str()) == 0)
+                {
+                    MYSQL_RES* q_res = mysql_store_result(my.get());
+                    if (q_res != nullptr)
+                    {
+                        MYSQL_ROW q_row = mysql_fetch_row(q_res);
+                        if (q_row != nullptr && q_row[0] != nullptr)
+                        {
+                            question_id = q_row[0];
+                        }
+                        mysql_free_result(q_res);
+                    }
+                }
+            }
+
+            // decrease comment count by (1 + child_count)
+            std::ostringstream upd_sql;
+            unsigned int dec = 1 + static_cast<unsigned int>(child_count);
+            upd_sql << "update " << SolutionsTable() << " set comment_count = GREATEST(comment_count - " << dec << ", 0) where id = "
+                    << solution_id;
+            if (!ExecuteSql(upd_sql.str()))
+            {
+                return false;
+            }
+
+            // Invalidate solution list cache since comment_count changed
+            if (!question_id.empty())
+            {
+                auto list_key = _cache.BuildSolutionCacheKey(
+                    question_id, 1, 10, "1",
+                    Cache::CacheKey::PageType::kList,
+                    SolutionStatus::approved, SolutionSort::latest);
+                _cache.DeleteStringByAnyKey(list_key->GetCacheKeyString(&_cache));
+                logger(ns_log::INFO) << "Invalidated solution list cache after comment deletion for question " << question_id;
+            }
+
+            return true;
+        }
+
+        // Admin: check if a uid belongs to an admin account
+        bool GetAdminByUid(int uid)
+        {
+            AdminAccount admin;
+            std::string sql = "select admin_id,password_hash,uid,role,created_at from " + AdminAccountsTable() + " where uid=" + std::to_string(uid);
+            return QueryAdminAccount(sql, &admin);
+        }
         bool ToggleSolutionAction(long long solution_id, int user_id, const std::string& action_type,
                                    bool* now_active, unsigned int* new_count)
         {
@@ -1397,6 +2170,189 @@ namespace ns_model
                 return false;
             }
 
+                *new_count = static_cast<unsigned int>(std::atoi(cnt_row[0]));
+                mysql_free_result(cnt_res);
+
+            // Invalidate solution detail cache since like/favorite count changed
+            auto detail_key = _cache.BuildSolutionDetailCacheKey(solution_id);
+            _cache.DeleteStringByAnyKey(detail_key->GetCacheKeyString(&_cache));
+            logger(ns_log::INFO) << "Invalidated solution detail cache after action toggle for solution " << solution_id;
+
+                return true;
+        }
+
+        // Comments: batch get user actions on comments
+        bool GetCommentActions(const std::vector<unsigned long long>& comment_ids,
+                               int user_id,
+                               std::map<unsigned long long, std::map<std::string, bool>>* actions)
+        {
+            if (actions == nullptr)
+            {
+                return false;
+            }
+            if (comment_ids.empty())
+            {
+                return true;
+            }
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+            std::ostringstream ids_stream;
+            for (size_t i = 0; i < comment_ids.size(); ++i)
+            {
+                if (i > 0) ids_stream << ",";
+                ids_stream << comment_ids[i];
+            }
+            std::ostringstream sql;
+            sql << "select comment_id, action_type from comment_actions where user_id=" << user_id
+                << " and comment_id in (" << ids_stream.str() << ")";
+            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询评论用户交互错误!";
+                return false;
+            }
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql评论用户交互结果集为空!";
+                return false;
+            }
+            for (int i = 0; i < mysql_num_rows(res); ++i)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row == nullptr) continue;
+                unsigned long long cid = 0;
+                std::string atype = row[1] ? row[1] : "";
+                try {
+                    cid = std::stoull(row[0]);
+                } catch (...) {
+                    cid = 0;
+                }
+                if (cid != 0) {
+                    (*actions)[cid][atype] = true;
+                }
+            }
+            mysql_free_result(res);
+            return true;
+        }
+
+        // Comments: toggle action on a comment (like/favorite)
+        bool ToggleCommentAction(unsigned long long comment_id, int user_id, const std::string& action_type,
+                                   bool* now_active, unsigned int* new_count)
+        {
+            if (now_active == nullptr || new_count == nullptr)
+            {
+                return false;
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+            {
+                return false;
+            }
+
+            std::string safe_action = EscapeSqlString(action_type, my.get());
+
+            std::string count_column;
+            if (action_type == "like")
+            {
+                count_column = "like_count";
+            }
+            else if (action_type == "favorite")
+            {
+                count_column = "favorite_count";
+            }
+            else
+            {
+                return false;
+            }
+
+            std::ostringstream check_sql;
+            check_sql << "select id from comment_actions where comment_id=" << comment_id
+                      << " and user_id=" << user_id
+                      << " and action_type='" << safe_action << "'";
+
+            if (mysql_query(my.get(), check_sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询评论交互记录错误!";
+                return false;
+            }
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql评论交互记录结果集为空!";
+                return false;
+            }
+            int exist_rows = mysql_num_rows(res);
+            mysql_free_result(res);
+
+            if (exist_rows > 0)
+            {
+                std::ostringstream del_sql;
+                del_sql << "delete from comment_actions where comment_id=" << comment_id
+                        << " and user_id=" << user_id
+                        << " and action_type='" << safe_action << "'";
+                if (mysql_query(my.get(), del_sql.str().c_str()) != 0)
+                {
+                    logger(ns_log::FATAL) << "MySql删除评论交互记录错误!";
+                    return false;
+                }
+
+                std::ostringstream dec_sql;
+                dec_sql << "update solution_comments set " << count_column << " = " << count_column << " - 1"
+                        << " where id = " << comment_id;
+                if (mysql_query(my.get(), dec_sql.str().c_str()) != 0)
+                {
+                    logger(ns_log::FATAL) << "MySql更新评论计数错误!";
+                    return false;
+                }
+
+                *now_active = false;
+            }
+            else
+            {
+                std::ostringstream ins_sql;
+                ins_sql << "insert into comment_actions (comment_id, user_id, action_type, created_at) values ("
+                        << comment_id << ", " << user_id << ", '" << safe_action << "', NOW())";
+                if (mysql_query(my.get(), ins_sql.str().c_str()) != 0)
+                {
+                    logger(ns_log::FATAL) << "MySql插入评论交互记录错误!";
+                    return false;
+                }
+
+                std::ostringstream inc_sql;
+                inc_sql << "update solution_comments set " << count_column << " = " << count_column << " + 1"
+                        << " where id = " << comment_id;
+                if (mysql_query(my.get(), inc_sql.str().c_str()) != 0)
+                {
+                    logger(ns_log::FATAL) << "MySql更新评论计数错误!";
+                    return false;
+                }
+
+                *now_active = true;
+            }
+
+            std::ostringstream cnt_sql;
+            cnt_sql << "select " << count_column << " from solution_comments where id = " << comment_id;
+            if (mysql_query(my.get(), cnt_sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询评论计数错误!";
+                return false;
+            }
+            MYSQL_RES* cnt_res = mysql_store_result(my.get());
+            if (cnt_res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql评论计数结果集为空!";
+                return false;
+            }
+            MYSQL_ROW cnt_row = mysql_fetch_row(cnt_res);
+            if (cnt_row == nullptr || cnt_row[0] == nullptr)
+            {
+                mysql_free_result(cnt_res);
+                return false;
+            }
             *new_count = static_cast<unsigned int>(std::atoi(cnt_row[0]));
             mysql_free_result(cnt_res);
             return true;
@@ -1445,7 +2401,8 @@ namespace ns_model
             {
                 MYSQL_ROW row = mysql_fetch_row(res);
                 if (row == nullptr) continue;
-                long long sid = std::stoll(row[0]);
+                long long sid = 0;
+                try { sid = std::stoll(row[0]); } catch (const std::exception&) { sid = 0; }
                 std::string atype = row[1] ? row[1] : "";
                 actions[sid][atype] = true;
             }
@@ -1466,7 +2423,7 @@ namespace ns_model
 
             if(mysql_query(my.get(), sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL)<<"MySql查询错误!";
+                logger(ns_log::FATAL)<<"MySql查询错误: "<<mysql_error(my.get());
                 return false;
             }
             MYSQL_RES* res = mysql_store_result(my.get());
@@ -1503,7 +2460,7 @@ namespace ns_model
                 return false;
 
             std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where email='" + safe_email + "'";
+            std::string sql = "select uid,name,email,avatar_path,create_time,last_login,password_algo from " + oj_users + " where email='" + safe_email + "'";
             return QueryUser(sql, user);
         }
 
@@ -1522,8 +2479,12 @@ namespace ns_model
         //用户:通过ID获取用户信息
         bool GetUserById(int uid, User* user)
         {
-            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where uid=" + std::to_string(uid);
-            return QueryUser(sql, user);
+            std::string sql = "select uid,name,email,avatar_path,create_time,last_login,password_algo from " + oj_users + " where uid=" + std::to_string(uid);
+            bool ok = QueryUser(sql, user);
+            if (ok) {
+                _cache.SetStringByAnyKey("avatar:user:" + std::to_string(uid), user->avatar_path, _cache.BuildJitteredTtl(3600, 600));
+            }
+            return ok;
         }
 
         bool GetUserCount(int* count)
@@ -1629,7 +2590,7 @@ namespace ns_model
             int offset = (safe_page - 1) * size;
 
             std::ostringstream page_sql;
-            page_sql << "select uid,name,email,create_time,last_login from " << oj_users
+            page_sql << "select uid,name,email,avatar_path,create_time,last_login from " << oj_users
                      << where_clause
                      << " order by uid desc limit " << size << " offset " << offset;
 
@@ -1940,6 +2901,19 @@ namespace ns_model
             return ExecuteSql(sql);
         }
 
+        bool UpdateUserAvatar(int uid, const std::string& avatar_path)
+        {
+            auto my = CreateConnection();
+            if (!my)
+                return false;
+
+            std::string safe_path = EscapeSqlString(avatar_path, my.get());
+            std::ostringstream sql;
+            sql << "update " << oj_users << " set avatar_path='" << safe_path
+                << "' where uid=" << uid;
+            return ExecuteSql(sql.str());
+        }
+
         bool GetUserByName(const std::string& name, User* user)
         {
             auto my = CreateConnection();
@@ -1947,7 +2921,7 @@ namespace ns_model
                 return false;
 
             std::string safe_name = EscapeSqlString(name, my.get());
-            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where name='" + safe_name + "'";
+            std::string sql = "select uid,name,email,avatar_path,create_time,last_login,password_algo from " + oj_users + " where name='" + safe_name + "'";
             return QueryUser(sql, user);
         }
 
@@ -1963,7 +2937,12 @@ namespace ns_model
             std::ostringstream sql;
             sql << "insert into user_submits (user_id, question_id, result_json, is_pass, action_time) values ("
                 << user_id << ", '" << safe_qid << "', '" << safe_json << "', " << (is_pass ? 1 : 0) << ", NOW())";
-            return ExecuteSql(sql.str());
+            if (!ExecuteSql(sql.str()))
+                return false;
+
+            _cache.DeleteStringByAnyKey("submit:user:" + std::to_string(user_id) + ":q:" + question_id);
+            _cache.DeleteStringByAnyKey("stats:user:" + std::to_string(user_id));
+            return true;
         }
 
         bool HasUserPassedQuestion(int user_id, const std::string& question_id)
@@ -2037,6 +3016,246 @@ namespace ns_model
         {
             return _cache.BuildStaticCacheKey(page_name, page_type);
         }
+
+        // Feature 2.4: Get user submissions for a specific question
+        bool GetUserSubmitsByQuestion(int user_id, const std::string& question_id, Json::Value* submits)
+        {
+            if (submits == nullptr)
+                return false;
+
+            // 先查缓存
+            std::string cache_key = "submit:user:" + std::to_string(user_id) + ":q:" + question_id;
+            std::string cached;
+            if (_cache.GetStringByAnyKey(cache_key, &cached))
+            {
+                Json::CharReaderBuilder builder;
+                Json::Value cached_val;
+                std::istringstream ss(cached);
+                if (Json::parseFromStream(builder, ss, &cached_val, nullptr) && cached_val.isArray())
+                {
+                    *submits = cached_val;
+                    logger(ns_log::INFO) << "Cache hit for user submits user=" << user_id << " q=" << question_id;
+                    return true;
+                }
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+                return false;
+
+            std::string safe_qid = EscapeSqlString(question_id, my.get());
+            std::ostringstream sql;
+            sql << "select result_json, is_pass, action_time from user_submits"
+                << " where user_id=" << user_id
+                << " and question_id='" << safe_qid << "'"
+                << " order by action_time desc";
+
+            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询提交记录错误!";
+                return false;
+            }
+
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql提交记录结果集为空!";
+                return false;
+            }
+
+            submits->clear();
+            for (int i = 0; i < mysql_num_rows(res); ++i)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row == nullptr) continue;
+                Json::Value item;
+                item["result_json"] = row[0] ? row[0] : "";
+                item["is_pass"] = (row[1] != nullptr && row[1][0] != 0);
+                item["action_time"] = row[2] ? row[2] : "";
+                submits->append(item);
+            }
+            mysql_free_result(res);
+
+            // 回写缓存
+            Json::FastWriter writer;
+            std::string json_str = writer.write(*submits);
+            _cache.SetStringByAnyKey(cache_key, json_str, _cache.BuildJitteredTtl(600, 120));
+
+            return true;
+        }
+
+        // Feature 2.5a: Get sample tests for a question
+        bool GetSampleTestsByQuestionId(const std::string& question_id, Json::Value* tests)
+        {
+            if (tests == nullptr)
+                return false;
+
+            auto my = CreateConnection();
+            if (!my)
+                return false;
+
+            std::string safe_qid = EscapeSqlString(question_id, my.get());
+            std::string sql = "select id, question_id, `in`, `out`, is_sample from " + oj_tests +
+                              " where question_id='" + safe_qid + "' and is_sample=1 order by id asc";
+
+            if (mysql_query(my.get(), sql.c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询测试用例错误!";
+                return false;
+            }
+
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql测试用例结果集为空!";
+                return false;
+            }
+
+            tests->clear();
+            for (int i = 0; i < mysql_num_rows(res); ++i)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row == nullptr) continue;
+                Json::Value item;
+                item["id"] = row[0] ? std::atoi(row[0]) : 0;
+                item["question_id"] = row[1] ? row[1] : "";
+                item["input"] = row[2] ? row[2] : "";
+                item["output"] = row[3] ? row[3] : "";
+                item["is_sample"] = (row[4] && std::atoi(row[4]) != 0) ? true : false;
+                tests->append(item);
+            }
+            mysql_free_result(res);
+            return true;
+        }
+
+        // Feature 2.5: Get a single test case by ID (for custom test execution)
+        bool GetTestById(int test_id, const std::string& question_id, std::string* test_input, std::string* test_output)
+        {
+            if (test_input == nullptr || test_output == nullptr)
+                return false;
+
+            auto my = CreateConnection();
+            if (!my)
+                return false;
+
+            std::string safe_qid = EscapeSqlString(question_id, my.get());
+            std::ostringstream sql;
+            sql << "select `in`, `out` from " << oj_tests
+                << " where id=" << test_id
+                << " and question_id='" << safe_qid << "'";
+
+            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询测试用例错误!";
+                return false;
+            }
+
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql测试用例结果集为空!";
+                return false;
+            }
+
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row == nullptr || row[0] == nullptr || row[1] == nullptr)
+            {
+                mysql_free_result(res);
+                return false;
+            }
+
+            *test_input = row[0];
+            *test_output = row[1];
+            mysql_free_result(res);
+            return true;
+        }
+
+        // Feature 2.6: Get user statistics
+        bool GetUserStats(int user_id, Json::Value* stats)
+        {
+            if (stats == nullptr)
+                return false;
+
+            std::string cache_key = "stats:user:" + std::to_string(user_id);
+            std::string cached;
+            if (_cache.GetStringByAnyKey(cache_key, &cached))
+            {
+                Json::CharReaderBuilder builder;
+                std::istringstream ss(cached);
+                if (Json::parseFromStream(builder, ss, stats, nullptr))
+                {
+                    logger(ns_log::INFO) << "Cache hit for user stats user=" << user_id;
+                    return true;
+                }
+            }
+
+            auto my = CreateConnection();
+            if (!my)
+                return false;
+
+            std::ostringstream count_sql;
+            count_sql << "select count(*) from user_submits where user_id=" << user_id;
+            int total_submits = 0;
+            if (!QueryCount(count_sql.str(), &total_submits))
+                return false;
+
+            std::ostringstream pass_sql;
+            pass_sql << "select count(distinct question_id) from user_submits where user_id=" << user_id << " and is_pass=1";
+            int passed_questions = 0;
+            if (!QueryCount(pass_sql.str(), &passed_questions))
+                return false;
+
+            double accuracy = total_submits > 0 ? static_cast<double>(passed_questions) / static_cast<double>(total_submits) : 0.0;
+
+            (*stats)["total_submits"] = total_submits;
+            (*stats)["passed_questions"] = passed_questions;
+
+            Json::Value accuracy_val(accuracy);
+            (*stats)["accuracy"] = accuracy_val;
+
+            std::ostringstream recent_sql;
+            recent_sql << "select us.question_id, us.is_pass, us.action_time, us.result_json, q.title, q.star"
+                       << " from user_submits us"
+                       << " left join " << oj_questions << " q on us.question_id = q.id"
+                       << " where us.user_id=" << user_id
+                       << " order by us.action_time desc limit 20";
+
+            if (mysql_query(my.get(), recent_sql.str().c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << "MySql查询最近提交错误!";
+                return false;
+            }
+
+            MYSQL_RES* res = mysql_store_result(my.get());
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << "MySql最近提交结果集为空!";
+                return false;
+            }
+
+            Json::Value recent_arr(Json::arrayValue);
+            for (int i = 0; i < mysql_num_rows(res); ++i)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row == nullptr) continue;
+                Json::Value item;
+                item["question_id"] = row[0] ? row[0] : "";
+                item["is_pass"] = (row[1] != nullptr && row[1][0] != 0);
+                item["action_time"] = row[2] ? row[2] : "";
+                item["result_json"] = row[3] ? row[3] : "";
+                item["title"] = row[4] ? row[4] : "";
+                item["star"] = row[5] ? row[5] : "";
+                recent_arr.append(item);
+            }
+            mysql_free_result(res);
+            (*stats)["recent_submits"] = recent_arr;
+
+            Json::FastWriter writer;
+            _cache.SetStringByAnyKey(cache_key, writer.write(*stats), _cache.BuildJitteredTtl(180, 60));
+
+            return true;
+        }
+
     private:
         Cache _cache;
     };

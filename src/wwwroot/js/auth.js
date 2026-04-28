@@ -127,7 +127,8 @@
             return {
                 name: SERVER_USER_INFO.name || "用户",
                 email: SERVER_USER_INFO.email || "",
-                create_time: SERVER_USER_INFO.create_time || ""
+                create_time: SERVER_USER_INFO.create_time || "",
+                avatar_url: SERVER_USER_INFO.avatar_url || ""
             };
         }
 
@@ -644,10 +645,11 @@
         avatarWrapper.style.cssText = "position: relative; margin-left: 10px; cursor: pointer;";
 
         const avatar = document.createElement("img");
-        avatar.src = "/pictures/head.jpg";
+        const avatarSrc = (user.avatar_url && user.avatar_url.length > 0) ? user.avatar_url : "/pictures/head.jpg";
+        avatar.src = avatarSrc;
         avatar.width = 40;
         avatar.height = 40;
-        avatar.style.cssText = "border-radius:50%;display:block;";
+        avatar.style.cssText = "border-radius:50%;display:block;object-fit:cover;";
 
         const dropdown = document.createElement("div");
         dropdown.style.cssText = [
@@ -667,7 +669,7 @@
 
         dropdown.innerHTML = [
             '<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:14px;">',
-            '<img src="/pictures/head.jpg" width="56" height="56" style="border-radius:50%;margin-bottom:10px;border:2px solid rgba(244,246,240,0.2);" />',
+            '<img src="' + avatarSrc + '" width="56" height="56" style="border-radius:50%;margin-bottom:10px;border:2px solid rgba(244,246,240,0.2);object-fit:cover;" />',
             '<div style="font-size:15px;font-weight:500;color:#F4F6F0;">' + (user.name || "用户") + '</div>',
             '<div style="font-size:12px;color:rgba(244,246,240,0.7);margin-top:4px;">' + (user.email || "") + '</div>',
             '</div>',

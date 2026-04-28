@@ -148,10 +148,67 @@ namespace ns_runner
                     Json::Reader reader;
                     reader.parse(in_json,in_value);
                     std::vector<Test> tests;
-                    if(!QueryMysql(in_value["id"].asString(), &tests))
+                    bool has_custom_input = false;
+                    std::string custom_input;
+                    std::string custom_output;
+                    // Detect custom test path
+                    if (in_value.isMember("custom_input")) {
+                        custom_input = in_value["custom_input"].asString();
+                        if (!custom_input.empty()) {
+                            has_custom_input = true;
+                        }
+                    }
+                    if (in_value.isMember("custom_output")) {
+                        custom_output = in_value["custom_output"].asString();
+                    }
+                    if(has_custom_input)
                     {
-                        logger(FATAL)<<"MySQL查询题目"<<in_value["id"].asString()<<" 失败!";
-                        exit(1);
+                        // Only run a single test with the provided custom input
+                        int cpu_limit = 0;
+                        int mem_limit = 0;
+                        // Fetch cpu/mem limits for the question to control resource usage
+                        MYSQL* my = mysql_init(nullptr);
+                        if(mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr)
+                        {
+                            logger(ns_log::FATAL) << "MySQL连接失败: " << mysql_error(my);
+                            mysql_close(my);
+                            exit(1);
+                        }
+                        std::string question_sql = "select cpu_limit,mem_limit from " + oj_questions  + " where id='" + in_value["id"].asString() + "'";
+                        if(mysql_query(my, question_sql.c_str()) != 0)
+                        {
+                            logger(ns_log::FATAL) << "MySql查询错误: " << mysql_error(my);
+                            mysql_close(my);
+                            exit(1);
+                        }
+                        MYSQL_RES* res = mysql_store_result(my);
+                        if(res == nullptr)
+                        {
+                            logger(ns_log::FATAL) << "MySQL获取结果集失败: " << mysql_error(my);
+                            mysql_close(my);
+                            exit(1);
+                        }
+                        MYSQL_ROW row = mysql_fetch_row(res);
+                        if(row == nullptr)
+                        {
+                            logger(ns_log::FATAL) << "MySQL获取行失败: " << mysql_error(my);
+                            mysql_free_result(res);
+                            mysql_close(my);
+                            exit(1);
+                        }
+                        cpu_limit = atoi(row[0]);
+                        mem_limit = atoi(row[1]);
+                        mysql_free_result(res);
+                        mysql_close(my);
+                        Test t; t.in = custom_input; t.out = custom_output; t.cpu_limit = cpu_limit; t.mem_limit = mem_limit; tests.push_back(t);
+                    }
+                    else
+                    {
+                        if(!QueryMysql(in_value["id"].asString(), &tests))
+                        {
+                            logger(FATAL) << "MySQL查询题目"<<in_value["id"].asString()<<" 失败!";
+                            exit(1);
+                        }
                     }
                     //测试用例id
                     int test_number = 0;

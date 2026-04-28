@@ -21,6 +21,7 @@ struct User
     int uid; //用户ID
     std::string name; //用户名
     std::string email; //邮箱
+    std::string avatar_path; //头像路径
     std::string create_time; //创建时间
     std::string last_login; //最后登录时间
     std::string password_algo; //密码算法
@@ -120,6 +121,12 @@ enum class SolutionSort
     hot
 };
 
+enum class CommentStatus
+{
+    normal,
+    hidden
+};
+
 enum class SolutionActionType
 {
     none,
@@ -144,6 +151,22 @@ struct Solution
     unsigned int favorite_count = 0;
     unsigned int comment_count = 0;
     SolutionStatus status = SolutionStatus::approved;
+    std::string created_at;
+    std::string updated_at;
+};
+
+struct Comment
+{
+    unsigned long long id = 0;
+    unsigned long long solution_id = 0;
+    int user_id = 0;
+    std::string content;
+    bool is_edited = false;
+    unsigned long long parent_id = 0;           // 0表示顶级评论，非0表示回复
+    int reply_to_user_id = 0;                   // 被回复用户ID，用于@引用
+    unsigned int like_count = 0;                // 点赞数
+    unsigned int favorite_count = 0;            // 收藏数
+    std::string reply_to_user_name = "";      // 被回复用户名（查询时填充）
     std::string created_at;
     std::string updated_at;
 };

@@ -240,6 +240,8 @@
             white-space: pre-wrap;
             word-wrap: break-word;
             letter-spacing: 0.02em;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .loading { text-align: center; color: rgba(244, 246, 240, 0.5); padding: 60px 0; }
@@ -310,9 +312,100 @@
         }
 
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(244, 246, 240, 0.3); border-radius: 2px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(244, 246, 240, 0.5); }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+        #comment-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+        }
+        #comment-section h3 {
+            color: #F4F6F0;
+            margin-bottom: 20px;
+        }
+        #comment-textarea {
+            width: 100%;
+            min-height: 100px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(76,175,80,0.3);
+            border-radius: 8px;
+            padding: 12px;
+            color: #F4F6F0;
+            resize: vertical;
+        }
+        .comment-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        #char-count {
+            color: rgba(244,246,240,0.6);
+            font-size: 12px;
+        }
+        .btn-submit {
+            background: rgba(76,175,80,0.9);
+            color: #000;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .comment-item {
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .comment-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .comment-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(76,175,80,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #F4F6F0;
+            font-weight: bold;
+        }
+        .comment-author {
+            color: #F4F6F0;
+            font-weight: 500;
+        }
+        .comment-time {
+            color: rgba(244,246,240,0.5);
+            font-size: 12px;
+        }
+        .comment-edited {
+            color: rgba(244,246,240,0.4);
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .comment-content {
+            color: rgba(244,246,240,0.9);
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .comment-actions {
+            margin-top: 8px;
+        }
+        .comment-actions button {
+            background: transparent;
+            border: 1px solid rgba(76,175,80,0.5);
+            color: rgba(76,175,80,0.9);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 8px;
+            font-size: 12px;
+        }
 
         @media (max-width: 960px) {
             .header { flex-direction: column; gap: 10px; padding: 16px 24px; text-align: center; }
@@ -373,6 +466,35 @@
                 <div class="loading">加载中...</div>
             </div>
         </div>
+
+        <div id="comment-section">
+            <h3>评论区 <span id="comment-count">(共 0 条评论)</span></h3>
+
+            <!-- Comment input area -->
+            <div id="comment-input-area">
+                <!-- Show if not logged in -->
+                <div id="comment-login-prompt" style="display:none;">
+                    <a href="#" onclick="requireLogin(); return false;">登录</a>后可发表评论
+                </div>
+                <!-- Show if logged in -->
+                <div id="comment-form" style="display:none;">
+                    <textarea id="comment-textarea" maxlength="1000" placeholder="输入评论..."></textarea>
+                    <div class="comment-meta">
+                        <span id="char-count">0/1000</span>
+                        <button id="submit-comment" class="btn-submit">发表</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comment list -->
+            <div id="comment-list"></div>
+
+            <!-- Loading indicator -->
+            <div id="comment-loading" style="display:none;">加载中...</div>
+
+            <!-- No more comments -->
+            <div id="comment-no-more" style="display:none;">没有更多评论了</div>
+        </div>
     </div>
 
     <div id="auth-modal" class="modal">
@@ -425,7 +547,19 @@
             }
 
             var questionId = '';
-            var isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
+            var _loggedIn = false;
+
+            function checkLoggedIn() {
+                if (typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn) {
+                    _loggedIn = true;
+                }
+                return _loggedIn;
+            }
+
+            window.addEventListener('oj-auth-changed', function(e) {
+                _loggedIn = !!(e.detail && e.detail.user);
+                loadActions();
+            });
 
             fetch('/api/solutions/' + solutionId, {credentials: 'include'})
                 .then(function(r) { return r.json(); })
@@ -463,7 +597,7 @@
                 });
 
             function loadActions() {
-                if (!isLoggedIn) {
+                if (!checkLoggedIn()) {
                     updateActionButtons(false, false);
                     return;
                 }
@@ -487,7 +621,7 @@
             }
 
             document.getElementById('like-btn').addEventListener('click', function() {
-                if (!isLoggedIn) {
+                if (!checkLoggedIn()) {
                     var signInButton = document.getElementById('sign-in-button');
                     if (signInButton) signInButton.click();
                     return;
@@ -508,7 +642,7 @@
             });
 
             document.getElementById('fav-btn').addEventListener('click', function() {
-                if (!isLoggedIn) {
+                if (!checkLoggedIn()) {
                     var signInButton = document.getElementById('sign-in-button');
                     if (signInButton) signInButton.click();
                     return;
@@ -527,6 +661,409 @@
                 })
                 .catch(function() {});
             });
+        })();
+    </script>
+    <script>
+        (function() {
+            var currentUser = null;
+            var currentPage = 1;
+            var hasMoreComments = true;
+            var isLoading = false;
+
+            function getSolutionId() {
+                var m = window.location.pathname.match(/\/solutions\/(\d+)/);
+                return m ? m[1] : null;
+            }
+
+            function formatRelativeTime(timestamp) {
+                var date = new Date(timestamp);
+                var now = new Date();
+                var diff = Math.floor((now - date) / 1000);
+
+                if (diff < 60) return '刚刚';
+                if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+                if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+                if (diff < 604800) return Math.floor(diff / 86400) + '天前';
+                return date.toLocaleDateString('zh-CN');
+            }
+
+            function checkAuth() {
+                fetch('/api/user/info', { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            currentUser = data.user;
+                            document.getElementById('comment-login-prompt').style.display = 'none';
+                            document.getElementById('comment-form').style.display = 'block';
+                        } else {
+                            document.getElementById('comment-login-prompt').style.display = 'block';
+                            document.getElementById('comment-form').style.display = 'none';
+                        }
+                    })
+                    .catch(function() {
+                        document.getElementById('comment-login-prompt').style.display = 'block';
+                    });
+            }
+
+            function loadComments(page) {
+                if (isLoading || !hasMoreComments) return;
+                isLoading = true;
+                document.getElementById('comment-loading').style.display = 'block';
+
+                var solutionId = getSolutionId();
+                fetch('/api/solutions/' + solutionId + '/comments?page=' + page + '&size=20', {
+                    credentials: 'include'
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        document.getElementById('comment-count').textContent = '(共 ' + data.total + ' 条评论)';
+
+                        if (page === 1) {
+                            document.getElementById('comment-list').innerHTML = '';
+                        }
+
+                        data.comments.forEach(function(comment) {
+                            renderComment(comment);
+                        });
+
+                        hasMoreComments = page < data.total_pages;
+                        currentPage = page;
+
+                        if (!hasMoreComments) {
+                            document.getElementById('comment-no-more').style.display = 'block';
+                        }
+                    }
+                })
+                .catch(function(e) {
+                    console.error('加载评论失败:', e);
+                })
+                .finally(function() {
+                    isLoading = false;
+                    document.getElementById('comment-loading').style.display = 'none';
+                });
+            }
+
+            function renderComment(comment, isReply) {
+                var div = document.createElement('div');
+                div.className = 'comment-item' + (isReply ? ' comment-reply' : '');
+                div.dataset.commentId = comment.id;
+
+                var isOwner = currentUser && currentUser.uid === comment.user_id;
+                var canDelete = isOwner || (currentUser && currentUser.is_admin);
+
+                var avatar = document.createElement('img');
+                avatar.className = 'comment-avatar';
+                avatar.src = comment.author_avatar || '/pictures/head.jpg';
+                avatar.onerror = function() { this.src = '/pictures/head.jpg'; };
+
+                var author = document.createElement('span');
+                author.className = 'comment-author';
+                author.textContent = (isReply && comment.reply_to_user_name ? '@' + comment.reply_to_user_name + ' ' : '') + (comment.author_name || '匿名');
+
+                var time = document.createElement('span');
+                time.className = 'comment-time';
+                time.textContent = formatRelativeTime(comment.created_at);
+
+                var content = document.createElement('div');
+                content.className = 'comment-content';
+                content.textContent = comment.content;
+
+                var header = document.createElement('div');
+                header.className = 'comment-header';
+                header.appendChild(avatar);
+                header.appendChild(author);
+                header.appendChild(time);
+
+                if (comment.is_edited) {
+                    var edited = document.createElement('span');
+                    edited.className = 'comment-edited';
+                    edited.textContent = '(已编辑)';
+                    header.appendChild(edited);
+                }
+
+                var actions = document.createElement('div');
+                actions.className = 'comment-actions';
+
+                // 点赞按钮
+                var likeBtn = document.createElement('button');
+                likeBtn.textContent = '❤ ' + (comment.like_count || 0);
+                likeBtn.className = 'like-btn';
+                likeBtn.onclick = function() { toggleCommentLike(comment.id, likeBtn); };
+                actions.appendChild(likeBtn);
+
+                // 收藏按钮
+                var favBtn = document.createElement('button');
+                favBtn.textContent = '⭐ ' + (comment.favorite_count || 0);
+                favBtn.className = 'fav-btn';
+                favBtn.onclick = function() { toggleCommentFavorite(comment.id, favBtn); };
+                actions.appendChild(favBtn);
+
+                // 回复按钮（仅顶级评论显示）
+                if (!isReply) {
+                    var replyBtn = document.createElement('button');
+                    replyBtn.textContent = '回复';
+                    replyBtn.onclick = function() { showReplyForm(comment.id, comment.author_name); };
+                    actions.appendChild(replyBtn);
+                }
+
+                if (isOwner) {
+                    var editBtn = document.createElement('button');
+                    editBtn.textContent = '编辑';
+                    editBtn.onclick = (function(cid, ccontent) {
+                        return function() { editComment(cid, ccontent); };
+                    })(comment.id, comment.content);
+                    actions.appendChild(editBtn);
+                }
+                if (canDelete) {
+                    var deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = '删除';
+                    deleteBtn.onclick = (function(cid) {
+                        return function() { deleteComment(cid); };
+                    })(comment.id);
+                    actions.appendChild(deleteBtn);
+                }
+
+                div.appendChild(header);
+                div.appendChild(content);
+                div.appendChild(actions);
+
+                // 顶级评论的回复区域
+                if (!isReply) {
+                    // 回复计数 + 展开按钮
+                    var replyCount = comment.reply_count || 0;
+                    if (replyCount > 0) {
+                        var replyToggle = document.createElement('div');
+                        replyToggle.className = 'reply-toggle';
+                        replyToggle.style.cssText = 'margin-left:20px;cursor:pointer;color:rgba(244,246,240,0.6);font-size:13px;padding:4px 0;';
+                        replyToggle.textContent = '▼ ' + replyCount + ' 条回复';
+                        var replyContainer = document.createElement('div');
+                        replyContainer.className = 'reply-container';
+                        replyContainer.style.display = 'none';
+                        replyToggle.onclick = function() {
+                            if (replyContainer.style.display === 'none') {
+                                replyContainer.style.display = 'block';
+                                replyToggle.textContent = '▲ ' + replyCount + ' 条回复';
+                                loadReplies(comment.id, replyContainer);
+                            } else {
+                                replyContainer.style.display = 'none';
+                                replyToggle.textContent = '▼ ' + replyCount + ' 条回复';
+                            }
+                        };
+                        div.appendChild(replyToggle);
+                        div.appendChild(replyContainer);
+                    }
+
+                    // 回复表单
+                    var replyForm = document.createElement('div');
+                    replyForm.className = 'reply-form';
+                    replyForm.id = 'reply-form-' + comment.id;
+                    replyForm.style.cssText = 'display:none;margin-left:20px;margin-top:8px;';
+                    replyForm.innerHTML = '<textarea id="reply-text-' + comment.id + '" maxlength="1000" style="width:100%;min-height:60px;background:rgba(255,255,255,0.06);border:1px solid rgba(244,246,240,0.2);border-radius:8px;color:#F4F6F0;padding:8px;resize:vertical;"></textarea><div style="margin-top:6px;display:flex;gap:8px;"><button onclick="submitReply(' + comment.id + ')" style="padding:6px 16px;background:rgba(255,255,255,0.1);border:1px solid rgba(244,246,240,0.2);border-radius:6px;color:#F4F6F0;cursor:pointer;">回复</button><button onclick="hideReplyForm(' + comment.id + ')" style="padding:6px 16px;background:transparent;border:none;color:rgba(244,246,240,0.5);cursor:pointer;">取消</button></div>';
+                    div.appendChild(replyForm);
+                }
+
+                document.getElementById('comment-list').appendChild(div);
+            }
+
+            // 切换评论点赞
+            function toggleCommentLike(commentId, btn) {
+                if (!currentUser) { alert('请先登录'); return; }
+                fetch('/api/comments/' + commentId + '/like', { method: 'POST', credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        if (d.success) {
+                            btn.textContent = '❤ ' + d.like_count;
+                            btn.style.color = d.liked ? '#ff6b6b' : '';
+                        }
+                    });
+            }
+
+            // 切换评论收藏
+            function toggleCommentFavorite(commentId, btn) {
+                if (!currentUser) { alert('请先登录'); return; }
+                fetch('/api/comments/' + commentId + '/favorite', { method: 'POST', credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        if (d.success) {
+                            btn.textContent = '⭐ ' + d.favorite_count;
+                            btn.style.color = d.favorited ? '#ffd700' : '';
+                        }
+                    });
+            }
+
+            // 加载回复
+            function loadReplies(parentId, container) {
+                if (container.dataset.loaded === 'true') return;
+                container.innerHTML = '<div style="color:rgba(244,246,240,0.5);padding:8px;">加载中...</div>';
+                fetch('/api/comments/' + parentId + '/replies?page=1&size=50', { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        container.innerHTML = '';
+                        if (d.success && d.comments) {
+                            d.comments.forEach(function(reply) { renderCommentInline(reply, container); });
+                        }
+                        container.dataset.loaded = 'true';
+                    })
+                    .catch(function() { container.innerHTML = ''; });
+            }
+
+            // 内联渲染回复
+            function renderCommentInline(comment, container) {
+                var div = document.createElement('div');
+                div.className = 'comment-item comment-reply';
+                div.style.cssText = 'padding:10px;margin:4px 0;border-left:2px solid rgba(244,246,240,0.1);';
+                var avatar = document.createElement('img');
+                avatar.className = 'comment-avatar';
+                avatar.src = comment.author_avatar || '/pictures/head.jpg';
+                avatar.onerror = function() { this.src = '/pictures/head.jpg'; };
+                var authorSpan = '<span style="color:rgba(244,246,240,0.6);font-size:12px;">' + (comment.reply_to_user_name ? '@' + comment.reply_to_user_name + ' ' : '') + (comment.author_name || '匿名') + '</span>';
+                var timeSpan = '<span style="color:rgba(244,246,240,0.4);font-size:11px;margin-left:8px;">' + formatRelativeTime(comment.created_at) + '</span>';
+                div.innerHTML = authorSpan + timeSpan + '<div style="margin-top:4px;color:rgba(244,246,240,0.85);font-size:13px;">' + comment.content + '</div>';
+                container.appendChild(div);
+            }
+
+            // 显示回复表单
+            function showReplyForm(parentId, username) {
+                var form = document.getElementById('reply-form-' + parentId);
+                if (!form) return;
+                var textarea = document.getElementById('reply-text-' + parentId);
+                if (textarea) textarea.value = '@' + username + ' ';
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            }
+
+            // 隐藏回复表单
+            function hideReplyForm(parentId) {
+                var form = document.getElementById('reply-form-' + parentId);
+                if (form) form.style.display = 'none';
+            }
+
+            // 提交回复
+            function submitReply(parentId) {
+                if (!currentUser) { alert('请先登录'); return; }
+                var textarea = document.getElementById('reply-text-' + parentId);
+                var content = textarea ? textarea.value.trim() : '';
+                if (!content) return;
+                var solutionId = getSolutionId();
+                fetch('/api/solutions/' + solutionId + '/comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ content: content, parent_id: parentId })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.success) {
+                        hideReplyForm(parentId);
+                        loadComments(1);
+                    } else {
+                        alert('回复失败: ' + (d.error_code || '未知错误'));
+                    }
+                });
+            }
+
+            function editComment(commentId, currentContent) {
+                var newContent = prompt('编辑评论:', currentContent);
+                if (newContent === null || newContent.trim() === currentContent) return;
+                if (newContent.trim().length > 1000) {
+                    alert('评论内容不能超过1000字');
+                    return;
+                }
+
+                fetch('/api/comments/' + commentId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ content: newContent.trim() })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        hasMoreComments = true;
+                        currentPage = 1;
+                        document.getElementById('comment-no-more').style.display = 'none';
+                        loadComments(1);
+                    } else {
+                        alert(data.error_code === 'FORBIDDEN' ? '无权操作' : '编辑失败');
+                    }
+                })
+                .catch(function() { alert('网络错误，请重试'); });
+            }
+
+            function deleteComment(commentId) {
+                if (!confirm('确定要删除这条评论吗？')) return;
+
+                fetch('/api/comments/' + commentId, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        hasMoreComments = true;
+                        currentPage = 1;
+                        document.getElementById('comment-no-more').style.display = 'none';
+                        loadComments(1);
+                    } else {
+                        alert(data.error_code === 'FORBIDDEN' ? '无权操作' : '删除失败');
+                    }
+                })
+                .catch(function() { alert('网络错误，请重试'); });
+            }
+
+            function requireLogin() {
+                var signInButton = document.getElementById('sign-in-button');
+                if (signInButton) signInButton.click();
+            }
+
+            document.getElementById('submit-comment').addEventListener('click', function() {
+                var content = document.getElementById('comment-textarea').value.trim();
+                if (!content) {
+                    alert('评论内容不能为空');
+                    return;
+                }
+                if (content.length > 1000) {
+                    alert('评论内容不能超过1000字');
+                    return;
+                }
+
+                var solutionId = getSolutionId();
+                fetch('/api/solutions/' + solutionId + '/comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ content: content })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        document.getElementById('comment-textarea').value = '';
+                        document.getElementById('char-count').textContent = '0/1000';
+                        hasMoreComments = true;
+                        currentPage = 1;
+                        document.getElementById('comment-no-more').style.display = 'none';
+                        loadComments(1);
+                    } else {
+                        alert(data.error_code === 'UNAUTHORIZED' ? '请先登录' : '发布失败');
+                    }
+                })
+                .catch(function() { alert('网络错误，请重试'); });
+            });
+
+            document.getElementById('comment-textarea').addEventListener('input', function(e) {
+                document.getElementById('char-count').textContent = e.target.value.length + '/1000';
+            });
+
+            window.addEventListener('scroll', function() {
+                if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+                    if (!isLoading && hasMoreComments) {
+                        loadComments(currentPage + 1);
+                    }
+                }
+            });
+
+            checkAuth();
+            loadComments(1);
         })();
     </script>
 </body>

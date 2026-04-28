@@ -54,39 +54,21 @@
         min-width: 300px;
     }
 
-    .question-header {
-        background: rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(20px);
-        border-radius: 20px;
-        padding: 30px;
-        border: 1px solid rgba(244, 246, 240, 0.1);
-        animation: fadeIn 0.8s ease;
+    .question-title-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
     }
 
     .question-title {
-        font-size: 32px;
+        font-size: 28px;
         color: #F4F6F0;
-        margin-bottom: 20px;
+        margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         font-weight: 300;
         letter-spacing: 0.02em;
         line-height: 1.2;
-    }
-
-    .question-meta {
-        display: flex;
-        gap: 30px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .meta-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: rgba(244, 246, 240, 0.7);
-        font-size: 14px;
-        letter-spacing: 0.02em;
     }
 
     .difficulty-badge {
@@ -127,6 +109,124 @@
         overflow-y: auto;
     }
 
+    .resizer-vertical {
+        height: 12px;
+        background: transparent;
+        cursor: row-resize;
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .resizer-vertical::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 100%;
+        height: 2px;
+        background: rgba(244, 246, 240, 0.2);
+        transition: background 0.3s ease;
+    }
+
+    .resizer-vertical:hover::before,
+    .resizer-vertical.active::before {
+        background: rgba(244, 246, 240, 0.6);
+    }
+
+    .resizer-vertical:hover {
+        background: rgba(244, 246, 240, 0.1);
+    }
+
+    .resizer-vertical.active {
+        background: rgba(244, 246, 240, 0.2);
+    }
+
+    .test-panel {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        border: 1px solid rgba(244, 246, 240, 0.1);
+        overflow: auto;
+        min-height: 0;
+        max-height: 40vh;
+        flex-shrink: 0;
+    }
+
+    .test-panel.collapsed {
+        max-height: 0;
+        overflow: hidden;
+        border: none;
+        padding: 0;
+    }
+
+    .test-panel-content {
+        padding: 16px;
+        color: rgba(244, 246, 240, 0.85);
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .test-panel h3 {
+        color: #F4F6F0;
+        font-size: 16px;
+        margin: 0 0 12px 0;
+        font-weight: 400;
+        letter-spacing: 0.02em;
+    }
+
+    .test-case-item {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        border: 1px solid rgba(244, 246, 240, 0.08);
+    }
+
+    .test-case-label {
+        color: rgba(244, 246, 240, 0.5);
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+
+    .test-case-value {
+        color: rgba(244, 246, 240, 0.85);
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    .result-pass { color: rgba(76, 175, 80, 0.9); }
+    .result-fail { color: rgba(244, 67, 54, 0.9); }
+    .result-error { color: rgba(255, 152, 0, 0.9); }
+
+    .submit-item {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        border: 1px solid rgba(244, 246, 240, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .submit-time {
+        color: rgba(244, 246, 240, 0.5);
+        font-size: 12px;
+    }
+
+    .submit-status {
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .test-panel-loading {
+        text-align: center;
+        padding: 20px;
+        color: rgba(244, 246, 240, 0.5);
+    }
+
     .section-title {
         font-size: 20px;
         color: #F4F6F0;
@@ -148,14 +248,16 @@
         border-radius: 2px;
     }
 
-    .description {
-        color: rgba(244, 246, 240, 0.85);
-        line-height: 1.8;
-        font-size: 15px;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        letter-spacing: 0.02em;
-    }
+        .description {
+            color: rgba(244, 246, 240, 0.85);
+            line-height: 1.8;
+            font-size: 15px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            letter-spacing: 0.02em;
+            max-height: 300px;
+            overflow-y: auto;
+        }
 
     .code-editor {
         flex: 1;
@@ -288,36 +390,23 @@
         .question-section, .code-editor {
             min-width: 0;
         }
-        .question-header { padding: 15px; }
-        .question-title { font-size: 18px; margin-bottom: 10px; }
-        .question-meta { flex-direction: row; flex-wrap: wrap; gap: 10px; font-size: 12px; }
+        .question-title { font-size: 18px; }
+        .question-title-row { flex-wrap: wrap; }
         .difficulty-badge { padding: 3px 8px; font-size: 11px; }
         .description { font-size: 13px; line-height: 1.5; }
         .submit-section { flex-direction: column; gap: 8px; }
         .submit-btn { width: 100%; padding: 10px; color: green; font-size: 14px; }
+        .test-panel { max-height: 30vh; }
     }
 </style>
 
 <div class="question-container">
     <div class="question-section" id="questionSection">
-        <div class="question-header">
-            <h1 class="question-title" id="questionTitle">加载中...</h1>
-            <div class="question-meta">
-                <div class="meta-item">
-                    <span>难度：</span>
-                    <span class="difficulty-badge" id="difficultyBadge">-</span>
-                </div>
-                <div class="meta-item">
-                    <span>时间限制：</span>
-                    <span>1秒</span>
-                </div>
-                <div class="meta-item">
-                    <span>内存限制：</span>
-                    <span>20MB</span>
-                </div>
-            </div>
-        </div>
         <div class="content-section">
+            <div class="question-title-row">
+                <h1 class="question-title" id="questionTitle">加载中...</h1>
+                <span class="difficulty-badge" id="difficultyBadge">-</span>
+            </div>
             <h2 class="section-title">题目描述</h2>
             <div class="description" id="questionDesc">加载中...</div>
         </div>
@@ -338,9 +427,9 @@
             </div>
             <div class="submit-section">
                 <div class="info-option">
-                    <button type="button" class="option-btn">测试结果</button>
-                    <button type="button" class="option-btn">测试用例</button>
-                    <button type="button" class="option-btn">提交记录</button>
+                    <button type="button" class="option-btn" onclick="window.questionPage.showTestResult()">测试结果</button>
+                    <button type="button" class="option-btn" onclick="window.questionPage.showTestCases()">测试用例</button>
+                    <button type="button" class="option-btn" onclick="window.questionPage.showSubmitHistory()">提交记录</button>
                 </div>
                 <div class="jump-option">
                     <a href="/all_questions" class="option-btn">返回题库</a>
@@ -350,6 +439,10 @@
             <textarea name="code" id="code" style="display: none;"></textarea>
             <input type="hidden" name="number" id="questionNumber">
         </form>
+        <div class="resizer-vertical" id="resizerVertical"></div>
+        <div class="test-panel collapsed" id="testPanel">
+            <div class="test-panel-content" id="testPanelContent"></div>
+        </div>
     </div>
 </div>
 
