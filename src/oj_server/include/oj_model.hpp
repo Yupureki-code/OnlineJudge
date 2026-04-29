@@ -1699,23 +1699,26 @@ namespace ns_model
             }
 
             // update comment count on the related solution
-            std::ostringstream upd;
-            upd << "update " << SolutionsTable() << " set comment_count = comment_count + 1 where id = "
-                << comment.solution_id;
-            if (!ExecuteSql(upd.str()))
+            if (comment.parent_id == 0)
             {
-                return false;
-            }
+                std::ostringstream upd;
+                upd << "update " << SolutionsTable() << " set comment_count = comment_count + 1 where id = "
+                    << comment.solution_id;
+                if (!ExecuteSql(upd.str()))
+                {
+                    return false;
+                }
 
-            // Invalidate solution list cache since comment_count changed
-            if (!question_id.empty())
-            {
-                auto list_key = _cache.BuildSolutionCacheKey(
-                    question_id, 1, 10, "1",
-                    Cache::CacheKey::PageType::kList,
-                    SolutionStatus::approved, SolutionSort::latest);
-                _cache.DeleteStringByAnyKey(list_key->GetCacheKeyString(&_cache));
-                logger(ns_log::INFO) << "Invalidated solution list cache after comment creation for question " << question_id;
+                // Invalidate solution list cache since comment_count changed
+                if (!question_id.empty())
+                {
+                    auto list_key = _cache.BuildSolutionCacheKey(
+                        question_id, 1, 10, "1",
+                        Cache::CacheKey::PageType::kList,
+                        SolutionStatus::approved, SolutionSort::latest);
+                    _cache.DeleteStringByAnyKey(list_key->GetCacheKeyString(&_cache));
+                    logger(ns_log::INFO) << "Invalidated solution list cache after comment creation for question " << question_id;
+                }
             }
 
             // Invalidate comment list cache for this solution

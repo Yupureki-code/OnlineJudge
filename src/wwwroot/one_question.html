@@ -2140,13 +2140,6 @@
                 });
             });
 
-            // 支持URL hash自动切换到题解tab
-            if (window.location.hash === '#solutions-tab' && questionId) {
-                activateTab('solutions');
-                loadSolutions(questionId, 1, solutionsSort);
-                solutionsLoaded = true;
-            }
-
             // 检查用户是否通过该题
             function loadPassStatus(qid) {
                 var container = document.getElementById('solutions-container');
@@ -2220,6 +2213,13 @@
                         });
                 });
             };
+
+            // 支持URL hash自动切换到题解tab
+            if (window.location.hash === '#solutions-tab' && questionId) {
+                activateTab('solutions');
+                window.loadSolutions(questionId, 1, solutionsSort);
+                solutionsLoaded = true;
+            }
         })();
 
         // ── Inline solution detail ──
