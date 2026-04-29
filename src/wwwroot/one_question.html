@@ -3059,6 +3059,9 @@
                 if (status === 'Accept' || status === 'Accepted' || status === 'AC' || status === 'passed') {
                     statusClass = 'pass';
                     statusText = '通过 ✓';
+                } else if (status === 'OK' || status === 'Passed') {
+                    statusClass = 'pass';
+                    statusText = '运行成功 ✓';
                 } else if (status === 'Wrong Answer' || status === 'WA') {
                     statusClass = 'fail';
                     statusText = '答案错误 ✗';
@@ -3071,6 +3074,8 @@
                 } else if (status === 'Time Limit Exceeded' || status === 'TLE') {
                     statusClass = 'error';
                     statusText = '超时';
+                } else if (status !== '未知') {
+                    statusClass = 'info';
                 }
 
                 var html = '<div class="test-result-item">';
