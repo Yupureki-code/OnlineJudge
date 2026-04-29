@@ -993,9 +993,17 @@
             // 显示回复表单
             function showReplyForm(parentId, username, isTopLevel) {
                 var form = document.getElementById('reply-form-' + parentId);
-                if (!form) return;
+                if (!form) {
+                    form = document.querySelector('[id="reply-form-' + parentId + '"]');
+                }
+                if (!form) { console.warn('Reply form not found: reply-form-' + parentId); return; }
                 var textarea = document.getElementById('reply-text-' + parentId);
-                if (textarea) textarea.value = isTopLevel ? '' : ('@' + username + ' ');
+                if (!textarea) {
+                    textarea = form.querySelector('textarea');
+                }
+                if (textarea) {
+                    textarea.value = isTopLevel ? '' : ('@' + (username || '用户') + ' ');
+                }
                 form.style.display = form.style.display === 'none' ? 'block' : 'none';
             }
 
