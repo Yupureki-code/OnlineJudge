@@ -138,10 +138,10 @@ namespace ns_hanlder
                 out_value["status"] = std::string("OK");
                 out_value["desc"] = std::string("");
                 std::string _stdout;
-                FileUtil::ReadFile(PathUtil::Stdout(file_name), &_stdout, true);
+                FileUtil::ReadFile(PathUtil::Stdout(file_name + "_1"), &_stdout, true);
                 out_value["stdout"] = _stdout;
                 std::string _stderr;
-                FileUtil::ReadFile(PathUtil::Stderr(file_name), &_stderr, true);
+                FileUtil::ReadFile(PathUtil::Stderr(file_name + "_1"), &_stderr, true);
                 out_value["stderr"] = _stderr;
                 Json::StyledWriter writer;
                 std::string out_json = writer.write(out_value);
