@@ -657,6 +657,7 @@
         
         <div class="section">
             <h2 class="section-title">已解决题目</h2>
+            <div id="passed-questions-list"></div>
         </div>
     </div>
 
@@ -753,6 +754,7 @@
                     var acc = data.stats.accuracy !== undefined ? data.stats.accuracy : 0;
                     document.getElementById('stat-accuracy').textContent = (acc * 100).toFixed(1) + '%';
                     renderRecentSubmits(data.stats.recent_submits || []);
+                    renderPassedQuestions(data.stats.recent_submits || []);
                 }
             } catch (error) {
                 console.error('加载用户统计失败:', error);
@@ -789,6 +791,31 @@
                 html += '<span class="status-badge ' + statusClass + '">' + statusText + '</span>';
                 html += '</div>';
             });
+            container.innerHTML = html;
+        }
+
+        function renderPassedQuestions(submits) {
+            var container = document.getElementById('passed-questions-list');
+            if (!container) return;
+            var passed = [];
+            var seen = {};
+            submits.forEach(function(s) {
+                if ((s.is_pass === true || s.is_pass === 1) && s.question_id && !seen[s.question_id]) {
+                    seen[s.question_id] = true;
+                    passed.push(s);
+                }
+            });
+            if (passed.length === 0) {
+                container.innerHTML = '<div style="color:rgba(244,246,240,0.4);padding:10px 0;text-align:center;">(暂无)</div>';
+                return;
+            }
+            var html = '<div style="margin-bottom:8px;color:rgba(244,246,240,0.6);font-size:13px;">共通过 ' + passed.length + ' 道题目</div>';
+            html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+            passed.forEach(function(s) {
+                var title = s.title || ('题目 #' + s.question_id);
+                html += '<a href="/questions/' + s.question_id + '" style="display:inline-block;padding:6px 14px;background:rgba(76,175,80,0.12);border:1px solid rgba(76,175,80,0.3);border-radius:6px;color:#4CAF50;text-decoration:none;font-size:13px;transition:all 0.2s;" onmouseover="this.style.background=\'rgba(76,175,80,0.25)\'" onmouseout="this.style.background=\'rgba(76,175,80,0.12)\'">' + escapeHtml(title) + '</a>';
+            });
+            html += '</div>';
             container.innerHTML = html;
         }
 

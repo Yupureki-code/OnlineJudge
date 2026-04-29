@@ -1275,8 +1275,11 @@
                 if (current.difficulty && current.difficulty !== 'all') {
                     params.set('difficulty', current.difficulty);
                 }
-                if (current.title && current.title.trim() !== '') {
-                    params.set('title', current.title.trim());
+                if (current.keyword && current.keyword.trim() !== '') {
+                    params.set('q', current.keyword.trim());
+                }
+                if (current.queryMode) {
+                    params.set('query_mode', current.queryMode);
                 }
                 return `/all_questions?${params.toString()}`;
             };

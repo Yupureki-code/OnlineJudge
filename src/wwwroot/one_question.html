@@ -1422,43 +1422,6 @@
             flex-direction: column;
         }
 
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 14px;
-            background: rgba(255, 255, 255, 0.05);
-            border-bottom: 1px solid rgba(244, 246, 240, 0.1);
-            flex-shrink: 0;
-        }
-
-        .panel-tabs {
-            display: flex;
-            gap: 4px;
-        }
-
-        .panel-tab {
-            padding: 5px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            color: rgba(244, 246, 240, 0.5);
-            font-size: 12px;
-            background: none;
-            border: 1px solid transparent;
-            transition: all 0.2s ease;
-            letter-spacing: 0.02em;
-        }
-
-        .panel-tab.active {
-            background: rgba(255, 255, 255, 0.1);
-            color: #F4F6F0;
-            border-color: rgba(244, 246, 240, 0.2);
-        }
-
-        .panel-tab:hover {
-            color: rgba(244, 246, 240, 0.8);
-        }
-
         .panel-close {
             width: 22px;
             height: 22px;
@@ -1481,6 +1444,7 @@
         }
 
         .panel-body {
+            position: relative;
             overflow-y: auto;
             padding: 14px;
             flex: 1;
@@ -1901,15 +1865,8 @@
                         <textarea name="code" id="code" style="display: none;"></textarea>
                     </form>
             <div id="bottom-panel" class="bottom-panel">
-                <div class="panel-header">
-                    <div class="panel-tabs">
-                        <button class="panel-tab active" data-panel-tab="test-cases">测试用例</button>
-                        <button class="panel-tab" data-panel-tab="test-results">测试结果</button>
-                        <button class="panel-tab" data-panel-tab="submissions">提交记录</button>
-                    </div>
-                    <button class="panel-close" id="panel-close" title="关闭">&times;</button>
-                </div>
                 <div class="panel-body" id="panel-body">
+                    <button class="panel-close" id="panel-close" title="关闭" style="position:absolute;top:8px;right:8px;z-index:1;">&times;</button>
                     <div class="panel-empty">点击上方按钮开始</div>
                 </div>
             </div>
@@ -2631,7 +2588,6 @@
 
             var panel = document.getElementById('bottom-panel');
             var panelBody = document.getElementById('panel-body');
-            var panelTabs = panel ? panel.querySelectorAll('.panel-tab') : [];
             var panelClose = document.getElementById('panel-close');
             var btnTestResult = document.getElementById('btn-test-result');
             var btnTestCases = document.getElementById('btn-test-cases');
@@ -2659,7 +2615,6 @@
                 }
                 currentPanelTab = tabName;
                 panel.classList.add('visible');
-                updatePanelTabs();
                 updateOptionBtns();
                 loadPanelContent();
             }
@@ -2668,13 +2623,6 @@
                 panel.classList.remove('visible');
                 currentPanelTab = null;
                 updateOptionBtns();
-            }
-
-            function updatePanelTabs() {
-                panelTabs.forEach(function(tab) {
-                    var tabName = tab.getAttribute('data-panel-tab');
-                    tab.classList.toggle('active', tabName === currentPanelTab);
-                });
             }
 
             function updateOptionBtns() {
@@ -2695,16 +2643,6 @@
                     loadSubmissions();
                 }
             }
-
-            // Panel tab clicks
-            panelTabs.forEach(function(tab) {
-                tab.addEventListener('click', function() {
-                    currentPanelTab = tab.getAttribute('data-panel-tab');
-                    updatePanelTabs();
-                    updateOptionBtns();
-                    loadPanelContent();
-                });
-            });
 
             // Close button
             if (panelClose) {
@@ -2844,7 +2782,6 @@
             function runTest(code, type, testCaseId, customInput) {
                 panelBody.innerHTML = '<div class="panel-loading">运行中...</div>';
                 currentPanelTab = 'test-results';
-                updatePanelTabs();
                 updateOptionBtns();
 
                 var body = { code: code, test_type: type };

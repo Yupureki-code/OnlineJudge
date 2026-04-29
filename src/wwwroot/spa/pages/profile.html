@@ -180,6 +180,19 @@
                 document.getElementById('info-email').textContent = user.email || '-';
                 document.getElementById('info-uid').textContent = user.uid || '-';
                 document.getElementById('info-create-time').textContent = user.create_time || '-';
+
+                // 加载用户统计信息
+                try {
+                    const statsResp = await fetch('/api/user/stats', { credentials: 'include' });
+                    const statsData = await statsResp.json();
+                    if (statsData && statsData.success && statsData.stats) {
+                        document.getElementById('stat-solved').textContent = statsData.stats.passed_questions || 0;
+                        document.getElementById('stat-submitted').textContent = statsData.stats.total_submits || 0;
+                    }
+                } catch (statsErr) {
+                    console.error('加载用户统计失败:', statsErr);
+                }
+
                 return;
             }
 
