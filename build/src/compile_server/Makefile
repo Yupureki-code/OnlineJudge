@@ -154,6 +154,30 @@ src/compile_server.cpp.s:
 	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.s
 .PHONY : src/compile_server.cpp.s
 
+src/custom_flag.o: src/custom_flag.cpp.o
+.PHONY : src/custom_flag.o
+
+# target to build an object file
+src/custom_flag.cpp.o:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o
+.PHONY : src/custom_flag.cpp.o
+
+src/custom_flag.i: src/custom_flag.cpp.i
+.PHONY : src/custom_flag.i
+
+# target to preprocess a source file
+src/custom_flag.cpp.i:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.i
+.PHONY : src/custom_flag.cpp.i
+
+src/custom_flag.s: src/custom_flag.cpp.s
+.PHONY : src/custom_flag.s
+
+# target to generate assembly for a file
+src/custom_flag.cpp.s:
+	cd /home/yupureki/project/OnlineJudge/build && $(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.s
+.PHONY : src/custom_flag.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -166,6 +190,9 @@ help:
 	@echo "... src/compile_server.o"
 	@echo "... src/compile_server.i"
 	@echo "... src/compile_server.s"
+	@echo "... src/custom_flag.o"
+	@echo "... src/custom_flag.i"
+	@echo "... src/custom_flag.s"
 .PHONY : help
 
 

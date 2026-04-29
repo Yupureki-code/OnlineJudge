@@ -116,12 +116,12 @@ src/oj_server/clean: src/oj_server/CMakeFiles/oj_admin.dir/clean
 src/compile_server/CMakeFiles/compile_server.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/compile_server/CMakeFiles/compile_server.dir/build.make src/compile_server/CMakeFiles/compile_server.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=1,2 "Built target compile_server"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=1,2,3 "Built target compile_server"
 .PHONY : src/compile_server/CMakeFiles/compile_server.dir/all
 
 # Build rule for subdir invocation for target.
 src/compile_server/CMakeFiles/compile_server.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 3
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/compile_server/CMakeFiles/compile_server.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/yupureki/project/OnlineJudge/build/CMakeFiles 0
 .PHONY : src/compile_server/CMakeFiles/compile_server.dir/rule
@@ -142,7 +142,7 @@ src/compile_server/CMakeFiles/compile_server.dir/clean:
 src/oj_server/CMakeFiles/oj_server.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_server.dir/build.make src/oj_server/CMakeFiles/oj_server.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=5,6 "Built target oj_server"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=6,7 "Built target oj_server"
 .PHONY : src/oj_server/CMakeFiles/oj_server.dir/all
 
 # Build rule for subdir invocation for target.
@@ -168,7 +168,7 @@ src/oj_server/CMakeFiles/oj_server.dir/clean:
 src/oj_server/CMakeFiles/oj_admin.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/oj_server/CMakeFiles/oj_admin.dir/build.make src/oj_server/CMakeFiles/oj_admin.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=3,4 "Built target oj_admin"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/yupureki/project/OnlineJudge/build/CMakeFiles --progress-num=4,5 "Built target oj_admin"
 .PHONY : src/oj_server/CMakeFiles/oj_admin.dir/all
 
 # Build rule for subdir invocation for target.

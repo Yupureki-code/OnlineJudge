@@ -9,6 +9,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/yupureki/project/OnlineJudge/src/compile_server/src/compile_server.cpp" "src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o" "gcc" "src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o.d"
+  "/home/yupureki/project/OnlineJudge/src/compile_server/src/custom_flag.cpp" "src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o" "gcc" "src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

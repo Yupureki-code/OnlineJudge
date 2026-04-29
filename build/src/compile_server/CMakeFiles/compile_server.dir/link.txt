@@ -1,1 +1,1 @@
-/usr/bin/c++ CMakeFiles/compile_server.dir/src/compile_server.cpp.o -o /home/yupureki/project/OnlineJudge/output/compile_server  -lpthread -lmysqlclient -ljsoncpp -lctemplate -lcpp-httplib -lLogger 
+/usr/bin/c++ CMakeFiles/compile_server.dir/src/compile_server.cpp.o CMakeFiles/compile_server.dir/src/custom_flag.cpp.o -o /home/yupureki/project/OnlineJudge/output/compile_server  -lpthread -lmysqlclient -ljsoncpp -lctemplate -lcpp-httplib -lLogger 

@@ -1,0 +1,1 @@
+1527: upd_sql << "update " << SolutionsTable() << " set comment_count = GREATEST(comment_count - 1, 0) where id = "

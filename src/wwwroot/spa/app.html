@@ -333,25 +333,33 @@
     <script src="/js/page-loading.js"></script>
     <script src="/js/auth.js?v=20260423"></script>
     <script>
+        console.log('SPA search init script loaded');
         (function() {
             function navigateToSearch(keyword) {
+                console.log('navigateToSearch called with:', keyword);
                 var q = keyword.trim();
                 if (q) {
+                    console.log('Setting hash to: #questions?q=' + encodeURIComponent(q));
                     window.location.hash = '#questions?q=' + encodeURIComponent(q);
                 }
             }
 
             function initSearch() {
+                console.log('initSearch running');
                 var searchInput = document.getElementById('navbar-search');
                 var searchIcon = document.getElementById('navbar-search-icon');
+                console.log('searchInput found:', !!searchInput, 'searchIcon found:', !!searchIcon);
 
                 if (searchInput) {
                     searchInput.addEventListener('keydown', function(e) {
+                        console.log('keydown event, key:', e.key);
                         if (e.key === 'Enter') {
+                            console.log('Enter pressed, navigating');
                             e.preventDefault();
                             navigateToSearch(this.value);
                         }
                     });
+                    console.log('keydown listener attached');
                 }
 
                 if (searchIcon) {

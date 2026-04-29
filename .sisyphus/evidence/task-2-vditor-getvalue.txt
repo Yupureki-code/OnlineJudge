@@ -1,0 +1,1 @@
+            const content_md = vditor ? vditor.getValue().trim() : '';

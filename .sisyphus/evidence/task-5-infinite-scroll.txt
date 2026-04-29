@@ -1,0 +1,20 @@
+Infinite scroll implementation:
+
+Line 890-895: Window scroll event listener:
+window.addEventListener('scroll', function() {
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+        if (!isLoading && hasMoreComments) {
+            loadComments(currentPage + 1);
+        }
+    }
+});
+
+State management:
+- isLoading flag prevents duplicate requests
+- hasMoreComments flag prevents unnecessary requests
+- currentPage tracks pagination state
+- loadComments resets state on page 1 reload after submit/edit/delete
+
+Loading indicators:
+- #comment-loading shown during fetch, hidden on completion
+- #comment-no-more shown when hasMoreComments is false

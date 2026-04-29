@@ -1,0 +1,1 @@
+1380: upd << "update " << SolutionsTable() << " set comment_count = comment_count + 1 where id = "

@@ -1,0 +1,3 @@
+[ 33%] Built target compile_server
+[ 66%] Built target oj_admin
+[100%] Built target oj_server

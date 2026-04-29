@@ -3,6 +3,8 @@ file(REMOVE_RECURSE
   "/home/yupureki/project/OnlineJudge/output/compile_server.pdb"
   "CMakeFiles/compile_server.dir/src/compile_server.cpp.o"
   "CMakeFiles/compile_server.dir/src/compile_server.cpp.o.d"
+  "CMakeFiles/compile_server.dir/src/custom_flag.cpp.o"
+  "CMakeFiles/compile_server.dir/src/custom_flag.cpp.o.d"
 )
 
 # Per-language clean rules from dependency scanning.

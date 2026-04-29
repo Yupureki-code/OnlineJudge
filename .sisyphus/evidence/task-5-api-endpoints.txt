@@ -1,0 +1,19 @@
+All 4 API endpoints called from detail.html:
+
+1. GET /api/solutions/{solutionId}/comments?page={page}&size=20
+   Line 700: fetch('/api/solutions/' + solutionId + '/comments?page=' + page + '&size=20', ...)
+   Purpose: Load paginated comments for a solution
+
+2. POST /api/solutions/{solutionId}/comments
+   Line 863: fetch('/api/solutions/' + solutionId + '/comments', { method: 'POST', ... })
+   Purpose: Submit a new comment
+
+3. PUT /api/comments/{commentId}
+   Line 805: fetch('/api/comments/' + commentId, { method: 'PUT', ... })
+   Purpose: Edit an existing comment
+
+4. DELETE /api/comments/{commentId}
+   Line 828: fetch('/api/comments/' + commentId, { method: 'DELETE', ... })
+   Purpose: Delete a comment
+
+All endpoints include credentials: 'include' for session cookies.
