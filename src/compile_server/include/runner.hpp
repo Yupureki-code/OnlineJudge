@@ -39,6 +39,7 @@ namespace ns_runner
     class HandlerRunner : public HandlerProgram
     {
     private:
+        bool _is_custom = false; // flag for custom test path
         //设置时间和内存限制
         void SetProcLimit(int cpu_limit,int mem_limit)
         {
@@ -136,6 +137,19 @@ namespace ns_runner
             {   
                 std::string _run_file = PathUtil::Exe(file_name);
                 umask(0);
+                // Parse JSON and set custom test flag BEFORE fork
+                // so the parent process sees the correct value for judge logic
+                Json::Value in_value;
+                Json::Reader reader;
+                reader.parse(in_json,in_value);
+                // propagate custom_test flag to this process so judge can skip
+                _is_custom = false;
+                if (in_value.isMember("is_custom_test") && in_value["is_custom_test"].asBool()) {
+                    _is_custom = true;
+                }
+                // Expose through a thread-local/global flag for the judge end logic
+                extern thread_local bool g_is_custom_test;
+                g_is_custom_test = _is_custom;
                 pid_t pid = fork();
                 if(pid < 0)
                 {
@@ -144,9 +158,7 @@ namespace ns_runner
                 }
                 else if(pid == 0)
                 {
-                    Json::Value in_value;
-                    Json::Reader reader;
-                    reader.parse(in_json,in_value);
+                    // in_value, _is_custom, and g_is_custom_test already set before fork
                     std::vector<Test> tests;
                     bool has_custom_input = false;
                     std::string custom_input;

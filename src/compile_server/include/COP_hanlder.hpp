@@ -13,6 +13,9 @@
 #include <assert.h>
 #include "../../comm/comm.hpp"
 #include <Logger/logstrategy.h>
+namespace ns_runner {
+    extern thread_local bool g_is_custom_test;
+}
 
 //责任链模式:preprocesser->compiler->runner->judge
 
@@ -129,6 +132,23 @@ namespace ns_hanlder
         //责任链结束
         std::string HandlerProgramEnd(const std::vector<Status>& result,const std::string& file_name,const int line,const std::string filename)
         {
+            // If this is a custom test, skip judging and return stdout/stderr directly
+            if (ns_runner::g_is_custom_test) {
+                Json::Value out_value;
+                out_value["status"] = std::string("OK");
+                out_value["desc"] = std::string("");
+                std::string _stdout;
+                FileUtil::ReadFile(PathUtil::Stdout(file_name), &_stdout, true);
+                out_value["stdout"] = _stdout;
+                std::string _stderr;
+                FileUtil::ReadFile(PathUtil::Stderr(file_name), &_stderr, true);
+                out_value["stderr"] = _stderr;
+                Json::StyledWriter writer;
+                std::string out_json = writer.write(out_value);
+                FileUtil::RemoveTmpFiles(file_name);
+                logger(DEBUG) <<"out_json:"<<out_json;
+                return out_json;
+            }
             logger(ns_log::DEBUG)<<"在 "<<filename<<" 的 "<<line<<" 行结束责任链";
             Json::Value out_value;
             std::string result_string;

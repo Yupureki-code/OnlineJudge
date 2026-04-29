@@ -1,7 +1,7 @@
 # 编译服务器的 CMakeLists.txt
 
 # 添加可执行程序
-add_executable(compile_server src/compile_server.cpp)
+add_executable(compile_server src/compile_server.cpp src/custom_flag.cpp)
 
 # 包含头文件目录
 target_include_directories(compile_server PRIVATE ${CMAKE_SOURCE_DIR}/src/compile_server/include)
