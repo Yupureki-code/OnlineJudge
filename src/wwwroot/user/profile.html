@@ -829,10 +829,6 @@
                 avatar.src = url || DEFAULT_AVATAR;
             }
         }
-            if (deleteBtn) {
-                deleteBtn.style.display = (!url || url === DEFAULT_AVATAR) ? 'none' : '';
-            }
-        }
 
         // Click avatar → trigger file input
         document.getElementById('avatar-wrapper').addEventListener('click', function(e) {
