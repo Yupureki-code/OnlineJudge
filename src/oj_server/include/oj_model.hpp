@@ -3205,10 +3205,17 @@ namespace ns_model
             if (!QueryCount(pass_sql.str(), &passed_questions))
                 return false;
 
-            double accuracy = total_submits > 0 ? static_cast<double>(passed_questions) / static_cast<double>(total_submits) : 0.0;
+            std::ostringstream passed_submits_sql;
+            passed_submits_sql << "select count(*) from user_submits where user_id=" << user_id << " and is_pass=1";
+            int passed_submits = 0;
+            if (!QueryCount(passed_submits_sql.str(), &passed_submits))
+                return false;
+
+            double accuracy = total_submits > 0 ? static_cast<double>(passed_submits) / static_cast<double>(total_submits) : 0.0;
 
             (*stats)["total_submits"] = total_submits;
             (*stats)["passed_questions"] = passed_questions;
+            (*stats)["passed_submits"] = passed_submits;
 
             Json::Value accuracy_val(accuracy);
             (*stats)["accuracy"] = accuracy_val;
