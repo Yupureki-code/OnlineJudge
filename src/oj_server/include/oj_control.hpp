@@ -526,6 +526,8 @@ namespace ns_control
             // Forward custom test input/output to the compile server when provided
             if (!custom_input.empty()) {
                 compile_value["custom_input"] = custom_input;
+                // Mark this as a custom test so the judge can skip normal judging
+                compile_value["is_custom_test"] = true;  // ADD THIS LINE
             }
             if (!custom_output.empty()) {
                 compile_value["custom_output"] = custom_output;
@@ -1236,6 +1238,11 @@ namespace ns_control
                 item["is_edited"] = c.is_edited;
                 item["created_at"] = c.created_at;
                 item["updated_at"] = c.updated_at;
+                item["parent_id"] = Json::UInt64(c.parent_id);
+                item["reply_to_user_id"] = c.reply_to_user_id;
+                item["reply_to_user_name"] = c.reply_to_user_name;
+                item["like_count"] = c.like_count;
+                item["favorite_count"] = c.favorite_count;
                 User author;
                 if (_model.GetUserById(c.user_id, &author))
                 {
@@ -1288,6 +1295,11 @@ namespace ns_control
                 item["is_edited"] = c.is_edited;
                 item["created_at"] = c.created_at;
                 item["updated_at"] = c.updated_at;
+                item["parent_id"] = Json::UInt64(c.parent_id);
+                item["reply_to_user_id"] = c.reply_to_user_id;
+                item["reply_to_user_name"] = c.reply_to_user_name;
+                item["like_count"] = c.like_count;
+                item["favorite_count"] = c.favorite_count;
                 // author info
                 User author;
                 if (_model.GetUserById(c.user_id, &author))
@@ -1351,6 +1363,11 @@ namespace ns_control
                 item["is_edited"] = r.is_edited;
                 item["created_at"] = r.created_at;
                 item["updated_at"] = r.updated_at;
+                item["parent_id"] = Json::UInt64(r.parent_id);
+                item["reply_to_user_id"] = r.reply_to_user_id;
+                item["reply_to_user_name"] = r.reply_to_user_name;
+                item["like_count"] = r.like_count;
+                item["favorite_count"] = r.favorite_count;
                 User author;
                 if (_model.GetUserById(r.user_id, &author))
                 {
