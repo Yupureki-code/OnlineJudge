@@ -3258,7 +3258,11 @@ namespace ns_model
             (*stats)["recent_submits"] = recent_arr;
 
             Json::FastWriter writer;
-            _cache.SetStringByAnyKey(cache_key, writer.write(*stats), _cache.BuildJitteredTtl(180, 60));
+            // Only cache if there's actual data to prevent stale empty results from persisting
+            if (total_submits > 0)
+            {
+                _cache.SetStringByAnyKey(cache_key, writer.write(*stats), _cache.BuildJitteredTtl(180, 60));
+            }
 
             return true;
         }

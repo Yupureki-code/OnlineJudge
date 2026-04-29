@@ -363,7 +363,7 @@ int main()
                 {
                     std::string status_str = result_value["status"].asString();
                     // 按空格分词，检查是否全部为 "AC"
-                    is_pass = true;
+                    is_pass = !status_str.empty();
                     std::string token;
                     for (char ch : status_str)
                     {
@@ -380,6 +380,11 @@ int main()
                         {
                             token += ch;
                         }
+                    }
+                    // 检查最后一个 token（处理不以空格结尾的情况）
+                    if (is_pass && !token.empty() && token != "AC")
+                    {
+                        is_pass = false;
                     }
                 }
             }
