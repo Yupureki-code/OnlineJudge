@@ -1184,7 +1184,7 @@ namespace ns_control
                 if (_model.GetUserById(created.user_id, &author))
                 {
                     (*result)["author_name"] = author.name;
-                (*result)["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
+                (*result)["author_avatar"] = GetEffectiveAvatarUrl(author);
                 }
                 else
                 {
@@ -1247,7 +1247,7 @@ namespace ns_control
                 if (_model.GetUserById(c.user_id, &author))
                 {
                     item["author_name"] = author.name;
-                    item["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
+                    item["author_avatar"] = GetEffectiveAvatarUrl(author);
                 }
                 else
                 {
@@ -1305,7 +1305,7 @@ namespace ns_control
                 if (_model.GetUserById(c.user_id, &author))
                 {
                     item["author_name"] = author.name;
-                    item["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
+                    item["author_avatar"] = GetEffectiveAvatarUrl(author);
                 }
                 else
                 {
@@ -1372,7 +1372,7 @@ namespace ns_control
                 if (_model.GetUserById(r.user_id, &author))
                 {
                     item["author_name"] = author.name;
-                    item["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
+                    item["author_avatar"] = GetEffectiveAvatarUrl(author);
                 }
                 else
                 {
@@ -1553,7 +1553,7 @@ namespace ns_control
                 if (_model.GetUserById(s.user_id, &author))
                 {
                     item["author_name"] = author.name;
-                    item["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
+                    item["author_avatar"] = GetEffectiveAvatarUrl(author);
                 }
                 else
                 {
@@ -1600,7 +1600,7 @@ namespace ns_control
             if (_model.GetUserById(solution.user_id, &author))
             {
                 (*result)["author_name"] = author.name;
-                (*result)["author_avatar"] = author.avatar_path.empty() ? "/pictures/head.jpg" : author.avatar_path;
+                (*result)["author_avatar"] = GetEffectiveAvatarUrl(author);
             }
             else
             {
@@ -2388,6 +2388,21 @@ namespace ns_control
             (*result)["success"] = true;
             (*result)["stats"] = stats;
             return true;
+        }
+
+    private:
+        // 按用户ID在avatars目录下查找头像文件，仅依赖文件系统，不依赖DB的avatar_path
+        std::string GetEffectiveAvatarUrl(const User& author) const
+        {
+            static const char* kExts[] = {".jpg", ".png", ".gif", ".webp"};
+            for (const char* ext : kExts)
+            {
+                std::string path = std::string(HTML_PATH) + "pictures/avatars/" + std::to_string(author.uid) + ext;
+                struct stat st;
+                if (stat(path.c_str(), &st) == 0)
+                    return std::string("/pictures/avatars/") + std::to_string(author.uid) + ext;
+            }
+            return "/pictures/head.jpg";
         }
     };
 };
