@@ -2227,6 +2227,17 @@ namespace ns_control
             if (result == nullptr || err_code == nullptr)
                 return false;
 
+            // 删除磁盘上的旧头像文件（仅限 avatars 目录下的文件，防止路径穿越）
+            if (!current_user.avatar_path.empty())
+            {
+                std::string rel = current_user.avatar_path;
+                if (rel.find("../") == std::string::npos && rel.find("/pictures/avatars/") == 0)
+                {
+                    std::string absolute_path = std::string(HTML_PATH) + "pictures/avatars/" + std::string(rel.substr(rel.rfind('/') + 1));
+                    unlink(absolute_path.c_str());
+                }
+            }
+
             if (!_model.UpdateUserAvatar(current_user.uid, ""))
             {
                 *err_code = "DB_ERROR";
