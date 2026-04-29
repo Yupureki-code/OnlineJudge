@@ -28,8 +28,9 @@ const SPA = {
         const pageContent = document.getElementById('page-content');
         if (!pageContent) return;
 
-        const route = hash.replace('#', '') || 'home';
+        let route = hash.replace('#', '') || 'home';
         
+        // Parse query parameters from hash before extracting route parts
         let queryParams = {};
         const qIndex = route.indexOf('?');
         if (qIndex !== -1) {
@@ -40,6 +41,7 @@ const SPA = {
                     queryParams[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
                 }
             });
+            route = route.substring(0, qIndex);
         }
         
         const routeParts = route.split('/');
