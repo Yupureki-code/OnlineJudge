@@ -2612,9 +2612,11 @@
             // Submit reply
             function submitDetailReply(parentId) {
                 if (!commentCurrentUser) { alert('请先登录'); return; }
+                if (!currentDetailId) { alert('题解ID无效，请重新打开题解'); return; }
                 var textarea = document.getElementById('reply-text-' + parentId);
                 var content = textarea ? textarea.value.trim() : '';
                 if (!content) return;
+                console.log('提交回复: solutionId=' + currentDetailId + ' parentId=' + parentId);
                 fetch('/api/solutions/' + currentDetailId + '/comments', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

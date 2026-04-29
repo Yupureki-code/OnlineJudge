@@ -1025,6 +1025,8 @@
                 var content = textarea ? textarea.value.trim() : '';
                 if (!content) return;
                 var solutionId = getSolutionId();
+                if (!solutionId) { alert('无法获取题解ID，请刷新页面'); return; }
+                console.log('提交回复: solutionId=' + solutionId + ' parentId=' + parentId);
                 fetch('/api/solutions/' + solutionId + '/comments', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
