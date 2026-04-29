@@ -537,11 +537,6 @@
             }
             createRainLines();
 
-            function getSolutionId() {
-                var m = window.location.pathname.match(/\/solutions\/(\d+)$/);
-                return m ? parseInt(m[1]) : 0;
-            }
-
             var solutionId = getSolutionId();
             if (!solutionId) {
                 document.getElementById('solution-content').textContent = '无效的题解ID';
@@ -899,15 +894,25 @@
                 if (container.dataset.loaded === 'true') return;
                 container.innerHTML = '<div style="color:rgba(244,246,240,0.5);padding:8px;">加载中...</div>';
                 fetch('/api/comments/' + parentId + '/replies?page=1&size=50', { credentials: 'include' })
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) {
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return r.json();
+                    })
                     .then(function(d) {
                         container.innerHTML = '';
-                        if (d.success && d.comments) {
+                        if (d.success && d.comments && d.comments.length > 0) {
                             d.comments.forEach(function(reply) { renderCommentInline(reply, container); });
+                        } else if (d.success && (!d.comments || d.comments.length === 0)) {
+                            container.innerHTML = '<div style="color:rgba(244,246,240,0.3);padding:8px 0;font-size:12px;">暂无回复</div>';
+                        } else {
+                            container.innerHTML = '<div style="color:#F44336;padding:8px 0;font-size:12px;">加载失败: ' + (d.error_code || '') + '</div>';
                         }
                         container.dataset.loaded = 'true';
                     })
-                    .catch(function() { container.innerHTML = ''; });
+                    .catch(function(e) {
+                        container.innerHTML = '<div style="color:#F44336;padding:8px 0;font-size:12px;">加载失败: ' + (e.message || '网络错误') + '</div>';
+                        console.error('加载回复失败:', e);
+                    });
             }
 
             // 内联渲染回复（含点赞/收藏/回复/编辑/删除按钮）
