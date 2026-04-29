@@ -805,7 +805,7 @@
                 if (!isReply) {
                     var replyBtn = document.createElement('button');
                     replyBtn.textContent = '回复';
-                    replyBtn.onclick = function() { showReplyForm(comment.id, comment.author_name); };
+                    replyBtn.onclick = function() { showReplyForm(comment.id, comment.author_name, true); };
                     actions.appendChild(replyBtn);
                 }
 
@@ -955,7 +955,7 @@
                 var replyBtn = document.createElement('button');
                 replyBtn.textContent = '回复';
                 replyBtn.style.cssText = 'background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;';
-                replyBtn.onclick = function() { showReplyForm(comment.id, comment.author_name); };
+                replyBtn.onclick = function() { showReplyForm(comment.id, comment.author_name, false); };
                 actionsDiv.appendChild(replyBtn);
 
                 if (isOwner) {
@@ -991,11 +991,11 @@
             }
 
             // 显示回复表单
-            function showReplyForm(parentId, username) {
+            function showReplyForm(parentId, username, isTopLevel) {
                 var form = document.getElementById('reply-form-' + parentId);
                 if (!form) return;
                 var textarea = document.getElementById('reply-text-' + parentId);
-                if (textarea) textarea.value = '@' + username + ' ';
+                if (textarea) textarea.value = isTopLevel ? '' : ('@' + username + ' ');
                 form.style.display = form.style.display === 'none' ? 'block' : 'none';
             }
 

@@ -2487,8 +2487,8 @@
                 // Like button + Reply button + Edit/Delete
                 var actionsHtml = '<div class="sol-comment-actions">';
                 actionsHtml += '<button onclick="toggleDetailCommentLike(' + comment.id + ',this)" style="font-size:12px;">❤ ' + (comment.like_count || 0) + '</button>';
-                // Reply button for top-level comments
-                actionsHtml += '<button onclick="showDetailReplyForm(' + comment.id + ',\'' + escapeHtml(comment.author_name || '').replace(/'/g, "\\'") + '\')" style="font-size:12px;">回复</button>';
+                // Reply button for top-level comments (no @ prefix)
+                actionsHtml += '<button onclick="showDetailReplyForm(' + comment.id + ',\'\',true)" style="font-size:12px;">回复</button>';
                 if (isOwner) {
                     actionsHtml += '<button onclick="editDetailComment(' + comment.id + ', \'' + escapeHtml(comment.content).replace(/'/g, "\\'") + '\')">编辑</button>';
                 }
@@ -2585,11 +2585,11 @@
             };
 
             // Show reply form for a comment
-            function showDetailReplyForm(parentId, username) {
+            function showDetailReplyForm(parentId, username, isTopLevel) {
                 var form = document.getElementById('reply-form-' + parentId);
                 if (!form) return;
                 var textarea = document.getElementById('reply-text-' + parentId);
-                if (textarea) textarea.value = '@' + username + ' ';
+                if (textarea) textarea.value = isTopLevel ? '' : ('@' + username + ' ');
                 form.style.display = form.style.display === 'none' ? 'block' : 'none';
                 if (textarea) textarea.focus();
             }
@@ -2665,8 +2665,8 @@
                 // Like button + Reply button + Edit/Delete
                 var actionsHtml = '<div style="display:flex;gap:6px;">';
                 actionsHtml += '<button onclick="toggleDetailCommentLike(' + comment.id + ',this)" style="background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;">❤ ' + (comment.like_count || 0) + '</button>';
-                // Reply button on replies
-                actionsHtml += '<button onclick="showDetailReplyForm(' + comment.id + ',\'' + escapeHtml(comment.author_name || '').replace(/'/g, "\\'") + '\')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;">回复</button>';
+                // Reply button on nested replies (with @ prefix)
+                actionsHtml += '<button onclick="showDetailReplyForm(' + comment.id + ',\'' + escapeHtml(comment.author_name || '').replace(/'/g, "\\'") + '\',false)" style="background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;">回复</button>';
                 if (isOwner) {
                     actionsHtml += '<button onclick="editDetailComment(' + comment.id + ',\'' + escapeHtml(comment.content).replace(/'/g, "\\'") + '\')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;">编辑</button>';
                     actionsHtml += '<button onclick="deleteDetailComment(' + comment.id + ')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;">删除</button>';
