@@ -2192,7 +2192,8 @@ namespace ns_control
             else if (content_type == "image/gif") ext = "gif";
             else ext = "webp";
 
-            std::string filename = std::to_string(current_user.uid) + "_" + ns_util::TimeUtil::GetTimeMs() + "." + ext;
+            // 用户头像按 uid 命名，每个用户只保存一份
+            std::string filename = std::to_string(current_user.uid) + "." + ext;
             std::string relative_path = std::string("/pictures/avatars/") + filename;
             std::string absolute_dir = std::string(HTML_PATH) + "pictures/avatars/";
 
@@ -2202,7 +2203,17 @@ namespace ns_control
                 mkdir(absolute_dir.c_str(), 0755);
             }
 
-            std::string absolute_path = std::string(HTML_PATH) + relative_path.substr(1);
+            // 删除旧头像文件（防止换扩展名后旧文件残留）
+            if (!current_user.avatar_path.empty()
+                && current_user.avatar_path.find("../") == std::string::npos
+                && current_user.avatar_path.find("/pictures/avatars/") == 0
+                && current_user.avatar_path != relative_path)
+            {
+                std::string old_path = std::string(HTML_PATH) + "pictures/avatars/" + std::string(current_user.avatar_path.substr(current_user.avatar_path.rfind('/') + 1));
+                unlink(old_path.c_str());
+            }
+
+            std::string absolute_path = absolute_dir + filename;
             if (!ns_util::FileUtil::WriteFile(absolute_path, file_content))
             {
                 *err_code = "SAVE_FAILED";
