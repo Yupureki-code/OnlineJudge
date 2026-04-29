@@ -634,11 +634,20 @@
 
         .submit-section {
             display: flex;
+            flex-direction: column;
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+            overflow: hidden;
+        }
+
+        .submit-buttons {
+            display: flex;
             justify-content: space-between;
             gap: 20px;
-            margin-top: 20px;
-            padding-top: 20px;
+            padding: 12px 0;
             border-top: 1px solid rgba(244, 246, 240, 0.1);
+            flex-shrink: 0;
         }
 
         .submit-btn {
@@ -1434,8 +1443,8 @@
             border-radius: 12px;
             overflow: hidden;
             animation: fadeIn 0.3s ease;
-            max-height: 350px;
-            flex-shrink: 0;
+            flex: 1;
+            min-height: 0;
         }
 
         .bottom-panel.visible {
@@ -1872,16 +1881,24 @@
                         </div>
                         <div class="resizer-vertical" id="verticalResizer"></div>
                         <div class="submit-section" style="flex: 1; min-height: 50px;">
-                            <div class="info-option">
-                                <button type="button" class="option-btn" id="btn-test-result">测试结果</button>
-                                <button type="button" class="option-btn" id="btn-test-cases">测试用例</button>
-                                <button type="button" class="option-btn" id="btn-submit-history">提交记录</button>
+                            <div class="submit-buttons">
+                                <div class="info-option">
+                                    <button type="button" class="option-btn" id="btn-test-result">测试结果</button>
+                                    <button type="button" class="option-btn" id="btn-test-cases">测试用例</button>
+                                    <button type="button" class="option-btn" id="btn-submit-history">提交记录</button>
+                                </div>
+                                <div class="jump-option">
+                                    <a href="/all_questions" class="option-btn">返回题库</a>
+                                    <a href="/questions/{{number}}/solutions/new" class="option-btn" id="publish-solution-link">发布题解</a>
+                                    <button type="submit" class="submit-btn">提交代码</button>
+                                </div>
                             </div>
-                            <div class="jump-option">
-                                <a href="/all_questions" class="option-btn">返回题库</a>
-                                <a href="/questions/{{number}}/solutions/new" class="option-btn" id="publish-solution-link">发布题解</a>
-                                <button type="submit" class="submit-btn">提交代码</button>
-                            </div>
+            <div id="bottom-panel" class="bottom-panel">
+                <div class="panel-body" id="panel-body">
+                    <button class="panel-close" id="panel-close" title="关闭" style="position:absolute;top:8px;right:8px;z-index:1;">&times;</button>
+                    <div class="panel-empty">点击上方按钮开始</div>
+                </div>
+            </div>
                         </div>
                         <textarea name="code" id="code" style="display: none;"></textarea>
             <div id="bottom-panel" class="bottom-panel">
