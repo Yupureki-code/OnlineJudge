@@ -30,6 +30,18 @@ const SPA = {
 
         const route = hash.replace('#', '') || 'home';
         
+        let queryParams = {};
+        const qIndex = route.indexOf('?');
+        if (qIndex !== -1) {
+            const qs = route.substring(qIndex + 1);
+            qs.split('&').forEach(function(pair) {
+                const parts = pair.split('=');
+                if (parts.length === 2) {
+                    queryParams[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
+                }
+            });
+        }
+        
         const routeParts = route.split('/');
         const pageName = routeParts[0];
         const pageParams = routeParts.slice(1);
@@ -138,7 +150,7 @@ const SPA = {
             });
             
             if (typeof window.initPage === 'function') {
-                window.initPage(params);
+                window.initPage({ ...queryParams, _pathParams: params });
             }
         });
     },

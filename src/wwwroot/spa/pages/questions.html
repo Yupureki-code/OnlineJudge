@@ -267,7 +267,13 @@
             currentDifficulty: 'all',
             currentSearch: '',
             
-            initPage: function() {
+            initPage: function(params) {
+                var q = (params && params.q) ? params.q : '';
+                if (q) {
+                    this.currentSearch = q.toLowerCase();
+                    var searchBox = document.getElementById('searchBox');
+                    if (searchBox) searchBox.value = q;
+                }
                 this.loadQuestions();
                 this.setupEventListeners();
             },

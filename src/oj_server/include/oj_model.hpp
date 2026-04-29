@@ -145,6 +145,7 @@ namespace ns_model
                 m.html_detail_misses.fetch_add(1, std::memory_order_relaxed);
         }
 
+    public:
         using MySqlConn = std::unique_ptr<MYSQL, void(*)(MYSQL*)>;
 
         MySqlConn CreateConnection()
@@ -165,6 +166,7 @@ namespace ns_model
 
             return MySqlConn(my, mysql_close);
         }
+    private:
         //对SQL字符串进行转义，防止SQL注入攻击
         std::string EscapeSqlString(const std::string& input, MYSQL* my)
         {

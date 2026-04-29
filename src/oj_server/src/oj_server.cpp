@@ -1033,35 +1033,63 @@ int main()
         rep.set_content(writer.write(response), "application/json;charset=utf-8");
     });
 
-    // svr.Get("/api/questions", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
-    //     Json::Value response;
-    //     std::vector<Question> all;
-        
-    //     if (ctl.GetModel()->GetAllQuestions(&all)) {
-    //         sort(all.begin(), all.end(), [](const Question &q1, const Question &q2){
-    //             return atoi(q1.number.c_str()) < atoi(q2.number.c_str());
-    //         });
-            
-    //         Json::Value questions(Json::arrayValue);
-    //         for (const auto& q : all) {
-    //             Json::Value question;
-    //             question["number"] = q.number;
-    //             question["title"] = q.title;
-    //             question["star"] = q.star;
-    //             questions.append(question);
-    //         }
-    //         response["questions"] = questions;
-    //         response["success"] = true;
-    //     } else {
-    //         response["success"] = false;
-    //         response["questions"] = Json::Value(Json::arrayValue);
-    //     }
-        
-    //     Json::FastWriter writer;
-    //     std::string response_str = writer.write(response);
-    //     addCORSHeaders(rep);
-    //     rep.set_content(response_str, "application/json;charset=utf-8");
-    // });
+    svr.Options("/api/questions", [&addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        addCORSHeaders(rep);
+        rep.status = 204;
+    });
+
+    svr.Get("/api/questions", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+        (void)req;
+        Json::Value response;
+        auto my = ctl.GetModel()->CreateConnection();
+        if (!my)
+        {
+            response["success"] = false;
+            response["questions"] = Json::Value(Json::arrayValue);
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            return;
+        }
+        std::string sql = "SELECT id, title, star FROM questions ORDER BY CAST(id AS UNSIGNED) ASC";
+        if (mysql_query(my.get(), sql.c_str()) != 0)
+        {
+            response["success"] = false;
+            response["questions"] = Json::Value(Json::arrayValue);
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            return;
+        }
+        MYSQL_RES* res = mysql_store_result(my.get());
+        if (res == nullptr)
+        {
+            response["success"] = false;
+            response["questions"] = Json::Value(Json::arrayValue);
+            Json::FastWriter writer;
+            addCORSHeaders(rep);
+            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            return;
+        }
+        Json::Value questions(Json::arrayValue);
+        int rows = mysql_num_rows(res);
+        for (int i = 0; i < rows; i++)
+        {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            Json::Value question;
+            question["number"] = row[0];
+            question["title"] = row[1];
+            question["star"] = row[2];
+            questions.append(question);
+        }
+        mysql_free_result(res);
+        response["questions"] = questions;
+        response["success"] = true;
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+    });
 
     svr.Get("/api/metrics/cache", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         (void)req;
@@ -1702,12 +1730,6 @@ int main()
             rep.status = 500;
         }
         Json::FastWriter writer; addCORSHeaders(rep); rep.set_content(writer.write(result), "application/json;charset=utf-8");
-    });
-
-    svr.Options("/api/questions", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
     });
 
     svr.Options("/api/auth/send_code", [&addCORSHeaders](const Request& req, Response& rep) {
