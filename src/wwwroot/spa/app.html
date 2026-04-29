@@ -333,7 +333,7 @@
     <script src="/js/page-loading.js"></script>
     <script src="/js/auth.js?v=20260423"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        (function() {
             function navigateToSearch(keyword) {
                 var q = keyword.trim();
                 if (q) {
@@ -341,25 +341,34 @@
                 }
             }
 
-            var searchInput = document.getElementById('navbar-search');
-            var searchIcon = document.getElementById('navbar-search-icon');
+            function initSearch() {
+                var searchInput = document.getElementById('navbar-search');
+                var searchIcon = document.getElementById('navbar-search-icon');
 
-            if (searchInput) {
-                searchInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        navigateToSearch(this.value);
-                    }
-                });
+                if (searchInput) {
+                    searchInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            navigateToSearch(this.value);
+                        }
+                    });
+                }
+
+                if (searchIcon) {
+                    searchIcon.addEventListener('click', function() {
+                        if (searchInput) {
+                            navigateToSearch(searchInput.value);
+                        }
+                    });
+                }
             }
 
-            if (searchIcon) {
-                searchIcon.addEventListener('click', function() {
-                    if (searchInput) {
-                        navigateToSearch(searchInput.value);
-                    }
-                });
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initSearch);
+            } else {
+                initSearch();
             }
-        });
+        })();
     </script>
 </body>
 </html>
