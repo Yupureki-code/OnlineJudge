@@ -910,18 +910,83 @@
                     .catch(function() { container.innerHTML = ''; });
             }
 
-            // 内联渲染回复
+            // 内联渲染回复（含点赞/收藏/回复/编辑/删除按钮）
             function renderCommentInline(comment, container) {
                 var div = document.createElement('div');
                 div.className = 'comment-item comment-reply';
                 div.style.cssText = 'padding:10px;margin:4px 0;border-left:2px solid rgba(244,246,240,0.1);';
+
+                var isOwner = currentUser && currentUser.uid === comment.user_id;
+
                 var avatar = document.createElement('img');
                 avatar.className = 'comment-avatar';
                 avatar.src = comment.author_avatar || '/pictures/head.jpg';
                 avatar.onerror = function() { this.src = '/pictures/head.jpg'; };
+
                 var authorSpan = '<span style="color:rgba(244,246,240,0.6);font-size:12px;">' + (comment.reply_to_user_name ? '@' + comment.reply_to_user_name + ' ' : '') + (comment.author_name || '匿名') + '</span>';
                 var timeSpan = '<span style="color:rgba(244,246,240,0.4);font-size:11px;margin-left:8px;">' + formatRelativeTime(comment.created_at) + '</span>';
-                div.innerHTML = authorSpan + timeSpan + '<div style="margin-top:4px;color:rgba(244,246,240,0.85);font-size:13px;">' + comment.content + '</div>';
+                var editedSpan = comment.is_edited ? '<span style="color:rgba(244,246,240,0.4);font-size:11px;margin-left:4px;">(已编辑)</span>' : '';
+
+                var headerDiv = document.createElement('div');
+                headerDiv.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px;';
+                headerDiv.innerHTML = authorSpan + timeSpan + editedSpan;
+
+                var contentDiv = document.createElement('div');
+                contentDiv.style.cssText = 'margin-top:4px;color:rgba(244,246,240,0.85);font-size:13px;';
+                contentDiv.textContent = comment.content;
+
+                // Actions: like, favorite, reply, edit, delete
+                var actionsDiv = document.createElement('div');
+                actionsDiv.style.cssText = 'margin-top:6px;display:flex;gap:6px;';
+
+                var likeBtn = document.createElement('button');
+                likeBtn.textContent = '❤ ' + (comment.like_count || 0);
+                likeBtn.style.cssText = 'background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;';
+                likeBtn.onclick = function() { toggleCommentLike(comment.id, likeBtn); };
+                actionsDiv.appendChild(likeBtn);
+
+                var favBtn = document.createElement('button');
+                favBtn.textContent = '⭐ ' + (comment.favorite_count || 0);
+                favBtn.style.cssText = 'background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;';
+                favBtn.onclick = function() { toggleCommentFavorite(comment.id, favBtn); };
+                actionsDiv.appendChild(favBtn);
+
+                // Reply button on replies
+                var replyBtn = document.createElement('button');
+                replyBtn.textContent = '回复';
+                replyBtn.style.cssText = 'background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;';
+                replyBtn.onclick = function() { showReplyForm(comment.id, comment.author_name); };
+                actionsDiv.appendChild(replyBtn);
+
+                if (isOwner) {
+                    var editBtn = document.createElement('button');
+                    editBtn.textContent = '编辑';
+                    editBtn.style.cssText = 'background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;';
+                    editBtn.onclick = (function(cid, ccontent) {
+                        return function() { editComment(cid, ccontent); };
+                    })(comment.id, comment.content);
+                    actionsDiv.appendChild(editBtn);
+
+                    var deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = '删除';
+                    deleteBtn.style.cssText = 'background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;';
+                    deleteBtn.onclick = (function(cid) {
+                        return function() { deleteComment(cid); };
+                    })(comment.id);
+                    actionsDiv.appendChild(deleteBtn);
+                }
+
+                // Reply form for nested reply
+                var replyForm = document.createElement('div');
+                replyForm.className = 'reply-form';
+                replyForm.id = 'reply-form-' + comment.id;
+                replyForm.style.cssText = 'display:none;margin-top:8px;';
+                replyForm.innerHTML = '<textarea id="reply-text-' + comment.id + '" maxlength="1000" style="width:100%;min-height:50px;background:rgba(255,255,255,0.06);border:1px solid rgba(244,246,240,0.2);border-radius:6px;color:#F4F6F0;padding:6px 8px;resize:vertical;font-size:13px;"></textarea><div style="margin-top:4px;display:flex;gap:6px;"><button onclick="submitReply(' + comment.id + ')" style="padding:4px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(244,246,240,0.2);border-radius:4px;color:#F4F6F0;cursor:pointer;font-size:12px;">回复</button><button onclick="hideReplyForm(' + comment.id + ')" style="padding:4px 12px;background:transparent;border:none;color:rgba(244,246,240,0.5);cursor:pointer;font-size:12px;">取消</button></div>';
+
+                div.appendChild(headerDiv);
+                div.appendChild(contentDiv);
+                div.appendChild(actionsDiv);
+                div.appendChild(replyForm);
                 container.appendChild(div);
             }
 

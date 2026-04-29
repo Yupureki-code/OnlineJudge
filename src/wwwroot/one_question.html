@@ -1410,6 +1410,22 @@
         .sol-comment-actions button:hover {
             background: rgba(76,175,80,0.15);
         }
+        .sol-comment-reply {
+            border-left: 2px solid rgba(244, 246, 240, 0.1);
+        }
+        .reply-toggle {
+            cursor: pointer;
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 13px;
+            padding: 6px 0;
+            transition: color 0.2s;
+        }
+        .reply-toggle:hover {
+            color: rgba(244, 246, 240, 0.85);
+        }
+        .reply-form textarea {
+            font-family: inherit;
+        }
         .sol-login-prompt {
             color: rgba(244,246,240,0.6);
             font-size: 13px;
@@ -2468,19 +2484,54 @@
 
                 var contentHtml = '<div class="sol-comment-content">' + escapeHtml(comment.content) + '</div>';
 
-                var actionsHtml = '';
-                if (isOwner || canDelete) {
-                    actionsHtml = '<div class="sol-comment-actions">';
-                    if (isOwner) {
-                        actionsHtml += '<button onclick="editDetailComment(' + comment.id + ', \'' + escapeHtml(comment.content).replace(/'/g, "\\'") + '\')">\u7f16\u8f91</button>';
-                    }
-                    if (canDelete) {
-                        actionsHtml += '<button onclick="deleteDetailComment(' + comment.id + ')">\u5220\u9664</button>';
-                    }
-                    actionsHtml += '</div>';
+                // Like button + Reply button + Edit/Delete
+                var actionsHtml = '<div class="sol-comment-actions">';
+                actionsHtml += '<button onclick="toggleDetailCommentLike(' + comment.id + ',this)" style="font-size:12px;">❤ ' + (comment.like_count || 0) + '</button>';
+                // Reply button for top-level comments
+                actionsHtml += '<button onclick="showDetailReplyForm(' + comment.id + ',\'' + escapeHtml(comment.author_name || '').replace(/'/g, "\\'") + '\')" style="font-size:12px;">回复</button>';
+                if (isOwner) {
+                    actionsHtml += '<button onclick="editDetailComment(' + comment.id + ', \'' + escapeHtml(comment.content).replace(/'/g, "\\'") + '\')">编辑</button>';
                 }
+                if (canDelete) {
+                    actionsHtml += '<button onclick="deleteDetailComment(' + comment.id + ')">删除</button>';
+                }
+                actionsHtml += '</div>';
 
                 div.innerHTML = headerHtml + contentHtml + actionsHtml;
+
+                // Reply toggle (▼ N 条回复 / ▲ N 条回复)
+                var replyCount = comment.reply_count || 0;
+                if (replyCount > 0) {
+                    var replyToggle = document.createElement('div');
+                    replyToggle.className = 'reply-toggle';
+                    replyToggle.style.cssText = 'margin-left:20px;cursor:pointer;color:rgba(244,246,240,0.6);font-size:13px;padding:4px 0;';
+                    replyToggle.textContent = '▼ ' + replyCount + ' 条回复';
+                    var replyContainer = document.createElement('div');
+                    replyContainer.className = 'reply-container';
+                    replyContainer.id = 'reply-container-' + comment.id;
+                    replyContainer.style.display = 'none';
+                    replyToggle.onclick = function() {
+                        if (replyContainer.style.display === 'none') {
+                            replyContainer.style.display = 'block';
+                            replyToggle.textContent = '▲ ' + replyCount + ' 条回复';
+                            loadDetailReplies(comment.id, replyContainer);
+                        } else {
+                            replyContainer.style.display = 'none';
+                            replyToggle.textContent = '▼ ' + replyCount + ' 条回复';
+                        }
+                    };
+                    div.appendChild(replyToggle);
+                    div.appendChild(replyContainer);
+                }
+
+                // Reply form (hidden)
+                var replyForm = document.createElement('div');
+                replyForm.className = 'reply-form';
+                replyForm.id = 'reply-form-' + comment.id;
+                replyForm.style.cssText = 'display:none;margin-left:20px;margin-top:8px;';
+                replyForm.innerHTML = '<textarea id="reply-text-' + comment.id + '" maxlength="1000" style="width:100%;min-height:60px;background:rgba(255,255,255,0.06);border:1px solid rgba(244,246,240,0.2);border-radius:8px;color:#F4F6F0;padding:8px;resize:vertical;"></textarea><div style="margin-top:6px;display:flex;gap:8px;"><button onclick="submitDetailReply(' + comment.id + ')" style="padding:6px 16px;background:rgba(255,255,255,0.1);border:1px solid rgba(244,246,240,0.2);border-radius:6px;color:#F4F6F0;cursor:pointer;">回复</button><button onclick="hideDetailReplyForm(' + comment.id + ')" style="padding:6px 16px;background:transparent;border:none;color:rgba(244,246,240,0.5);cursor:pointer;">取消</button></div>';
+                div.appendChild(replyForm);
+
                 listEl.appendChild(div);
             }
 
@@ -2532,6 +2583,124 @@
                 })
                 .catch(function() { alert('\u7f51\u7edc\u9519\u8bef\uff0c\u8bf7\u91cd\u8bd5'); });
             };
+
+            // Show reply form for a comment
+            function showDetailReplyForm(parentId, username) {
+                var form = document.getElementById('reply-form-' + parentId);
+                if (!form) return;
+                var textarea = document.getElementById('reply-text-' + parentId);
+                if (textarea) textarea.value = '@' + username + ' ';
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+                if (textarea) textarea.focus();
+            }
+
+            // Hide reply form
+            function hideDetailReplyForm(parentId) {
+                var form = document.getElementById('reply-form-' + parentId);
+                if (form) form.style.display = 'none';
+            }
+
+            // Submit reply
+            function submitDetailReply(parentId) {
+                if (!commentCurrentUser) { alert('请先登录'); return; }
+                var textarea = document.getElementById('reply-text-' + parentId);
+                var content = textarea ? textarea.value.trim() : '';
+                if (!content) return;
+                fetch('/api/solutions/' + currentDetailId + '/comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ content: content, parent_id: parentId })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.success) {
+                        hideDetailReplyForm(parentId);
+                        commentHasMore = true;
+                        commentPage = 1;
+                        var noMoreEl = document.getElementById('sol-comment-no-more');
+                        if (noMoreEl) noMoreEl.style.display = 'none';
+                        loadDetailComments(currentDetailId, 1);
+                    } else {
+                        alert('回复失败: ' + (d.error_code || '未知错误'));
+                    }
+                })
+                .catch(function() { alert('网络错误'); });
+            }
+
+            // Load replies for a parent comment
+            function loadDetailReplies(parentId, container) {
+                if (container.dataset.loaded === 'true') return;
+                container.innerHTML = '<div style="color:rgba(244,246,240,0.5);padding:12px 0;">加载中...</div>';
+                fetch('/api/comments/' + parentId + '/replies?page=1&size=50', { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        container.innerHTML = '';
+                        if (d.success && d.comments) {
+                            d.comments.forEach(function(reply) { renderReplyInline(reply, container); });
+                        }
+                        container.dataset.loaded = 'true';
+                    })
+                    .catch(function() { container.innerHTML = ''; });
+            }
+
+            // Render reply inline (with like button)
+            function renderReplyInline(comment, container) {
+                var div = document.createElement('div');
+                div.className = 'sol-comment-item sol-comment-reply';
+                div.style.cssText = 'margin-left:20px;padding:10px;margin-top:4px;margin-bottom:4px;border-left:2px solid rgba(244,246,240,0.1);';
+
+                var isOwner = commentCurrentUser && commentCurrentUser.uid === comment.user_id;
+
+                var cmtAvatarUrl = comment.author_avatar || '/pictures/head.jpg';
+                var headerHtml = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+                headerHtml += '<div class="sol-comment-avatar" style="width:24px;height:24px;"><img src="' + cmtAvatarUrl + '" alt="" onerror="this.style.display=\'none\'">' + escapeHtml((comment.author_name || '?').charAt(0).toUpperCase()) + '</div>';
+                headerHtml += '<span style="color:rgba(244,246,240,0.6);font-size:12px;">' + (comment.reply_to_user_name ? '@' + escapeHtml(comment.reply_to_user_name) + ' ' : '') + escapeHtml(comment.author_name || '匿名') + '</span>';
+                headerHtml += '<span style="color:rgba(244,246,240,0.4);font-size:11px;margin-left:8px;">' + formatRelativeTime(comment.created_at) + '</span>';
+                if (comment.is_edited) headerHtml += '<span style="color:rgba(244,246,240,0.4);font-size:11px;margin-left:4px;">(已编辑)</span>';
+                headerHtml += '</div>';
+
+                var contentHtml = '<div style="color:rgba(244,246,240,0.85);font-size:13px;margin-bottom:6px;">' + escapeHtml(comment.content) + '</div>';
+
+                // Like button + Reply button + Edit/Delete
+                var actionsHtml = '<div style="display:flex;gap:6px;">';
+                actionsHtml += '<button onclick="toggleDetailCommentLike(' + comment.id + ',this)" style="background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;">❤ ' + (comment.like_count || 0) + '</button>';
+                // Reply button on replies
+                actionsHtml += '<button onclick="showDetailReplyForm(' + comment.id + ',\'' + escapeHtml(comment.author_name || '').replace(/'/g, "\\'") + '\')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;">回复</button>';
+                if (isOwner) {
+                    actionsHtml += '<button onclick="editDetailComment(' + comment.id + ',\'' + escapeHtml(comment.content).replace(/'/g, "\\'") + '\')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;">编辑</button>';
+                    actionsHtml += '<button onclick="deleteDetailComment(' + comment.id + ')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;">删除</button>';
+                }
+                actionsHtml += '</div>';
+
+                // Reply form for nested replies
+                actionsHtml += '<div class="reply-form" id="reply-form-' + comment.id + '" style="display:none;margin-top:8px;">';
+                actionsHtml += '<textarea id="reply-text-' + comment.id + '" maxlength="1000" style="width:100%;min-height:50px;background:rgba(255,255,255,0.06);border:1px solid rgba(244,246,240,0.2);border-radius:6px;color:#F4F6F0;padding:6px 8px;resize:vertical;font-size:13px;"></textarea>';
+                actionsHtml += '<div style="margin-top:4px;display:flex;gap:6px;"><button onclick="submitDetailReply(' + comment.id + ')" style="padding:4px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(244,246,240,0.2);border-radius:4px;color:#F4F6F0;cursor:pointer;font-size:12px;">回复</button>';
+                actionsHtml += '<button onclick="hideDetailReplyForm(' + comment.id + ')" style="padding:4px 12px;background:transparent;border:none;color:rgba(244,246,240,0.5);cursor:pointer;font-size:12px;">取消</button></div></div>';
+
+                div.innerHTML = headerHtml + contentHtml + actionsHtml;
+                container.appendChild(div);
+            }
+
+            // Toggle like on comment
+            function toggleDetailCommentLike(commentId, btn) {
+                if (!commentCurrentUser) { alert('请先登录'); return; }
+                fetch('/api/comments/' + commentId + '/like', { method: 'POST', credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        if (d.success) {
+                            btn.textContent = '❤ ' + d.like_count;
+                            btn.style.color = d.liked ? '#ff6b6b' : '';
+                        }
+                    });
+            }
+
+            // Expose new functions globally for inline onclick handlers
+            window.showDetailReplyForm = showDetailReplyForm;
+            window.hideDetailReplyForm = hideDetailReplyForm;
+            window.submitDetailReply = submitDetailReply;
+            window.toggleDetailCommentLike = toggleDetailCommentLike;
 
             function submitDetailComment(solutionId) {
                 var textarea = document.getElementById('sol-comment-textarea');
