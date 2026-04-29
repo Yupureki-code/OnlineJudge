@@ -318,29 +318,7 @@
             justify-content: center;
         }
 
-        .avatar-delete-btn {
-            padding: 5px 14px;
-            background: rgba(244, 67, 54, 0.15);
-            border: 1px solid rgba(244, 67, 54, 0.3);
-            border-radius: 50px;
-            color: #F44336;
-            font-size: 12px;
-            font-weight: 300;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            letter-spacing: 0.02em;
-        }
 
-        .avatar-delete-btn:hover {
-            background: rgba(244, 67, 54, 0.3);
-            transform: translateY(-1px);
-        }
-
-        .avatar-delete-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            transform: none;
-        }
 
         .avatar-msg {
             font-size: 12px;
@@ -642,7 +620,6 @@
                     </div>
                     <button class="logout-btn" id="logout-btn">退出登录</button>
                     <div class="avatar-actions">
-                        <button class="avatar-delete-btn" id="avatar-delete-btn" style="display:none;">删除头像</button>
                     </div>
                     <div class="avatar-msg" id="avatar-msg"></div>
                 </div>
@@ -842,18 +819,16 @@
         function setAvatarLoading(active) {
             const loading = document.getElementById('avatar-loading');
             const avatar = document.getElementById('profile-avatar');
-            const deleteBtn = document.getElementById('avatar-delete-btn');
             if (loading) loading.classList.toggle('active', active);
             if (avatar) avatar.style.pointerEvents = active ? 'none' : '';
-            if (deleteBtn) deleteBtn.disabled = active;
         }
 
         function updateAvatarSrc(url) {
             const avatar = document.getElementById('profile-avatar');
-            const deleteBtn = document.getElementById('avatar-delete-btn');
             if (avatar) {
                 avatar.src = url || DEFAULT_AVATAR;
             }
+        }
             if (deleteBtn) {
                 deleteBtn.style.display = (!url || url === DEFAULT_AVATAR) ? 'none' : '';
             }
@@ -861,7 +836,6 @@
 
         // Click avatar → trigger file input
         document.getElementById('avatar-wrapper').addEventListener('click', function(e) {
-            if (e.target.closest('#avatar-delete-btn')) return;
             const loading = document.getElementById('avatar-loading');
             if (loading && loading.classList.contains('active')) return;
             document.getElementById('avatar-input').click();
@@ -910,36 +884,6 @@
                     else if (result.data && result.data.error_code === 'INVALID_FILE_TYPE') errMsg = '不支持的文件格式';
                     else if (result.data && result.data.error_code === 'NOT_LOGGED_IN') errMsg = '请先登录';
                     setAvatarMsg(errMsg, true);
-                }
-            }).catch(function() {
-                setAvatarLoading(false);
-                setAvatarMsg('网络异常，请稍后重试', true);
-            });
-        });
-
-        // Delete avatar
-        document.getElementById('avatar-delete-btn').addEventListener('click', function(e) {
-            e.stopPropagation();
-            if (this.disabled) return;
-            if (!window.confirm('确定要删除当前头像吗？')) return;
-
-            setAvatarMsg('删除中...', false);
-            setAvatarLoading(true);
-
-            fetch('/api/user/avatar', {
-                method: 'DELETE',
-                credentials: 'include'
-            }).then(function(response) {
-                return response.json().then(function(data) {
-                    return { ok: response.ok, data: data };
-                });
-            }).then(function(result) {
-                setAvatarLoading(false);
-                if (result.ok && result.data && result.data.success) {
-                    updateAvatarSrc(DEFAULT_AVATAR);
-                    setAvatarMsg('头像已删除', false);
-                } else {
-                    setAvatarMsg('删除失败，请重试', true);
                 }
             }).catch(function() {
                 setAvatarLoading(false);

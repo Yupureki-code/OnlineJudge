@@ -962,6 +962,11 @@
                 });
             }
 
+            // Expose reply functions globally for inline onclick handlers
+            window.showReplyForm = showReplyForm;
+            window.hideReplyForm = hideReplyForm;
+            window.submitReply = submitReply;
+
             function editComment(commentId, currentContent) {
                 var newContent = prompt('编辑评论:', currentContent);
                 if (newContent === null || newContent.trim() === currentContent) return;

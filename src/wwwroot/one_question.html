@@ -1407,7 +1407,7 @@
     /* Bottom Panel */
         .bottom-panel {
             display: none;
-            margin-top: 12px;
+            margin-top: 0;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(244, 246, 240, 0.15);
             border-radius: 12px;
@@ -1850,7 +1850,7 @@
                             <div id="editor" style="flex: 1; min-height: 0;"></div>
                         </div>
                         <div class="resizer-vertical" id="verticalResizer"></div>
-                        <div class="submit-section" style="flex: 1; min-height: 100px;">
+                        <div class="submit-section" style="flex: 1; min-height: 50px;">
                             <div class="info-option">
                                 <button type="button" class="option-btn" id="btn-test-result">测试结果</button>
                                 <button type="button" class="option-btn" id="btn-test-cases">测试用例</button>
@@ -1863,13 +1863,13 @@
                             </div>
                         </div>
                         <textarea name="code" id="code" style="display: none;"></textarea>
-                    </form>
             <div id="bottom-panel" class="bottom-panel">
                 <div class="panel-body" id="panel-body">
                     <button class="panel-close" id="panel-close" title="关闭" style="position:absolute;top:8px;right:8px;z-index:1;">&times;</button>
                     <div class="panel-empty">点击上方按钮开始</div>
                 </div>
             </div>
+                    </form>
             </div>
     </div>
 
@@ -2007,7 +2007,7 @@
 
                 let newHeight = e.clientY - formRect.top;
                 const minHeight = 200;
-                const maxHeight = formHeight - 100;
+                const maxHeight = formHeight - 50;
 
                 newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
 
@@ -2864,7 +2864,7 @@
                     html += '</div>';
                 }
 
-                if (data.expected_output !== undefined && data.expected_output !== null) {
+                if (data.expected_output && String(data.expected_output).trim() !== '') {
                     html += '<div class="result-output-section">';
                     html += '<div class="result-output-label">期望输出</div>';
                     html += '<div class="result-output-content">' + escapeHtml(data.expected_output || '(空)') + '</div>';
