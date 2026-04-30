@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <string>
 #include <vector>
+#include <map>
 #include <mutex>
 #include <assert.h>
 #include <memory>
@@ -1246,17 +1247,8 @@ namespace ns_control
                 item["reply_to_user_name"] = c.reply_to_user_name;
                 item["like_count"] = c.like_count;
                 item["favorite_count"] = c.favorite_count;
-                User author;
-                if (_model.GetUserById(c.user_id, &author))
-                {
-                    item["author_name"] = author.name;
-                    item["author_avatar"] = GetEffectiveAvatarUrl(author);
-                }
-                else
-                {
-                    item["author_name"] = "";
-                    item["author_avatar"] = "/pictures/head.jpg";
-                }
+                item["author_name"] = c.author_name;
+                item["author_avatar"] = "/pictures/head.jpg";
                 list.append(item);
             }
             (*result)["comments"] = list;
@@ -1287,6 +1279,37 @@ namespace ns_control
             (*result)["page"] = std::max(1, page);
             (*result)["size"] = size;
 
+            // Batch fetch reply counts for all top-level comments
+            std::map<unsigned long long, int> reply_counts;
+            if (!comments.empty())
+            {
+                auto rep_my = _model.CreateConnection();
+                if (rep_my)
+                {
+                    std::ostringstream idlist;
+                    for (size_t i = 0; i < comments.size(); ++i)
+                    {
+                        if (i > 0) idlist << ",";
+                        idlist << comments[i].id;
+                    }
+                    std::string batch_sql = "select parent_id, count(*) as cnt from solution_comments where parent_id in (" + idlist.str() + ") group by parent_id";
+                    if (mysql_query(rep_my.get(), batch_sql.c_str()) == 0)
+                    {
+                        MYSQL_RES* rep_res = mysql_store_result(rep_my.get());
+                        if (rep_res)
+                        {
+                            for (int ri = 0; ri < mysql_num_rows(rep_res); ++ri)
+                            {
+                                MYSQL_ROW rep_row = mysql_fetch_row(rep_res);
+                                if (rep_row && rep_row[0] && rep_row[1])
+                                    reply_counts[std::stoull(rep_row[0])] = std::atoi(rep_row[1]);
+                            }
+                            mysql_free_result(rep_res);
+                        }
+                    }
+                }
+            }
+
             Json::Value list(Json::arrayValue);
             for (const auto& c : comments)
             {
@@ -1303,40 +1326,10 @@ namespace ns_control
                 item["reply_to_user_name"] = c.reply_to_user_name;
                 item["like_count"] = c.like_count;
                 item["favorite_count"] = c.favorite_count;
-                // author info
-                User author;
-                if (_model.GetUserById(c.user_id, &author))
-                {
-                    item["author_name"] = author.name;
-                    item["author_avatar"] = GetEffectiveAvatarUrl(author);
-                }
-                else
-                {
-                    item["author_name"] = "";
-                    item["author_avatar"] = "/pictures/head.jpg";
-                }
-                // reply count for this top-level comment (direct query, no cache)
-                int tmp_total = 0;
-                {
-                    auto rep_my = _model.CreateConnection();
-                    if (rep_my)
-                    {
-                        std::string cnt_sql = "select count(*) from solution_comments where parent_id=" + std::to_string(c.id);
-                        int rc = 0;
-                        if (mysql_query(rep_my.get(), cnt_sql.c_str()) == 0)
-                        {
-                            MYSQL_RES* rep_res = mysql_store_result(rep_my.get());
-                            if (rep_res)
-                            {
-                                MYSQL_ROW rep_row = mysql_fetch_row(rep_res);
-                                if (rep_row && rep_row[0]) rc = std::atoi(rep_row[0]);
-                                mysql_free_result(rep_res);
-                            }
-                        }
-                        tmp_total = rc;
-                    }
-                }
-                item["reply_count"] = tmp_total;
+                // author info (from JOIN, no extra DB query)
+                item["author_name"] = c.author_name;
+                item["author_avatar"] = "/pictures/head.jpg";
+                item["reply_count"] = reply_counts.count(c.id) ? reply_counts[c.id] : 0;
                 list.append(item);
             }
             (*result)["comments"] = list;
@@ -1366,6 +1359,37 @@ namespace ns_control
             (*result)["page"] = std::max(1, page);
             (*result)["size"] = size;
 
+            // Batch fetch nested reply counts for all replies
+            std::map<unsigned long long, int> reply_counts;
+            if (!replies.empty())
+            {
+                auto rep_my = _model.CreateConnection();
+                if (rep_my)
+                {
+                    std::ostringstream idlist;
+                    for (size_t i = 0; i < replies.size(); ++i)
+                    {
+                        if (i > 0) idlist << ",";
+                        idlist << replies[i].id;
+                    }
+                    std::string batch_sql = "select parent_id, count(*) as cnt from solution_comments where parent_id in (" + idlist.str() + ") group by parent_id";
+                    if (mysql_query(rep_my.get(), batch_sql.c_str()) == 0)
+                    {
+                        MYSQL_RES* rep_res = mysql_store_result(rep_my.get());
+                        if (rep_res)
+                        {
+                            for (int ri = 0; ri < mysql_num_rows(rep_res); ++ri)
+                            {
+                                MYSQL_ROW rep_row = mysql_fetch_row(rep_res);
+                                if (rep_row && rep_row[0] && rep_row[1])
+                                    reply_counts[std::stoull(rep_row[0])] = std::atoi(rep_row[1]);
+                            }
+                            mysql_free_result(rep_res);
+                        }
+                    }
+                }
+            }
+
             Json::Value list(Json::arrayValue);
             for (const auto& r : replies)
             {
@@ -1382,28 +1406,9 @@ namespace ns_control
                 item["reply_to_user_name"] = r.reply_to_user_name;
                 item["like_count"] = r.like_count;
                 item["favorite_count"] = r.favorite_count;
-                User author;
-                if (_model.GetUserById(r.user_id, &author))
-                {
-                    item["author_name"] = author.name;
-                    item["author_avatar"] = GetEffectiveAvatarUrl(author);
-                }
-                else
-                {
-                    item["author_name"] = "";
-                    item["author_avatar"] = "/pictures/head.jpg";
-                }
-                // reply count for this reply (supports nested reply-to-reply)
-                std::vector<Comment> nested;
-                int nested_total = 0;
-                if (_model.GetCommentReplies(r.id, 1, 1000000, &nested, &nested_total))
-                {
-                    item["reply_count"] = nested_total;
-                }
-                else
-                {
-                    item["reply_count"] = 0;
-                }
+                item["author_name"] = r.author_name;
+                item["author_avatar"] = "/pictures/head.jpg";
+                item["reply_count"] = reply_counts.count(r.id) ? reply_counts[r.id] : 0;
                 list.append(item);
             }
             (*result)["comments"] = list;

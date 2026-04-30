@@ -167,6 +167,7 @@ struct Comment
     unsigned int like_count = 0;                // 点赞数
     unsigned int favorite_count = 0;            // 收藏数
     std::string reply_to_user_name = "";      // 被回复用户名（查询时填充）
+    std::string author_name = "";             // 评论作者用户名（查询时通过JOIN填充）
     std::string created_at;
     std::string updated_at;
 };

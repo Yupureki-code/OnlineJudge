@@ -1473,6 +1473,7 @@ namespace ns_model
                             c.created_at = item["created_at"].asString();
                             c.updated_at = item["updated_at"].asString();
                             c.reply_to_user_name = item["reply_to_user_name"].asString();
+                            c.author_name = item.get("author_name", "").asString();
                             comments->push_back(c);
                         }
                     }
@@ -1552,7 +1553,7 @@ namespace ns_model
                 c.created_at = (row[9] != nullptr) ? row[9] : "";
                 c.updated_at = (row[10] != nullptr) ? row[10] : "";
                 c.reply_to_user_name = (row[12] != nullptr) ? row[12] : "";
-                // row[11] is author_name, not stored in Comment struct
+                c.author_name = (row[11] != nullptr) ? row[11] : "";
                 comments->push_back(c);
             }
             // Optional: retrieve reply counts for top-level comments (nested <= 2 levels)
@@ -1600,6 +1601,7 @@ namespace ns_model
                 item["created_at"] = c.created_at;
                 item["updated_at"] = c.updated_at;
                 item["reply_to_user_name"] = c.reply_to_user_name;
+                item["author_name"] = c.author_name;
                 array_value.append(item);
             }
             root["comments"] = array_value;
@@ -1900,6 +1902,7 @@ namespace ns_model
                             c.created_at = item["created_at"].asString();
                             c.updated_at = item["updated_at"].asString();
                             c.reply_to_user_name = item["reply_to_user_name"].asString();
+                            c.author_name = item.get("author_name", "").asString();
                             replies->push_back(c);
                         }
                     }
@@ -1967,6 +1970,7 @@ namespace ns_model
                 c.created_at = (row[9] != nullptr) ? row[9] : "";
                 c.updated_at = (row[10] != nullptr) ? row[10] : "";
                 c.reply_to_user_name = (row[12] != nullptr) ? row[12] : "";
+                c.author_name = (row[11] != nullptr) ? row[11] : "";
                 replies->push_back(c);
             }
             mysql_free_result(res);
@@ -1990,6 +1994,7 @@ namespace ns_model
                 item["created_at"] = c.created_at;
                 item["updated_at"] = c.updated_at;
                 item["reply_to_user_name"] = c.reply_to_user_name;
+                item["author_name"] = c.author_name;
                 reply_arr.append(item);
             }
             cache_value["comments"] = reply_arr;
