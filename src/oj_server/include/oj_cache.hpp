@@ -1,3 +1,4 @@
+#pragma once
 #include <Logger/logstrategy.h>
 #include <httplib.h>
 #include <iterator>
