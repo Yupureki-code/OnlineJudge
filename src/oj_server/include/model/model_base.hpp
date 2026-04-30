@@ -12,8 +12,8 @@
 #include <atomic>
 #include <map>
 #include <Logger/logstrategy.h>
-#include "../../comm/comm.hpp"
-#include "oj_cache.hpp"
+#include "../../../comm/comm.hpp"
+#include "../oj_cache.hpp"
 #include <mysql/mysql.h>
 
 namespace ns_model

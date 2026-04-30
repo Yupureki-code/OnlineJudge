@@ -8,7 +8,7 @@ namespace ns_model
     class ModelComment : public ModelBase
     {
     public:
-        // Comments: get comments by a solution with pagination (top-level only by default)
+        //获取顶级评论(带分页)
         bool GetCommentsBySolutionId(unsigned long long solution_id, int page, int size,
                                      std::vector<Comment>* comments, int* total_count)
         {
@@ -16,17 +16,15 @@ namespace ns_model
             {
                 return false;
             }
-
-            // Build cache key: comment:list:sid:{solution_id}:page:{page}:size:{size}
+            //构建cache_key
             std::string cache_key = "comment:list:sid:" + std::to_string(solution_id)
                                   + ":page:" + std::to_string(page)
                                   + ":size:" + std::to_string(size);
-
-            // Try to read from cache
+            //访问缓存
             std::string cached_json;
             if (_cache.GetStringByAnyKey(cache_key, &cached_json))
             {
-                // Cache hit: parse JSON and populate results
+                //缓存命中:解析JSON
                 Json::CharReaderBuilder builder;
                 Json::Value json_value;
                 std::istringstream ss(cached_json);
@@ -60,19 +58,17 @@ namespace ns_model
                     return true;
                 }
             }
-
+            //缓存未命中->回源MySQL
             auto my = CreateConnection();
             if (!my)
             {
                 return false;
             }
-
-            // paging parameters
+            //检查page和size
             int safe_page = std::max(1, page);
             int safe_size = std::max(1, size);
             int offset = (safe_page - 1) * safe_size;
-
-            // top-level comments only (parent_id NULL or 0)
+            //检查MySQL表
             std::string count_sql = "select count(*) from solution_comments where solution_id=" + std::to_string(solution_id) + " and (parent_id IS NULL OR parent_id = 0)";
             if (!QueryCount(count_sql, total_count))
             {
@@ -85,7 +81,7 @@ namespace ns_model
             }
 
             std::ostringstream sql;
-            // include counts for replies and the reply_to information
+            //查询MySQL
             sql << "select c.id, c.solution_id, c.user_id, c.content, c.is_edited, c.parent_id, c.reply_to_user_id, c.like_count, c.favorite_count, c.created_at, c.updated_at, u.name AS author_name, ru.name AS reply_to_user_name "
                 << "from solution_comments c LEFT JOIN users u ON c.user_id = u.uid LEFT JOIN users ru ON c.reply_to_user_id = ru.uid "
                 << "where c.solution_id=" << solution_id
@@ -104,7 +100,7 @@ namespace ns_model
                 logger(ns_log::FATAL) << "MySql题解评论结果集为空!";
                 return false;
             }
-
+            //逐行解析
             int rows = mysql_num_rows(res);
             comments->clear();
             comments->reserve(rows);
@@ -135,8 +131,7 @@ namespace ns_model
                 c.author_name = (row[11] != nullptr) ? row[11] : "";
                 comments->push_back(c);
             }
-            // Optional: retrieve reply counts for top-level comments (nested <= 2 levels)
-            // This is a best-effort lookup; counts are not stored in Comment struct.
+            //获取顶级评论的回复数量（嵌套 <= 2 级）
             std::vector<unsigned long long> top_level_ids;
             top_level_ids.reserve(comments->size());
             for (const auto& cc : *comments) {
@@ -154,14 +149,13 @@ namespace ns_model
                     MYSQL_RES* res2 = mysql_store_result(my.get());
                     if (res2 != nullptr)
                     {
-                        // read and discard counts; UI can fetch via separate API if needed
                         mysql_free_result(res2);
                     }
                 }
             }
             mysql_free_result(res);
 
-            // Write to cache
+            //写回Redis
             Json::Value root(Json::objectValue);
             root["total"] = *total_count;
             Json::Value array_value(Json::arrayValue);
@@ -371,7 +365,7 @@ namespace ns_model
             return true;
         }
 
-        // Comments: get a single comment by id
+        //获取评论
         bool GetCommentById(unsigned long long comment_id, Comment* comment)
         {
             if (comment == nullptr)

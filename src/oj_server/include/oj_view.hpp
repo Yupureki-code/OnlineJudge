@@ -6,7 +6,7 @@
 #include <fstream>
 #include <mutex>
 #include <ctemplate/template.h>
-#include "oj_model.hpp"
+#include "model/oj_model.hpp"
 #include "../../comm/comm.hpp"
 
 // view: 主要用来渲染和返回html

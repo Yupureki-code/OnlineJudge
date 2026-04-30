@@ -102,7 +102,7 @@ namespace ns_control
                 return false;
             }
         }
-
+        //验证验证码，自动登录或者创建新用户
         bool VerifyEmailAuthCodeAndLogin(const std::string& email,
                          const std::string& code,
                          const std::string& optional_name,
@@ -130,6 +130,7 @@ namespace ns_control
 
             try
             {
+                //从REDIS中获取验证码
                 auto cached_code = _auth_redis.get(BuildAuthCodeKey(email));
                 if (!cached_code)
                 {
@@ -139,9 +140,10 @@ namespace ns_control
                     }
                     return false;
                 }
-
+                //判断验证码是否正确
                 if (cached_code.value() != code)
                 {
+                    //验证码错误->尝试次数+1,大于等于5次删除验证码
                     std::string attempts_key = BuildAuthAttemptsKey(email);
                     long long attempts = _auth_redis.incr(attempts_key);
                     if (attempts == 1)
@@ -167,13 +169,14 @@ namespace ns_control
                     }
                     return false;
                 }
-
+                //验证码正确
                 _auth_redis.del(BuildAuthCodeKey(email));
                 _auth_redis.del(BuildAuthAttemptsKey(email));
-
+                //查看该用户是否存在
                 bool exists = _model.CheckUser(email);
                 if (!exists)
                 {
+                    //用户不存在->创建账户
                     std::string trimmed_name = TrimSpace(optional_name);
                     if (trimmed_name.empty())
                     {
@@ -329,7 +332,7 @@ namespace ns_control
                 }
                 return false;
             }
-
+            //创建哈希密码
             std::string password_hash = BuildPasswordHash(password);
             if (password_hash.empty())
             {
@@ -339,7 +342,7 @@ namespace ns_control
                 }
                 return false;
             }
-
+            //设置用户密码到MySQL中
             if (!_model.SetUserPassword(email, password_hash, PasswordAlgoTag()))
             {
                 if (err_code != nullptr)
@@ -412,7 +415,7 @@ namespace ns_control
                 return false;
             }
         }
-
+        //检查邮箱验证码正确性，若正确则更改邮箱
         bool ChangeEmailWithCode(const User& current_user,
                                  const std::string& new_email,
                                  const std::string& code,
@@ -427,7 +430,7 @@ namespace ns_control
                 }
                 return false;
             }
-
+            //检查验证码正确性
             std::string verify_err;
             if (!VerifyEmailAuthCode(current_user.email, code, &verify_err))
             {
@@ -437,7 +440,7 @@ namespace ns_control
                 }
                 return false;
             }
-
+            //检查用户是否存在
             if (_model.CheckUser(new_email))
             {
                 if (err_code != nullptr)
@@ -446,7 +449,7 @@ namespace ns_control
                 }
                 return false;
             }
-
+            //更新邮箱
             if (!_model.UpdateUserEmail(current_user.email, new_email))
             {
                 if (err_code != nullptr)
@@ -469,7 +472,7 @@ namespace ns_control
             }
             return true;
         }
-
+        //检查验证码正确性，若正确则更改密码
         bool ChangePasswordWithCode(const std::string& email,
                                     const std::string& code,
                                     const std::string& new_password,
@@ -487,7 +490,7 @@ namespace ns_control
 
             return SetPasswordForUser(email, new_password, err_code);
         }
-
+        //检查验证码正确性，若正确则注销账户
         bool DeleteAccountWithCode(const std::string& email,
                                    const std::string& code,
                                    std::string* err_code)
@@ -512,7 +515,7 @@ namespace ns_control
             }
             return true;
         }
-
+        //邮箱/用户名+密码登陆
         bool LoginWithPassword(const std::string& email_or_username,
                                const std::string& password,
                                User* user,
@@ -572,7 +575,7 @@ namespace ns_control
                 }
                 return false;
             }
-
+            //判断密码是否正确
             if (!VerifyPasswordHash(password, password_hash, password_algo))
             {
                 if (err_code != nullptr)
@@ -581,7 +584,7 @@ namespace ns_control
                 }
                 return false;
             }
-
+            //更新登陆时间
             _model.UpdateLastLogin(resolved_email);
             if (!_model.GetUser(resolved_email, user))
             {
@@ -703,7 +706,7 @@ namespace ns_control
             }
             return std::string(pepper);
         }
-
+        //判断密码强度
         bool IsPasswordStrongEnough(const std::string& password) const
         {
             if (password.size() < 8 || password.size() > 72)

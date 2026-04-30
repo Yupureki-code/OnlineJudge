@@ -1,5 +1,5 @@
 #include <httplib.h>
-#include "../include/oj_control.hpp"
+#include "../include/control/oj_control.hpp"
 #include "../../comm/comm.hpp"
 #include <mysql/mysql.h>
 #include <memory>
@@ -185,6 +185,7 @@ int main()
     svr.set_mount_point("/css", HTML_PATH + std::string("/css"));
     svr.set_mount_point("/spa", HTML_PATH + std::string("/spa"));
     //设置路由和处理函数
+    // ── 静态资源 ──
     svr.Get("/js/(.*)", [](const Request& req, Response& rep){
         std::string file = req.matches[1];
         std::string content;
@@ -194,6 +195,7 @@ int main()
         rep.set_header("Expires", "0");
         rep.set_content(content, "application/javascript;charset=utf-8");
     });
+    // ── 页面路由（服务端渲染HTML）──
     //根路由，返回首页HTML
     svr.Get("/", [&ctl, &getCurrentUser](const Request& req, Response& rep){
         std::string html;
@@ -320,6 +322,7 @@ int main()
         
         rep.set_content(html, "text/html;charset=utf-8");
     });
+    // ── 判题路由 ──
     // 判题路由，接收代码和题目编号，返回判题结果后，前端调用judge_result路由
     svr.Post(R"(/judge/(\d+)$)", [&ctl, &getCurrentUser](const Request& req,Response& rep){
        std::string number = req.matches[1];
@@ -399,6 +402,7 @@ int main()
         std::string encoded_result = HttpUtil::url_encode(result_json);
         rep.set_redirect("/judge_result.html?result=" + encoded_result + "&id=" + number);
     }); 
+    // ── 认证路由（邮箱验证码登录/注册）──
     //发送邮箱验证码的路由
     svr.Post("/api/auth/send_code", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
@@ -527,6 +531,7 @@ int main()
         rep.set_content(writer.write(response), "application/json;charset=utf-8");
     });
 
+    // ── 旧版用户路由（无密码登录）──
     svr.Post("/api/user/check", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
@@ -694,6 +699,7 @@ int main()
         rep.set_content(response_str, "application/json;charset=utf-8");
     });
 
+    // ── 密码管理路由 ──
     svr.Post("/api/user/password/set", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User current_user;
@@ -1038,6 +1044,7 @@ int main()
         rep.set_content(writer.write(response), "application/json;charset=utf-8");
     });
 
+    // ── 题目API路由 ──
     svr.Options("/api/questions", [&addCORSHeaders](const Request& req, Response& rep) {
         (void)req;
         addCORSHeaders(rep);
@@ -1096,6 +1103,7 @@ int main()
         rep.set_content(writer.write(response), "application/json;charset=utf-8");
     });
 
+    // ── 缓存监控 ──
     svr.Get("/api/metrics/cache", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
         (void)req;
         Json::Value response;
@@ -1178,6 +1186,7 @@ int main()
         rep.set_content(writer.write(response), "application/json;charset=utf-8");
     });
 
+    // ── 题解API路由 ──
     svr.Post(R"(/api/questions/(\d+)/solutions$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
 

@@ -8,6 +8,7 @@ namespace ns_control
     class ControlSolution : public ControlComment
     {
     public:
+        //发布题解
         bool PublishSolution(const std::string& question_id,
                               const User& current_user,
                               const std::string& title,
@@ -33,7 +34,7 @@ namespace ns_control
                 }
                 return false;
             }
-
+            //得到题目信息
             Question question;
             if (!_model.GetOneQuestion(trimmed_question_id, question))
             {
@@ -43,7 +44,7 @@ namespace ns_control
                 }
                 return false;
             }
-
+            //查看该用户是否通过该题目
             if (!_model.HasUserPassedQuestion(current_user.uid, trimmed_question_id))
             {
                 if (err_code != nullptr)
@@ -88,7 +89,7 @@ namespace ns_control
             solution.title = trimmed_title;
             solution.content_md = trimmed_content;
             solution.status = SolutionStatus::approved;
-
+            //保存题解
             if (!_model.CreateSolution(solution, solution_id))
             {
                 if (err_code != nullptr)

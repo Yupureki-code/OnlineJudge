@@ -5,11 +5,22 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
   /home/yupureki/project/OnlineJudge/src/comm/comm.hpp \
   /home/yupureki/project/OnlineJudge/src/comm/config.h \
   /home/yupureki/project/OnlineJudge/src/oj_server/include/oj_cache.hpp \
-  /home/yupureki/project/OnlineJudge/src/oj_server/include/oj_control.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/model/model_base.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/model/model_comment.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/model/model_question.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/model/model_solution.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/model/model_user.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/model/oj_model.hpp \
   /home/yupureki/project/OnlineJudge/src/oj_server/include/oj_mail.hpp \
-  /home/yupureki/project/OnlineJudge/src/oj_server/include/oj_model.hpp \
   /home/yupureki/project/OnlineJudge/src/oj_server/include/oj_session.hpp \
   /home/yupureki/project/OnlineJudge/src/oj_server/include/oj_view.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_auth.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_base.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_comment.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_question.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_solution.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_user.hpp \
+  /home/yupureki/project/OnlineJudge/src/oj_server/include/control/oj_control.hpp \
   /usr/include/alloca.h \
   /usr/include/arpa/inet.h \
   /usr/include/arpa/nameser.h \
@@ -540,13 +551,7 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/local/include/sw/redis++/redis_cluster.h:
 
-/usr/local/include/sw/redis++/redis++.h:
-
-/usr/local/include/sw/redis++/queued_redis.hpp:
-
 /usr/local/include/sw/redis++/errors.h:
-
-/usr/local/include/sw/redis++/connection_pool.h:
 
 /usr/local/include/sw/redis++/hiredis_features.h:
 
@@ -665,8 +670,6 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
 
 /usr/include/x86_64-linux-gnu/bits/types.h:
 
@@ -868,15 +871,31 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/jsoncpp/json/writer.h:
 
-/usr/include/c++/13/locale:
+/usr/include/jsoncpp/json/version.h:
 
-/usr/include/c++/13/debug/assertions.h:
+/usr/include/jsoncpp/json/value.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h:
+/usr/include/jsoncpp/json/reader.h:
 
-/usr/include/mysql/mysql_version.h:
+/usr/include/jsoncpp/json/json_features.h:
 
-/usr/include/asm-generic/errno.h:
+/usr/include/x86_64-linux-gnu/bits/math-vector.h:
+
+/usr/include/jsoncpp/json/json.h:
+
+/usr/include/jsoncpp/json/forwards.h:
+
+/usr/include/jsoncpp/json/config.h:
+
+/usr/include/jsoncpp/json/allocator.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
+
+/usr/include/openssl/sha.h:
+
+/usr/include/ifaddrs.h:
+
+/usr/include/hiredis/sds.h:
 
 /usr/include/c++/13/bits/stl_bvector.h:
 
@@ -886,12 +905,6 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/cstdint:
 
-/usr/include/c++/13/bits/regex_scanner.h:
-
-/usr/include/c++/13/cstdlib:
-
-/usr/include/c++/13/bits/sstream.tcc:
-
 /usr/include/x86_64-linux-gnu/asm/posix_types.h:
 
 /usr/include/c++/13/cwctype:
@@ -899,10 +912,6 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 /usr/include/linux/limits.h:
 
 /usr/include/c++/13/ratio:
-
-/usr/include/c++/13/bits/stl_list.h:
-
-/usr/include/c++/13/bits/erase_if.h:
 
 /usr/include/c++/13/bits/shared_ptr.h:
 
@@ -921,6 +930,14 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 /usr/include/linux/stat.h:
 
 /usr/include/c++/13/bits/locale_facets.tcc:
+
+/usr/include/c++/13/cstdlib:
+
+/usr/include/c++/13/bits/regex_scanner.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/control/oj_control.hpp:
+
+/usr/include/c++/13/locale:
 
 /usr/local/include/sw/redis++/command_options.h:
 
@@ -952,14 +969,6 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/unordered_map:
 
-/usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h:
-
-/usr/include/stdio.h:
-
-/usr/include/c++/13/bits/stl_iterator_base_types.h:
-
-/usr/include/c++/13/bits/regex_compiler.h:
-
 /usr/include/c++/13/bits/stl_uninitialized.h:
 
 /usr/include/c++/13/bits/new_allocator.h:
@@ -968,13 +977,13 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/bits/uses_allocator_args.h:
 
+/usr/include/c++/13/bits/exception_ptr.h:
+
 /usr/include/x86_64-linux-gnu/bits/types/struct_sigstack.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h:
 
 /usr/include/c++/13/bits/stl_multimap.h:
-
-/usr/include/c++/13/bits/exception_ptr.h:
 
 /usr/include/c++/13/bits/regex.tcc:
 
@@ -986,35 +995,15 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/bits/ptr_traits.h:
 
-/home/yupureki/project/OnlineJudge/src/oj_server/include/oj_mail.hpp:
-
 /usr/include/c++/13/bits/std_abs.h:
 
 /usr/include/c++/13/bits/parse_numbers.h:
 
 /usr/include/c++/13/bits/ostream.tcc:
 
-/usr/include/c++/13/bits/stl_function.h:
-
-/usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h:
-
-/usr/include/c++/13/bits/utility.h:
-
-/usr/include/x86_64-linux-gnu/curl/options.h:
-
-/usr/include/c++/13/tr1/beta_function.tcc:
-
-/usr/include/c++/13/bits/move.h:
-
-/usr/include/asm-generic/sockios.h:
-
 /usr/include/c++/13/bits/memoryfwd.h:
 
 /usr/include/c++/13/bits/locale_facets_nonio.tcc:
-
-/usr/include/c++/13/bits/stl_heap.h:
-
-/usr/include/c++/13/utility:
 
 /usr/include/x86_64-linux-gnu/bits/confname.h:
 
@@ -1026,12 +1015,6 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/bits/locale_conv.h:
 
-/usr/include/x86_64-linux-gnu/bits/timesize.h:
-
-/usr/include/c++/13/bits/locale_classes.h:
-
-/home/yupureki/project/OnlineJudge/src/oj_server/src/oj_server.cpp:
-
 /usr/include/c++/13/clocale:
 
 /usr/include/x86_64-linux-gnu/bits/types/error_t.h:
@@ -1042,49 +1025,41 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/bits/invoke.h:
 
-/usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
+/usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
 
-/usr/include/c++/13/bits/enable_special_members.h:
+/usr/include/c++/13/bits/node_handle.h:
 
-/usr/include/x86_64-linux-gnu/c++/13/bits/messages_members.h:
+/usr/local/include/sw/redis++/redis_cluster.hpp:
 
-/usr/include/asm-generic/param.h:
-
-/usr/include/x86_64-linux-gnu/bits/uio_lim.h:
-
-/usr/include/c++/13/bits/stream_iterator.h:
-
-/usr/include/c++/13/algorithm:
-
-/usr/include/c++/13/bits/random.h:
-
-/usr/include/c++/13/bits/regex.h:
-
-/usr/include/c++/13/backward/binders.h:
-
-/usr/include/asm-generic/socket.h:
+/usr/include/c++/13/bits/functexcept.h:
 
 /usr/include/c++/13/bits/refwrap.h:
 
 /usr/include/c++/13/bits/fstream.tcc:
 
-/usr/include/c++/13/bits/stl_construct.h:
+/usr/include/x86_64-linux-gnu/bits/socket_type.h:
 
-/usr/include/c++/13/bits/std_mutex.h:
+/usr/include/c++/13/bits/localefwd.h:
 
-/usr/include/asm-generic/posix_types.h:
+/usr/include/x86_64-linux-gnu/bits/waitstatus.h:
 
-/usr/include/x86_64-linux-gnu/bits/sigcontext.h:
+/usr/include/c++/13/bits/exception_defines.h:
 
-/usr/include/c++/13/tr1/special_function_util.h:
+/home/yupureki/project/OnlineJudge/src/oj_server/include/model/model_base.hpp:
 
-/usr/include/c++/13/bits/regex_automaton.tcc:
+/usr/include/c++/13/bits/deque.tcc:
 
-/usr/include/assert.h:
+/usr/include/x86_64-linux-gnu/c++/13/bits/messages_members.h:
 
-/usr/include/jsoncpp/json/value.h:
+/usr/include/asm-generic/param.h:
 
-/usr/include/c++/13/backward/auto_ptr.h:
+/usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
+
+/usr/include/c++/13/bits/enable_special_members.h:
+
+/usr/include/x86_64-linux-gnu/bits/uio_lim.h:
+
+/usr/include/c++/13/bits/stream_iterator.h:
 
 /usr/include/c++/13/cctype:
 
@@ -1098,23 +1073,17 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/bits/shared_ptr_base.h:
 
-/usr/include/c++/13/array:
+/usr/include/x86_64-linux-gnu/curl/multi.h:
 
-/usr/include/c++/13/bits/hash_bytes.h:
+/usr/include/c++/13/bits/regex_error.h:
 
-/home/yupureki/project/OnlineJudge/src/comm/comm.hpp:
+/usr/include/c++/13/bits/basic_ios.h:
 
-/usr/include/fcntl.h:
+/usr/local/include/Logger/logstrategy.h:
 
-/usr/include/c++/13/bits/stl_iterator_base_funcs.h:
+/usr/include/arpa/nameser.h:
 
-/usr/include/asm-generic/errno-base.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/sigset_t.h:
-
-/usr/include/asm-generic/bitsperlong.h:
-
-/usr/include/asm-generic/types.h:
+/usr/include/c++/13/bits/predefined_ops.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
 
@@ -1124,13 +1093,9 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /home/yupureki/project/OnlineJudge/src/comm/config.h:
 
-/usr/include/c++/13/bits/predefined_ops.h:
-
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
 
 /usr/include/openssl/opensslv.h:
-
-/home/yupureki/project/OnlineJudge/src/oj_server/include/oj_control.hpp:
 
 /usr/include/c++/13/condition_variable:
 
@@ -1138,17 +1103,161 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/iosfwd:
 
-/usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
+/usr/include/x86_64-linux-gnu/bits/mman.h:
 
-/usr/include/openssl/sha.h:
+/usr/include/c++/13/bits/align.h:
 
-/usr/include/ifaddrs.h:
+/usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h:
 
-/home/yupureki/project/OnlineJudge/src/oj_server/include/oj_model.hpp:
+/usr/include/c++/13/bits/unique_ptr.h:
 
-/usr/include/c++/13/bits/stl_numeric.h:
+/usr/include/x86_64-linux-gnu/bits/endianness.h:
+
+/usr/include/c++/13/bits/chrono.h:
+
+/usr/include/x86_64-linux-gnu/sys/stat.h:
+
+/usr/include/httplib.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/oj_session.hpp:
 
 /home/yupureki/project/OnlineJudge/src/oj_server/include/oj_view.hpp:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/src/oj_server.cpp:
+
+/usr/include/x86_64-linux-gnu/bits/timesize.h:
+
+/usr/include/c++/13/bits/locale_classes.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_user.hpp:
+
+/usr/include/c++/13/bits/regex.h:
+
+/usr/include/c++/13/backward/binders.h:
+
+/usr/include/c++/13/bits/regex_constants.h:
+
+/usr/include/arpa/inet.h:
+
+/usr/include/arpa/nameser_compat.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h:
+
+/usr/include/mysql/mysql_version.h:
+
+/usr/include/asm-generic/errno.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_comment.hpp:
+
+/usr/include/alloca.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/model/model_question.hpp:
+
+/usr/include/c++/13/bits/functional_hash.h:
+
+/usr/include/errno.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/oj_cache.hpp:
+
+/usr/include/asm-generic/int-ll64.h:
+
+/usr/include/c++/13/bits/shared_ptr_atomic.h:
+
+/usr/include/c++/13/set:
+
+/usr/include/c++/13/thread:
+
+/usr/local/include/sw/redis++/redis++.h:
+
+/usr/local/include/sw/redis++/queued_redis.hpp:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_auth.hpp:
+
+/usr/include/x86_64-linux-gnu/c++/13/bits/ctype_inline.h:
+
+/usr/include/x86_64-linux-gnu/bits/signal_ext.h:
+
+/usr/include/c++/13/bits/std_function.h:
+
+/usr/include/c++/13/bits/char_traits.h:
+
+/usr/include/c++/13/bits/hashtable_policy.h:
+
+/usr/local/include/sw/redis++/connection_pool.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/model/model_solution.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/sigset_t.h:
+
+/usr/include/asm-generic/bitsperlong.h:
+
+/usr/include/asm-generic/types.h:
+
+/usr/include/c++/13/bits/stl_iterator_base_funcs.h:
+
+/usr/include/asm-generic/errno-base.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/model/model_user.hpp:
+
+/usr/include/c++/13/bits/move.h:
+
+/usr/include/asm-generic/sockios.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_solution.hpp:
+
+/usr/include/stdint.h:
+
+/usr/include/endian.h:
+
+/usr/include/c++/13/bits/hash_bytes.h:
+
+/home/yupureki/project/OnlineJudge/src/comm/comm.hpp:
+
+/usr/include/fcntl.h:
+
+/usr/include/c++/13/array:
+
+/usr/include/c++/13/bits/std_mutex.h:
+
+/usr/include/c++/13/bits/stl_construct.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/oj_mail.hpp:
+
+/usr/include/c++/13/utility:
+
+/usr/include/c++/13/bits/stl_heap.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h:
+
+/usr/include/hiredis/hiredis.h:
+
+/usr/include/c++/13/bits/sstream.tcc:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/model/model_comment.hpp:
+
+/usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo-consts.h:
+
+/usr/include/c++/13/numeric:
+
+/usr/include/c++/13/bits/basic_ios.tcc:
+
+/usr/include/c++/13/pstl/execution_defs.h:
+
+/usr/include/asm-generic/posix_types.h:
+
+/usr/include/x86_64-linux-gnu/bits/sigcontext.h:
+
+/usr/include/c++/13/tr1/special_function_util.h:
+
+/usr/include/c++/13/bits/concept_check.h:
+
+/usr/include/c++/13/bits/alloc_traits.h:
+
+/usr/include/asm-generic/socket.h:
 
 /usr/include/c++/13/bits/basic_string.tcc:
 
@@ -1156,7 +1265,15 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/bit:
 
-/usr/include/alloca.h:
+/usr/include/c++/13/bits/random.h:
+
+/usr/include/c++/13/algorithm:
+
+/usr/include/c++/13/bits/streambuf.tcc:
+
+/usr/include/c++/13/bits/specfun.h:
+
+/usr/include/c++/13/atomic:
 
 /usr/include/c++/13/bits/atomic_lockfree_defines.h:
 
@@ -1174,85 +1291,25 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/fstream:
 
-/home/yupureki/project/OnlineJudge/src/oj_server/include/oj_cache.hpp:
+/usr/include/c++/13/bits/regex_automaton.tcc:
 
-/usr/include/c++/13/bits/basic_ios.tcc:
+/usr/include/assert.h:
 
-/usr/include/c++/13/pstl/execution_defs.h:
-
-/usr/include/asm-generic/int-ll64.h:
-
-/usr/include/c++/13/bits/shared_ptr_atomic.h:
-
-/usr/include/c++/13/set:
-
-/usr/include/c++/13/thread:
-
-/usr/include/c++/13/bits/concept_check.h:
-
-/usr/include/c++/13/bits/alloc_traits.h:
-
-/usr/include/c++/13/bits/deque.tcc:
-
-/usr/include/x86_64-linux-gnu/bits/endianness.h:
-
-/usr/include/c++/13/bits/chrono.h:
-
-/usr/local/include/sw/redis++/redis_cluster.hpp:
-
-/usr/include/c++/13/bits/functexcept.h:
-
-/usr/local/include/Logger/logstrategy.h:
-
-/usr/include/arpa/nameser.h:
-
-/usr/include/x86_64-linux-gnu/bits/mman.h:
-
-/usr/include/c++/13/bits/align.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h:
-
-/usr/include/c++/13/bits/unique_ptr.h:
-
-/usr/include/c++/13/bits/regex_constants.h:
-
-/usr/include/arpa/inet.h:
-
-/usr/include/arpa/nameser_compat.h:
+/usr/include/c++/13/backward/auto_ptr.h:
 
 /usr/include/x86_64-linux-gnu/bits/long-double.h:
 
 /usr/include/c++/13/bits/algorithmfwd.h:
 
-/usr/include/jsoncpp/json/reader.h:
-
-/usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
-
-/usr/include/c++/13/bits/node_handle.h:
-
-/usr/include/c++/13/atomic:
-
-/usr/include/x86_64-linux-gnu/c++/13/bits/ctype_inline.h:
-
-/usr/include/x86_64-linux-gnu/bits/signal_ext.h:
-
-/usr/include/c++/13/bits/std_function.h:
-
-/usr/include/c++/13/bits/char_traits.h:
-
-/usr/include/c++/13/bits/hashtable_policy.h:
-
 /usr/include/x86_64-linux-gnu/bits/param.h:
 
 /usr/include/c++/13/bits/cxxabi_forced.h:
 
-/usr/include/x86_64-linux-gnu/bits/socket_type.h:
+/usr/include/c++/13/bits/exception.h:
 
-/usr/include/c++/13/bits/localefwd.h:
+/usr/include/c++/13/bits/memory_resource.h:
 
-/usr/include/x86_64-linux-gnu/bits/waitstatus.h:
-
-/usr/include/c++/13/bits/exception_defines.h:
+/usr/include/c++/13/streambuf:
 
 /usr/local/include/sw/redis++/cxx_utils.h:
 
@@ -1262,21 +1319,31 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/typeinfo:
 
-/usr/include/c++/13/bits/exception.h:
+/usr/include/c++/13/bits/stl_function.h:
 
-/usr/include/c++/13/bits/memory_resource.h:
+/usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h:
 
-/usr/include/c++/13/streambuf:
+/usr/include/c++/13/bits/utility.h:
 
-/usr/include/x86_64-linux-gnu/curl/multi.h:
+/usr/include/x86_64-linux-gnu/curl/options.h:
 
-/usr/include/c++/13/bits/basic_ios.h:
+/usr/include/c++/13/tr1/beta_function.tcc:
 
-/usr/include/c++/13/bits/regex_error.h:
+/usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h:
 
-/usr/include/c++/13/bits/functional_hash.h:
+/usr/include/stdio.h:
 
-/usr/include/errno.h:
+/usr/include/c++/13/bits/regex_compiler.h:
+
+/usr/include/c++/13/bits/stl_iterator_base_types.h:
+
+/usr/include/c++/13/bits/erase_if.h:
+
+/usr/include/c++/13/bits/stl_list.h:
+
+/usr/include/c++/13/debug/assertions.h:
+
+/usr/include/c++/13/bits/stl_numeric.h:
 
 /usr/include/c++/13/bits/stl_raw_storage_iter.h:
 
@@ -1318,14 +1385,6 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/unordered_set:
 
-/usr/include/c++/13/bits/specfun.h:
-
-/usr/include/c++/13/bits/streambuf.tcc:
-
-/usr/include/stdint.h:
-
-/usr/include/endian.h:
-
 /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
 
 /usr/include/c++/13/bits/streambuf_iterator.h:
@@ -1337,6 +1396,8 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 /usr/include/c++/13/tr1/riemann_zeta.tcc:
 
 /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_base.hpp:
 
 /usr/include/c++/13/bits/string_view.tcc:
 
@@ -1390,13 +1451,13 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/compare:
 
-/usr/include/jsoncpp/json/allocator.h:
-
 /usr/include/c++/13/csignal:
 
 /usr/include/c++/13/cstring:
 
 /usr/local/include/ctemplate/template_cache.h:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/control/control_question.hpp:
 
 /usr/include/c++/13/ctime:
 
@@ -1474,12 +1535,6 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/memory:
 
-/usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-consts.h:
-
-/usr/include/c++/13/numeric:
-
 /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:
 
 /usr/include/c++/13/pstl/glue_numeric_defs.h:
@@ -1487,12 +1542,6 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 /usr/include/c++/13/bits/random.tcc:
 
 /usr/include/c++/13/random:
-
-/usr/include/x86_64-linux-gnu/sys/stat.h:
-
-/home/yupureki/project/OnlineJudge/src/oj_server/include/oj_session.hpp:
-
-/usr/include/httplib.h:
 
 /usr/include/c++/13/bits/regex_automaton.h:
 
@@ -1507,6 +1556,8 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 /usr/include/c++/13/sstream:
 
 /usr/include/c++/13/stdexcept:
+
+/home/yupureki/project/OnlineJudge/src/oj_server/include/model/oj_model.hpp:
 
 /usr/include/c++/13/stdlib.h:
 
@@ -1530,8 +1581,6 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 
 /usr/include/c++/13/tr1/legendre_function.tcc:
 
-/usr/include/jsoncpp/json/json_features.h:
-
 /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:
 
 /usr/include/c++/13/tr1/modified_bessel_func.tcc:
@@ -1549,19 +1598,3 @@ src/oj_server/CMakeFiles/oj_server.dir/src/oj_server.cpp.o: /home/yupureki/proje
 /usr/include/ctype.h:
 
 /usr/include/features.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h:
-
-/usr/include/hiredis/hiredis.h:
-
-/usr/include/hiredis/sds.h:
-
-/usr/include/jsoncpp/json/config.h:
-
-/usr/include/jsoncpp/json/version.h:
-
-/usr/include/jsoncpp/json/forwards.h:
-
-/usr/include/x86_64-linux-gnu/bits/math-vector.h:
-
-/usr/include/jsoncpp/json/json.h:

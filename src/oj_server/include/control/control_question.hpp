@@ -12,7 +12,7 @@ namespace ns_control
         {
             return _model.SaveQuestion(q);
         }
-
+        //检查该用户是否通过该题目
         bool HasUserPassedQuestion(int user_id, const std::string& question_id)
         {
             return _model.HasUserPassedQuestion(user_id, question_id);

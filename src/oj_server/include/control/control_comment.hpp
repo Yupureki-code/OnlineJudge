@@ -8,7 +8,7 @@ namespace ns_control
     class ControlComment : public ControlAuth
     {
     public:
-        // Comments: create a new comment for a solution (supports nesting via parent_id)
+        //发表评论
         bool PostComment(unsigned long long solution_id,
                          const User& current_user,
                          const std::string& content,
@@ -39,7 +39,7 @@ namespace ns_control
                 return false;
             }
 
-            // Check solution exists
+            //检查题解是否存在
             Solution dummy;
             if (!_model.GetSolutionById(solution_id, &dummy))
             {
@@ -52,12 +52,13 @@ namespace ns_control
             c.user_id = current_user.uid;
             c.content = trimmed;
             c.is_edited = false;
-            // nesting support — only 2 levels: top-level + direct replies
+            //评论最多只有两层:一级评论和嵌套评论
             c.parent_id = parent_id;
             unsigned long long reply_to_user_id = 0;
             if (parent_id > 0)
             {
                 Comment parent;
+                //获取父级评论
                 if (_model.GetCommentById(parent_id, &parent))
                 {
                     reply_to_user_id = parent.user_id;
@@ -74,7 +75,7 @@ namespace ns_control
                 }
             }
             c.reply_to_user_id = static_cast<int>(reply_to_user_id);
-
+            //创建评论
             unsigned long long new_id = 0;
             if (!_model.CreateComment(c, &new_id))
             {
@@ -82,7 +83,7 @@ namespace ns_control
                 return false;
             }
 
-            // fetch comment to fill response details
+            //填充评论
             Comment created;
             if (_model.GetCommentById(new_id, &created))
             {
@@ -165,8 +166,7 @@ namespace ns_control
             (*result)["comments"] = list;
             return true;
         }
-
-        // Comments: get top-level comments for a solution with reply counts
+        //获取顶级评论列表
         bool GetTopLevelComments(unsigned long long solution_id, int page, int size,
                                  Json::Value* result, std::string* err_code)
         {
@@ -176,7 +176,7 @@ namespace ns_control
             }
             std::vector<Comment> comments;
             int total_count = 0;
-            // fetch top-level comments only
+            //获取顶级评论列表
             if (!_model.GetCommentsBySolutionId(solution_id, page, size, &comments, &total_count))
             {
                 *err_code = "DB_ERROR";
@@ -220,7 +220,7 @@ namespace ns_control
                     }
                 }
             }
-
+            //写入JSON
             Json::Value list(Json::arrayValue);
             for (const auto& c : comments)
             {
@@ -326,7 +326,7 @@ namespace ns_control
             return true;
         }
 
-        // Comments: edit a comment (owner only)
+        //编辑评论
         bool EditComment(unsigned long long comment_id, const User& current_user,
                          const std::string& content, Json::Value* result, std::string* err_code)
         {
@@ -347,6 +347,7 @@ namespace ns_control
             }
 
             Comment c;
+            //获取评论
             if (!_model.GetCommentById(comment_id, &c))
             {
                 *err_code = "NOT_FOUND";
@@ -357,13 +358,13 @@ namespace ns_control
                 *err_code = "FORBIDDEN";
                 return false;
             }
-
+            //更新评论
             if (!_model.UpdateComment(comment_id, current_user.uid, trimmed))
             {
                 *err_code = "UPDATE_FAILED";
                 return false;
             }
-
+            //返回更新的评论
             Comment updated;
             if (_model.GetCommentById(comment_id, &updated))
             {
@@ -390,17 +391,20 @@ namespace ns_control
                 return false;
             }
             Comment c;
+            //获取评论
             if (!_model.GetCommentById(comment_id, &c))
             {
                 *err_code = "NOT_FOUND";
                 return false;
             }
+            //判断是否是管理员(管理员可删评论)
             bool is_admin = _model.GetAdminByUid(current_user.uid);
             if (c.user_id != current_user.uid && !is_admin)
             {
                 *err_code = "FORBIDDEN";
                 return false;
             }
+            //删除评论
             if (!_model.DeleteComment(comment_id, current_user.uid, is_admin))
             {
                 *err_code = "DELETE_FAILED";

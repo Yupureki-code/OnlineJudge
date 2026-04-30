@@ -17,15 +17,15 @@
 #include <array>
 #include <iomanip>
 #include <sys/stat.h>
-#include "oj_model.hpp"
-#include "oj_view.hpp"
-#include "oj_session.hpp"
-#include "oj_mail.hpp"
+#include "../model/oj_model.hpp"
+#include "../oj_view.hpp"
+#include "../oj_session.hpp"
+#include "../oj_mail.hpp"
 #include <httplib.h>
 #include <jsoncpp/json/json.h>
 #include <sw/redis++/redis++.h>
 #include <openssl/sha.h>
-#include "../../comm/comm.hpp"
+#include "../../../comm/comm.hpp"
 
 // ControlBase: 基础设施，所有controller层的公共基类 — 共享成员、Judge、静态页面、session管理
 namespace ns_control

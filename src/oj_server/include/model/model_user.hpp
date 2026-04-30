@@ -303,7 +303,7 @@ namespace ns_model
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
             return true;
         }
-
+        //设置用户密码到MySQL中
         bool SetUserPassword(const std::string& email, const std::string& password_hash, const std::string& password_algo)
         {
             auto my = CreateConnection();
@@ -404,7 +404,7 @@ namespace ns_model
             _cache.DeleteStringByAnyKey("stats:user:" + std::to_string(user_id));
             return true;
         }
-
+        //检查该用户是否通过该题目
         bool HasUserPassedQuestion(int user_id, const std::string& question_id)
         {
             auto my = CreateConnection();

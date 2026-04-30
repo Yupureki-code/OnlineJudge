@@ -9,7 +9,7 @@
 #include <fstream>
 #include <cstdio>
 #include <httplib.h>
-#include "oj_control.hpp"
+#include "control/oj_control.hpp"
 #include "../../comm/comm.hpp"
 
 
