@@ -18,18 +18,8 @@ namespace ns_model
             if (!my)
                 return false;
 
-            if (mysql_query(my.get(), sql.c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql用户列表查询错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql用户列表结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql用户列表查询错误");
+            if (!res) return false;
 
             int rows = mysql_num_rows(res);
             users->clear();
@@ -112,17 +102,8 @@ namespace ns_model
             std::string safe_email = EscapeSqlString(email, my.get());
             std::string sql = "select * from " + oj_users + " where email='" + safe_email + "'";
 
-            if(mysql_query(my.get(), sql.c_str()) != 0)
-            {
-                logger(ns_log::FATAL)<<"MySql查询错误: "<<mysql_error(my.get());
-                return false;
-            }
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql查询错误");
+            if (!res) return false;
             int rows = mysql_num_rows(res);
             mysql_free_result(res);
             return rows > 0;
@@ -455,18 +436,8 @@ namespace ns_model
                 << " and question_id='" << safe_qid << "'"
                 << " order by action_time desc";
 
-            if (mysql_query(my.get(), sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询提交记录错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql提交记录结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql查询提交记录错误");
+            if (!res) return false;
 
             submits->clear();
             for (int i = 0; i < mysql_num_rows(res); ++i)
@@ -546,18 +517,8 @@ namespace ns_model
                        << " where us.user_id=" << user_id
                        << " order by us.action_time desc limit 20";
 
-            if (mysql_query(my.get(), recent_sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询最近提交错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql最近提交结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), recent_sql.str(), "MySql查询最近提交错误");
+            if (!res) return false;
 
             Json::Value recent_arr(Json::arrayValue);
             for (int i = 0; i < mysql_num_rows(res); ++i)

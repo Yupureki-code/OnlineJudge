@@ -88,18 +88,8 @@ namespace ns_model
                 << " and (c.parent_id IS NULL OR c.parent_id = 0)"
                 << " ORDER BY c.created_at ASC LIMIT " << safe_size << " OFFSET " << offset;
 
-            if (mysql_query(my.get(), sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询题解评论错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql题解评论结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql查询题解评论错误");
+            if (!res) return false;
             //逐行解析
             int rows = mysql_num_rows(res);
             comments->clear();
@@ -206,17 +196,8 @@ namespace ns_model
             {
                 unsigned long long parent_solution_id = 0;
                 std::string get_sql = "select solution_id from solution_comments where id=" + std::to_string(comment.parent_id);
-                if (mysql_query(my.get(), get_sql.c_str()) != 0)
-                {
-                    logger(ns_log::FATAL) << "MySql查询父评论所属题解错误!";
-                    return false;
-                }
-                MYSQL_RES* res_parent = mysql_store_result(my.get());
-                if (res_parent == nullptr)
-                {
-                    logger(ns_log::FATAL) << "MySql父评论所属题解结果集为空!";
-                    return false;
-                }
+                MYSQL_RES* res_parent = QueryMySql(my.get(), get_sql, "MySql查询父评论所属题解错误");
+                if (!res_parent) return false;
                 MYSQL_ROW row_parent = mysql_fetch_row(res_parent);
                 if (row_parent == nullptr || row_parent[0] == nullptr)
                 {
@@ -383,18 +364,8 @@ namespace ns_model
             sql << "select c.id, c.solution_id, c.user_id, c.content, c.is_edited, c.parent_id, c.reply_to_user_id, c.like_count, c.favorite_count, c.created_at, c.updated_at, u.name AS author_name, ru.name AS reply_to_user_name from solution_comments c LEFT JOIN users u ON c.user_id = u.uid LEFT JOIN users ru ON c.reply_to_user_id = ru.uid where c.id="
                 << comment_id;
 
-            if (mysql_query(my.get(), sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql评论详情查询错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql评论详情结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql评论详情查询错误");
+            if (!res) return false;
 
             int rows = mysql_num_rows(res);
             if (rows != 1)
@@ -432,7 +403,7 @@ namespace ns_model
             return true;
         }
 
-        // Comments: get replies for a given top-level comment
+        //获取回复列表
         bool GetCommentReplies(unsigned long long parent_id, int page, int size,
                                std::vector<Comment>* replies, int* total_count)
         {
@@ -508,17 +479,8 @@ namespace ns_model
                 << "where c.parent_id=" << parent_id
                 << " order by c.created_at ASC LIMIT " << safe_size << " OFFSET " << offset;
 
-            if (mysql_query(my.get(), sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询题解评论回复错误!";
-                return false;
-            }
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql题解评论回复结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql查询题解评论回复错误");
+            if (!res) return false;
             int rows = mysql_num_rows(res);
             replies->clear();
             replies->reserve(rows);
@@ -621,18 +583,8 @@ namespace ns_model
             unsigned long long deleted_parent_id = 0;
             {
                 std::string get_sql = "select solution_id,parent_id from solution_comments where id=" + std::to_string(comment_id);
-                if (mysql_query(my.get(), get_sql.c_str()) != 0)
-                {
-                    logger(ns_log::FATAL) << "MySql查询评论所属题解错误! errno=" << mysql_errno(my.get())
-                                          << " error=" << mysql_error(my.get());
-                    return false;
-                }
-                MYSQL_RES* res = mysql_store_result(my.get());
-                if (res == nullptr)
-                {
-                    logger(ns_log::FATAL) << "MySql评论所属题解查询结果集为空!";
-                    return false;
-                }
+                MYSQL_RES* res = QueryMySql(my.get(), get_sql, "MySql查询评论所属题解错误");
+                if (!res) return false;
                 MYSQL_ROW row = mysql_fetch_row(res);
                 if (row != nullptr) {
                     if (row[0] != nullptr) {
@@ -773,17 +725,8 @@ namespace ns_model
             std::ostringstream sql;
             sql << "select comment_id, action_type from comment_actions where user_id=" << user_id
                 << " and comment_id in (" << ids_stream.str() << ")";
-            if (mysql_query(my.get(), sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询评论用户交互错误!";
-                return false;
-            }
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql评论用户交互结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql查询评论用户交互错误");
+            if (!res) return false;
             for (int i = 0; i < mysql_num_rows(res); ++i)
             {
                 MYSQL_ROW row = mysql_fetch_row(res);
@@ -871,17 +814,8 @@ namespace ns_model
                           << " and user_id=" << user_id
                           << " and action_type='" << safe_action << "'";
 
-                if (mysql_query(my.get(), check_sql.str().c_str()) != 0)
-                {
-                    logger(ns_log::FATAL) << "MySql查询评论交互记录错误!";
-                    return false;
-                }
-                MYSQL_RES* res = mysql_store_result(my.get());
-                if (res == nullptr)
-                {
-                    logger(ns_log::FATAL) << "MySql评论交互记录结果集为空!";
-                    return false;
-                }
+                MYSQL_RES* res = QueryMySql(my.get(), check_sql.str(), "MySql查询评论交互记录错误");
+                if (!res) return false;
                 exist_rows = mysql_num_rows(res);
                 mysql_free_result(res);
             }
@@ -947,17 +881,8 @@ namespace ns_model
 
             std::ostringstream cnt_sql;
             cnt_sql << "select " << count_column << " from solution_comments where id = " << comment_id;
-            if (mysql_query(my.get(), cnt_sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询评论计数错误!";
-                return false;
-            }
-            MYSQL_RES* cnt_res = mysql_store_result(my.get());
-            if (cnt_res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql评论计数结果集为空!";
-                return false;
-            }
+            MYSQL_RES* cnt_res = QueryMySql(my.get(), cnt_sql.str(), "MySql查询评论计数错误");
+            if (!cnt_res) return false;
             MYSQL_ROW cnt_row = mysql_fetch_row(cnt_res);
             if (cnt_row == nullptr || cnt_row[0] == nullptr)
             {

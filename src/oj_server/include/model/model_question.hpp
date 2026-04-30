@@ -440,19 +440,8 @@ namespace ns_model
             std::string sql = "select id, question_id, `in`, `out`, is_sample from " + oj_tests +
                               " where question_id='" + safe_qid + "' and is_sample=1 order by id asc";
 
-            if (mysql_query(my.get(), sql.c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询测试用例错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql测试用例结果集为空!";
-                return false;
-            }
-
+            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql, "MySql查询测试用例错误");
+            if (!res) return false;
             tests->clear();
             for (int i = 0; i < mysql_num_rows(res); ++i)
             {
@@ -486,19 +475,8 @@ namespace ns_model
                 << " where id=" << test_id
                 << " and question_id='" << safe_qid << "'";
 
-            if (mysql_query(my.get(), sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询测试用例错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql测试用例结果集为空!";
-                return false;
-            }
-
+            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql.str(), "MySql查询测试用例错误");
+            if (!res) return false;
             MYSQL_ROW row = mysql_fetch_row(res);
             if (row == nullptr || row[0] == nullptr || row[1] == nullptr)
             {

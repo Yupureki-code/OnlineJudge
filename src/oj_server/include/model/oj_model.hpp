@@ -163,18 +163,8 @@ namespace ns_model
             if (!my)
                 return false;
 
-            if (mysql_query(my.get(), sql.c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql管理员查询错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql管理员查询结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql, "MySql管理员查询错误");
+            if (!res) return false;
 
             int rows = mysql_num_rows(res);
             if (rows != 1)
@@ -210,18 +200,8 @@ namespace ns_model
             if (!my)
                 return false;
 
-            if (mysql_query(my.get(), sql.c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql管理员列表查询错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql管理员列表结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql, "MySql管理员列表查询错误");
+            if (!res) return false;
 
             int rows = mysql_num_rows(res);
             admins->clear();
@@ -258,18 +238,8 @@ namespace ns_model
             if (!my)
                 return false;
 
-            if (mysql_query(my.get(), sql.c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql审计日志查询错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql审计日志结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql, "MySql审计日志查询错误");
+            if (!res) return false;
 
             int rows = mysql_num_rows(res);
             logs->clear();

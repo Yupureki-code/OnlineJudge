@@ -98,7 +98,7 @@ namespace ns_model
 
             return true;
         }
-
+        //获取分页的题解列表
         bool GetSolutionsByPage(const std::string& question_id,
                                 const std::string& status_filter,
                                 const std::string& sort_order,
@@ -113,7 +113,7 @@ namespace ns_model
                 return false;
             }
 
-            // Build cache key for solution list
+            //构造cache key
             SolutionStatus status = SolutionStatus::approved;
             if (status_filter == "pending")
                 status = SolutionStatus::pending;
@@ -215,18 +215,8 @@ namespace ns_model
                       << " limit " << safe_size << " offset " << offset;
 
             MYSQL_RES* res = nullptr;
-            if (mysql_query(my.get(), page_sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql题解列表查询错误!";
-                return false;
-            }
-
-            res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql题解列表结果集为空!";
-                return false;
-            }
+            res = QueryMySql(my.get(), page_sql.str(), "MySql题解列表查询错误");
+            if (!res) return false;
 
             int rows = mysql_num_rows(res);
             solutions->clear();
@@ -295,7 +285,7 @@ namespace ns_model
                 return false;
             }
 
-            // Build cache key for solution detail
+            //构造cache key
             auto cache_key = _cache.BuildSolutionDetailCacheKey(solution_id);
 
             // Try to read from cache
@@ -333,18 +323,8 @@ namespace ns_model
             sql << "select id, question_id, user_id, title, content_md, like_count, favorite_count, comment_count, status, created_at, updated_at from "
                 << SolutionsTable() << " where id=" << solution_id;
 
-            if (mysql_query(my.get(), sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql题解详情查询错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql题解详情结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql题解详情查询错误");
+            if (!res) return false;
 
             int rows = mysql_num_rows(res);
             if (rows != 1)
@@ -437,18 +417,8 @@ namespace ns_model
                       << " and user_id=" << user_id
                       << " and action_type='" << safe_action << "'";
 
-            if (mysql_query(my.get(), check_sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询交互记录错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql交互记录结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), check_sql.str(), "MySql查询交互记录错误");
+            if (!res) return false;
 
             int exist_rows = mysql_num_rows(res);
             mysql_free_result(res);
@@ -510,18 +480,8 @@ namespace ns_model
             std::ostringstream cnt_sql;
             cnt_sql << "select " << count_column << " from " << SolutionsTable() << " where id=" << solution_id;
 
-            if (mysql_query(my.get(), cnt_sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询计数错误!";
-                return false;
-            }
-
-            MYSQL_RES* cnt_res = mysql_store_result(my.get());
-            if (cnt_res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql计数结果集为空!";
-                return false;
-            }
+            MYSQL_RES* cnt_res = QueryMySql(my.get(), cnt_sql.str(), "MySql查询计数错误");
+            if (!cnt_res) return false;
 
             MYSQL_ROW cnt_row = mysql_fetch_row(cnt_res);
             if (cnt_row == nullptr || cnt_row[0] == nullptr)
@@ -567,18 +527,8 @@ namespace ns_model
                 << " where user_id=" << user_id
                 << " and solution_id in (" << ids_stream.str() << ")";
 
-            if (mysql_query(my.get(), sql.str().c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询用户交互记录错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql用户交互记录结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql查询用户交互记录错误");
+            if (!res) return false;
 
             for (int i = 0; i < mysql_num_rows(res); ++i)
             {

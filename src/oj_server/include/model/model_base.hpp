@@ -81,18 +81,8 @@ namespace ns_model
             if(!my)
                 return false;
 
-            if(mysql_query(my.get(), sql.c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql统计查询错误!";
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql统计结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql统计查询错误");
+            if (!res) return false;
 
             MYSQL_ROW row = mysql_fetch_row(res);
             if (row == nullptr || row[0] == nullptr)
@@ -127,17 +117,8 @@ namespace ns_model
             auto my = CreateConnection();
             if(!my)
                 return false;
-            if(mysql_query(my.get(), sql.c_str()) != 0)
-            {
-                logger(ns_log::FATAL)<<"MySql查询错误: "<<mysql_error(my.get());
-                return false;
-            }
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql结果集为空!";
-                return false;
-            }
+            MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql查询错误");
+            if (!res) return false;
             int rows = mysql_num_rows(res);
             if(rows != 1)
             {
@@ -171,19 +152,8 @@ namespace ns_model
             auto my = CreateConnection();
             if(!my)
                 return false;
-            if(mysql_query(my.get(), sql.c_str()) != 0)
-            {
-                logger(ns_log::FATAL) << "MySql查询错误: " << mysql_error(my.get());
-                return false;
-            }
-
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                logger(ns_log::FATAL) << "MySql结果集为空!";
-                return false;
-            }
-
+            MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql查询错误");
+            if (!res) return false;
             int rows = mysql_num_rows(res);
             if (rows != 1)
             {
