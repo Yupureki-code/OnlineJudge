@@ -549,7 +549,7 @@
                 if (response.ok && data && data.success) {
                     setMessage('发布成功，正在跳转...', true);
                     window.setTimeout(function() {
-                        window.location.href = '/solutions/' + data.solution_id;
+                        window.location.href = '/questions/' + questionId + '/solutions/' + data.solution_id;
                     }, 900);
                     return;
                 }

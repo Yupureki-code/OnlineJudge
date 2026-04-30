@@ -1222,6 +1222,7 @@
             loadComments(1);
 
             function showToast(msg, isError) {
+                console.log('showToast called:', msg);
                 var toast = document.getElementById('comment-toast');
                 if (!toast) {
                     toast = document.createElement('div');

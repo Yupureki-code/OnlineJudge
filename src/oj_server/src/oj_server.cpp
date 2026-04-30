@@ -303,6 +303,19 @@ int main()
         rep.set_content(html, "text/html;charset=utf-8");
     });
 
+    // 题目题解详情页路由，通过 question_id + solution_id 访问
+    svr.Get(R"(/questions/(\d+)/solutions/(\d+)$)", [&ctl, &getCurrentUser](const Request& req, Response& rep){
+        std::string html;
+        ctl.GetStaticHtml("solutions/detail.html", &html);
+
+        User user;
+        bool isLoggedIn = getCurrentUser(req, &user);
+
+        html = InjectUserInfo(html, &user, isLoggedIn);
+
+        rep.set_content(html, "text/html;charset=utf-8");
+    });
+
     // 判题结果页面路由，返回判题结果HTML
     svr.Get(R"(/judge_result\.html)", [&ctl, &getCurrentUser](const Request& req, Response& rep){
         std::string html;
