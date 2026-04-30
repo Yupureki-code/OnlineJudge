@@ -2038,8 +2038,9 @@ namespace ns_model
             }
 
             unsigned long long solution_id = 0;
+            unsigned long long deleted_parent_id = 0;
             {
-                std::string get_sql = "select solution_id from solution_comments where id=" + std::to_string(comment_id);
+                std::string get_sql = "select solution_id,parent_id from solution_comments where id=" + std::to_string(comment_id);
                 if (mysql_query(my.get(), get_sql.c_str()) != 0)
                 {
                     logger(ns_log::FATAL) << "MySql查询评论所属题解错误! errno=" << mysql_errno(my.get())
@@ -2053,17 +2054,18 @@ namespace ns_model
                     return false;
                 }
                 MYSQL_ROW row = mysql_fetch_row(res);
-                if (row != nullptr && row[0] != nullptr)
-                {
-                    try
-                    {
-                        solution_id = std::stoull(row[0]);
+                if (row != nullptr) {
+                    if (row[0] != nullptr) {
+                        try { solution_id = std::stoull(row[0]); }
+                        catch (const std::exception& e) {
+                            logger(ns_log::ERROR) << "stoull failed for solution_id: " << e.what();
+                            mysql_free_result(res);
+                            return false;
+                        }
                     }
-                    catch (const std::exception& e)
-                    {
-                        logger(ns_log::ERROR) << "stoull failed for solution_id: " << e.what();
-                        mysql_free_result(res);
-                        return false;
+                    if (row[1] != nullptr) {
+                        try { deleted_parent_id = std::stoull(row[1]); }
+                        catch (...) { deleted_parent_id = 0; }
                     }
                 }
                 mysql_free_result(res);
@@ -2136,14 +2138,15 @@ namespace ns_model
                 }
             }
 
-            // decrease comment count by (1 + child_count)
-            std::ostringstream upd_sql;
-            unsigned int dec = 1 + static_cast<unsigned int>(child_count);
-            upd_sql << "update " << SolutionsTable() << " set comment_count = GREATEST(comment_count - " << dec << ", 0) where id = "
-                    << solution_id;
-            if (!ExecuteSql(upd_sql.str()))
-            {
-                return false;
+            // Only decrement for top-level comments (replies are not counted)
+            if (deleted_parent_id == 0) {
+                std::ostringstream upd_sql;
+                upd_sql << "update " << SolutionsTable() << " set comment_count = GREATEST(comment_count - 1, 0) where id = "
+                        << solution_id;
+                if (!ExecuteSql(upd_sql.str()))
+                {
+                    return false;
+                }
             }
 
             // Invalidate solution list cache since comment_count changed

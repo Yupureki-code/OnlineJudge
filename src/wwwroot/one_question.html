@@ -1811,6 +1811,24 @@
             }
         }
 
+
+        .comment-toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 28px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 99999;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+            letter-spacing: 0.03em;
+            font-weight: 400;
+        }
+        .comment-toast.success { background: rgba(76,175,80,0.92); color: #fff; }
+        .comment-toast.error { background: rgba(244,67,54,0.92); color: #fff; }
+
     </style>
 </head>
 <body>
@@ -2632,11 +2650,12 @@
                         var noMoreEl = document.getElementById('sol-comment-no-more');
                         if (noMoreEl) noMoreEl.style.display = 'none';
                         loadDetailComments(currentDetailId, 1);
+                        showToast('回复成功！');
                     } else {
-                        alert('回复失败: ' + (d.error_code || '未知错误'));
+                        showToast('回复失败: ' + (d.error_code || '未知错误'), true);
                     }
                 })
-                .catch(function() { alert('网络错误'); });
+                .catch(function() { showToast('网络错误', true); });
             }
 
             // Load replies for a parent comment
@@ -2728,11 +2747,11 @@
                 if (!textarea) return;
                 var content = textarea.value.trim();
                 if (!content) {
-                    alert('\u8bc4\u8bba\u5185\u5bb9\u4e0d\u80fd\u4e3a\u7a7a');
+                    showToast('评论内容不能为空', true);
                     return;
                 }
                 if (content.length > 1000) {
-                    alert('\u8bc4\u8bba\u5185\u5bb9\u4e0d\u80fd\u8d85\u8fc71000\u5b57');
+                    showToast('评论内容不能超过1000字', true);
                     return;
                 }
                 fetch('/api/solutions/' + solutionId + '/comments', {
@@ -2752,11 +2771,12 @@
                         var noMoreEl = document.getElementById('sol-comment-no-more');
                         if (noMoreEl) noMoreEl.style.display = 'none';
                         loadDetailComments(solutionId, 1);
+                        showToast('发布成功！');
                     } else {
-                        alert(data.error_code === 'UNAUTHORIZED' ? '\u8bf7\u5148\u767b\u5f55' : '\u53d1\u5e03\u5931\u8d25');
+                        showToast(data.error_code === 'UNAUTHORIZED' ? '请先登录' : '发布失败', true);
                     }
                 })
-                .catch(function() { alert('\u7f51\u7edc\u9519\u8bef\uff0c\u8bf7\u91cd\u8bd5'); });
+                .catch(function() { showToast('网络错误，请重试', true); });
             }
 
             window.hideSolutionDetail = function() {
@@ -3169,6 +3189,21 @@
                 html += '</div>';
                 panelBody.innerHTML = html;
             }
+            function showToast(msg, isError) {
+                var toast = document.getElementById('comment-toast');
+                if (!toast) {
+                    toast = document.createElement('div');
+                    toast.id = 'comment-toast';
+                    toast.className = 'comment-toast';
+                    document.body.appendChild(toast);
+                }
+                toast.textContent = msg;
+                toast.className = 'comment-toast ' + (isError ? 'error' : 'success');
+                toast.style.opacity = '1';
+                clearTimeout(toast._timer);
+                toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, 2500);
+            }
+            window.showToast = showToast;
         })();
     </script>
 
