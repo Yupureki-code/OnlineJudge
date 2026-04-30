@@ -247,7 +247,7 @@ namespace ns_control
             return true;
         }
 
-        // Comments: get replies for a given top-level comment (child comments)
+        //获取回复列表
         bool GetCommentReplies(unsigned long long parent_id, int page, int size,
                                Json::Value* result, std::string* err_code)
         {

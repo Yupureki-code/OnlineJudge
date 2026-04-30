@@ -856,13 +856,6 @@
                 likeBtn.onclick = function() { toggleCommentLike(comment.id, likeBtn); };
                 actions.appendChild(likeBtn);
 
-                // 收藏按钮
-                var favBtn = document.createElement('button');
-                favBtn.textContent = '⭐ ' + (comment.favorite_count || 0);
-                favBtn.className = 'fav-btn';
-                favBtn.onclick = function() { toggleCommentFavorite(comment.id, favBtn); };
-                actions.appendChild(favBtn);
-
                 // 回复按钮（仅顶级评论显示）
                 if (!isReply) {
                     var replyBtn = document.createElement('button');
@@ -943,19 +936,6 @@
                     });
             }
 
-            // 切换评论收藏
-            function toggleCommentFavorite(commentId, btn) {
-                if (!currentUser) { alert('请先登录'); return; }
-                fetch('/api/comments/' + commentId + '/favorite', { method: 'POST', credentials: 'include' })
-                    .then(function(r) { return r.json(); })
-                    .then(function(d) {
-                        if (d.success) {
-                            btn.textContent = '⭐ ' + d.favorite_count;
-                            btn.style.color = d.favorited ? '#ffd700' : '';
-                        }
-                    });
-            }
-
             // 加载回复
             function loadReplies(parentId, container) {
                 if (container.dataset.loaded === 'true') return;
@@ -1016,12 +996,6 @@
                 likeBtn.style.cssText = 'background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;';
                 likeBtn.onclick = function() { toggleCommentLike(comment.id, likeBtn); };
                 actionsDiv.appendChild(likeBtn);
-
-                var favBtn = document.createElement('button');
-                favBtn.textContent = '⭐ ' + (comment.favorite_count || 0);
-                favBtn.style.cssText = 'background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.1);border-radius:4px;color:rgba(244,246,240,0.7);cursor:pointer;font-size:12px;padding:2px 8px;';
-                favBtn.onclick = function() { toggleCommentFavorite(comment.id, favBtn); };
-                actionsDiv.appendChild(favBtn);
 
                 // Reply button on replies
                 var replyBtn = document.createElement('button');

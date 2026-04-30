@@ -115,6 +115,7 @@ namespace ns_control
             }
 
             Question question;
+            //获取题目
             if (!_model.GetOneQuestion(question_id, question))
             {
                 *err_code = "QUESTION_NOT_FOUND";
@@ -143,6 +144,7 @@ namespace ns_control
             std::vector<Solution> solutions;
             int total_count = 0;
             int total_pages = 0;
+            //获取分页的题解列表
             if (!_model.GetSolutionsByPage(question_id, status_filter, sort_order,
                                            safe_page, safe_size,
                                            &solutions, &total_count, &total_pages))
@@ -189,7 +191,7 @@ namespace ns_control
             (*result)["solutions"] = items;
             return true;
         }
-
+        //获取题解详情
         bool GetSolutionDetail(long long solution_id,
                                Json::Value* result,
                                std::string* err_code)
@@ -200,6 +202,7 @@ namespace ns_control
             }
 
             Solution solution;
+            //获取题解详情
             if (!_model.GetSolutionById(solution_id, &solution))
             {
                 *err_code = "SOLUTION_NOT_FOUND";

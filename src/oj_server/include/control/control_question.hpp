@@ -98,12 +98,13 @@ namespace ns_control
                 return false;
 
             Question q;
+            //获取题目
             if (!_model.GetOneQuestion(question_id, q))
             {
                 *err_code = "QUESTION_NOT_FOUND";
                 return false;
             }
-
+            //获取题目的样例
             Json::Value tests(Json::arrayValue);
             if (!_model.GetSampleTestsByQuestionId(question_id, &tests))
             {
@@ -115,7 +116,7 @@ namespace ns_control
             (*result)["tests"] = tests;
             return true;
         }
-
+        //运行测试用例
         bool RunSingleTest(const std::string& question_id, const std::string& code,
                           int test_case_id, const std::string& test_type,
                           const std::string& custom_input,
