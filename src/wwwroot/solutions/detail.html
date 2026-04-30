@@ -823,7 +823,7 @@
 
                 var author = document.createElement('span');
                 author.className = 'comment-author';
-                author.textContent = (isReply && comment.reply_to_user_name ? '@' + comment.reply_to_user_name + ' ' : '') + (comment.author_name || '匿名');
+                author.textContent = (isReply && comment.reply_to_user_name ? '@' + comment.reply_to_user_name + '：' : '') + (comment.author_name || '匿名');
 
                 var time = document.createElement('span');
                 time.className = 'comment-time';
