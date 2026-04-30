@@ -2727,31 +2727,6 @@
                 actionsHtml += '<button onclick="hideDetailReplyForm(' + comment.id + ')" style="padding:4px 12px;background:transparent;border:none;color:rgba(244,246,240,0.5);cursor:pointer;font-size:12px;">取消</button></div></div>';
 
                 div.innerHTML = headerHtml + contentHtml + actionsHtml;
-
-                // Reply toggle for nested replies (supports reply-to-reply)
-                var nestedReplyCount = comment.reply_count || 0;
-                if (nestedReplyCount > 0) {
-                    var nestedToggle = document.createElement('div');
-                    nestedToggle.className = 'reply-toggle';
-                    nestedToggle.style.cssText = 'cursor:pointer;color:rgba(244,246,240,0.6);font-size:12px;padding:4px 0;margin-left:4px;';
-                    nestedToggle.textContent = '▼ ' + nestedReplyCount + ' 条回复';
-                    var nestedContainer = document.createElement('div');
-                    nestedContainer.className = 'reply-container';
-                    nestedContainer.style.display = 'none';
-                    nestedToggle.onclick = function() {
-                        if (nestedContainer.style.display === 'none') {
-                            nestedContainer.style.display = 'block';
-                            nestedToggle.textContent = '▲ ' + nestedReplyCount + ' 条回复';
-                            loadDetailReplies(comment.id, nestedContainer);
-                        } else {
-                            nestedContainer.style.display = 'none';
-                            nestedToggle.textContent = '▼ ' + nestedReplyCount + ' 条回复';
-                        }
-                    };
-                    div.appendChild(nestedToggle);
-                    div.appendChild(nestedContainer);
-                }
-
                 container.appendChild(div);
             }
 

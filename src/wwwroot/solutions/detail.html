@@ -925,31 +925,6 @@
                     replyForm.style.cssText = 'display:none;margin-left:20px;margin-top:8px;';
                     replyForm.innerHTML = '<textarea id="reply-text-' + comment.id + '" maxlength="1000" style="width:100%;min-height:60px;background:rgba(255,255,255,0.06);border:1px solid rgba(244,246,240,0.2);border-radius:8px;color:#F4F6F0;padding:8px;resize:vertical;"></textarea><div style="margin-top:6px;display:flex;gap:8px;"><button onclick="submitReply(' + comment.id + ')" style="padding:6px 16px;background:rgba(255,255,255,0.1);border:1px solid rgba(244,246,240,0.2);border-radius:6px;color:#F4F6F0;cursor:pointer;">回复</button><button onclick="hideReplyForm(' + comment.id + ')" style="padding:6px 16px;background:transparent;border:none;color:rgba(244,246,240,0.5);cursor:pointer;">取消</button></div>';
                     div.appendChild(replyForm);
-                } else {
-                    // Nested reply toggle
-                    var nestedReplyCount = comment.reply_count || 0;
-                    if (nestedReplyCount > 0) {
-                        var nestedToggle = document.createElement('div');
-                        nestedToggle.className = 'reply-toggle';
-                        nestedToggle.style.cssText = 'margin-left:4px;cursor:pointer;color:rgba(244,246,240,0.6);font-size:12px;padding:4px 0;';
-                        nestedToggle.textContent = '▼ ' + nestedReplyCount + ' 条回复';
-                        var nestedContainer = document.createElement('div');
-                        nestedContainer.className = 'reply-container';
-                        nestedContainer.id = 'nested-reply-' + comment.id;
-                        nestedContainer.style.display = 'none';
-                        nestedToggle.onclick = function() {
-                            if (nestedContainer.style.display === 'none') {
-                                nestedContainer.style.display = 'block';
-                                nestedToggle.textContent = '▲ ' + nestedReplyCount + ' 条回复';
-                                loadReplies(comment.id, nestedContainer);
-                            } else {
-                                nestedContainer.style.display = 'none';
-                                nestedToggle.textContent = '▼ ' + nestedReplyCount + ' 条回复';
-                            }
-                        };
-                        div.appendChild(nestedToggle);
-                        div.appendChild(nestedContainer);
-                    }
                 }
 
                 document.getElementById('comment-list').appendChild(div);
