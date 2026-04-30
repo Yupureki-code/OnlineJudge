@@ -28,7 +28,7 @@ namespace ns_model
     using namespace ns_log;
     using namespace ns_cache;
     //用户属性
-    class Model : public ModelQuestion
+    class Model : public ModelBase
     {
     private:
         struct CacheMetrics// 缓存指标结构体:记录题目列表和题目详情这两条查询链路的运行指标。
@@ -269,7 +269,15 @@ namespace ns_model
         }
 
     public:
-
+        ModelComment  _comment;
+        ModelSolution _solution;
+        ModelUser     _user;
+        ModelQuestion _question;
+        
+        ModelComment&  Comment()  { return _comment; }
+        ModelSolution& Solution() { return _solution; }
+        ModelUser&     User()     { return _user; }
+        ModelQuestion& Question() { return _question; }
 
         const std::string& AdminAccountsTable() const
         {

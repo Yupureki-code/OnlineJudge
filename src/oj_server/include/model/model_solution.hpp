@@ -1,10 +1,10 @@
 #pragma once
 
-#include "model_comment.hpp"
+#include "model_base.hpp"
 
 namespace ns_model
 {
-    class ModelSolution : public ModelComment
+    class ModelSolution : public ModelBase
     {
     public:
         std::string SolutionStatusToDbString(SolutionStatus status)
@@ -544,24 +544,6 @@ namespace ns_model
             return true;
         }
 
-    private:
-        // TrimCopy needs to be accessible for CreateSolution; it's defined in ModelQuestion
-        // For now, provide a local copy (will be removed when ModelQuestion is created)
-        std::string TrimCopy(const std::string& s)
-        {
-            size_t begin = 0;
-            while (begin < s.size() && std::isspace(static_cast<unsigned char>(s[begin])))
-            {
-                ++begin;
-            }
-
-            size_t end = s.size();
-            while (end > begin && std::isspace(static_cast<unsigned char>(s[end - 1])))
-            {
-                --end;
-            }
-            return s.substr(begin, end - begin);
-        }
     };
 
 }

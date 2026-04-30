@@ -1,10 +1,10 @@
 #pragma once
 
-#include "model_solution.hpp"
+#include "model_base.hpp"
 
 namespace ns_model
 {
-    class ModelUser : public ModelSolution
+    class ModelUser : public ModelBase
     {
     private:
         bool QueryUsers(const std::string& sql, std::vector<User>* users)

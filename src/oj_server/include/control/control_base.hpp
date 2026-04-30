@@ -212,7 +212,7 @@ namespace ns_control
                    const std::string& custom_output = "")
         {
             Question q;
-            _model.GetOneQuestion(number, q);
+            _model.Question().GetOneQuestion(number, q);
             Json::Reader reader;
             Json::Value in_value;
             reader.parse(in_json, in_value);
@@ -282,7 +282,7 @@ namespace ns_control
                 return ok;
             }
             //其他页面正常使用缓存
-            auto html_key = _model.BuildHtmlCacheKey(path, Cache::CacheKey::PageType::kHtml);
+            auto html_key = _model.Question().BuildHtmlCacheKey(path, Cache::CacheKey::PageType::kHtml);
             if (_model.GetHtmlPage(html, html_key))
             {
                 _model.RecordStaticHtmlCacheMetrics(true);
@@ -308,7 +308,7 @@ namespace ns_control
             {
                 return false;
             }
-            auto html_key = _model.BuildHtmlCacheKey(path, Cache::CacheKey::PageType::kHtml);
+            auto html_key = _model.Question().BuildHtmlCacheKey(path, Cache::CacheKey::PageType::kHtml);
             _model.InvalidatePage(html_key);
             logger(INFO) << "[cache] static html invalidated page=" << path;
             return true;
@@ -350,7 +350,7 @@ namespace ns_control
                 return false;
             }
             //通过session中的user_id在mysql中获取用户信息，如果获取失败返回false，成功返回true并将用户信息写入user参数
-            return _model.GetUserById(session.user_id, user);
+            return _model.User().GetUserById(session.user_id, user);
         }
 
         std::string GetSetCookieHeader(const std::string& session_id)

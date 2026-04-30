@@ -1,11 +1,11 @@
 #pragma once
 
-#include "control_auth.hpp"
+#include "control_base.hpp"
 
 namespace ns_control
 {
 
-    class ControlComment : public ControlAuth
+    class ControlComment : public ControlBase
     {
     public:
         //发表评论
@@ -41,7 +41,7 @@ namespace ns_control
 
             //检查题解是否存在
             Solution dummy;
-            if (!_model.GetSolutionById(solution_id, &dummy))
+            if (!_model.Solution().GetSolutionById(solution_id, &dummy))
             {
                 *err_code = "SOLUTION_NOT_FOUND";
                 return false;
@@ -59,7 +59,7 @@ namespace ns_control
             {
                 Comment parent;
                 //获取父级评论
-                if (_model.GetCommentById(parent_id, &parent))
+                if (_model.Comment().GetCommentById(parent_id, &parent))
                 {
                     reply_to_user_id = parent.user_id;
                     if (parent.solution_id != solution_id)
@@ -77,7 +77,7 @@ namespace ns_control
             c.reply_to_user_id = static_cast<int>(reply_to_user_id);
             //创建评论
             unsigned long long new_id = 0;
-            if (!_model.CreateComment(c, &new_id))
+            if (!_model.Comment().CreateComment(c, &new_id))
             {
                 *err_code = "CREATE_FAILED";
                 return false;
@@ -85,7 +85,7 @@ namespace ns_control
 
             //填充评论
             Comment created;
-            if (_model.GetCommentById(new_id, &created))
+            if (_model.Comment().GetCommentById(new_id, &created))
             {
                 result->clear();
                 (*result) ["success"] = true;
@@ -97,7 +97,7 @@ namespace ns_control
                 (*result)["created_at"] = created.created_at;
                 // author name
                 User author;
-                if (_model.GetUserById(created.user_id, &author))
+                if (_model.User().GetUserById(created.user_id, &author))
                 {
                     (*result)["author_name"] = author.name;
                 (*result)["author_avatar"] = GetEffectiveAvatarUrl(author);
@@ -130,7 +130,7 @@ namespace ns_control
             }
             std::vector<Comment> comments;
             int total_count = 0;
-            if (!_model.GetCommentsBySolutionId(solution_id, page, size, &comments, &total_count))
+            if (!_model.Comment().GetCommentsBySolutionId(solution_id, page, size, &comments, &total_count))
             {
                 *err_code = "DB_ERROR";
                 return false;
@@ -177,7 +177,7 @@ namespace ns_control
             std::vector<Comment> comments;
             int total_count = 0;
             //获取顶级评论列表
-            if (!_model.GetCommentsBySolutionId(solution_id, page, size, &comments, &total_count))
+            if (!_model.Comment().GetCommentsBySolutionId(solution_id, page, size, &comments, &total_count))
             {
                 *err_code = "DB_ERROR";
                 return false;
@@ -257,7 +257,7 @@ namespace ns_control
             }
             std::vector<Comment> replies;
             int total_count = 0;
-            if (!_model.GetCommentReplies(parent_id, page, size, &replies, &total_count))
+            if (!_model.Comment().GetCommentReplies(parent_id, page, size, &replies, &total_count))
             {
                 *err_code = "DB_ERROR";
                 return false;
@@ -348,7 +348,7 @@ namespace ns_control
 
             Comment c;
             //获取评论
-            if (!_model.GetCommentById(comment_id, &c))
+            if (!_model.Comment().GetCommentById(comment_id, &c))
             {
                 *err_code = "NOT_FOUND";
                 return false;
@@ -359,14 +359,14 @@ namespace ns_control
                 return false;
             }
             //更新评论
-            if (!_model.UpdateComment(comment_id, current_user.uid, trimmed))
+            if (!_model.Comment().UpdateComment(comment_id, current_user.uid, trimmed))
             {
                 *err_code = "UPDATE_FAILED";
                 return false;
             }
             //返回更新的评论
             Comment updated;
-            if (_model.GetCommentById(comment_id, &updated))
+            if (_model.Comment().GetCommentById(comment_id, &updated))
             {
                 (*result)["success"] = true;
                 (*result)["id"] = Json::UInt64(updated.id);
@@ -392,7 +392,7 @@ namespace ns_control
             }
             Comment c;
             //获取评论
-            if (!_model.GetCommentById(comment_id, &c))
+            if (!_model.Comment().GetCommentById(comment_id, &c))
             {
                 *err_code = "NOT_FOUND";
                 return false;
@@ -405,7 +405,7 @@ namespace ns_control
                 return false;
             }
             //删除评论
-            if (!_model.DeleteComment(comment_id, current_user.uid, is_admin))
+            if (!_model.Comment().DeleteComment(comment_id, current_user.uid, is_admin))
             {
                 *err_code = "DELETE_FAILED";
                 return false;
@@ -432,7 +432,7 @@ namespace ns_control
             }
 
             Comment c;
-            if (!_model.GetCommentById(comment_id, &c))
+            if (!_model.Comment().GetCommentById(comment_id, &c))
             {
                 *err_code = "COMMENT_NOT_FOUND";
                 return false;
@@ -440,7 +440,7 @@ namespace ns_control
 
             bool now_active = false;
             unsigned int new_count = 0;
-            if (!_model.ToggleCommentAction(comment_id, current_user.uid, "like", &now_active, &new_count))
+            if (!_model.Comment().ToggleCommentAction(comment_id, current_user.uid, "like", &now_active, &new_count))
             {
                 *err_code = "DB_ERROR";
                 return false;
@@ -470,7 +470,7 @@ namespace ns_control
             }
 
             Comment c;
-            if (!_model.GetCommentById(comment_id, &c))
+            if (!_model.Comment().GetCommentById(comment_id, &c))
             {
                 *err_code = "COMMENT_NOT_FOUND";
                 return false;
@@ -478,7 +478,7 @@ namespace ns_control
 
             bool now_active = false;
             unsigned int new_count = 0;
-            if (!_model.ToggleCommentAction(comment_id, current_user.uid, "favorite", &now_active, &new_count))
+            if (!_model.Comment().ToggleCommentAction(comment_id, current_user.uid, "favorite", &now_active, &new_count))
             {
                 *err_code = "DB_ERROR";
                 return false;
@@ -500,7 +500,7 @@ namespace ns_control
                 return false;
             }
             std::map<unsigned long long, std::map<std::string, bool>> actions;
-            if (!_model.GetCommentActions(comment_ids, user_id, &actions))
+            if (!_model.Comment().GetCommentActions(comment_ids, user_id, &actions))
             {
                 return false;
             }

@@ -105,7 +105,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		AdminAccount admin;
 		User user;
 		std::string err_code;
-		bool ok = _ctl.LoginAdminWithIdAndPassword(admin_id, password, &admin, &user, &err_code);
+                bool ok = _ctl.Auth().LoginAdminWithIdAndPassword(admin_id, password, &admin, &user, &err_code);
 		response["success"] = ok;
 		if (!ok)
 		{
@@ -254,7 +254,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			ok = model->GetRoleCount("super_admin", &super_admin_count)
 				&& model->GetRoleCount("admin", &admin_role_count)
 				&& model->ListAdminAuditLogsPaged(1, 5, "", 0, "", &recent_audits, &recent_audit_total)
-				&& model->GetUsersPaged(ukey, &recent_users, &recent_user_total, &user_pages);
+				&& model->User().GetUsersPaged(ukey, &recent_users, &recent_user_total, &user_pages);
 		}
 		response["success"] = ok;
 		if (!ok)
@@ -407,7 +407,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			uctx.list_type = ListType::Users;
 			std::shared_ptr<ns_cache::Cache::CacheListKey> ukey = std::make_shared<ns_cache::Cache::CacheListKey>();
 			ukey->Build(uctx);
-			return model->GetUsersPaged(ukey, &users, &total_count, &total_pages);
+			return model->User().GetUsersPaged(ukey, &users, &total_count, &total_pages);
 		}();
 
 		response["success"] = ok;
@@ -467,7 +467,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
 		int size = HttpUtil::ParsePositiveIntParam(req, "size", 20, 1, 200);
 		std::string keyword = req.has_param("q") ? StringUtil::Trim(req.get_param_value("q")) : "";
-		std::string questions_list_version = model->GetQuestionsListVersion();
+		std::string questions_list_version = model->Question().GetQuestionsListVersion();
 		std::size_t keyword_hash = std::hash<std::string>{}(keyword);
 		std::string questions_cache_key = std::string(kQuestionsListCachePrefix)
 			+ ":v:" + questions_list_version
@@ -506,7 +506,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		key->Build(context);
 		int total_pages = 0;
 		int total_count = 0;
-		bool ok = model->GetQuestionsByPage(key, rows, &total_count, &total_pages);
+		bool ok = model->Question().GetQuestionsByPage(key, rows, &total_count, &total_pages);
 		response["success"] = ok;
 		if (!ok)
 		{
@@ -561,7 +561,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 
 		std::string number = std::string(req.matches[1]);
 		Question q;
-		bool ok = model->GetOneQuestion(number, q);
+		bool ok = model->Question().GetOneQuestion(number, q);
 		response["success"] = ok;
 		if (!ok)
 		{
@@ -617,7 +617,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			return;
 		}
 
-		bool ok = _ctl.SaveQuestion(q);
+		bool ok = _ctl.Question().SaveQuestion(q);
 		response["success"] = ok;
 		if (!ok)
 		{
@@ -673,7 +673,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			return;
 		}
 
-		bool ok = _ctl.SaveQuestion(q);
+		bool ok = _ctl.Question().SaveQuestion(q);
 		response["success"] = ok;
 		if (!ok)
 		{
@@ -712,7 +712,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		}
 
 		std::string number = std::string(req.matches[1]);
-		bool ok = _ctl.DeleteQuestion(number);
+        bool ok = _ctl.Question().DeleteQuestion(number);
 		response["success"] = ok;
 		if (!ok)
 		{
@@ -753,7 +753,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			return;
 		}
 
-		_ctl.TouchQuestionListVersion();
+                _ctl.Question().TouchQuestionListVersion();
 		response["success"] = true;
 		response["operator"] = admin.uid;
 
@@ -893,7 +893,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		}
 
 		User target_user;
-		if (!this->_ctl.GetModel()->GetUserById(uid, &target_user))
+		if (!this->_ctl.GetModel()->User().GetUserById(uid, &target_user))
 		{
 			response["success"] = false;
 			response["error_code"] = "USER_NOT_FOUND";
@@ -943,7 +943,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 
 		std::string password_hash;
 		std::string hash_err;
-		if (!_ctl.BuildSecurePasswordHash(password, &password_hash, &hash_err))
+                if (!_ctl.Auth().BuildSecurePasswordHash(password, &password_hash, &hash_err))
 		{
 			response["success"] = false;
 			response["error_code"] = hash_err.empty() ? "PASSWORD_HASH_FAILED" : hash_err;

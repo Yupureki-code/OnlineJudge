@@ -1,11 +1,11 @@
 #pragma once
 
-#include "control_solution.hpp"
+#include "control_base.hpp"
 
 namespace ns_control
 {
 
-    class ControlUser : public ControlSolution
+    class ControlUser : public ControlBase
     {
     public:
         bool UploadAvatar(const User& current_user, const std::string& file_content, const std::string& content_type, Json::Value* result, std::string* err_code)
@@ -71,7 +71,7 @@ namespace ns_control
                 return false;
             }
 
-            if (!_model.UpdateUserAvatar(current_user.uid, relative_path))
+            if (!_model.User().UpdateUserAvatar(current_user.uid, relative_path))
             {
                 unlink(absolute_path.c_str());
                 *err_code = "DB_ERROR";
@@ -100,7 +100,7 @@ namespace ns_control
                 }
             }
 
-            if (!_model.UpdateUserAvatar(current_user.uid, ""))
+            if (!_model.User().UpdateUserAvatar(current_user.uid, ""))
             {
                 *err_code = "DB_ERROR";
                 return false;
@@ -117,7 +117,7 @@ namespace ns_control
                 return false;
 
             Json::Value submits(Json::arrayValue);
-            if (!_model.GetUserSubmitsByQuestion(current_user.uid, question_id, &submits))
+            if (!_model.User().GetUserSubmitsByQuestion(current_user.uid, question_id, &submits))
             {
                 *err_code = "DB_ERROR";
                 return false;
@@ -134,7 +134,7 @@ namespace ns_control
                 return false;
 
             Json::Value stats;
-            if (!_model.GetUserStats(current_user.uid, &stats))
+            if (!_model.User().GetUserStats(current_user.uid, &stats))
             {
                 *err_code = "DB_ERROR";
                 return false;

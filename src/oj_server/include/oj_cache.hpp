@@ -275,63 +275,6 @@ namespace ns_cache
                 return false;
             }
         }
-        // 获取题目详情
-        // bool GetQuestionByZSet(const std::string& question_id, Question& question)
-        // {
-        //     const std::string key = _business + ":" + _env + ":" + _version + ":questions";
-        //     std::vector<std::string> question_json;
-        //     try 
-        //     {
-        //         _redis.zrangebyscore(question_id,BoundedInterval<double>(std::stod(question_id), std::stod(question_id),BoundType::CLOSED), std::back_inserter(question_json));
-        //         if (question_json.empty())
-        //         {
-        //             logger(ns_log::INFO) << "Cache miss for question " << question_id;
-        //             return false;
-        //         }
-        //         else
-        //         {
-        //             Json::CharReaderBuilder builder;
-        //             Json::Value json_value;
-        //             std::istringstream ss(question_json[0]);
-        //             if (Json::parseFromStream(builder, ss, &json_value, nullptr))
-        //             {
-        //                 question.number = json_value["number"].asString();
-        //                 question.title = json_value["title"].asString();
-        //                 question.star = json_value["star"].asString();
-        //                 logger(ns_log::INFO) << "Cache hit for question " << question_id;
-        //                 return true;
-        //             }
-        //             logger(ns_log::WARNING) << "Invalid cache payload for question " << question_id;
-        //             return false;
-        //         }
-        //     } 
-        //     catch (const std::exception &e)
-        //     {
-        //         logger(ns_log::ERROR) << "Exception: " << e.what();
-        //         return false;
-        //     }
-        // }
-        // bool SetQuestionByZSet(const Question& question)
-        // {
-        //     const std::string key = _business + ":" + _env + ":" + _version + ":questions";
-        //     Json::Value json_value;
-        //     json_value["number"] = question.number;
-        //     json_value["title"] = question.title;
-        //     json_value["star"] = question.star;
-        //     Json::FastWriter writer;
-        //     std::string json_str = writer.write(json_value);
-        //     try 
-        //     {
-        //         _redis.zadd(key, question.number, json_str);
-        //         logger(ns_log::INFO) << "Question " << question.number << " cached successfully in ZSet";
-        //         return true;
-        //     } 
-        //     catch (const sw::redis::Error &e) 
-        //     {
-        //         logger(ns_log::ERROR) << "Redis error: " << e.what();
-        //         return false;
-        //     }
-        // }
         bool GetDetailedQuestion(const std::shared_ptr<CacheDetailKey>& key, Question& question)
         {
             std::string key_str = key->GetCacheKeyString(this);

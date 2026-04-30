@@ -242,7 +242,7 @@ int main()
         int size = HttpUtil::ParsePositiveIntParam(req, "size", 5, 1, 100);
         auto query_hash = ParseQuestionQuery(req);
         std::string html;
-        ctl.AllQuestions(&html, page, size, std::move(query_hash));
+        ctl.Question().AllQuestions(&html, page, size, std::move(query_hash));
         
         User user;
         bool isLoggedIn = getCurrentUser(req, &user);
@@ -297,7 +297,7 @@ int main()
         auto begin = std::chrono::steady_clock::now();
         std::string number = req.matches[1];
         std::string html;
-        ctl.OneQuestion(number, &html);
+        ctl.Question().OneQuestion(number, &html);
         
         User user;
         bool isLoggedIn = getCurrentUser(req, &user);
@@ -425,7 +425,7 @@ int main()
                     }
                 }
             }
-            ctl.GetModel()->RecordUserSubmit(current_user.uid, number, result_json, is_pass);
+            ctl.GetModel()->User().RecordUserSubmit(current_user.uid, number, result_json, is_pass);
         }
         
         std::string encoded_result = HttpUtil::url_encode(result_json);
@@ -447,7 +447,7 @@ int main()
         //发送验证码
         std::string err_code;
         int retry_after_seconds = 0;
-        bool ok = ctl.SendEmailAuthCode(email, req.remote_addr, &err_code, &retry_after_seconds);
+        bool ok = ctl.Auth().SendEmailAuthCode(email, req.remote_addr, &err_code, &retry_after_seconds);
 
         int http_status = 200;
         Json::Value response;
@@ -516,7 +516,7 @@ int main()
         bool is_new_user = false;
         std::string err_code;
         //检查验证码，若正确则登陆/注册
-        bool ok = ctl.VerifyEmailAuthCodeAndLogin(email, code, name, password, &user, &is_new_user, &err_code);
+        bool ok = ctl.Auth().VerifyEmailAuthCodeAndLogin(email, code, name, password, &user, &is_new_user, &err_code);
 
         int http_status = 200;
         Json::Value response;
@@ -566,7 +566,7 @@ int main()
         logger(INFO)<<"用户登陆 email:"<<email;
         Json::Value response;
         response["success"] = true;
-        ctl.CheckUser(email, response);
+        ctl.Auth().CheckUser(email, response);
         replyJson(rep, response);
     });
     //创建新用户
@@ -600,12 +600,12 @@ int main()
         logger(INFO)<<"创建新用户 name:"<<name<<" email:"<<email;
         Json::Value response;
         response["success"] = true;
-        ctl.CreateUser(name, email, response);
+        ctl.Auth().CreateUser(name, email, response);
         
         if (response["created"].asBool())
         {
             User user;
-            if (ctl.GetUser(email, static_cast<User*>(&user)))
+            if (ctl.Auth().GetUser(email, static_cast<User*>(&user)))
             {
                 std::string session_id = ctl.CreateSession(user.uid, email);
                 std::string cookie = ctl.GetSetCookieHeader(session_id);
@@ -631,7 +631,7 @@ int main()
         //获得用户信息
         Json::Value response;
         response["success"] = true;
-        ctl.GetUser(email, response);
+        ctl.Auth().GetUser(email, response);
         replyJson(rep, response);
     });
     //无密码登录——输入邮箱，检查存在后直接登录并返回 session
@@ -649,12 +649,12 @@ int main()
         //检查用户是否存在
         Json::Value response;
         response["success"] = true;
-        bool found = ctl.CheckUser(email, response);
+        bool found = ctl.Auth().CheckUser(email, response);
         
         if (found && response["exists"].asBool())
         {
             User user;
-            if (ctl.GetUser(email, static_cast<User*>(&user)))
+            if (ctl.Auth().GetUser(email, static_cast<User*>(&user)))
             {
                 std::string session_id = ctl.CreateSession(user.uid, email);
                 std::string cookie = ctl.GetSetCookieHeader(session_id);
@@ -701,7 +701,7 @@ int main()
         }
         //设置密码
         std::string err_code;
-        bool ok = ctl.SetPasswordForUser(current_user.email, password, &err_code);
+        bool ok = ctl.Auth().SetPasswordForUser(current_user.email, password, &err_code);
         response["success"] = ok;
         int http_status = 200;
         if (!ok)
@@ -750,7 +750,7 @@ int main()
         //通过密码登陆
         User user;
         std::string err_code;
-        bool ok = ctl.LoginWithPassword(login_id, password, &user, &err_code);
+        bool ok = ctl.Auth().LoginWithPassword(login_id, password, &user, &err_code);
 
         int http_status = 200;
         Json::Value response;
@@ -784,7 +784,7 @@ int main()
         std::string err_code;
         int retry_after_seconds = 0;
         //发送验证码
-        bool ok = ctl.SendEmailAuthCode(current_user.email, req.remote_addr, &err_code, &retry_after_seconds);
+        bool ok = ctl.Auth().SendEmailAuthCode(current_user.email, req.remote_addr, &err_code, &retry_after_seconds);
 
         int http_status = 200;
         response["success"] = ok;
@@ -841,7 +841,7 @@ int main()
         //更改email
         User updated_user;
         std::string err_code;
-        bool ok = ctl.ChangeEmailWithCode(current_user, new_email, code, &updated_user, &err_code);
+        bool ok = ctl.Auth().ChangeEmailWithCode(current_user, new_email, code, &updated_user, &err_code);
 
         int http_status = 200;
         response["success"] = ok;
@@ -900,7 +900,7 @@ int main()
         new_password = in_value["new_password"].asString();
         //更改密码
         std::string err_code;
-        bool ok = ctl.ChangePasswordWithCode(current_user.email, code, new_password, &err_code);
+        bool ok = ctl.Auth().ChangePasswordWithCode(current_user.email, code, new_password, &err_code);
         int http_status = 200;
         response["success"] = ok;
         if (!ok)
@@ -936,7 +936,7 @@ int main()
         }
         //注销账户
         std::string err_code;
-        bool ok = ctl.DeleteAccountWithCode(current_user.email, code, &err_code);
+        bool ok = ctl.Auth().DeleteAccountWithCode(current_user.email, code, &err_code);
         int http_status = 200;
         response["success"] = ok;
         if (!ok)
@@ -1053,7 +1053,7 @@ int main()
         std::string content_type = file.content_type;
         //保存头像
         Json::Value result; std::string err_code;
-        bool ok = ctl.UploadAvatar(current_user, file.content, content_type, &result, &err_code);
+        bool ok = ctl.User().UploadAvatar(current_user, file.content, content_type, &result, &err_code);
         int http_status = 200;
         if (!ok)
         {
@@ -1068,7 +1068,7 @@ int main()
         if (!requireAuth(req, rep, &current_user)) return;
         //删除头像
         Json::Value result; std::string err_code;
-        bool ok = ctl.DeleteAvatar(current_user, &result, &err_code);
+        bool ok = ctl.User().DeleteAvatar(current_user, &result, &err_code);
         int http_status = 200;
         if (!ok)
         {
@@ -1083,7 +1083,7 @@ int main()
 
         Json::Value result; std::string err_code;
         //获取样例
-        bool ok = ctl.GetSampleTests(question_id, &result, &err_code);
+        bool ok = ctl.Question().GetSampleTests(question_id, &result, &err_code);
         int http_status = 200;
         if (!ok)
         {
@@ -1114,7 +1114,7 @@ int main()
 
         Json::Value result; std::string err_code;
         //运行测试用例
-        bool ok = ctl.RunSingleTest(question_id, code, test_case_id, test_type, custom_input, current_user, &result, &err_code);
+        bool ok = ctl.Question().RunSingleTest(question_id, code, test_case_id, test_type, custom_input, current_user, &result, &err_code);
         int http_status = 200;
         if (!ok)
         {
@@ -1131,7 +1131,7 @@ int main()
         std::string question_id = req.matches[1];
         //获取用户历史提交记录
         Json::Value result; std::string err_code;
-        bool ok = ctl.GetUserSubmits(question_id, current_user, &result, &err_code);
+        bool ok = ctl.User().GetUserSubmits(question_id, current_user, &result, &err_code);
         int http_status = 200;
         if (!ok)
         {
@@ -1146,7 +1146,7 @@ int main()
         if (!requireAuth(req, rep, &current_user)) return;
 
         Json::Value result; std::string err_code;
-        bool ok = ctl.GetUserStats(current_user, &result, &err_code);
+        bool ok = ctl.User().GetUserStats(current_user, &result, &err_code);
         int http_status = 200;
         if (!ok)
         {
@@ -1169,7 +1169,7 @@ int main()
         Json::Value result;
         std::string err_code;
         //获取题解列表
-        bool ok = ctl.GetSolutionList(question_id, status, sort, page, size, &result, &err_code);
+        bool ok = ctl.Solution().GetSolutionList(question_id, status, sort, page, size, &result, &err_code);
 
         int http_status = 200;
         if (!ok)
@@ -1197,7 +1197,7 @@ int main()
         Json::Value result;
         std::string err_code;
         //获取回复列表
-        bool ok = ctl.GetCommentReplies((unsigned long long)parent_id, page, size, &result, &err_code);
+        bool ok = ctl.Comment().GetCommentReplies((unsigned long long)parent_id, page, size, &result, &err_code);
         int http_status = 200;
         if (!ok)
         {
@@ -1217,7 +1217,7 @@ int main()
 
         Json::Value result;
         std::string err_code;
-        bool ok = ctl.GetSolutionDetail(solution_id, &result, &err_code);
+        bool ok = ctl.Solution().GetSolutionDetail(solution_id, &result, &err_code);
 
         int http_status = 200;
         if (!ok)
@@ -1241,7 +1241,7 @@ int main()
         long long solution_id = 0;
         try { solution_id = std::stoll(req.matches[1]); } catch (...) { result["success"] = false; result["error_code"] = "INVALID_ID"; replyJson(rep, result, 400); return; }
         std::string err_code;
-        bool ok = ctl.ToggleLike(solution_id, current_user, &result, &err_code);
+        bool ok = ctl.Solution().ToggleLike(solution_id, current_user, &result, &err_code);
 
         int http_status = 200;
         if (!ok)
@@ -1269,7 +1269,7 @@ int main()
         long long solution_id = 0;
         try { solution_id = std::stoll(req.matches[1]); } catch (...) { result["success"] = false; result["error_code"] = "INVALID_ID"; replyJson(rep, result, 400); return; }
         std::string err_code;
-        bool ok = ctl.ToggleFavorite(solution_id, current_user, &result, &err_code);
+        bool ok = ctl.Solution().ToggleFavorite(solution_id, current_user, &result, &err_code);
 
         int http_status = 200;
         if (!ok)
@@ -1298,7 +1298,7 @@ int main()
         unsigned long long comment_id = 0;
         try { comment_id = std::stoull(req.matches[1]); } catch (...) { result["success"] = false; result["error_code"] = "INVALID_ID"; replyJson(rep, result, 400); return; }
         std::string err_code;
-        bool ok = ctl.ToggleCommentLike(comment_id, current_user, &result, &err_code);
+        bool ok = ctl.Comment().ToggleCommentLike(comment_id, current_user, &result, &err_code);
         int http_status = 200;
         if (!ok)
         {
@@ -1336,7 +1336,7 @@ int main()
         bool logged_in = getCurrentUser(req, &current_user);
         Json::Value payload;
         if (logged_in) {
-            ctl.GetCommentActions(ids, current_user.uid, &payload);
+            ctl.Comment().GetCommentActions(ids, current_user.uid, &payload);
         } else {
             payload["success"] = true;
             Json::Value actions_json(Json::objectValue);
@@ -1362,7 +1362,7 @@ int main()
 
         if (logged_in)
         {
-            ctl.GetUserSolutionActions(solution_id, current_user.uid, &result);
+            ctl.Solution().GetUserSolutionActions(solution_id, current_user.uid, &result);
             result["success"] = true;
         }
         else

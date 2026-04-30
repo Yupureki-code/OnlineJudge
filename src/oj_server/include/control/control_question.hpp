@@ -1,32 +1,32 @@
 #pragma once
 
-#include "control_user.hpp"
+#include "control_base.hpp"
 
 namespace ns_control
 {
 
-    class ControlQuestion : public ControlUser
+    class ControlQuestion : public ControlBase
     {
     public:
         bool SaveQuestion(const Question& q)
         {
-            return _model.SaveQuestion(q);
+            return _model.Question().SaveQuestion(q);
         }
         //检查该用户是否通过该题目
         bool HasUserPassedQuestion(int user_id, const std::string& question_id)
         {
-            return _model.HasUserPassedQuestion(user_id, question_id);
+            return _model.User().HasUserPassedQuestion(user_id, question_id);
         }
 
         bool DeleteQuestion(const std::string& number)
         {
-            return _model.DeleteQuestion(number);
+            return _model.Question().DeleteQuestion(number);
         }
 
         // 题目写路径统一调用：递增列表版本，触发列表缓存失效。
         std::string TouchQuestionListVersion()
         {
-            return _model.TouchQuestionListVersion();
+            return _model.Question().TouchQuestionListVersion();
         }
 
         //加载一页内的全部题目
@@ -39,8 +39,8 @@ namespace ns_control
             //list_version参数目前没有实际作用，后续可以用来实现当题库发生变化时自动更新缓存的功能
             //目前先直接使用_model.GetQuestionsListVersion()获取版本号，保证缓存一致性
             (void)list_version;
-            std::string effective_list_version = _model.GetQuestionsListVersion();
-            auto html_key = _model.BuildListCacheKey(query_hash, page, size, effective_list_version, Cache::CacheKey::PageType::kHtml);
+            std::string effective_list_version = _model.Question().GetQuestionsListVersion();
+            auto html_key = _model.Question().BuildListCacheKey(query_hash, page, size, effective_list_version, Cache::CacheKey::PageType::kHtml);
             //先在cache中找静态HTML页面，如果找到直接返回
             //如果没有找到再查询数据并生成HTML页面，最后将生成的HTML页面写入cache供下次访问使用
             if(_model.GetHtmlPage(html, html_key))
@@ -55,9 +55,9 @@ namespace ns_control
             std::vector<struct Question> page_questions;
             int total_count = 0;
             int total_pages = 0;
-            auto data_key = _model.BuildListCacheKey(query_hash, page, size, effective_list_version, Cache::CacheKey::PageType::kData);
+            auto data_key = _model.Question().BuildListCacheKey(query_hash, page, size, effective_list_version, Cache::CacheKey::PageType::kData);
             //先在cache中找数据，如果找到直接用数据生成HTML页面返回
-            if (_model.GetQuestionsByPage(data_key, page_questions, &total_count, &total_pages))
+            if (_model.Question().GetQuestionsByPage(data_key, page_questions, &total_count, &total_pages))
             {
                 int safe_page = page;
                 if (safe_page < 1) safe_page = 1;
@@ -80,7 +80,7 @@ namespace ns_control
         {
             bool ret = true;
             Question q;
-            if (_model.GetOneQuestion(number, q))
+            if (_model.Question().GetOneQuestion(number, q))
             {
                 _view.OneExpandHtml(q, html);
             }
@@ -99,14 +99,14 @@ namespace ns_control
 
             Question q;
             //获取题目
-            if (!_model.GetOneQuestion(question_id, q))
+            if (!_model.Question().GetOneQuestion(question_id, q))
             {
                 *err_code = "QUESTION_NOT_FOUND";
                 return false;
             }
             //获取题目的样例
             Json::Value tests(Json::arrayValue);
-            if (!_model.GetSampleTestsByQuestionId(question_id, &tests))
+            if (!_model.Question().GetSampleTestsByQuestionId(question_id, &tests))
             {
                 *err_code = "DB_ERROR";
                 return false;
@@ -131,7 +131,7 @@ namespace ns_control
 
             if (test_type == "sample")
             {
-                if (!_model.GetTestById(test_case_id, question_id, &test_input, &test_output))
+                if (!_model.Question().GetTestById(test_case_id, question_id, &test_input, &test_output))
                 {
                     *err_code = "TEST_NOT_FOUND";
                     return false;
@@ -149,7 +149,7 @@ namespace ns_control
             }
 
             Question q;
-            if (!_model.GetOneQuestion(question_id, q))
+            if (!_model.Question().GetOneQuestion(question_id, q))
             {
                 *err_code = "QUESTION_NOT_FOUND";
                 return false;

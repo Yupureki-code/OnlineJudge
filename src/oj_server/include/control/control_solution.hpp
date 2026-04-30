@@ -1,11 +1,11 @@
 #pragma once
 
-#include "control_comment.hpp"
+#include "control_base.hpp"
 
 namespace ns_control
 {
 
-    class ControlSolution : public ControlComment
+    class ControlSolution : public ControlBase
     {
     public:
         //发布题解
@@ -36,7 +36,7 @@ namespace ns_control
             }
             //得到题目信息
             Question question;
-            if (!_model.GetOneQuestion(trimmed_question_id, question))
+            if (!_model.Question().GetOneQuestion(trimmed_question_id, question))
             {
                 if (err_code != nullptr)
                 {
@@ -45,7 +45,7 @@ namespace ns_control
                 return false;
             }
             //查看该用户是否通过该题目
-            if (!_model.HasUserPassedQuestion(current_user.uid, trimmed_question_id))
+            if (!_model.User().HasUserPassedQuestion(current_user.uid, trimmed_question_id))
             {
                 if (err_code != nullptr)
                 {
@@ -90,7 +90,7 @@ namespace ns_control
             solution.content_md = trimmed_content;
             solution.status = SolutionStatus::approved;
             //保存题解
-            if (!_model.CreateSolution(solution, solution_id))
+            if (!_model.Solution().CreateSolution(solution, solution_id))
             {
                 if (err_code != nullptr)
                 {
@@ -116,7 +116,7 @@ namespace ns_control
 
             Question question;
             //获取题目
-            if (!_model.GetOneQuestion(question_id, question))
+            if (!_model.Question().GetOneQuestion(question_id, question))
             {
                 *err_code = "QUESTION_NOT_FOUND";
                 return false;
@@ -145,7 +145,7 @@ namespace ns_control
             int total_count = 0;
             int total_pages = 0;
             //获取分页的题解列表
-            if (!_model.GetSolutionsByPage(question_id, status_filter, sort_order,
+            if (!_model.Solution().GetSolutionsByPage(question_id, status_filter, sort_order,
                                            safe_page, safe_size,
                                            &solutions, &total_count, &total_pages))
             {
@@ -171,11 +171,11 @@ namespace ns_control
                 item["like_count"] = s.like_count;
                 item["favorite_count"] = s.favorite_count;
                 item["comment_count"] = s.comment_count;
-                item["status"] = _model.SolutionStatusToDbString(s.status);
+                item["status"] = _model.Solution().SolutionStatusToDbString(s.status);
                 item["created_at"] = s.created_at;
 
                 User author;
-                if (_model.GetUserById(s.user_id, &author))
+                if (_model.User().GetUserById(s.user_id, &author))
                 {
                     item["author_name"] = author.name;
                     item["author_avatar"] = GetEffectiveAvatarUrl(author);
@@ -203,7 +203,7 @@ namespace ns_control
 
             Solution solution;
             //获取题解详情
-            if (!_model.GetSolutionById(solution_id, &solution))
+            if (!_model.Solution().GetSolutionById(solution_id, &solution))
             {
                 *err_code = "SOLUTION_NOT_FOUND";
                 return false;
@@ -218,12 +218,12 @@ namespace ns_control
             (*result)["like_count"] = solution.like_count;
             (*result)["favorite_count"] = solution.favorite_count;
             (*result)["comment_count"] = solution.comment_count;
-            (*result)["status"] = _model.SolutionStatusToDbString(solution.status);
+            (*result)["status"] = _model.Solution().SolutionStatusToDbString(solution.status);
             (*result)["created_at"] = solution.created_at;
             (*result)["updated_at"] = solution.updated_at;
 
             User author;
-            if (_model.GetUserById(solution.user_id, &author))
+            if (_model.User().GetUserById(solution.user_id, &author))
             {
                 (*result)["author_name"] = author.name;
                 (*result)["author_avatar"] = GetEffectiveAvatarUrl(author);
@@ -254,7 +254,7 @@ namespace ns_control
             }
 
             Solution solution;
-            if (!_model.GetSolutionById(solution_id, &solution))
+            if (!_model.Solution().GetSolutionById(solution_id, &solution))
             {
                 *err_code = "SOLUTION_NOT_FOUND";
                 return false;
@@ -262,7 +262,7 @@ namespace ns_control
 
             bool now_active = false;
             unsigned int new_count = 0;
-            if (!_model.ToggleSolutionAction(solution_id, current_user.uid, "like", &now_active, &new_count))
+            if (!_model.Solution().ToggleSolutionAction(solution_id, current_user.uid, "like", &now_active, &new_count))
             {
                 *err_code = "DB_ERROR";
                 return false;
@@ -291,7 +291,7 @@ namespace ns_control
             }
 
             Solution solution;
-            if (!_model.GetSolutionById(solution_id, &solution))
+            if (!_model.Solution().GetSolutionById(solution_id, &solution))
             {
                 *err_code = "SOLUTION_NOT_FOUND";
                 return false;
@@ -299,7 +299,7 @@ namespace ns_control
 
             bool now_active = false;
             unsigned int new_count = 0;
-            if (!_model.ToggleSolutionAction(solution_id, current_user.uid, "favorite", &now_active, &new_count))
+            if (!_model.Solution().ToggleSolutionAction(solution_id, current_user.uid, "favorite", &now_active, &new_count))
             {
                 *err_code = "DB_ERROR";
                 return false;
@@ -322,7 +322,7 @@ namespace ns_control
 
             std::vector<long long> ids = {solution_id};
             std::map<long long, std::map<std::string, bool>> actions;
-            if (!_model.GetUserActionsForSolutions(user_id, ids, actions))
+            if (!_model.Solution().GetUserActionsForSolutions(user_id, ids, actions))
             {
                 return false;
             }

@@ -23,6 +23,28 @@ namespace ns_model
 
     class ModelBase
     {
+    protected:
+        // 判断字符串是否全为数字
+        bool IsAllDigits(const std::string& s) const
+        {
+            return !s.empty() && std::all_of(s.begin(), s.end(), [](unsigned char ch) { return std::isdigit(ch); });
+        }
+        // 去除首尾空白字符
+        std::string TrimCopy(const std::string& s) const
+        {
+            size_t begin = 0, end = s.size();
+            while (begin < end && std::isspace(static_cast<unsigned char>(s[begin]))) ++begin;
+            while (end > begin && std::isspace(static_cast<unsigned char>(s[end - 1]))) --end;
+            return s.substr(begin, end - begin);
+        }
+        // 转小写
+        std::string LowerAscii(const std::string& s) const
+        {
+            std::string out = s;
+            std::transform(out.begin(), out.end(), out.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+            return out;
+        }
+
     public:
         using MySqlConn = std::unique_ptr<MYSQL, void(*)(MYSQL*)>;
 

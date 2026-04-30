@@ -173,7 +173,7 @@ namespace ns_control
                 _auth_redis.del(BuildAuthCodeKey(email));
                 _auth_redis.del(BuildAuthAttemptsKey(email));
                 //查看该用户是否存在
-                bool exists = _model.CheckUser(email);
+                bool exists = _model.User().CheckUser(email);
                 if (!exists)
                 {
                     //用户不存在->创建账户
@@ -197,7 +197,7 @@ namespace ns_control
                     }
 
                     std::string name = BuildDefaultUserName(email, trimmed_name);
-                    if (!_model.CreateUser(name, email))
+                    if (!_model.User().CreateUser(name, email))
                     {
                         if (err_code != nullptr)
                         {
@@ -216,7 +216,7 @@ namespace ns_control
                         return false;
                     }
 
-                    if (!_model.SetUserPassword(email, password_hash, PasswordAlgoTag()))
+                    if (!_model.User().SetUserPassword(email, password_hash, PasswordAlgoTag()))
                     {
                         if (err_code != nullptr)
                         {
@@ -231,8 +231,8 @@ namespace ns_control
                     }
                 }
 
-                _model.UpdateLastLogin(email);
-                if (!_model.GetUser(email, user))
+                _model.User().UpdateLastLogin(email);
+                if (!_model.User().GetUser(email, user))
                 {
                     if (err_code != nullptr)
                     {
@@ -256,13 +256,13 @@ namespace ns_control
         //用户:检查用户是否存在
         bool CheckUser(const std::string& email, Json::Value& response)
         {
-            bool exists = _model.CheckUser(email);
+            bool exists = _model.User().CheckUser(email);
             response["exists"] = exists;
             if(exists)
             {
                 logger(ns_log::INFO)<<"用户存在 email:"<<email;
                 User user;
-                if(_model.GetUser(email, &user))
+                if(_model.User().GetUser(email, &user))
                 {
                     response["user"] = Json::Value();
                     response["user"]["uid"] = user.uid;
@@ -278,13 +278,13 @@ namespace ns_control
         //用户:创建新用户
         bool CreateUser(const std::string& name, const std::string& email, Json::Value& response)
         {
-            bool created = _model.CreateUser(name, email);
+            bool created = _model.User().CreateUser(name, email);
             response["created"] = created;
             if(created)
             {
-                _model.UpdateLastLogin(email);
+                _model.User().UpdateLastLogin(email);
                 User user;
-                if(_model.GetUser(email, &user))
+                if(_model.User().GetUser(email, &user))
                 {
                     response["user"] = Json::Value();
                     response["user"]["uid"] = user.uid;
@@ -301,10 +301,10 @@ namespace ns_control
         bool GetUser(const std::string& email, Json::Value& response)
         {
             User user;
-            bool found = _model.GetUser(email, &user);
+            bool found = _model.User().GetUser(email, &user);
             if(found)
             {
-                _model.UpdateLastLogin(email);
+                _model.User().UpdateLastLogin(email);
                 response["user"] = Json::Value();
                 response["user"]["uid"] = user.uid;
                 response["user"]["name"] = user.name;
@@ -319,7 +319,7 @@ namespace ns_control
         //用户:获取用户信息(User对象)
         bool GetUser(const std::string& email, User* user)
         {
-            return _model.GetUser(email, user);
+            return _model.User().GetUser(email, user);
         }
 
         bool SetPasswordForUser(const std::string& email, const std::string& password, std::string* err_code)
@@ -343,7 +343,7 @@ namespace ns_control
                 return false;
             }
             //设置用户密码到MySQL中
-            if (!_model.SetUserPassword(email, password_hash, PasswordAlgoTag()))
+            if (!_model.User().SetUserPassword(email, password_hash, PasswordAlgoTag()))
             {
                 if (err_code != nullptr)
                 {
@@ -441,7 +441,7 @@ namespace ns_control
                 return false;
             }
             //检查用户是否存在
-            if (_model.CheckUser(new_email))
+            if (_model.User().CheckUser(new_email))
             {
                 if (err_code != nullptr)
                 {
@@ -450,7 +450,7 @@ namespace ns_control
                 return false;
             }
             //更新邮箱
-            if (!_model.UpdateUserEmail(current_user.email, new_email))
+            if (!_model.User().UpdateUserEmail(current_user.email, new_email))
             {
                 if (err_code != nullptr)
                 {
@@ -461,7 +461,7 @@ namespace ns_control
 
             if (updated_user != nullptr)
             {
-                if (!_model.GetUser(new_email, updated_user))
+                if (!_model.User().GetUser(new_email, updated_user))
                 {
                     if (err_code != nullptr)
                     {
@@ -505,7 +505,7 @@ namespace ns_control
                 return false;
             }
 
-            if (!_model.DeleteUserByEmail(email))
+            if (!_model.User().DeleteUserByEmail(email))
             {
                 if (err_code != nullptr)
                 {
@@ -537,9 +537,9 @@ namespace ns_control
 
             // 先作为用户名查找
             User user_by_name;
-            if (_model.GetUserByName(email_or_username, &user_by_name))
+            if (_model.User().GetUserByName(email_or_username, &user_by_name))
             {
-                if (_model.GetUserPasswordAuth(user_by_name.email, &password_hash, &password_algo))
+                if (_model.User().GetUserPasswordAuth(user_by_name.email, &password_hash, &password_algo))
                 {
                     resolved_email = user_by_name.email;
                     found = true;
@@ -551,7 +551,7 @@ namespace ns_control
             {
                 password_hash.clear();
                 password_algo.clear();
-                if (_model.GetUserPasswordAuth(email_or_username, &password_hash, &password_algo))
+                if (_model.User().GetUserPasswordAuth(email_or_username, &password_hash, &password_algo))
                 {
                     resolved_email = email_or_username;
                     found = true;
@@ -585,8 +585,8 @@ namespace ns_control
                 return false;
             }
             //更新登陆时间
-            _model.UpdateLastLogin(resolved_email);
-            if (!_model.GetUser(resolved_email, user))
+            _model.User().UpdateLastLogin(resolved_email);
+            if (!_model.User().GetUser(resolved_email, user))
             {
                 if (err_code != nullptr)
                 {
@@ -639,7 +639,7 @@ namespace ns_control
                 return false;
             }
 
-            if (!_model.GetUserById(admin->uid, user))
+            if (!_model.User().GetUserById(admin->uid, user))
             {
                 if (err_code != nullptr)
                 {
@@ -648,7 +648,7 @@ namespace ns_control
                 return false;
             }
 
-            _model.UpdateLastLogin(user->email);
+            _model.User().UpdateLastLogin(user->email);
             return true;
         }
 

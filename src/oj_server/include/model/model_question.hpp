@@ -1,44 +1,11 @@
 #pragma once
 
-#include "model_user.hpp"
+#include "model_base.hpp"
 
 namespace ns_model
 {
-    class ModelQuestion : public ModelUser
+    class ModelQuestion : public ModelBase
     {
-    protected:
-        bool IsAllDigits(const std::string& s)
-        {
-            return !s.empty() && std::all_of(s.begin(), s.end(), [](unsigned char ch) {
-                return std::isdigit(ch);
-            });
-        }
-
-        std::string TrimCopy(const std::string& s)
-        {
-            size_t begin = 0;
-            while (begin < s.size() && std::isspace(static_cast<unsigned char>(s[begin])))
-            {
-                ++begin;
-            }
-
-            size_t end = s.size();
-            while (end > begin && std::isspace(static_cast<unsigned char>(s[end - 1])))
-            {
-                --end;
-            }
-            return s.substr(begin, end - begin);
-        }
-
-        std::string LowerAscii(const std::string& s)
-        {
-            std::string out = s;
-            std::transform(out.begin(), out.end(), out.begin(), [](unsigned char ch) {
-                return static_cast<char>(std::tolower(ch));
-            });
-            return out;
-        }
-
     private:
         std::shared_ptr<QuestionQuery> NormalizeQuestionQuery(const std::shared_ptr<QueryStruct>& raw_query)
         {

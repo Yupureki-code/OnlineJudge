@@ -897,11 +897,11 @@ namespace ns_admin
 		{
 			return false;
 		}
-		if (!model->GetQuestionCount(question_count))
+		if (!model->Question().GetQuestionCount(question_count))
 		{
 			return false;
 		}
-		if (!model->GetUserCount(user_count))
+		if (!model->User().GetUserCount(user_count))
 		{
 			return false;
 		}
