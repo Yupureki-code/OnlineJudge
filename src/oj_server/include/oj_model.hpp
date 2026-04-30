@@ -2661,13 +2661,45 @@ namespace ns_model
             return ExecuteSql(sql);
         }
 
-        //用户:通过ID获取用户信息
+        //用户:通过ID获取用户信息 (with Redis read cache)
         bool GetUserById(int uid, User* user)
         {
+            if (user == nullptr) return false;
+
+            // Try cache first
+            std::string cache_key = "user:id:" + std::to_string(uid);
+            std::string cached;
+            if (_cache.GetStringByAnyKey(cache_key, &cached))
+            {
+                Json::CharReaderBuilder builder;
+                Json::Value val;
+                std::istringstream ss(cached);
+                if (Json::parseFromStream(builder, ss, &val, nullptr) && val.isMember("uid"))
+                {
+                    user->uid = val["uid"].asInt();
+                    user->name = val["name"].asString();
+                    user->email = val["email"].asString();
+                    user->avatar_path = val["avatar_path"].asString();
+                    user->create_time = val["create_time"].asString();
+                    user->last_login = val["last_login"].asString();
+                    return true;
+                }
+            }
+
+            // Cache miss — query MySQL
             std::string sql = "select uid,name,email,avatar_path,create_time,last_login,password_algo from " + oj_users + " where uid=" + std::to_string(uid);
             bool ok = QueryUser(sql, user);
             if (ok) {
-                _cache.SetStringByAnyKey("avatar:user:" + std::to_string(uid), user->avatar_path, _cache.BuildJitteredTtl(3600, 600));
+                // Write to cache
+                Json::Value val;
+                val["uid"] = user->uid;
+                val["name"] = user->name;
+                val["email"] = user->email;
+                val["avatar_path"] = user->avatar_path;
+                val["create_time"] = user->create_time;
+                val["last_login"] = user->last_login;
+                Json::FastWriter writer;
+                _cache.SetStringByAnyKey(cache_key, writer.write(val), _cache.BuildJitteredTtl(3600, 600));
             }
             return ok;
         }
@@ -3096,7 +3128,12 @@ namespace ns_model
             std::ostringstream sql;
             sql << "update " << oj_users << " set avatar_path='" << safe_path
                 << "' where uid=" << uid;
-            return ExecuteSql(sql.str());
+            bool ok = ExecuteSql(sql.str());
+            if (ok) {
+                // Invalidate user cache so next GetUserById refetches from DB
+                _cache.DeleteStringByAnyKey("user:id:" + std::to_string(uid));
+            }
+            return ok;
         }
 
         bool GetUserByName(const std::string& name, User* user)
