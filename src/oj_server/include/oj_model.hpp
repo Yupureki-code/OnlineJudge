@@ -1723,11 +1723,13 @@ namespace ns_model
                 }
             }
 
-            // Invalidate reply list cache for the parent comment
+            // Invalidate reply list cache for the parent comment (all common page sizes)
             if (comment.parent_id > 0)
             {
-                std::string reply_inv_key = "reply:list:pid:" + std::to_string(comment.parent_id) + ":page:1:size:50";
-                _cache.DeleteStringByAnyKey(reply_inv_key);
+                std::string reply_base = "reply:list:pid:" + std::to_string(comment.parent_id);
+                _cache.DeleteStringByAnyKey(reply_base + ":page:1:size:50");
+                _cache.DeleteStringByAnyKey(reply_base + ":page:1:size:20");
+                _cache.DeleteStringByAnyKey(reply_base + ":page:1:size:1000000");
                 logger(ns_log::INFO) << "Invalidated reply list cache for parent " << comment.parent_id;
             }
 
