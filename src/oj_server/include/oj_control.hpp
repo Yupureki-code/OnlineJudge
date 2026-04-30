@@ -1315,17 +1315,28 @@ namespace ns_control
                     item["author_name"] = "";
                     item["author_avatar"] = "/pictures/head.jpg";
                 }
-                // reply count for this top-level comment
-                std::vector<Comment> tmp_replies;
+                // reply count for this top-level comment (direct query, no cache)
                 int tmp_total = 0;
-                if (_model.GetCommentReplies(c.id, 1, 1000000, &tmp_replies, &tmp_total))
                 {
-                    item["reply_count"] = tmp_total;
+                    auto rep_my = _model.CreateConnection();
+                    if (rep_my)
+                    {
+                        std::string cnt_sql = "select count(*) from solution_comments where parent_id=" + std::to_string(c.id);
+                        int rc = 0;
+                        if (mysql_query(rep_my.get(), cnt_sql.c_str()) == 0)
+                        {
+                            MYSQL_RES* rep_res = mysql_store_result(rep_my.get());
+                            if (rep_res)
+                            {
+                                MYSQL_ROW rep_row = mysql_fetch_row(rep_res);
+                                if (rep_row && rep_row[0]) rc = std::atoi(rep_row[0]);
+                                mysql_free_result(rep_res);
+                            }
+                        }
+                        tmp_total = rc;
+                    }
                 }
-                else
-                {
-                    item["reply_count"] = 0;
-                }
+                item["reply_count"] = tmp_total;
                 list.append(item);
             }
             (*result)["comments"] = list;
