@@ -55,6 +55,23 @@ namespace ns_model
             return escaped;
         }
 
+        //执行SQL查询，返回结果集指针。调用方需自行 mysql_free_result
+        MYSQL_RES* QueryMySql(MYSQL* my, const std::string& sql, const std::string& error_msg)
+        {
+            if (mysql_query(my, sql.c_str()) != 0)
+            {
+                logger(ns_log::FATAL) << error_msg << ": " << mysql_error(my);
+                return nullptr;
+            }
+            MYSQL_RES* res = mysql_store_result(my);
+            if (res == nullptr)
+            {
+                logger(ns_log::FATAL) << error_msg << " (结果集为空)";
+                return nullptr;
+            }
+            return res;
+        }
+
         bool QueryCount(const std::string& sql, int* count)
         {
             if (count == nullptr)
