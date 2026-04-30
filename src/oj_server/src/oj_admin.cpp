@@ -734,6 +734,36 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
+	svr.Options("/api/admin/questions/cache/invalidate", [addCORSHeaders](const Request& req, Response& rep) {
+		(void)req; addCORSHeaders(rep); rep.status = 204; });
+
+	svr.Post("/api/admin/questions/cache/invalidate", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
+		(void)req;
+		Json::Value response;
+
+		AdminAccount admin;
+		if (!getCurrentAdmin(req, nullptr, &admin))
+		{
+			response["success"] = false;
+			response["error"] = "未登录";
+			Json::FastWriter writer;
+			addCORSHeaders(rep);
+			rep.status = 401;
+			rep.set_content(writer.write(response), "application/json;charset=utf-8");
+			return;
+		}
+
+		_ctl.TouchQuestionListVersion();
+		response["success"] = true;
+		response["operator"] = admin.uid;
+
+		logger(INFO) << "[admin][cache] list version invalidated by admin_id=" << admin.admin_id;
+
+		Json::FastWriter writer;
+		addCORSHeaders(rep);
+		rep.set_content(writer.write(response), "application/json;charset=utf-8");
+	});
+
 	svr.Get("/api/admin/accounts", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
 		std::string request_id = BuildRequestId(req);
 		Json::Value response;
