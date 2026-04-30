@@ -113,7 +113,12 @@
             transition: all 0.3s ease;
         }
 
-        .logo {
+        .head {
+            margin-top: 20px;
+            align-items: center;
+            border-radius: 50%;
+        }
+        .logo{
             font-size: 24px;
             font-weight: 300;
             color: #F4F6F0;
@@ -125,6 +130,8 @@
             display: flex;
             gap: 40px;
             align-items: center;
+            margin-left: 80px;
+            margin-right: 80px;
         }
 
         .nav a {
@@ -157,29 +164,6 @@
             width: 100%;
         }
 
-        .rain-toggle {
-            width: 32px;
-            height: 32px;
-            border: 1px solid rgba(244, 246, 240, 0.6);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .rain-toggle:hover {
-            background: rgba(244, 246, 240, 0.1);
-            transform: scale(1.1);
-        }
-
-        .rain-toggle::before {
-            content: '♪';
-            color: rgba(244, 246, 240, 0.6);
-            font-size: 14px;
-        }
-
         .search-container {
             position: relative;
             display: flex;
@@ -208,6 +192,29 @@
             border-color: rgba(244, 246, 240, 0.4);
             background: rgba(255, 255, 255, 0.08);
             width: 250px;
+        }
+
+        .rain-toggle {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(244, 246, 240, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .rain-toggle:hover {
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(1.1);
+        }
+
+        .rain-toggle::before {
+            content: '♪';
+            color: rgba(244, 246, 240, 0.6);
+            font-size: 14px;
         }
 
         .container {

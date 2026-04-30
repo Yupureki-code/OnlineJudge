@@ -94,12 +94,19 @@
             backdrop-filter: blur(20px);
             padding: 10px 80px;
             border: 1px solid rgba(244, 246, 240, 0.1);
+            transition: all 0.3s ease;
         }
 
-        .logo {
+        .head {
+            margin-top: 20px;
+            align-items: center;
+            border-radius: 50%;
+        }
+        .logo{
             font-size: 24px;
             font-weight: 300;
             color: #F4F6F0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             letter-spacing: 0.1em;
         }
 
@@ -107,6 +114,8 @@
             display: flex;
             gap: 40px;
             align-items: center;
+            margin-left: 80px;
+            margin-right: 80px;
         }
 
         .nav a {
@@ -119,7 +128,9 @@
             transition: all 0.3s ease;
         }
 
-        .nav a:hover { color: #F4F6F0; }
+        .nav a:hover {
+            color: #F4F6F0;
+        }
 
         .nav a::after {
             content: '';
@@ -133,7 +144,39 @@
             transform: translateX(-50%);
         }
 
-        .nav a:hover::after { width: 100%; }
+        .nav a:hover::after {
+            width: 100%;
+        }
+
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 200px;
+            padding: 8px 12px;
+            border: 1px solid rgba(244, 246, 240, 0.2);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #F4F6F0;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.02em;
+            transition: all 0.3s ease;
+        }
+
+        .search-input::placeholder {
+            color: rgba(244, 246, 240, 0.4);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: rgba(244, 246, 240, 0.4);
+            background: rgba(255, 255, 255, 0.08);
+            width: 250px;
+        }
 
         .rain-toggle {
             width: 32px;
@@ -147,20 +190,15 @@
             transition: all 0.3s ease;
         }
 
-        .rain-toggle:hover { background: rgba(244, 246, 240, 0.1); transform: scale(1.1); }
+        .rain-toggle:hover {
+            background: rgba(244, 246, 240, 0.1);
+            transform: scale(1.1);
+        }
 
-        .rain-toggle::before { content: '♪'; color: rgba(244, 246, 240, 0.6); font-size: 14px; }
-
-        .search-container { position: relative; display: flex; align-items: center; }
-        .search-input {
-            width: 200px;
-            padding: 8px 12px;
-            border: 1px solid rgba(244, 246, 240, 0.2);
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #F4F6F0;
+        .rain-toggle::before {
+            content: '♪';
+            color: rgba(244, 246, 240, 0.6);
             font-size: 14px;
-            transition: all 0.3s ease;
         }
 
         .container {
