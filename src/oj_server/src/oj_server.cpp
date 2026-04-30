@@ -199,6 +199,16 @@ int main()
         if (out) *out = u;
         return true;
     };
+    //解析JSON请求体，失败则返回400
+    auto parseBody = [&replyJson](const Request& req, Response& rep, Json::Value* out) -> bool {
+        if (!JsonUtil::ParseJsonBody(req, out))
+        {
+            Json::Value r; r["success"] = false; r["error_code"] = "INVALID_JSON";
+            replyJson(rep, r, 400);
+            return false;
+        }
+        return true;
+    };
     //设置静态文件目录
     svr.set_mount_point("/pictures", HTML_PATH + std::string("/pictures"));
     svr.set_mount_point("/css", HTML_PATH + std::string("/css"));
@@ -423,14 +433,9 @@ int main()
     }); 
     // ── 认证路由（邮箱验证码登录/注册）──
     //发送邮箱验证码的路由
-    svr.Post("/api/auth/send_code", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/auth/send_code", [&ctl, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //从JSON中提取email，并检查格式合法性
         std::string email;
         if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
@@ -468,14 +473,9 @@ int main()
     });
     //邮箱验证码登录/注册——输入邮箱+验证码
     //服务端验证后自动创建/登录用户，返回 session cookie
-    svr.Post("/api/auth/verify_code", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/auth/verify_code", [&ctl, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //从JSON中提取email，并检查格式合法性
         std::string email;
         if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
@@ -551,14 +551,9 @@ int main()
     });
 
     // ── 旧版用户路由（无密码登录）──
-    svr.Post("/api/user/check", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/check", [&ctl, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "无效的JSON请求体");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //提取并检验email合法性
         std::string email;
         if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
@@ -575,14 +570,9 @@ int main()
         replyJson(rep, response);
     });
     //创建新用户
-    svr.Post("/api/user/create", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/create", [&ctl, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "无效的JSON请求体");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //提取name
         std::string name;
         if (!in_value.isMember("name") || !in_value["name"].isString())
@@ -627,14 +617,9 @@ int main()
         replyJson(rep, response);
     });
     //获取用户信息
-    svr.Post("/api/user/get", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/get", [&ctl, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "无效的JSON请求体");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //提取并检验email合法性
         std::string email;
         if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
@@ -650,14 +635,9 @@ int main()
         replyJson(rep, response);
     });
     //无密码登录——输入邮箱，检查存在后直接登录并返回 session
-    svr.Post("/api/user/login", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/login", [&ctl, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "无效的JSON请求体");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //提取并检验email合法性
         std::string email;
         if (!JsonUtil::ExtractAndValidateEmail(in_value, &email))
@@ -704,18 +684,13 @@ int main()
     });
 
     // ── 密码管理路由 ──
-    svr.Post("/api/user/password/set", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/password/set", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User current_user;
         if (!requireAuth(req, rep, &current_user)) return;
 
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //提取并检验密码合法性
         std::string password;
         if (!JsonUtil::ExtractAndValidatePassword(in_value, &password))
@@ -738,14 +713,9 @@ int main()
         replyJson(rep, response, http_status);
     });
     //密码登录——输入邮箱/用户名+密码，验证哈希后返回 session
-    svr.Post("/api/user/password/login", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/password/login", [&ctl, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //提取email和name
         std::string login_id;
         if (in_value.isMember("email") && in_value["email"].isString())
@@ -838,18 +808,13 @@ int main()
         replyJson(rep, response, http_status);
     });
     //更改邮箱
-    svr.Post("/api/user/email/change", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/email/change", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User current_user;
         if (!requireAuth(req, rep, &current_user)) return;
         //提取JSON
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //提取验证码
         if (!in_value.isMember("code") || !in_value["code"].isString())
         {
@@ -902,18 +867,13 @@ int main()
         replyJson(rep, response, http_status);
     });
     //更改密码
-    svr.Post("/api/user/password/change", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/password/change", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User current_user;
         if (!requireAuth(req, rep, &current_user)) return;
 
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //提取验证码
         if (!in_value.isMember("code") || !in_value["code"].isString())
         {
@@ -952,18 +912,13 @@ int main()
         replyJson(rep, response, http_status);
     });
     //注销账户
-    svr.Post("/api/user/account/delete", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/account/delete", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User current_user;
         if (!requireAuth(req, rep, &current_user)) return;
 
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //提取验证码
         if (!in_value.isMember("code") || !in_value["code"].isString())
         {
@@ -1000,332 +955,18 @@ int main()
     });
 
     // ── 题目API路由 ──
-    svr.Options("/api/questions", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 204;
-    });
-    //获取全部题目列表——返回 [{number, title, star}
-    //用于 SPA 题库页前端筛选。无缓存，直接查 MySQL
-    svr.Get("/api/questions", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        Json::Value response;
-        auto my = ctl.GetModel()->CreateConnection();
-        if (!my)
-        {
-            response["success"] = false;
-            response["questions"] = Json::Value(Json::arrayValue);
-            replyJson(rep, response);
-            return;
-        }
-        std::string sql = "SELECT id, title, star FROM questions ORDER BY CAST(id AS UNSIGNED) ASC";
-        if (mysql_query(my.get(), sql.c_str()) != 0)
-        {
-            response["success"] = false;
-            response["questions"] = Json::Value(Json::arrayValue);
-            replyJson(rep, response);
-            return;
-        }
-        MYSQL_RES* res = mysql_store_result(my.get());
-        if (res == nullptr)
-        {
-            response["success"] = false;
-            response["questions"] = Json::Value(Json::arrayValue);
-            replyJson(rep, response);
-            return;
-        }
-        Json::Value questions(Json::arrayValue);
-        int rows = mysql_num_rows(res);
-        for (int i = 0; i < rows; i++)
-        {
-            MYSQL_ROW row = mysql_fetch_row(res);
-            Json::Value question;
-            question["number"] = row[0];
-            question["title"] = row[1];
-            question["star"] = row[2];
-            questions.append(question);
-        }
-        mysql_free_result(res);
-        response["questions"] = questions;
-        response["success"] = true;
-        replyJson(rep, response);
-    });
 
-    // ── 缓存监控 ──
-    svr.Get("/api/metrics/cache", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        Json::Value response;
-        auto m = ctl.GetModel()->GetCacheMetricsSnapshot();
 
-        response["success"] = true;
-        response["list_requests"] = Json::Int64(m.list_requests);
-        response["list_hits"] = Json::Int64(m.list_hits);
-        response["list_misses"] = Json::Int64(m.list_misses);
-        response["list_db_fallbacks"] = Json::Int64(m.list_db_fallbacks);
-        response["list_total_ms"] = Json::Int64(m.list_total_ms);
-
-        response["detail_requests"] = Json::Int64(m.detail_requests);
-        response["detail_hits"] = Json::Int64(m.detail_hits);
-        response["detail_misses"] = Json::Int64(m.detail_misses);
-        response["detail_db_fallbacks"] = Json::Int64(m.detail_db_fallbacks);
-        response["detail_total_ms"] = Json::Int64(m.detail_total_ms);
-
-        response["html_static_requests"] = Json::Int64(m.html_static_requests);
-        response["html_static_hits"] = Json::Int64(m.html_static_hits);
-        response["html_static_misses"] = Json::Int64(m.html_static_misses);
-
-        response["html_list_requests"] = Json::Int64(m.html_list_requests);
-        response["html_list_hits"] = Json::Int64(m.html_list_hits);
-        response["html_list_misses"] = Json::Int64(m.html_list_misses);
-
-        response["html_detail_requests"] = Json::Int64(m.html_detail_requests);
-        response["html_detail_hits"] = Json::Int64(m.html_detail_hits);
-        response["html_detail_misses"] = Json::Int64(m.html_detail_misses);
-
-        replyJson(rep, response);
-    });
-    //获取单个题目详情——返回 number, title, star, desc（含题目描述）
-    //内部调用 GetOneQuestion，走 Redis 缓存（3600s）
-    svr.Get(R"(/api/question/(\d+))", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
-        Json::Value response;
-        std::string number = req.matches[1];
-        Question q;
-        //获得题目详情页
-        if (ctl.GetModel()->GetOneQuestion(number, q)) {
-            response["success"] = true;
-            response["question"]["number"] = q.number;
-            response["question"]["title"] = q.title;
-            response["question"]["star"] = q.star;
-            response["question"]["desc"] = q.desc;
-        } else {
-            response["success"] = false;
-            response["error"] = "题目不存在";
-        }
-        
-        replyJson(rep, response);
-    });
-    //检查当前用户是否通过该题——返回 {passed: bool, logged_in: bool}
-    //未登录返回 logged_in: false
-    svr.Get(R"(/api/question/(\d+)/pass_status$)", [&ctl, &getCurrentUser, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
-        Json::Value response;
-        User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            response["success"] = true;
-            response["passed"] = false;
-            response["logged_in"] = false;
-            replyJson(rep, response);
-            return;
-        }
-        //查看用户是否通过该题
-        std::string question_id = req.matches[1];
-        bool passed = ctl.HasUserPassedQuestion(current_user.uid, question_id);
-        response["success"] = true;
-        response["passed"] = passed;
-        response["logged_in"] = true;
-
-        replyJson(rep, response);
-    });
-
-    // ── 题解API路由 ──
-    //发布题解——需登录，输入标题+Markdown 内容
-    //通过 PublishSolution 写入数据库并返回 solution_id。权限控制：未登录→401，未通过题目→401
-    svr.Post(R"(/api/questions/(\d+)/solutions$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
-        Json::Value response;
-
-        User current_user;
-        if (!requireAuth(req, rep, &current_user)) return;
-
-        Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
-            return;
-        }
-        //提取title
-        if (!in_value.isMember("title") || !in_value["title"].isString())
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "标题不能为空");
-            return;
-        }
-        //提取正文
-        if (!in_value.isMember("content_md") || !in_value["content_md"].isString())
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "题解内容不能为空");
-            return;
-        }
-
-        const std::string question_id = req.matches[1];
-        const std::string title = in_value["title"].asString();
-        const std::string content_md = in_value["content_md"].asString();
-        //发布题解
-        unsigned long long solution_id = 0;
-        std::string err_code;
-        bool ok = ctl.PublishSolution(question_id, current_user, title, content_md, &solution_id, &err_code);
-
-        int http_status = 200;
-        response["success"] = ok;
-        if (!ok)
-        {
-            response["error_code"] = err_code;
-            if (err_code == "QUESTION_NOT_FOUND")
-            {
-                http_status = 404;
-            }
-            else if (err_code == "UNAUTHORIZED" || err_code == "NOT_PASSED")
-            {
-                http_status = 401;
-            }
-            else
-            {
-                http_status = 400;
-            }
-        }
-        else
-        {
-            response["solution_id"] = Json::UInt64(solution_id);
-            response["question_id"] = question_id;
-        }
-
-        replyJson(rep, response, http_status);
-    });
-
-    //获取顶级评论列表——返回该题解下所有一级评论（parent_id=0）
-    //每条含 reply_count（回复数）。分页：?page=1&size=20
-    svr.Get(R"(/api/solutions/(\d+)/comments$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
-        long long solution_id = 0;
-        try { solution_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的题解ID"); return; }
-        int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
-        int size = HttpUtil::ParsePositiveIntParam(req, "size", 20, 1, 1000);
-        Json::Value result;
-        std::string err_code;
-        //获取顶层评论列表
-        bool ok = ctl.GetTopLevelComments((unsigned long long)solution_id, page, size, &result, &err_code);
-        int http_status = 200;
-        if (!ok)
-        {
-            result["success"] = false;
-            result["error_code"] = err_code;
-            http_status = (err_code == "SOLUTION_NOT_FOUND" ? 404 : 500);
-        }
-        replyJson(rep, result, http_status);
-    });
-    //发表评论/回复——body 含 content（内容）和可选的 parent_id（回复某评论时传入）
-    //需登录。parent_id=0 或不传 = 一级评论
-    svr.Post(R"(/api/solutions/(\d+)/comments$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
-        long long solution_id = 0;
-        try { solution_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的题解ID"); return; }
-        Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
-            return;
-        }
-        //获取正文
-        if (!in_value.isMember("content") || !in_value["content"].isString())
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "内容不能为空");
-            return;
-        }
-        std::string content = in_value["content"].asString();
-        unsigned long long parent_id = 0;
-        //获取父级评论
-        if (in_value.isMember("parent_id") && in_value["parent_id"].isIntegral())
-        {
-            parent_id = static_cast<unsigned long long>(in_value["parent_id"].asUInt64());
-        }
-        User current_user;
-        if (!requireAuth(req, rep, &current_user)) return;
-        Json::Value result;
-        std::string err_code;
-        //发表评论
-        bool ok = ctl.PostComment((unsigned long long)solution_id, current_user, content, &result, &err_code, parent_id);
-        int http_status = 200;
-        if (!ok)
-        {
-            result["success"] = false;
-            result["error_code"] = err_code;
-            http_status = (err_code == "UNAUTHORIZED" ? 401 : (err_code == "SOLUTION_NOT_FOUND" ? 404 : 400));
-        }
-        replyJson(rep, result, http_status);
-    });
-    //编辑评论——只能编辑自己的评论，body 含 content
-    //返回 403 如果编辑他人评论
-    svr.Put(R"(/api/comments/(\d+)$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
-        long long comment_id = 0;
-        try { comment_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的评论ID"); return; }
-        Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
-            return;
-        }
-        //获取正文
-        if (!in_value.isMember("content") || !in_value["content"].isString())
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "内容不能为空");
-            return;
-        }
-        std::string content = in_value["content"].asString();
-        User current_user;
-        if (!requireAuth(req, rep, &current_user)) return;
-        Json::Value result;
-        std::string err_code;
-        //编辑评论
-        bool ok = ctl.EditComment((unsigned long long)comment_id, current_user, content, &result, &err_code);
-        int http_status = 200;
-        if (!ok)
-        {
-            result["success"] = false; result["error_code"] = err_code;
-            http_status = (err_code == "NOT_FOUND" ? 404 : (err_code == "FORBIDDEN" ? 403 : 400));
-        }
-        replyJson(rep, result, http_status);
-    });
-    //删除评论——本人或管理员可删除。级联删除子回复，更新 comment_count
-    svr.Delete(R"(/api/comments/(\d+)$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
-        long long comment_id = 0;
-        try { comment_id = std::stoll(req.matches[1]); } catch (...) { Json::Value r; r["success"] = false; r["error_code"] = "INVALID_ID"; replyJson(rep, r, 400); return; }
-        User current_user;
-        if (!requireAuth(req, rep, &current_user)) return;
-        Json::Value result; std::string err_code;
-        //删除评论
-        bool ok = ctl.DeleteComment((unsigned long long)comment_id, current_user, &result, &err_code);
-        int http_status = 200;
-        if (!ok)
-        {
-            result["success"] = false; result["error_code"] = err_code;
-            http_status = (err_code == "NOT_FOUND" ? 404 : (err_code == "FORBIDDEN" ? 403 : 400));
-        }
-        replyJson(rep, result, http_status);
-    });
-
-    // OPTIONS for new comment routes (CORS preflight)
-    svr.Options(R"(/api/solutions/(\d+)/comments$)", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req; addCORSHeaders(rep); rep.status = 204; });
-    svr.Options(R"(/api/comments/(\d+)$)", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req; addCORSHeaders(rep); rep.status = 204; });
     //手动清除已缓存的静态 HTML 页面（首页、题库页等缓存 6 小时的页面）
     //强制下次请求回源重新渲染。
-    svr.Post("/api/static/cache/invalidate", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/static/cache/invalidate", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
 
         User user;
         if (!requireAuth(req, rep, &user)) return;
         //提取JSON
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep);
-            HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON");
-            return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
 
         std::vector<std::string> pages;
         if (in_value.isMember("page") && in_value["page"].isString())
@@ -1453,17 +1094,13 @@ int main()
     });
     //运行单次测试——提交代码+测试类型，编译服务器编译运行后返回结果。
     //支持两种模式："sample"（用预设用例）和 "custom"（自定义输入）
-    svr.Post(R"(/api/question/(\d+)/test$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post(R"(/api/question/(\d+)/test$)", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         User current_user;
         if (!requireAuth(req, rep, &current_user)) return;
 
         std::string question_id = req.matches[1];
-
         Json::Value in_value;
-        if (!JsonUtil::ParseJsonBody(req, &in_value))
-        {
-            addCORSHeaders(rep); HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON"); return;
-        }
+        if (!parseBody(req, rep, &in_value)) return;
         //提取代码
         if (!in_value.isMember("code") || !in_value["code"].isString())
         {
@@ -1519,71 +1156,7 @@ int main()
         replyJson(rep, result, http_status);
     });
 
-    svr.Options("/api/auth/send_code", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
 
-    svr.Options("/api/auth/verify_code", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options("/api/user/password/login", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options("/api/user/password/set", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options("/api/user/security/send_code", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options("/api/user/email/change", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options("/api/user/password/change", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options("/api/user/account/delete", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options(R"(/api/question/(\d+))", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options(R"(/api/question/(\d+)/pass_status$)", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options(R"(/api/questions/(\d+)/solutions$)", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
     //题解列表（分页，支持 ?status=&sort=&page=&size=）
     svr.Get(R"(/api/questions/(\d+)/solutions$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         std::string question_id = req.matches[1];
@@ -1636,8 +1209,7 @@ int main()
     });
 
     // OPTIONS preflight for /api/comments/{id}/replies
-    svr.Options(R"(/api/comments/(\d+)/replies$)", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req; addCORSHeaders(rep); rep.status = 204; });
+
     //题解详情（单条题解内容 + 作者信息）
     svr.Get(R"(/api/solutions/(\d+)$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         long long solution_id = 0;
@@ -1780,8 +1352,6 @@ int main()
     });
 
     // Preflight for new comment routes
-    svr.Options(R"(/api/comments/(\d+)/like$)", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req; addCORSHeaders(rep); rep.status = 200; });
     svr.Get(R"(/api/solutions/(\d+)/actions$)", [&ctl, &getCurrentUser, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         long long solution_id = 0;
         try { solution_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的题解ID"); return; }
@@ -1805,41 +1375,7 @@ int main()
         replyJson(rep, result);
     });
 
-    svr.Options(R"(/api/solutions/(\d+)/like$)", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
 
-    svr.Options(R"(/api/solutions/(\d+)/favorite$)", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options(R"(/api/solutions/(\d+)$)", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options(R"(/api/solutions/(\d+)/actions$)", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options("/api/questions/cache/invalidate", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
-
-    svr.Options("/api/static/cache/invalidate", [&addCORSHeaders](const Request& req, Response& rep) {
-        (void)req;
-        addCORSHeaders(rep);
-        rep.status = 200;
-    });
 
     svr.Options("/api/*", [&addCORSHeaders](const Request& req, Response& rep) {
         (void)req;
