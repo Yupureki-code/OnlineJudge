@@ -180,6 +180,25 @@ int main()
         std::string cookie_header = req.get_header_value("Cookie");
         return ctl.GetSessionUser(cookie_header, user);
     };
+    //统一构建JSON响应
+    auto replyJson = [&addCORSHeaders](Response& rep, const Json::Value& data, int status = 200) {
+        Json::FastWriter writer;
+        addCORSHeaders(rep);
+        rep.status = status;
+        rep.set_content(writer.write(data), "application/json;charset=utf-8");
+    };
+    //检查登录状态，未登录则返回401
+    auto requireAuth = [&getCurrentUser, &replyJson](const Request& req, Response& rep, User* out = nullptr) -> bool {
+        User u;
+        if (!getCurrentUser(req, &u))
+        {
+            Json::Value r; r["success"] = false; r["error_code"] = "UNAUTHORIZED";
+            replyJson(rep, r, 401);
+            return false;
+        }
+        if (out) *out = u;
+        return true;
+    };
     //设置静态文件目录
     svr.set_mount_point("/pictures", HTML_PATH + std::string("/pictures"));
     svr.set_mount_point("/css", HTML_PATH + std::string("/css"));
@@ -404,7 +423,7 @@ int main()
     }); 
     // ── 认证路由（邮箱验证码登录/注册）──
     //发送邮箱验证码的路由
-    svr.Post("/api/auth/send_code", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/auth/send_code", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
@@ -425,6 +444,7 @@ int main()
         int retry_after_seconds = 0;
         bool ok = ctl.SendEmailAuthCode(email, req.remote_addr, &err_code, &retry_after_seconds);
 
+        int http_status = 200;
         Json::Value response;
         response["success"] = ok;
         if (ok)
@@ -436,21 +456,19 @@ int main()
             response["error_code"] = err_code;
             if (err_code == "TOO_MANY_REQUESTS" || err_code == "EMAIL_DAILY_LIMIT" || err_code == "IP_DAILY_LIMIT")
             {
-                rep.status = 429;
+                http_status = 429;
             }
             else
             {
-                rep.status = 400;
+                http_status = 400;
             }
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response, http_status);
     });
     //邮箱验证码登录/注册——输入邮箱+验证码
     //服务端验证后自动创建/登录用户，返回 session cookie
-    svr.Post("/api/auth/verify_code", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/auth/verify_code", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
@@ -500,6 +518,7 @@ int main()
         //检查验证码，若正确则登陆/注册
         bool ok = ctl.VerifyEmailAuthCodeAndLogin(email, code, name, password, &user, &is_new_user, &err_code);
 
+        int http_status = 200;
         Json::Value response;
         response["success"] = ok;
         if (!ok)
@@ -507,11 +526,11 @@ int main()
             response["error_code"] = err_code;
             if (err_code == "ATTEMPTS_EXCEEDED")
             {
-                rep.status = 429;
+                http_status = 429;
             }
             else
             {
-                rep.status = 400;
+                http_status = 400;
             }
         }
         else
@@ -528,13 +547,11 @@ int main()
             response["user"]["last_login"] = user.last_login;
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response, http_status);
     });
 
     // ── 旧版用户路由（无密码登录）──
-    svr.Post("/api/user/check", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/check", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
@@ -555,13 +572,10 @@ int main()
         Json::Value response;
         response["success"] = true;
         ctl.CheckUser(email, response);
-        Json::FastWriter writer;
-        std::string response_str = writer.write(response);
-        addCORSHeaders(rep);
-        rep.set_content(response_str, "application/json;charset=utf-8");
+        replyJson(rep, response);
     });
     //创建新用户
-    svr.Post("/api/user/create", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/create", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
@@ -610,13 +624,10 @@ int main()
             }
         }
         
-        Json::FastWriter writer;
-        std::string response_str = writer.write(response);
-        addCORSHeaders(rep);
-        rep.set_content(response_str, "application/json;charset=utf-8");
+        replyJson(rep, response);
     });
     //获取用户信息
-    svr.Post("/api/user/get", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/get", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
@@ -636,13 +647,10 @@ int main()
         Json::Value response;
         response["success"] = true;
         ctl.GetUser(email, response);
-        Json::FastWriter writer;
-        std::string response_str = writer.write(response);
-        addCORSHeaders(rep);
-        rep.set_content(response_str, "application/json;charset=utf-8");
+        replyJson(rep, response);
     });
     //无密码登录——输入邮箱，检查存在后直接登录并返回 session
-    svr.Post("/api/user/login", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/login", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
@@ -675,13 +683,10 @@ int main()
             }
         }
         
-        Json::FastWriter writer;
-        std::string response_str = writer.write(response);
-        addCORSHeaders(rep);
-        rep.set_content(response_str, "application/json;charset=utf-8");
+        replyJson(rep, response);
     });
     //账户登出
-    svr.Post("/api/user/logout", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/logout", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         std::string cookie_header = req.get_header_value("Cookie");
         User user;
         if (ctl.GetSessionUser(cookie_header, &user))
@@ -695,26 +700,14 @@ int main()
         
         Json::Value response;
         response["success"] = true;
-        Json::FastWriter writer;
-        std::string response_str = writer.write(response);
-        addCORSHeaders(rep);
-        rep.set_content(response_str, "application/json;charset=utf-8");
+        replyJson(rep, response);
     });
 
     // ── 密码管理路由 ──
-    svr.Post("/api/user/password/set", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/password/set", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            response["success"] = false;
-            response["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.status = 401;
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
 
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
@@ -735,18 +728,17 @@ int main()
         std::string err_code;
         bool ok = ctl.SetPasswordForUser(current_user.email, password, &err_code);
         response["success"] = ok;
+        int http_status = 200;
         if (!ok)
         {
             response["error_code"] = err_code;
-            rep.status = 400;
+            http_status = 400;
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response, http_status);
     });
     //密码登录——输入邮箱/用户名+密码，验证哈希后返回 session
-    svr.Post("/api/user/password/login", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/password/login", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
         {
@@ -790,12 +782,13 @@ int main()
         std::string err_code;
         bool ok = ctl.LoginWithPassword(login_id, password, &user, &err_code);
 
+        int http_status = 200;
         Json::Value response;
         response["success"] = ok;
         if (!ok)
         {
             response["error_code"] = err_code;
-            rep.status = 400;
+            http_status = 400;
         }
         else
         {
@@ -810,30 +803,20 @@ int main()
             response["user"]["last_login"] = user.last_login;
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response, http_status);
     });
     //发送验证码
-    svr.Post("/api/user/security/send_code", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/security/send_code", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            response["success"] = false;
-            response["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.status = 401;
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
 
         std::string err_code;
         int retry_after_seconds = 0;
         //发送验证码
         bool ok = ctl.SendEmailAuthCode(current_user.email, req.remote_addr, &err_code, &retry_after_seconds);
 
+        int http_status = 200;
         response["success"] = ok;
         if (ok)
         {
@@ -844,32 +827,21 @@ int main()
             response["error_code"] = err_code;
             if (err_code == "TOO_MANY_REQUESTS" || err_code == "EMAIL_DAILY_LIMIT" || err_code == "IP_DAILY_LIMIT")
             {
-                rep.status = 429;
+                http_status = 429;
             }
             else
             {
-                rep.status = 400;
+                http_status = 400;
             }
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response, http_status);
     });
     //更改邮箱
-    svr.Post("/api/user/email/change", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/email/change", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            response["success"] = false;
-            response["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.status = 401;
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
         //提取JSON
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
@@ -906,11 +878,12 @@ int main()
         std::string err_code;
         bool ok = ctl.ChangeEmailWithCode(current_user, new_email, code, &updated_user, &err_code);
 
+        int http_status = 200;
         response["success"] = ok;
         if (!ok)
         {
             response["error_code"] = err_code;
-            rep.status = (err_code == "ATTEMPTS_EXCEEDED") ? 429 : 400;
+            http_status = (err_code == "ATTEMPTS_EXCEEDED") ? 429 : 400;
         }
         else
         {
@@ -926,24 +899,13 @@ int main()
             response["user"]["last_login"] = updated_user.last_login;
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response, http_status);
     });
     //更改密码
-    svr.Post("/api/user/password/change", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/password/change", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            response["success"] = false;
-            response["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.status = 401;
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
 
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
@@ -979,31 +941,21 @@ int main()
         //更改密码
         std::string err_code;
         bool ok = ctl.ChangePasswordWithCode(current_user.email, code, new_password, &err_code);
+        int http_status = 200;
         response["success"] = ok;
         if (!ok)
         {
             response["error_code"] = err_code;
-            rep.status = (err_code == "ATTEMPTS_EXCEEDED") ? 429 : 400;
+            http_status = (err_code == "ATTEMPTS_EXCEEDED") ? 429 : 400;
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response, http_status);
     });
     //注销账户
-    svr.Post("/api/user/account/delete", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/account/delete", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            response["success"] = false;
-            response["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.status = 401;
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
 
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
@@ -1030,11 +982,12 @@ int main()
         //注销账户
         std::string err_code;
         bool ok = ctl.DeleteAccountWithCode(current_user.email, code, &err_code);
+        int http_status = 200;
         response["success"] = ok;
         if (!ok)
         {
             response["error_code"] = err_code;
-            rep.status = (err_code == "ATTEMPTS_EXCEEDED") ? 429 : 400;
+            http_status = (err_code == "ATTEMPTS_EXCEEDED") ? 429 : 400;
         }
         else
         {
@@ -1043,9 +996,7 @@ int main()
             rep.set_header("Set-Cookie", ctl.GetClearCookieHeader());
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response, http_status);
     });
 
     // ── 题目API路由 ──
@@ -1056,7 +1007,7 @@ int main()
     });
     //获取全部题目列表——返回 [{number, title, star}
     //用于 SPA 题库页前端筛选。无缓存，直接查 MySQL
-    svr.Get("/api/questions", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get("/api/questions", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         (void)req;
         Json::Value response;
         auto my = ctl.GetModel()->CreateConnection();
@@ -1064,9 +1015,7 @@ int main()
         {
             response["success"] = false;
             response["questions"] = Json::Value(Json::arrayValue);
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            replyJson(rep, response);
             return;
         }
         std::string sql = "SELECT id, title, star FROM questions ORDER BY CAST(id AS UNSIGNED) ASC";
@@ -1074,9 +1023,7 @@ int main()
         {
             response["success"] = false;
             response["questions"] = Json::Value(Json::arrayValue);
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            replyJson(rep, response);
             return;
         }
         MYSQL_RES* res = mysql_store_result(my.get());
@@ -1084,9 +1031,7 @@ int main()
         {
             response["success"] = false;
             response["questions"] = Json::Value(Json::arrayValue);
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            replyJson(rep, response);
             return;
         }
         Json::Value questions(Json::arrayValue);
@@ -1103,13 +1048,11 @@ int main()
         mysql_free_result(res);
         response["questions"] = questions;
         response["success"] = true;
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response);
     });
 
     // ── 缓存监控 ──
-    svr.Get("/api/metrics/cache", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get("/api/metrics/cache", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         (void)req;
         Json::Value response;
         auto m = ctl.GetModel()->GetCacheMetricsSnapshot();
@@ -1139,13 +1082,11 @@ int main()
         response["html_detail_hits"] = Json::Int64(m.html_detail_hits);
         response["html_detail_misses"] = Json::Int64(m.html_detail_misses);
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response);
     });
     //获取单个题目详情——返回 number, title, star, desc（含题目描述）
     //内部调用 GetOneQuestion，走 Redis 缓存（3600s）
-    svr.Get(R"(/api/question/(\d+))", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get(R"(/api/question/(\d+))", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         std::string number = req.matches[1];
         Question q;
@@ -1161,14 +1102,11 @@ int main()
             response["error"] = "题目不存在";
         }
         
-        Json::FastWriter writer;
-        std::string response_str = writer.write(response);
-        addCORSHeaders(rep);
-        rep.set_content(response_str, "application/json;charset=utf-8");
+        replyJson(rep, response);
     });
     //检查当前用户是否通过该题——返回 {passed: bool, logged_in: bool}
     //未登录返回 logged_in: false
-    svr.Get(R"(/api/question/(\d+)/pass_status$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get(R"(/api/question/(\d+)/pass_status$)", [&ctl, &getCurrentUser, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         User current_user;
         if (!getCurrentUser(req, &current_user))
@@ -1176,9 +1114,7 @@ int main()
             response["success"] = true;
             response["passed"] = false;
             response["logged_in"] = false;
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
+            replyJson(rep, response);
             return;
         }
         //查看用户是否通过该题
@@ -1188,28 +1124,17 @@ int main()
         response["passed"] = passed;
         response["logged_in"] = true;
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response);
     });
 
     // ── 题解API路由 ──
     //发布题解——需登录，输入标题+Markdown 内容
     //通过 PublishSolution 写入数据库并返回 solution_id。权限控制：未登录→401，未通过题目→401
-    svr.Post(R"(/api/questions/(\d+)/solutions$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post(R"(/api/questions/(\d+)/solutions$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
 
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            response["success"] = false;
-            response["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.status = 401;
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
 
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
@@ -1241,21 +1166,22 @@ int main()
         std::string err_code;
         bool ok = ctl.PublishSolution(question_id, current_user, title, content_md, &solution_id, &err_code);
 
+        int http_status = 200;
         response["success"] = ok;
         if (!ok)
         {
             response["error_code"] = err_code;
             if (err_code == "QUESTION_NOT_FOUND")
             {
-                rep.status = 404;
+                http_status = 404;
             }
             else if (err_code == "UNAUTHORIZED" || err_code == "NOT_PASSED")
             {
-                rep.status = 401;
+                http_status = 401;
             }
             else
             {
-                rep.status = 400;
+                http_status = 400;
             }
         }
         else
@@ -1264,14 +1190,12 @@ int main()
             response["question_id"] = question_id;
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response, http_status);
     });
 
     //获取顶级评论列表——返回该题解下所有一级评论（parent_id=0）
     //每条含 reply_count（回复数）。分页：?page=1&size=20
-    svr.Get(R"(/api/solutions/(\d+)/comments$)", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get(R"(/api/solutions/(\d+)/comments$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         long long solution_id = 0;
         try { solution_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的题解ID"); return; }
         int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
@@ -1280,19 +1204,18 @@ int main()
         std::string err_code;
         //获取顶层评论列表
         bool ok = ctl.GetTopLevelComments((unsigned long long)solution_id, page, size, &result, &err_code);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false;
             result["error_code"] = err_code;
-            rep.status = (err_code == "SOLUTION_NOT_FOUND" ? 404 : 500);
+            http_status = (err_code == "SOLUTION_NOT_FOUND" ? 404 : 500);
         }
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
     //发表评论/回复——body 含 content（内容）和可选的 parent_id（回复某评论时传入）
     //需登录。parent_id=0 或不传 = 一级评论
-    svr.Post(R"(/api/solutions/(\d+)/comments$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post(R"(/api/solutions/(\d+)/comments$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         long long solution_id = 0;
         try { solution_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的题解ID"); return; }
         Json::Value in_value;
@@ -1317,27 +1240,23 @@ int main()
             parent_id = static_cast<unsigned long long>(in_value["parent_id"].asUInt64());
         }
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            Json::Value r; r["success"] = false; r["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer; addCORSHeaders(rep); rep.status = 401; rep.set_content(writer.write(r), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
         Json::Value result;
         std::string err_code;
         //发表评论
         bool ok = ctl.PostComment((unsigned long long)solution_id, current_user, content, &result, &err_code, parent_id);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false;
             result["error_code"] = err_code;
-            rep.status = (err_code == "UNAUTHORIZED" ? 401 : (err_code == "SOLUTION_NOT_FOUND" ? 404 : 400));
+            http_status = (err_code == "UNAUTHORIZED" ? 401 : (err_code == "SOLUTION_NOT_FOUND" ? 404 : 400));
         }
-        Json::FastWriter writer; addCORSHeaders(rep); rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
     //编辑评论——只能编辑自己的评论，body 含 content
     //返回 403 如果编辑他人评论
-    svr.Put(R"(/api/comments/(\d+)$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Put(R"(/api/comments/(\d+)$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         long long comment_id = 0;
         try { comment_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的评论ID"); return; }
         Json::Value in_value;
@@ -1356,43 +1275,35 @@ int main()
         }
         std::string content = in_value["content"].asString();
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            Json::Value r; r["success"] = false; r["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer; addCORSHeaders(rep); rep.status = 401; rep.set_content(writer.write(r), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
         Json::Value result;
         std::string err_code;
         //编辑评论
         bool ok = ctl.EditComment((unsigned long long)comment_id, current_user, content, &result, &err_code);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false; result["error_code"] = err_code;
-            rep.status = (err_code == "NOT_FOUND" ? 404 : (err_code == "FORBIDDEN" ? 403 : 400));
+            http_status = (err_code == "NOT_FOUND" ? 404 : (err_code == "FORBIDDEN" ? 403 : 400));
         }
-        Json::FastWriter writer; addCORSHeaders(rep); rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
     //删除评论——本人或管理员可删除。级联删除子回复，更新 comment_count
-    svr.Delete(R"(/api/comments/(\d+)$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Delete(R"(/api/comments/(\d+)$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         long long comment_id = 0;
-        try { comment_id = std::stoll(req.matches[1]); } catch (...) { Json::Value r; r["success"] = false; r["error_code"] = "INVALID_ID"; Json::FastWriter writer; addCORSHeaders(rep); rep.status = 400; rep.set_content(writer.write(r), "application/json;charset=utf-8"); return; }
+        try { comment_id = std::stoll(req.matches[1]); } catch (...) { Json::Value r; r["success"] = false; r["error_code"] = "INVALID_ID"; replyJson(rep, r, 400); return; }
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            Json::Value r; r["success"] = false; r["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer; addCORSHeaders(rep); rep.status = 401; rep.set_content(writer.write(r), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
         Json::Value result; std::string err_code;
         //删除评论
         bool ok = ctl.DeleteComment((unsigned long long)comment_id, current_user, &result, &err_code);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false; result["error_code"] = err_code;
-            rep.status = (err_code == "NOT_FOUND" ? 404 : (err_code == "FORBIDDEN" ? 403 : 400));
+            http_status = (err_code == "NOT_FOUND" ? 404 : (err_code == "FORBIDDEN" ? 403 : 400));
         }
-        Json::FastWriter writer; addCORSHeaders(rep); rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
 
     // OPTIONS for new comment routes (CORS preflight)
@@ -1402,20 +1313,11 @@ int main()
         (void)req; addCORSHeaders(rep); rep.status = 204; });
     //手动清除已缓存的静态 HTML 页面（首页、题库页等缓存 6 小时的页面）
     //强制下次请求回源重新渲染。
-    svr.Post("/api/static/cache/invalidate", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/static/cache/invalidate", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
 
         User user;
-        if (!getCurrentUser(req, &user))
-        {
-            response["success"] = false;
-            response["error"] = "未登录";
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.status = 401;
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &user)) return;
         //提取JSON
         Json::Value in_value;
         if (!JsonUtil::ParseJsonBody(req, &in_value))
@@ -1471,12 +1373,10 @@ int main()
         logger(INFO) << "[cache] static html invalidated by " << user.email
                      << ", count=" << invalidated.size();
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(response), "application/json;charset=utf-8");
+        replyJson(rep, response);
     });
     //获取用户信息
-    svr.Get("/api/user/info", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get("/api/user/info", [&ctl, &getCurrentUser, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value response;
         
         User user;
@@ -1494,25 +1394,17 @@ int main()
             response["message"] = "未登录";
         }
         
-        Json::FastWriter writer;
-        std::string response_str = writer.write(response);
-        addCORSHeaders(rep);
-        rep.set_content(response_str, "application/json;charset=utf-8");
+        replyJson(rep, response);
     });
     //保存用户头像
-    svr.Post("/api/user/avatar", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post("/api/user/avatar", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            Json::Value r; r["success"] = false; r["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer; addCORSHeaders(rep); rep.status = 401; rep.set_content(writer.write(r), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
         //获取头像数据
         if (!req.has_file("avatar"))
         {
             Json::Value r; r["success"] = false; r["error_code"] = "NO_FILE";
-            Json::FastWriter writer; addCORSHeaders(rep); rep.status = 400; rep.set_content(writer.write(r), "application/json;charset=utf-8");
+            replyJson(rep, r, 400);
             return;
         }
 
@@ -1521,56 +1413,49 @@ int main()
         //保存头像
         Json::Value result; std::string err_code;
         bool ok = ctl.UploadAvatar(current_user, file.content, content_type, &result, &err_code);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false; result["error_code"] = err_code;
-            rep.status = (err_code == "INVALID_TYPE" || err_code == "FILE_TOO_LARGE") ? 400 : 500;
+            http_status = (err_code == "INVALID_TYPE" || err_code == "FILE_TOO_LARGE") ? 400 : 500;
         }
-        Json::FastWriter writer; addCORSHeaders(rep); rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
     //删除用户头像
-    svr.Delete("/api/user/avatar", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Delete("/api/user/avatar", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            Json::Value r; r["success"] = false; r["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer; addCORSHeaders(rep); rep.status = 401; rep.set_content(writer.write(r), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
         //删除头像
         Json::Value result; std::string err_code;
         bool ok = ctl.DeleteAvatar(current_user, &result, &err_code);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false; result["error_code"] = err_code;
-            rep.status = 500;
+            http_status = 500;
         }
-        Json::FastWriter writer; addCORSHeaders(rep); rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
     //获取题目示例测试用例——返回题目预设的输入/输出样例，用于前端展示
-    svr.Get(R"(/api/question/(\d+)/sample_tests$)", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get(R"(/api/question/(\d+)/sample_tests$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         std::string question_id = req.matches[1];
 
         Json::Value result; std::string err_code;
         //获取样例
         bool ok = ctl.GetSampleTests(question_id, &result, &err_code);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false; result["error_code"] = err_code;
-            rep.status = (err_code == "QUESTION_NOT_FOUND") ? 404 : 500;
+            http_status = (err_code == "QUESTION_NOT_FOUND") ? 404 : 500;
         }
-        Json::FastWriter writer; addCORSHeaders(rep); rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
     //运行单次测试——提交代码+测试类型，编译服务器编译运行后返回结果。
     //支持两种模式："sample"（用预设用例）和 "custom"（自定义输入）
-    svr.Post(R"(/api/question/(\d+)/test$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post(R"(/api/question/(\d+)/test$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            Json::Value r; r["success"] = false; r["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer; addCORSHeaders(rep); rep.status = 401; rep.set_content(writer.write(r), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
 
         std::string question_id = req.matches[1];
 
@@ -1593,52 +1478,45 @@ int main()
         Json::Value result; std::string err_code;
         //运行测试用例
         bool ok = ctl.RunSingleTest(question_id, code, test_case_id, test_type, custom_input, current_user, &result, &err_code);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false; result["error_code"] = err_code;
-            rep.status = (err_code == "QUESTION_NOT_FOUND" || err_code == "TEST_NOT_FOUND") ? 404 : 400;
+            http_status = (err_code == "QUESTION_NOT_FOUND" || err_code == "TEST_NOT_FOUND") ? 404 : 400;
         }
-        Json::FastWriter writer; addCORSHeaders(rep); rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
     //获取当前用户的提交记录——返回该用户在此题目下的所有历史提交（状态、时间、通过与否）
-    svr.Get(R"(/api/question/(\d+)/submits$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get(R"(/api/question/(\d+)/submits$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            Json::Value r; r["success"] = false; r["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer; addCORSHeaders(rep); rep.status = 401; rep.set_content(writer.write(r), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
 
         std::string question_id = req.matches[1];
         //获取用户历史提交记录
         Json::Value result; std::string err_code;
         bool ok = ctl.GetUserSubmits(question_id, current_user, &result, &err_code);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false; result["error_code"] = err_code;
-            rep.status = 500;
+            http_status = 500;
         }
-        Json::FastWriter writer; addCORSHeaders(rep); rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
     //返回当前登录用户的统计信息（需登录）
-    svr.Get("/api/user/stats", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get("/api/user/stats", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            Json::Value r; r["success"] = false; r["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer; addCORSHeaders(rep); rep.status = 401; rep.set_content(writer.write(r), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
 
         Json::Value result; std::string err_code;
         bool ok = ctl.GetUserStats(current_user, &result, &err_code);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false; result["error_code"] = err_code;
-            rep.status = 500;
+            http_status = 500;
         }
-        Json::FastWriter writer; addCORSHeaders(rep); rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
 
     svr.Options("/api/auth/send_code", [&addCORSHeaders](const Request& req, Response& rep) {
@@ -1707,7 +1585,7 @@ int main()
         rep.status = 200;
     });
     //题解列表（分页，支持 ?status=&sort=&page=&size=）
-    svr.Get(R"(/api/questions/(\d+)/solutions$)", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get(R"(/api/questions/(\d+)/solutions$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         std::string question_id = req.matches[1];
 
         std::string status = req.has_param("status") ? req.get_param_value("status") : "approved";
@@ -1720,27 +1598,25 @@ int main()
         //获取题解列表
         bool ok = ctl.GetSolutionList(question_id, status, sort, page, size, &result, &err_code);
 
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false;
             result["error_code"] = err_code;
-            if (err_code == "QUESTION_NOT_FOUND")
+            if (err_code == "SOLUTION_NOT_FOUND")
             {
-                rep.status = 404;
+                http_status = 404;
             }
             else
             {
-                rep.status = 500;
+                http_status = 500;
             }
         }
-
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-    rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
 
     //获取回复列表（某条评论的所有子回复，分页）
-    svr.Get(R"(/api/comments/(\d+)/replies$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get(R"(/api/comments/(\d+)/replies$)", [&ctl, &getCurrentUser, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         long long parent_id = 0;
         try { parent_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的评论ID"); return; }
         int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
@@ -1749,20 +1625,21 @@ int main()
         std::string err_code;
         //获取回复列表
         bool ok = ctl.GetCommentReplies((unsigned long long)parent_id, page, size, &result, &err_code);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false;
             result["error_code"] = err_code;
-            rep.status = (err_code == "NOT_FOUND" ? 404 : 500);
+            http_status = (err_code == "NOT_FOUND" ? 404 : 500);
         }
-        Json::FastWriter writer; addCORSHeaders(rep); rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
 
     // OPTIONS preflight for /api/comments/{id}/replies
     svr.Options(R"(/api/comments/(\d+)/replies$)", [&addCORSHeaders](const Request& req, Response& rep) {
         (void)req; addCORSHeaders(rep); rep.status = 204; });
     //题解详情（单条题解内容 + 作者信息）
-    svr.Get(R"(/api/solutions/(\d+)$)", [&ctl, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get(R"(/api/solutions/(\d+)$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         long long solution_id = 0;
         try { solution_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的题解ID"); return; }
 
@@ -1770,134 +1647,103 @@ int main()
         std::string err_code;
         bool ok = ctl.GetSolutionDetail(solution_id, &result, &err_code);
 
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false;
             result["error_code"] = err_code;
             if (err_code == "SOLUTION_NOT_FOUND")
             {
-                rep.status = 404;
+                http_status = 404;
             }
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
     //题解点赞/取消点赞题解（toggle，需登录）
-    svr.Post(R"(/api/solutions/(\d+)/like$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post(R"(/api/solutions/(\d+)/like$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value result;
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            result["success"] = false;
-            result["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.status = 401;
-            rep.set_content(writer.write(result), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
 
         long long solution_id = 0;
-        try { solution_id = std::stoll(req.matches[1]); } catch (...) { result["success"] = false; result["error_code"] = "INVALID_ID"; Json::FastWriter writer; addCORSHeaders(rep); rep.status = 400; rep.set_content(writer.write(result), "application/json;charset=utf-8"); return; }
+        try { solution_id = std::stoll(req.matches[1]); } catch (...) { result["success"] = false; result["error_code"] = "INVALID_ID"; replyJson(rep, result, 400); return; }
         std::string err_code;
         bool ok = ctl.ToggleLike(solution_id, current_user, &result, &err_code);
 
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false;
             result["error_code"] = err_code;
             if (err_code == "SOLUTION_NOT_FOUND")
             {
-                rep.status = 404;
+                http_status = 404;
             }
             else
             {
-                rep.status = 500;
+                http_status = 500;
             }
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
     //题解收藏/取消收藏题解（toggle，需登录）
-    svr.Post(R"(/api/solutions/(\d+)/favorite$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post(R"(/api/solutions/(\d+)/favorite$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value result;
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            result["success"] = false;
-            result["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.status = 401;
-            rep.set_content(writer.write(result), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
 
         long long solution_id = 0;
-        try { solution_id = std::stoll(req.matches[1]); } catch (...) { result["success"] = false; result["error_code"] = "INVALID_ID"; Json::FastWriter writer; addCORSHeaders(rep); rep.status = 400; rep.set_content(writer.write(result), "application/json;charset=utf-8"); return; }
+        try { solution_id = std::stoll(req.matches[1]); } catch (...) { result["success"] = false; result["error_code"] = "INVALID_ID"; replyJson(rep, result, 400); return; }
         std::string err_code;
         bool ok = ctl.ToggleFavorite(solution_id, current_user, &result, &err_code);
 
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false;
             result["error_code"] = err_code;
             if (err_code == "SOLUTION_NOT_FOUND")
             {
-                rep.status = 404;
+                http_status = 404;
             }
             else
             {
-                rep.status = 500;
+                http_status = 500;
             }
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
 
     //评论点赞/取消点赞评论（toggle，需登录）
-    svr.Post(R"(/api/comments/(\d+)/like$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post(R"(/api/comments/(\d+)/like$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         Json::Value result;
         User current_user;
-        if (!getCurrentUser(req, &current_user))
-        {
-            result["success"] = false;
-            result["error_code"] = "UNAUTHORIZED";
-            Json::FastWriter writer;
-            addCORSHeaders(rep);
-            rep.status = 401;
-            rep.set_content(writer.write(result), "application/json;charset=utf-8");
-            return;
-        }
+        if (!requireAuth(req, rep, &current_user)) return;
 
         unsigned long long comment_id = 0;
-        try { comment_id = std::stoull(req.matches[1]); } catch (...) { result["success"] = false; result["error_code"] = "INVALID_ID"; Json::FastWriter writer; addCORSHeaders(rep); rep.status = 400; rep.set_content(writer.write(result), "application/json;charset=utf-8"); return; }
+        try { comment_id = std::stoull(req.matches[1]); } catch (...) { result["success"] = false; result["error_code"] = "INVALID_ID"; replyJson(rep, result, 400); return; }
         std::string err_code;
         bool ok = ctl.ToggleCommentLike(comment_id, current_user, &result, &err_code);
+        int http_status = 200;
         if (!ok)
         {
             result["success"] = false;
             result["error_code"] = err_code;
             if (err_code == "COMMENT_NOT_FOUND") {
-                rep.status = 404;
+                http_status = 404;
             } else {
-                rep.status = 500;
+                http_status = 500;
             }
         }
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result, http_status);
     });
 
     //批量获取评论交互状态
     //传入 ?ids=1,2,3，返回每个评论当前用户是否已点赞/收藏
-    svr.Get(R"(/api/comments/actions$)", [&ctl, &addCORSHeaders, &getCurrentUser](const Request& req, Response& rep) {
+    svr.Get(R"(/api/comments/actions$)", [&ctl, &replyJson, &addCORSHeaders, &getCurrentUser](const Request& req, Response& rep) {
         Json::Value result;
         std::string ids_param = req.has_param("ids") ? req.get_param_value("ids") : "";
         std::vector<unsigned long long> ids;
@@ -1930,15 +1776,13 @@ int main()
             }
             payload["actions"] = actions_json;
         }
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(payload), "application/json;charset=utf-8");
+        replyJson(rep, payload);
     });
 
     // Preflight for new comment routes
     svr.Options(R"(/api/comments/(\d+)/like$)", [&addCORSHeaders](const Request& req, Response& rep) {
         (void)req; addCORSHeaders(rep); rep.status = 200; });
-    svr.Get(R"(/api/solutions/(\d+)/actions$)", [&ctl, &getCurrentUser, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get(R"(/api/solutions/(\d+)/actions$)", [&ctl, &getCurrentUser, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         long long solution_id = 0;
         try { solution_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的题解ID"); return; }
 
@@ -1958,9 +1802,7 @@ int main()
             result["favorited"] = false;
         }
 
-        Json::FastWriter writer;
-        addCORSHeaders(rep);
-        rep.set_content(writer.write(result), "application/json;charset=utf-8");
+        replyJson(rep, result);
     });
 
     svr.Options(R"(/api/solutions/(\d+)/like$)", [&addCORSHeaders](const Request& req, Response& rep) {
