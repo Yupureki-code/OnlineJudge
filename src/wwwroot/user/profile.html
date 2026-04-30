@@ -599,7 +599,7 @@
 </head>
 <body>
     <div id="page-loading-mask" class="page-loading-mask">
-        <div class="page-loading-text">加载中...</div>
+        <div class="page-loading-text">正在加载中...</div>
     </div>
     <!-- 背景图片 -->
     <div class="background"></div>
@@ -732,6 +732,7 @@
         createRainLines();
 
         async function syncProfileUserInfo() {
+            if (window.__showPageLoading) window.__showPageLoading('正在加载中...');
             const nameEl = document.getElementById('profile-name');
             const emailEl = document.getElementById('profile-email');
             const uidEl = document.getElementById('profile-uid');
@@ -743,7 +744,8 @@
                 if (SERVER_USER_INFO.avatar_url) {
                     updateAvatarSrc(SERVER_USER_INFO.avatar_url);
                 }
-                loadUserStats();
+                await loadUserStats();
+                if (window.__hidePageLoading) window.__hidePageLoading();
                 return;
             }
 
@@ -757,10 +759,12 @@
                     if (data.user.avatar_url) {
                         updateAvatarSrc(data.user.avatar_url);
                     }
-                    loadUserStats();
+                    await loadUserStats();
+                    if (window.__hidePageLoading) window.__hidePageLoading();
                 }
             } catch (error) {
                 console.error('加载用户信息失败:', error);
+                if (window.__hidePageLoading) window.__hidePageLoading();
             }
         }
 

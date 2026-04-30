@@ -942,7 +942,7 @@
 </head>
 <body>
     <div id="page-loading-mask" class="page-loading-mask">
-        <div class="page-loading-text">加载中...</div>
+        <div class="page-loading-text">正在加载中...</div>
     </div>
     <!-- 背景图片 -->
     <div class="background"></div>
@@ -1107,8 +1107,8 @@
         }
 
         async function navigateWithFilters(next, pushState = true) {
-            if (window.__hidePageLoading) {
-                window.__hidePageLoading();
+            if (window.__showPageLoading) {
+                window.__showPageLoading('正在搜索...');
             }
 
             const current = getCurrentFilters();

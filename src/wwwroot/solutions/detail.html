@@ -1163,11 +1163,12 @@
                         currentPage = 1;
                         document.getElementById('comment-no-more').style.display = 'none';
                         loadComments(1);
+                        showToast('编辑成功！');
                     } else {
-                        alert(data.error_code === 'FORBIDDEN' ? '无权操作' : '编辑失败');
+                        showToast(data.error_code === 'FORBIDDEN' ? '无权操作' : '编辑失败', true);
                     }
                 })
-                .catch(function() { alert('网络错误，请重试'); });
+                .catch(function() { showToast('网络错误，请重试', true); });
             }
 
             function deleteComment(commentId) {
@@ -1184,11 +1185,12 @@
                         currentPage = 1;
                         document.getElementById('comment-no-more').style.display = 'none';
                         loadComments(1);
+                        showToast('删除成功！');
                     } else {
-                        alert(data.error_code === 'FORBIDDEN' ? '无权操作' : '删除失败');
+                        showToast(data.error_code === 'FORBIDDEN' ? '无权操作' : '删除失败', true);
                     }
                 })
-                .catch(function() { alert('网络错误，请重试'); });
+                .catch(function() { showToast('网络错误，请重试', true); });
             }
 
             function requireLogin() {

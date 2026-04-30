@@ -1002,10 +1002,10 @@
             width: 250px;
         }
         .jump-option{
-            width: 320px;
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
+            gap: 12px;
         }
         .info-option{
             width: 270px;
@@ -1930,8 +1930,7 @@
                                     <button type="button" class="option-btn" id="btn-submit-history">提交记录</button>
                                 </div>
                                 <div class="jump-option">
-                                    <a href="/all_questions" class="option-btn">返回题库</a>
-                                    <a href="/questions/{{number}}/solutions/new" class="option-btn" id="publish-solution-link">发布题解</a>
+                                    <button type="button" class="option-btn" onclick="window.location.href='/all_questions'">返回题库</button>
                                     <button type="submit" class="submit-btn">提交代码</button>
                                 </div>
                             </div>
@@ -2580,11 +2579,12 @@
                         var noMoreEl = document.getElementById('sol-comment-no-more');
                         if (noMoreEl) noMoreEl.style.display = 'none';
                         loadDetailComments(currentDetailId, 1);
+                        showToast('编辑成功！');
                     } else {
-                        alert(data.error_code === 'FORBIDDEN' ? '\u65e0\u6743\u64cd\u4f5c' : '\u7f16\u8f91\u5931\u8d25');
+                        showToast(data.error_code === 'FORBIDDEN' ? '无权操作' : '编辑失败', true);
                     }
                 })
-                .catch(function() { alert('\u7f51\u7edc\u9519\u8bef\uff0c\u8bf7\u91cd\u8bd5'); });
+                .catch(function() { showToast('网络错误，请重试', true); });
             };
 
             window.deleteDetailComment = function(commentId) {
@@ -2601,11 +2601,12 @@
                         var noMoreEl = document.getElementById('sol-comment-no-more');
                         if (noMoreEl) noMoreEl.style.display = 'none';
                         loadDetailComments(currentDetailId, 1);
+                        showToast('删除成功！');
                     } else {
-                        alert(data.error_code === 'FORBIDDEN' ? '\u65e0\u6743\u64cd\u4f5c' : '\u5220\u9664\u5931\u8d25');
+                        showToast(data.error_code === 'FORBIDDEN' ? '无权操作' : '删除失败', true);
                     }
                 })
-                .catch(function() { alert('\u7f51\u7edc\u9519\u8bef\uff0c\u8bf7\u91cd\u8bd5'); });
+                .catch(function() { showToast('网络错误，请重试', true); });
             };
 
             // Show reply form for a comment
