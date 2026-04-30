@@ -1140,21 +1140,24 @@ namespace ns_control
             c.user_id = current_user.uid;
             c.content = trimmed;
             c.is_edited = false;
-            // nesting support
+            // nesting support — only 2 levels: top-level + direct replies
             c.parent_id = parent_id;
             unsigned long long reply_to_user_id = 0;
             if (parent_id > 0)
             {
-                // fetch parent to fill reply_to_user_id and validate same solution
                 Comment parent;
                 if (_model.GetCommentById(parent_id, &parent))
                 {
                     reply_to_user_id = parent.user_id;
-                    // ensure the parent belongs to the same solution
                     if (parent.solution_id != solution_id)
                     {
                         *err_code = "INVALID_PARENT_SOLUTION";
                         return false;
+                    }
+                    // If replying to a reply, elevate to top-level parent
+                    if (parent.parent_id > 0)
+                    {
+                        c.parent_id = parent.parent_id;
                     }
                 }
             }

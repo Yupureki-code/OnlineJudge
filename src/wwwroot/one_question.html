@@ -2728,15 +2728,6 @@
 
                 div.innerHTML = headerHtml + contentHtml + actionsHtml;
                 container.appendChild(div);
-
-                // Auto-load nested replies inline (no toggle needed)
-                if ((comment.reply_count || 0) > 0) {
-                    var nestedCtr = document.createElement('div');
-                    nestedCtr.style.cssText = 'margin-left:20px;';
-                    nestedCtr.innerHTML = '<div style="color:rgba(244,246,240,0.3);padding:4px 0;font-size:11px;">加载中...</div>';
-                    div.appendChild(nestedCtr);
-                    loadDetailReplies(comment.id, nestedCtr);
-                }
             }
 
             // Toggle like on comment
