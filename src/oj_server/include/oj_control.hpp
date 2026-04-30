@@ -1379,6 +1379,17 @@ namespace ns_control
                     item["author_name"] = "";
                     item["author_avatar"] = "/pictures/head.jpg";
                 }
+                // reply count for this reply (supports nested reply-to-reply)
+                std::vector<Comment> nested;
+                int nested_total = 0;
+                if (_model.GetCommentReplies(r.id, 1, 1000000, &nested, &nested_total))
+                {
+                    item["reply_count"] = nested_total;
+                }
+                else
+                {
+                    item["reply_count"] = 0;
+                }
                 list.append(item);
             }
             (*result)["comments"] = list;
