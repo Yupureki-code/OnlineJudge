@@ -48,6 +48,36 @@ namespace ns_model
     public:
         using MySqlConn = std::unique_ptr<MYSQL, void(*)(MYSQL*)>;
 
+        // 线程局部数据库连接（复用连接，减少TCP握手开销）
+        MYSQL* GetThreadConnection()
+        {
+            thread_local MYSQL* conn = nullptr;
+            thread_local std::chrono::steady_clock::time_point last_used;
+
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_used).count();
+
+            if (conn && elapsed > 300 && mysql_ping(conn) != 0)
+            {
+                mysql_close(conn);
+                conn = nullptr;
+            }
+
+            if (!conn)
+            {
+                conn = mysql_init(nullptr);
+                if (mysql_real_connect(conn, host.c_str(), user.c_str(), passwd.c_str(),
+                                       db.c_str(), port, nullptr, 0) == nullptr)
+                {
+                    logger(ns_log::FATAL) << "MySql连接失败!";
+                    mysql_close(conn);
+                    conn = nullptr;
+                }
+            }
+            last_used = now;
+            return conn;
+        }
+
         MySqlConn CreateConnection()
         {
             MYSQL* my = mysql_init(nullptr);

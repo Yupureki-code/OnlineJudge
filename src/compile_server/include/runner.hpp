@@ -70,7 +70,7 @@ namespace ns_runner
                 return false;
             }
             //查询时间和空间限制
-            std::string question_sql = "select cpu_limit,mem_limit from " + oj_questions  + " where id='"+question_id+"'"; 
+            std::string question_sql = "select cpu_limit,memory_limit from " + oj_questions  + " where id='"+question_id+"'"; 
             if(mysql_query(my, question_sql.c_str()) != 0)
             {
                 logger(ns_log::FATAL)<<"MySql查询错误: "<<mysql_error(my);
@@ -186,7 +186,7 @@ namespace ns_runner
                             mysql_close(my);
                             exit(1);
                         }
-                        std::string question_sql = "select cpu_limit,mem_limit from " + oj_questions  + " where id='" + in_value["id"].asString() + "'";
+                        std::string question_sql = "select cpu_limit,memory_limit from " + oj_questions  + " where id='" + in_value["id"].asString() + "'";
                         if(mysql_query(my, question_sql.c_str()) != 0)
                         {
                             logger(ns_log::FATAL) << "MySql查询错误: " << mysql_error(my);

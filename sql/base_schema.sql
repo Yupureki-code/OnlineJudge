@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS questions (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '题目创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '题目更新时间',
   `cpu_limit` tinyint NOT NULL COMMENT '时间限制',
-  `mem_limit` int NOT NULL COMMENT '内存限制',
+  `memory_limit` int NOT NULL COMMENT '内存限制',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目属性';
 

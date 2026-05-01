@@ -191,6 +191,47 @@ namespace ns_model
             return ok;
         }
 
+        // 批量获取用户信息（修复N+1查询问题）
+        bool GetUsersByIds(const std::set<int>& user_ids, std::map<int, User>* users)
+        {
+            if (users == nullptr || user_ids.empty())
+                return false;
+
+            users->clear();
+            std::ostringstream idlist;
+            int i = 0;
+            for (int uid : user_ids)
+            {
+                if (i++ > 0) idlist << ",";
+                idlist << uid;
+            }
+
+            auto my = CreateConnection();
+            if (!my) return false;
+
+            std::string sql = "select uid,name,email,avatar_path,create_time,last_login,password_algo from "
+                            + oj_users + " where uid in (" + idlist.str() + ")";
+            MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql批量用户查询错误");
+            if (!res) return false;
+
+            int rows = mysql_num_rows(res);
+            for (int r = 0; r < rows; ++r)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row == nullptr) continue;
+                User user;
+                user.uid = atoi(row[0]);
+                user.name = row[1] ? row[1] : "";
+                user.email = row[2] ? row[2] : "";
+                user.avatar_path = row[3] ? row[3] : "";
+                user.create_time = row[4] ? row[4] : "";
+                user.last_login = row[5] ? row[5] : "";
+                (*users)[user.uid] = user;
+            }
+            mysql_free_result(res);
+            return true;
+        }
+
         bool GetUserCount(int* count)
         {
             if(count == nullptr)
@@ -323,7 +364,16 @@ namespace ns_model
             std::string sql = "update " + oj_users +
                               " set email='" + safe_new_email +
                               "' where email='" + safe_old_email + "'";
-            return ExecuteSql(sql);
+            if (!ExecuteSql(sql))
+                return false;
+
+            // 清除用户缓存（邮箱是缓存的用户信息的一部分）
+            User user;
+            if (GetUser(new_email, &user))
+            {
+                _cache.DeleteStringByAnyKey("user:id:" + std::to_string(user.uid));
+            }
+            return true;
         }
 
         bool DeleteUserByEmail(const std::string& email)
@@ -383,11 +433,20 @@ namespace ns_model
 
             _cache.DeleteStringByAnyKey("submit:user:" + std::to_string(user_id) + ":q:" + question_id);
             _cache.DeleteStringByAnyKey("stats:user:" + std::to_string(user_id));
+            _cache.DeleteStringByAnyKey("pass:user:" + std::to_string(user_id) + ":q:" + question_id);
             return true;
         }
         //检查该用户是否通过该题目
+        //检查该用户是否通过该题目（带Redis缓存）
         bool HasUserPassedQuestion(int user_id, const std::string& question_id)
         {
+            std::string cache_key = "pass:user:" + std::to_string(user_id) + ":q:" + question_id;
+            std::string cached;
+            if (_cache.GetStringByAnyKey(cache_key, &cached))
+            {
+                return cached == "1";
+            }
+
             auto my = CreateConnection();
             if (!my)
                 return false;
@@ -400,7 +459,12 @@ namespace ns_model
             int count = 0;
             if (!QueryCount(sql.str(), &count))
                 return false;
-            return count > 0;
+            bool passed = count > 0;
+
+            // 缓存结果，长期有效（通过的记录不会改变）
+            _cache.SetStringByAnyKey(cache_key, passed ? "1" : "0", 
+                                     _cache.BuildJitteredTtl(1800, 300));
+            return passed;
         }
 
         // Feature 2.4: Get user submissions for a specific question
@@ -483,23 +547,20 @@ namespace ns_model
             if (!my)
                 return false;
 
-            std::ostringstream count_sql;
-            count_sql << "select count(*) from user_submits where user_id=" << user_id;
-            int total_submits = 0;
-            if (!QueryCount(count_sql.str(), &total_submits))
-                return false;
+            // 合并3次 COUNT 为1次查询
+            std::ostringstream stats_sql;
+            stats_sql << "select count(*) as total_submits, "
+                      << "count(distinct case when is_pass=1 then question_id end) as passed_questions, "
+                      << "sum(case when is_pass=1 then 1 else 0 end) as passed_submits "
+                      << "from user_submits where user_id=" << user_id;
+            MYSQL_RES* stats_res = QueryMySql(my.get(), stats_sql.str(), "MySql统计查询错误");
+            if (!stats_res) return false;
 
-            std::ostringstream pass_sql;
-            pass_sql << "select count(distinct question_id) from user_submits where user_id=" << user_id << " and is_pass=1";
-            int passed_questions = 0;
-            if (!QueryCount(pass_sql.str(), &passed_questions))
-                return false;
-
-            std::ostringstream passed_submits_sql;
-            passed_submits_sql << "select count(*) from user_submits where user_id=" << user_id << " and is_pass=1";
-            int passed_submits = 0;
-            if (!QueryCount(passed_submits_sql.str(), &passed_submits))
-                return false;
+            MYSQL_ROW stats_row = mysql_fetch_row(stats_res);
+            int total_submits = (stats_row && stats_row[0]) ? std::atoi(stats_row[0]) : 0;
+            int passed_questions = (stats_row && stats_row[1]) ? std::atoi(stats_row[1]) : 0;
+            int passed_submits = (stats_row && stats_row[2]) ? std::atoi(stats_row[2]) : 0;
+            mysql_free_result(stats_res);
 
             double accuracy = total_submits > 0 ? static_cast<double>(passed_submits) / static_cast<double>(total_submits) : 0.0;
 
@@ -538,7 +599,6 @@ namespace ns_model
             (*stats)["recent_submits"] = recent_arr;
 
             Json::FastWriter writer;
-            // Only cache if there's actual data to prevent stale empty results from persisting
             if (total_submits > 0)
             {
                 _cache.SetStringByAnyKey(cache_key, writer.write(*stats), _cache.BuildJitteredTtl(180, 60));

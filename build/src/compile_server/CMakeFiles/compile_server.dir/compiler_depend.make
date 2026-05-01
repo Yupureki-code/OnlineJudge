@@ -240,7 +240,6 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
   /usr/include/fcntl.h \
   /usr/include/features-time64.h \
   /usr/include/features.h \
-  /usr/include/httplib.h \
   /usr/include/ifaddrs.h \
   /usr/include/jsoncpp/json/allocator.h \
   /usr/include/jsoncpp/json/config.h \
@@ -280,6 +279,7 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
   /usr/include/netdb.h \
   /usr/include/netinet/in.h \
   /usr/include/netinet/tcp.h \
+  /usr/include/poll.h \
   /usr/include/pthread.h \
   /usr/include/resolv.h \
   /usr/include/rpc/netdb.h \
@@ -338,6 +338,7 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
   /usr/include/x86_64-linux-gnu/bits/mman_ext.h \
   /usr/include/x86_64-linux-gnu/bits/netdb.h \
   /usr/include/x86_64-linux-gnu/bits/param.h \
+  /usr/include/x86_64-linux-gnu/bits/poll.h \
   /usr/include/x86_64-linux-gnu/bits/posix1_lim.h \
   /usr/include/x86_64-linux-gnu/bits/posix2_lim.h \
   /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
@@ -450,6 +451,7 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
   /usr/include/x86_64-linux-gnu/sys/cdefs.h \
   /usr/include/x86_64-linux-gnu/sys/mman.h \
   /usr/include/x86_64-linux-gnu/sys/param.h \
+  /usr/include/x86_64-linux-gnu/sys/poll.h \
   /usr/include/x86_64-linux-gnu/sys/resource.h \
   /usr/include/x86_64-linux-gnu/sys/select.h \
   /usr/include/x86_64-linux-gnu/sys/single_threaded.h \
@@ -467,7 +469,8 @@ src/compile_server/CMakeFiles/compile_server.dir/src/compile_server.cpp.o: /home
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h \
   /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h \
   /usr/local/include/Logger/logstrategy.h \
-  /usr/local/include/ctemplate/template_string.h
+  /usr/local/include/ctemplate/template_string.h \
+  /usr/local/include/httplib.h
 
 src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yupureki/project/OnlineJudge/src/compile_server/src/custom_flag.cpp \
   /home/yupureki/project/OnlineJudge/src/comm/comm.hpp \
@@ -702,7 +705,6 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
   /usr/include/fcntl.h \
   /usr/include/features-time64.h \
   /usr/include/features.h \
-  /usr/include/httplib.h \
   /usr/include/ifaddrs.h \
   /usr/include/jsoncpp/json/allocator.h \
   /usr/include/jsoncpp/json/config.h \
@@ -730,6 +732,7 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
   /usr/include/netdb.h \
   /usr/include/netinet/in.h \
   /usr/include/netinet/tcp.h \
+  /usr/include/poll.h \
   /usr/include/pthread.h \
   /usr/include/resolv.h \
   /usr/include/rpc/netdb.h \
@@ -788,6 +791,7 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
   /usr/include/x86_64-linux-gnu/bits/mman_ext.h \
   /usr/include/x86_64-linux-gnu/bits/netdb.h \
   /usr/include/x86_64-linux-gnu/bits/param.h \
+  /usr/include/x86_64-linux-gnu/bits/poll.h \
   /usr/include/x86_64-linux-gnu/bits/posix1_lim.h \
   /usr/include/x86_64-linux-gnu/bits/posix2_lim.h \
   /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
@@ -898,6 +902,7 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
   /usr/include/x86_64-linux-gnu/sys/cdefs.h \
   /usr/include/x86_64-linux-gnu/sys/mman.h \
   /usr/include/x86_64-linux-gnu/sys/param.h \
+  /usr/include/x86_64-linux-gnu/sys/poll.h \
   /usr/include/x86_64-linux-gnu/sys/select.h \
   /usr/include/x86_64-linux-gnu/sys/single_threaded.h \
   /usr/include/x86_64-linux-gnu/sys/socket.h \
@@ -912,7 +917,8 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h \
   /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h \
-  /usr/local/include/Logger/logstrategy.h
+  /usr/local/include/Logger/logstrategy.h \
+  /usr/local/include/httplib.h
 
 
 /usr/local/include/ctemplate/template_string.h:
@@ -925,7 +931,11 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
 
 /usr/include/x86_64-linux-gnu/sys/time.h:
 
+/usr/include/x86_64-linux-gnu/sys/stat.h:
+
 /usr/include/x86_64-linux-gnu/sys/single_threaded.h:
+
+/usr/include/x86_64-linux-gnu/sys/poll.h:
 
 /usr/include/x86_64-linux-gnu/sys/param.h:
 
@@ -1062,6 +1072,8 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
 /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h:
 
 /usr/include/x86_64-linux-gnu/bits/pthread_stack_min-dynamic.h:
+
+/usr/include/x86_64-linux-gnu/bits/poll.h:
 
 /usr/include/x86_64-linux-gnu/bits/netdb.h:
 
@@ -1278,10 +1290,6 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
 /usr/include/c++/13/tr1/poly_laguerre.tcc:
 
 /usr/include/libintl.h:
-
-/usr/include/linux/posix_types.h:
-
-/usr/include/c++/13/bits/ptr_traits.h:
 
 /usr/include/c++/13/bits/std_abs.h:
 
@@ -1557,6 +1565,10 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
 
 /usr/include/c++/13/bits/localefwd.h:
 
+/usr/include/c++/13/bits/ptr_traits.h:
+
+/usr/include/linux/posix_types.h:
+
 /usr/include/x86_64-linux-gnu/bits/waitstatus.h:
 
 /usr/include/c++/13/bits/exception_defines.h:
@@ -1578,6 +1590,8 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
 /usr/include/c++/13/bits/regex_error.h:
 
 /usr/include/c++/13/bits/functional_hash.h:
+
+/usr/local/include/httplib.h:
 
 /usr/include/errno.h:
 
@@ -1729,6 +1743,8 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h:
 
+/usr/include/poll.h:
+
 /usr/include/c++/13/bits/stl_iterator.h:
 
 /usr/include/c++/13/ext/numeric_traits.h:
@@ -1766,10 +1782,6 @@ src/compile_server/CMakeFiles/compile_server.dir/src/custom_flag.cpp.o: /home/yu
 /usr/include/c++/13/bits/random.tcc:
 
 /usr/include/c++/13/random:
-
-/usr/include/x86_64-linux-gnu/sys/stat.h:
-
-/usr/include/httplib.h:
 
 /usr/include/c++/13/bits/regex_automaton.h:
 

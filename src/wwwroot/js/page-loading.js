@@ -20,16 +20,21 @@
     window.__showPageLoading = show;
     window.__hidePageLoading = hide;
 
-    if (document.readyState === "complete") {
-        hide();
-    } else {
-        document.addEventListener("DOMContentLoaded", hide);
-        window.addEventListener("load", hide);
-    }
+    // 个人中心页面不自动隐藏，由页面自己控制
+    var isProfilePage = window.location.pathname.includes('/user/profile');
+    
+    if (!isProfilePage) {
+        if (document.readyState === "complete") {
+            hide();
+        } else {
+            document.addEventListener("DOMContentLoaded", hide);
+            window.addEventListener("load", hide);
+        }
 
-    // Back/forward cache restore does not always trigger load again.
-    // Ensure the global mask is cleared whenever a page is shown.
-    window.addEventListener("pageshow", hide);
+        // Back/forward cache restore does not always trigger load again.
+        // Ensure the global mask is cleared whenever a page is shown.
+        window.addEventListener("pageshow", hide);
+    }
 
     document.addEventListener("click", function (e) {
         var link = e.target.closest("a");

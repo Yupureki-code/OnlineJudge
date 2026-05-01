@@ -318,6 +318,11 @@
             '</div>'
         ].join("");
 
+        var brand = document.createElement("div");
+        brand.style.cssText = "text-align:center;padding:8px 0 4px;";
+        brand.innerHTML = '<img src="/pictures/icon.png" alt="logo" style="width:44px;height:44px;border-radius:10px;margin-bottom:4px;"><div style="font-size:18px;font-weight:300;color:#F4F6F0;letter-spacing:0.06em;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;">Yupureki-OJ</div>';
+        panel.insertBefore(brand, panel.firstChild);
+
         modal.appendChild(panel);
         document.body.appendChild(modal);
 

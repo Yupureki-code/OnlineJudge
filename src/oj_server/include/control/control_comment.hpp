@@ -88,25 +88,8 @@ namespace ns_control
             if (_model.Comment().GetCommentById(new_id, &created))
             {
                 result->clear();
-                (*result) ["success"] = true;
-                (*result)["id"] = Json::UInt64(created.id);
-                (*result)["solution_id"] = Json::UInt64(created.solution_id);
-                (*result)["user_id"] = created.user_id;
-                (*result)["content"] = created.content;
-                (*result)["is_edited"] = created.is_edited;
-                (*result)["created_at"] = created.created_at;
-                // author name
-                User author;
-                if (_model.User().GetUserById(created.user_id, &author))
-                {
-                    (*result)["author_name"] = author.name;
-                (*result)["author_avatar"] = GetEffectiveAvatarUrl(author);
-                }
-                else
-                {
-                    (*result)["author_name"] = "";
-                    (*result)["author_avatar"] = "/pictures/head.jpg";
-                }
+                (*result)["success"] = true;
+                CommentToJson(created, *result);
             }
             else
             {
@@ -136,31 +119,13 @@ namespace ns_control
                 return false;
             }
 
-            (*result)["success"] = true;
-            (*result)["total"] = total_count;
-            int total_pages = (size > 0) ? ((total_count + size - 1) / size) : 0;
-            (*result)["total_pages"] = total_pages;
-            (*result)["page"] = std::max(1, page);
-            (*result)["size"] = size;
+            SetPaginationResult(result, total_count, page, size);
 
             Json::Value list(Json::arrayValue);
             for (const auto& c : comments)
             {
                 Json::Value item;
-                item["id"] = Json::UInt64(c.id);
-                item["solution_id"] = Json::UInt64(c.solution_id);
-                item["user_id"] = c.user_id;
-                item["content"] = c.content;
-                item["is_edited"] = c.is_edited;
-                item["created_at"] = c.created_at;
-                item["updated_at"] = c.updated_at;
-                item["parent_id"] = Json::UInt64(c.parent_id);
-                item["reply_to_user_id"] = c.reply_to_user_id;
-                item["reply_to_user_name"] = c.reply_to_user_name;
-                item["like_count"] = c.like_count;
-                item["favorite_count"] = c.favorite_count;
-                item["author_name"] = c.author_name;
-                item["author_avatar"] = "/pictures/head.jpg";
+                CommentToJson(c, item);
                 list.append(item);
             }
             (*result)["comments"] = list;
@@ -183,12 +148,7 @@ namespace ns_control
                 return false;
             }
 
-            (*result)["success"] = true;
-            (*result)["total"] = total_count;
-            int total_pages = (size > 0) ? ((total_count + size - 1) / size) : 0;
-            (*result)["total_pages"] = total_pages;
-            (*result)["page"] = std::max(1, page);
-            (*result)["size"] = size;
+            SetPaginationResult(result, total_count, page, size);
 
             // Batch fetch reply counts for all top-level comments
             std::map<unsigned long long, int> reply_counts;
@@ -225,21 +185,7 @@ namespace ns_control
             for (const auto& c : comments)
             {
                 Json::Value item;
-                item["id"] = Json::UInt64(c.id);
-                item["solution_id"] = Json::UInt64(c.solution_id);
-                item["user_id"] = c.user_id;
-                item["content"] = c.content;
-                item["is_edited"] = c.is_edited;
-                item["created_at"] = c.created_at;
-                item["updated_at"] = c.updated_at;
-                item["parent_id"] = Json::UInt64(c.parent_id);
-                item["reply_to_user_id"] = c.reply_to_user_id;
-                item["reply_to_user_name"] = c.reply_to_user_name;
-                item["like_count"] = c.like_count;
-                item["favorite_count"] = c.favorite_count;
-                // author info (from JOIN, no extra DB query)
-                item["author_name"] = c.author_name;
-                item["author_avatar"] = "/pictures/head.jpg";
+                CommentToJson(c, item);
                 item["reply_count"] = reply_counts.count(c.id) ? reply_counts[c.id] : 0;
                 list.append(item);
             }
@@ -263,12 +209,7 @@ namespace ns_control
                 return false;
             }
 
-            (*result)["success"] = true;
-            (*result)["total"] = total_count;
-            int total_pages = (size > 0) ? ((total_count + size - 1) / size) : 0;
-            (*result)["total_pages"] = total_pages;
-            (*result)["page"] = std::max(1, page);
-            (*result)["size"] = size;
+            SetPaginationResult(result, total_count, page, size);
 
             // Batch fetch nested reply counts for all replies
             std::map<unsigned long long, int> reply_counts;
@@ -305,20 +246,7 @@ namespace ns_control
             for (const auto& r : replies)
             {
                 Json::Value item;
-                item["id"] = Json::UInt64(r.id);
-                item["solution_id"] = Json::UInt64(r.solution_id);
-                item["user_id"] = r.user_id;
-                item["content"] = r.content;
-                item["is_edited"] = r.is_edited;
-                item["created_at"] = r.created_at;
-                item["updated_at"] = r.updated_at;
-                item["parent_id"] = Json::UInt64(r.parent_id);
-                item["reply_to_user_id"] = r.reply_to_user_id;
-                item["reply_to_user_name"] = r.reply_to_user_name;
-                item["like_count"] = r.like_count;
-                item["favorite_count"] = r.favorite_count;
-                item["author_name"] = r.author_name;
-                item["author_avatar"] = "/pictures/head.jpg";
+                CommentToJson(r, item);
                 item["reply_count"] = reply_counts.count(r.id) ? reply_counts[r.id] : 0;
                 list.append(item);
             }

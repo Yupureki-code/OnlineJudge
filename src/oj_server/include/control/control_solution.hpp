@@ -153,39 +153,20 @@ namespace ns_control
                 return false;
             }
 
-            (*result)["success"] = true;
-            (*result)["total"] = total_count;
-            (*result)["total_pages"] = total_pages;
-            (*result)["page"] = safe_page;
-            (*result)["size"] = safe_size;
+            SetPaginationResult(result, total_count, safe_page, safe_size);
+
+            // 批量获取所有作者信息（N+1优化：1次查询替代N次查询）
+            std::set<int> user_ids;
+            for (const auto& s : solutions) { user_ids.insert(s.user_id); }
+            std::map<int, User> user_map;
+            _model.User().GetUsersByIds(user_ids, &user_map);
 
             Json::Value items(Json::arrayValue);
             for (const auto& s : solutions)
             {
                 Json::Value item;
-                item["id"] = Json::UInt64(s.id);
-                item["question_id"] = s.question_id;
-                item["user_id"] = s.user_id;
-                item["title"] = s.title;
-                item["content_md"] = s.content_md;
-                item["like_count"] = s.like_count;
-                item["favorite_count"] = s.favorite_count;
-                item["comment_count"] = s.comment_count;
-                item["status"] = _model.Solution().SolutionStatusToDbString(s.status);
-                item["created_at"] = s.created_at;
-
-                User author;
-                if (_model.User().GetUserById(s.user_id, &author))
-                {
-                    item["author_name"] = author.name;
-                    item["author_avatar"] = GetEffectiveAvatarUrl(author);
-                }
-                else
-                {
-                    item["author_name"] = "";
-                    item["author_avatar"] = "/pictures/head.jpg";
-                }
-
+                SolutionToJson(s, item);
+                BuildUserInfoJsonBatch(s.user_id, item, user_map);
                 items.append(item);
             }
             (*result)["solutions"] = items;
@@ -210,29 +191,8 @@ namespace ns_control
             }
 
             (*result)["success"] = true;
-            (*result)["id"] = Json::UInt64(solution.id);
-            (*result)["question_id"] = solution.question_id;
-            (*result)["user_id"] = solution.user_id;
-            (*result)["title"] = solution.title;
-            (*result)["content_md"] = solution.content_md;
-            (*result)["like_count"] = solution.like_count;
-            (*result)["favorite_count"] = solution.favorite_count;
-            (*result)["comment_count"] = solution.comment_count;
-            (*result)["status"] = _model.Solution().SolutionStatusToDbString(solution.status);
-            (*result)["created_at"] = solution.created_at;
-            (*result)["updated_at"] = solution.updated_at;
-
-            User author;
-            if (_model.User().GetUserById(solution.user_id, &author))
-            {
-                (*result)["author_name"] = author.name;
-                (*result)["author_avatar"] = GetEffectiveAvatarUrl(author);
-            }
-            else
-            {
-                (*result)["author_name"] = "";
-                (*result)["author_avatar"] = "/pictures/head.jpg";
-            }
+            SolutionToJson(solution, *result);
+            BuildUserInfoJson(solution.user_id, *result);
 
             return true;
         }
@@ -242,36 +202,7 @@ namespace ns_control
                         Json::Value* result,
                         std::string* err_code)
         {
-            if (result == nullptr || err_code == nullptr)
-            {
-                return false;
-            }
-
-            if (current_user.uid <= 0)
-            {
-                *err_code = "UNAUTHORIZED";
-                return false;
-            }
-
-            Solution solution;
-            if (!_model.Solution().GetSolutionById(solution_id, &solution))
-            {
-                *err_code = "SOLUTION_NOT_FOUND";
-                return false;
-            }
-
-            bool now_active = false;
-            unsigned int new_count = 0;
-            if (!_model.Solution().ToggleSolutionAction(solution_id, current_user.uid, "like", &now_active, &new_count))
-            {
-                *err_code = "DB_ERROR";
-                return false;
-            }
-
-            (*result)["success"] = true;
-            (*result)["liked"] = now_active;
-            (*result)["like_count"] = new_count;
-            return true;
+            return ToggleSolutionAction(solution_id, current_user, "like", result, err_code);
         }
 
         bool ToggleFavorite(long long solution_id,
@@ -279,36 +210,7 @@ namespace ns_control
                             Json::Value* result,
                             std::string* err_code)
         {
-            if (result == nullptr || err_code == nullptr)
-            {
-                return false;
-            }
-
-            if (current_user.uid <= 0)
-            {
-                *err_code = "UNAUTHORIZED";
-                return false;
-            }
-
-            Solution solution;
-            if (!_model.Solution().GetSolutionById(solution_id, &solution))
-            {
-                *err_code = "SOLUTION_NOT_FOUND";
-                return false;
-            }
-
-            bool now_active = false;
-            unsigned int new_count = 0;
-            if (!_model.Solution().ToggleSolutionAction(solution_id, current_user.uid, "favorite", &now_active, &new_count))
-            {
-                *err_code = "DB_ERROR";
-                return false;
-            }
-
-            (*result)["success"] = true;
-            (*result)["favorited"] = now_active;
-            (*result)["favorite_count"] = new_count;
-            return true;
+            return ToggleSolutionAction(solution_id, current_user, "favorite", result, err_code);
         }
 
         bool GetUserSolutionActions(long long solution_id,

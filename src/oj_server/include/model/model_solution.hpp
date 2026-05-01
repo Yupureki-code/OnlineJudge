@@ -80,19 +80,21 @@ namespace ns_model
             {
                 *solution_id = static_cast<unsigned long long>(mysql_insert_id(my.get()));
             }
+            // Invalidate solution list cache for this question (multiple page/size combos)
+            const int pages[] = {1, 2, 3};
+            const int sizes[] = {10, 20, 50};
+            const std::string sorts[] = {"1", "1"};  // version key for latest and hot
+            const SolutionSort sort_types[] = {SolutionSort::latest, SolutionSort::hot};
 
-            // Invalidate solution list cache for this question (common combinations)
-            auto list_key_latest = _cache.BuildSolutionCacheKey(
-                input.question_id, 1, 10, "1",
-                Cache::CacheKey::PageType::kList,
-                SolutionStatus::approved, SolutionSort::latest);
-            _cache.DeleteStringByAnyKey(list_key_latest->GetCacheKeyString(&_cache));
-
-            auto list_key_hot = _cache.BuildSolutionCacheKey(
-                input.question_id, 1, 10, "1",
-                Cache::CacheKey::PageType::kList,
-                SolutionStatus::approved, SolutionSort::hot);
-            _cache.DeleteStringByAnyKey(list_key_hot->GetCacheKeyString(&_cache));
+            for (int p : pages) {
+                for (int s : sizes) {
+                    for (int t = 0; t < 2; ++t) {
+                        auto key = _cache.BuildSolutionCacheKey(input.question_id, p, s, sorts[t],
+                            Cache::CacheKey::PageType::kList, SolutionStatus::approved, sort_types[t]);
+                        _cache.DeleteStringByAnyKey(key->GetCacheKeyString(&_cache));
+                    }
+                }
+            }
 
             logger(ns_log::INFO) << "Invalidated solution list cache for question " << input.question_id;
 

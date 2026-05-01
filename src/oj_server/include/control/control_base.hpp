@@ -386,6 +386,142 @@ namespace ns_control
             return out;
         }
 
+        /// 构建用户信息JSON（作者名称和头像）
+        /// @param user_id 用户ID
+        /// @param item 输出JSON对象
+        void BuildUserInfoJson(int user_id, Json::Value& item)
+        {
+            User author;
+            if (_model.User().GetUserById(user_id, &author))
+            {
+                item["author_name"] = author.name;
+                item["author_avatar"] = GetEffectiveAvatarUrl(author);
+            }
+            else
+            {
+                item["author_name"] = "";
+                item["author_avatar"] = "/pictures/head.jpg";
+            }
+        }
+
+        /// 构建用户信息JSON（批量模式，使用预查询的用户映射）
+        /// @param user_id 用户ID
+        /// @param item 输出JSON对象
+        /// @param user_map 预查询的用户映射 (uid -> User)
+        void BuildUserInfoJsonBatch(int user_id, Json::Value& item, const std::map<int, User>& user_map)
+        {
+            auto it = user_map.find(user_id);
+            if (it != user_map.end())
+            {
+                item["author_name"] = it->second.name;
+                item["author_avatar"] = GetEffectiveAvatarUrl(it->second);
+            }
+            else
+            {
+                item["author_name"] = "";
+                item["author_avatar"] = "/pictures/head.jpg";
+            }
+        }
+
+        /// 设置分页结果
+        /// @param result 输出JSON
+        /// @param total_count 总数
+        /// @param page 当前页
+        /// @param size 每页大小
+        void SetPaginationResult(Json::Value* result, int total_count, int page, int size)
+        {
+            (*result)["success"] = true;
+            (*result)["total"] = total_count;
+            int total_pages = (size > 0) ? ((total_count + size - 1) / size) : 0;
+            (*result)["total_pages"] = total_pages;
+            (*result)["page"] = std::max(1, page);
+            (*result)["size"] = size;
+        }
+
+        /// Solution对象转JSON
+        /// @param s Solution对象
+        /// @param item 输出JSON
+        void SolutionToJson(const Solution& s, Json::Value& item)
+        {
+            item["id"] = Json::UInt64(s.id);
+            item["question_id"] = s.question_id;
+            item["user_id"] = s.user_id;
+            item["title"] = s.title;
+            item["content_md"] = s.content_md;
+            item["like_count"] = s.like_count;
+            item["favorite_count"] = s.favorite_count;
+            item["comment_count"] = s.comment_count;
+            item["status"] = _model.Solution().SolutionStatusToDbString(s.status);
+            item["created_at"] = s.created_at;
+            item["updated_at"] = s.updated_at;
+        }
+
+        /// Comment对象转JSON
+        /// @param c Comment对象
+        /// @param item 输出JSON
+        void CommentToJson(const Comment& c, Json::Value& item)
+        {
+            item["id"] = Json::UInt64(c.id);
+            item["solution_id"] = Json::UInt64(c.solution_id);
+            item["user_id"] = c.user_id;
+            item["content"] = c.content;
+            item["is_edited"] = c.is_edited;
+            item["created_at"] = c.created_at;
+            item["updated_at"] = c.updated_at;
+            item["parent_id"] = Json::UInt64(c.parent_id);
+            item["reply_to_user_id"] = c.reply_to_user_id;
+            item["reply_to_user_name"] = c.reply_to_user_name;
+            item["like_count"] = c.like_count;
+            item["favorite_count"] = c.favorite_count;
+            item["author_name"] = c.author_name;
+            item["author_avatar"] = "/pictures/head.jpg";
+        }
+
+        /// 通用切换操作（点赞/收藏）
+        /// @param solution_id 题解ID
+        /// @param current_user 当前用户
+        /// @param action_type 操作类型（"like" 或 "favorite"）
+        /// @param result 输出JSON
+        /// @param err_code 错误码
+        /// @return 是否成功
+        bool ToggleSolutionAction(long long solution_id,
+                                  const User& current_user,
+                                  const std::string& action_type,
+                                  Json::Value* result,
+                                  std::string* err_code)
+        {
+            if (result == nullptr || err_code == nullptr)
+            {
+                return false;
+            }
+
+            if (current_user.uid <= 0)
+            {
+                *err_code = "UNAUTHORIZED";
+                return false;
+            }
+
+            Solution solution;
+            if (!_model.Solution().GetSolutionById(solution_id, &solution))
+            {
+                *err_code = "SOLUTION_NOT_FOUND";
+                return false;
+            }
+
+            bool now_active = false;
+            unsigned int new_count = 0;
+            if (!_model.Solution().ToggleSolutionAction(solution_id, current_user.uid, action_type, &now_active, &new_count))
+            {
+                *err_code = "DB_ERROR";
+                return false;
+            }
+
+            (*result)["success"] = true;
+            (*result)[action_type + "d"] = now_active;
+            (*result)[action_type + "_count"] = new_count;
+            return true;
+        }
+
         Model _model;
         View _view;
         CentralConsole _console;

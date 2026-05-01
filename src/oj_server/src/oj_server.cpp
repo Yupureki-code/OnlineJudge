@@ -210,9 +210,10 @@ int main()
         return true;
     };
     //设置静态文件目录
-    svr.set_mount_point("/pictures", HTML_PATH + std::string("/pictures"));
-    svr.set_mount_point("/css", HTML_PATH + std::string("/css"));
-    svr.set_mount_point("/spa", HTML_PATH + std::string("/spa"));
+    svr.set_mount_point("/", HTML_PATH + std::string("pictures"));
+    svr.set_mount_point("/pictures", HTML_PATH + std::string("pictures"));
+    svr.set_mount_point("/css", HTML_PATH + std::string("css"));
+    svr.set_mount_point("/spa", HTML_PATH + std::string("spa"));
     //设置路由和处理函数
     // ── 静态资源 ──
     svr.Get("/js/(.*)", [](const Request& req, Response& rep){
@@ -1042,14 +1043,14 @@ int main()
         User current_user;
         if (!requireAuth(req, rep, &current_user)) return;
         //获取头像数据
-        if (!req.has_file("avatar"))
+        if (!req.form.has_file("avatar"))
         {
             Json::Value r; r["success"] = false; r["error_code"] = "NO_FILE";
             replyJson(rep, r, 400);
             return;
         }
 
-        const auto& file = req.get_file_value("avatar");
+        FormData file = req.form.get_file("avatar");
         std::string content_type = file.content_type;
         //保存头像
         Json::Value result; std::string err_code;
@@ -1076,6 +1077,27 @@ int main()
             http_status = 500;
         }
         replyJson(rep, result, http_status);
+    });
+    //获取题目基本信息——返回题号、标题等元数据，用于题解发布页等
+    svr.Get(R"(/api/question/(\d+)$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+        addCORSHeaders(rep);
+        std::string question_id = req.matches[1];
+        Json::Value result;
+        Question q;
+        if (ctl.GetModel()->Question().GetOneQuestion(question_id, q))
+        {
+            result["success"] = true;
+            result["question"]["number"] = q.number;
+            result["question"]["title"] = q.title;
+            result["question"]["star"] = q.star;
+            replyJson(rep, result, 200);
+        }
+        else
+        {
+            result["success"] = false;
+            result["error_code"] = "QUESTION_NOT_FOUND";
+            replyJson(rep, result, 404);
+        }
     });
     //获取题目示例测试用例——返回题目预设的输入/输出样例，用于前端展示
     svr.Get(R"(/api/question/(\d+)/sample_tests$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {

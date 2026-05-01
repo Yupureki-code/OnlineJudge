@@ -133,15 +133,6 @@ namespace ns_model
                     if (i) idlist << ",";
                     idlist << top_level_ids[i];
                 }
-                std::string group_sql = "select parent_id, count(*) as cnt from solution_comments where parent_id in (" + idlist.str() + ") group by parent_id";
-                if (mysql_query(my.get(), group_sql.c_str()) == 0)
-                {
-                    MYSQL_RES* res2 = mysql_store_result(my.get());
-                    if (res2 != nullptr)
-                    {
-                        mysql_free_result(res2);
-                    }
-                }
             }
             mysql_free_result(res);
 
@@ -347,11 +338,38 @@ namespace ns_model
         }
 
         //获取评论
+        /// 根据ID获取评论详情（带Redis缓存）
         bool GetCommentById(unsigned long long comment_id, Comment* comment)
         {
             if (comment == nullptr)
             {
                 return false;
+            }
+
+            // 先查Redis缓存
+            std::string cache_key = "comment:detail:" + std::to_string(comment_id);
+            std::string cached;
+            if (_cache.GetStringByAnyKey(cache_key, &cached))
+            {
+                Json::CharReaderBuilder builder;
+                Json::Value val;
+                std::istringstream ss(cached);
+                if (Json::parseFromStream(builder, ss, &val, nullptr) && val.isMember("id"))
+                {
+                    comment->id = val["id"].asUInt64();
+                    comment->solution_id = val["solution_id"].asUInt64();
+                    comment->user_id = val["user_id"].asInt();
+                    comment->content = val["content"].asString();
+                    comment->is_edited = val["is_edited"].asBool();
+                    comment->parent_id = val["parent_id"].asUInt64();
+                    comment->reply_to_user_id = val["reply_to_user_id"].asInt();
+                    comment->like_count = val["like_count"].asUInt();
+                    comment->favorite_count = val["favorite_count"].asUInt();
+                    comment->created_at = val["created_at"].asString();
+                    comment->updated_at = val["updated_at"].asString();
+                    comment->reply_to_user_name = val["reply_to_user_name"].asString();
+                    return true;
+                }
             }
 
             auto my = CreateConnection();
@@ -400,6 +418,23 @@ namespace ns_model
             comment->reply_to_user_name = (row[12] != nullptr) ? row[12] : "";
             // row[11] is author_name; not stored in Comment struct
             mysql_free_result(res);
+
+            // 写入Redis缓存
+            Json::Value cache_val;
+            cache_val["id"] = static_cast<Json::UInt64>(comment->id);
+            cache_val["solution_id"] = static_cast<Json::UInt64>(comment->solution_id);
+            cache_val["user_id"] = comment->user_id;
+            cache_val["content"] = comment->content;
+            cache_val["is_edited"] = comment->is_edited;
+            cache_val["parent_id"] = static_cast<Json::UInt64>(comment->parent_id);
+            cache_val["reply_to_user_id"] = comment->reply_to_user_id;
+            cache_val["like_count"] = comment->like_count;
+            cache_val["favorite_count"] = comment->favorite_count;
+            cache_val["created_at"] = comment->created_at;
+            cache_val["updated_at"] = comment->updated_at;
+            cache_val["reply_to_user_name"] = comment->reply_to_user_name;
+            Json::FastWriter writer;
+            _cache.SetStringByAnyKey(cache_key, writer.write(cache_val), _cache.BuildJitteredTtl(300, 60));
             return true;
         }
 
@@ -563,9 +598,10 @@ namespace ns_model
             }
             if (mysql_affected_rows(my.get()) == 0)
             {
-                // no rows updated => wrong owner or not found
                 return false;
             }
+            // 清除评论缓存
+            _cache.DeleteStringByAnyKey("comment:detail:" + std::to_string(comment_id));
             return true;
         }
 

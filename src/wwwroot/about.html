@@ -4,248 +4,36 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>关于 - Yupureki-OJ</title>
-    <link rel="preload" as="image" href="/pictures/preview.jpg">
+    <link rel="stylesheet" href="/css/common.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
 
-        .page-loading-mask {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(24, 28, 24, 0.55);
-            backdrop-filter: blur(3px);
-            z-index: 99999;
-            transition: opacity 0.2s ease;
-        }
 
-        .page-loading-mask.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
 
-        .page-loading-text {
-            color: #F4F6F0;
-            font-size: 18px;
-            letter-spacing: 0.08em;
-            padding: 12px 18px;
-            border: 1px solid rgba(244, 246, 240, 0.25);
-            border-radius: 12px;
-            background: rgba(24, 28, 24, 0.45);
-        }
 
-        /* 登录/注册弹窗样式 */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
-        }
 
-        .modal-content {
-            background-color: rgba(60, 80, 60, 0.95);
-            margin: 15% auto;
-            padding: 30px;
-            border: 1px solid rgba(244, 246, 240, 0.2);
-            border-radius: 20px;
-            width: 90%;
-            max-width: 400px;
-            color: #F4F6F0;
-            position: relative;
-            animation: fadeIn 0.3s ease;
-        }
 
-        .close {
-            color: rgba(244, 246, 240, 0.6);
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
 
-        .close:hover {
-            color: #F4F6F0;
-        }
 
-        .modal h2 {
-            margin-bottom: 20px;
-            font-size: 24px;
-            font-weight: 300;
-            text-align: center;
-        }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: rgba(244, 246, 240, 0.8);
-        }
 
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(244, 246, 240, 0.2);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #F4F6F0;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
 
-        .form-group input:focus {
-            outline: none;
-            border-color: rgba(244, 246, 240, 0.4);
-            background: rgba(255, 255, 255, 0.08);
-        }
 
-        .form-group input::placeholder {
-            color: rgba(244, 246, 240, 0.4);
-        }
 
-        .auth-btn {
-            padding: 12px 24px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            color: rgba(244, 246, 240, 0.8);
-            border: 1px solid rgba(244, 246, 240, 0.1);
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 400;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            letter-spacing: 0.02em;
-            margin-left: 10px;
-        }
 
-        .auth-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: #F4F6F0;
-            transform: translateY(-2px);
-        }
 
-        .submit-btn {
-            width: 100%;
-            padding: 14px;
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid rgba(76, 175, 80, 0.3);
-            border-radius: 10px;
-            color: #4CAF50;
-            font-size: 14px;
-            font-weight: 400;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-        }
 
-        .submit-btn:hover {
-            background: rgba(76, 175, 80, 0.3);
-            transform: translateY(-2px);
-        }
 
-        .form-toggle {
-            text-align: center;
-            margin-top: 15px;
-            font-size: 14px;
-            color: rgba(244, 246, 240, 0.6);
-        }
 
-        .form-toggle a {
-            color: #4CAF50;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
 
-        .form-toggle a:hover {
-            color: #81C784;
-        }
 
-        /* 认证标签页样式 */
-        .auth-tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid rgba(244, 246, 240, 0.2);
-        }
 
-        .auth-tab {
-            flex: 1;
-            padding: 12px;
-            background: transparent;
-            border: none;
-            color: rgba(244, 246, 240, 0.6);
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
 
-        .auth-tab:hover {
-            color: #F4F6F0;
-        }
 
-        .auth-tab.active {
-            color: #4CAF50;
-            border-bottom: 2px solid #4CAF50;
-        }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            min-height: 100vh;
-            overflow-x: hidden;
-            background-color: #2D2F2C;
-            background-image: url('/pictures/preview.jpg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-        }
 
-        /* 背景图片 */
-        .background {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url('./pictures/preview.jpg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            filter: blur(0.2px);
-            z-index: -1;
-        }
 
-        /* 雨线效果 */
-        .rain-lines {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
 
-        .rain-line {
-            position: absolute;
-            width: 1px;
-            background: linear-gradient(to bottom, transparent, rgba(244, 246, 240, 0.05));
-            animation: rain 3s linear infinite;
-        }
 
         @keyframes rain {
             from {
@@ -272,131 +60,23 @@
             z-index: 2;
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(60, 80, 60, 0.15);
-            backdrop-filter: blur(20px);
-            padding: 10px 80px;
-            border: 1px solid rgba(244, 246, 240, 0.1);
-            transition: all 0.3s ease;
-        }
 
-        .head {
-            margin-top: 20px;
-            align-items: center;
-            border-radius: 50%;
-        }
 
-         .search-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
 
-        .search-input {
-            width: 200px;
-            padding: 8px 12px;
-            border: 1px solid rgba(244, 246, 240, 0.2);
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #F4F6F0;
-            font-size: 14px;
-            font-family: 'Inter', sans-serif;
-            letter-spacing: 0.02em;
-            transition: all 0.3s ease;
-        }
 
-        .search-input::placeholder {
-            color: rgba(244, 246, 240, 0.4);
-        }
 
-        .search-input:focus {
-            outline: none;
-            border-color: rgba(244, 246, 240, 0.4);
-            background: rgba(255, 255, 255, 0.08);
-            width: 250px;
-        }
 
-        .logo {
-            font-size: 24px;
-            font-weight: 300;
-            color: #F4F6F0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            letter-spacing: 0.1em;
-        }
 
-        .nav {
-            display: flex;
-            gap: 40px;
-            align-items: center;
-            margin-left: 80px;
-            margin-right: 80px;
-        }
 
-        .nav a {
-            color: rgba(244, 246, 240, 0.8);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 300;
-            letter-spacing: 0.02em;
-            position: relative;
-            transition: all 0.3s ease;
-        }
 
-        .nav a:hover {
-            color: #F4F6F0;
-        }
 
-        .nav a::after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 50%;
-            width: 0;
-            height: 1px;
-            background: rgba(244, 246, 240, 0.6);
-            transition: all 0.3s ease;
-            transform: translateX(-50%);
-        }
 
-        .nav a:hover::after {
-            width: 100%;
-        }
 
-        .nav a.active {
-            color: #F4F6F0;
-        }
 
-        .nav a.active::after {
-            width: 100%;
-        }
 
-        .rain-toggle {
-            width: 32px;
-            height: 32px;
-            border: 1px solid rgba(244, 246, 240, 0.6);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
 
-        .rain-toggle:hover {
-            background: rgba(244, 246, 240, 0.1);
-            transform: scale(1.1);
-        }
 
-        .rain-toggle::before {
-            content: '♪';
-            color: rgba(244, 246, 240, 0.6);
-            font-size: 14px;
-        }
 
-        /* 主要内容区域 */
         .about-content {
             max-width: 800px;
             margin: 0 auto;
@@ -426,7 +106,6 @@
             padding-top: 100px;
         }
 
-        /* 卡片样式 */
         .glass-card {
             background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(20px);
@@ -447,7 +126,6 @@
             border-bottom: 1px solid rgba(244, 246, 240, 0.2);
         }
 
-        /* 链接样式 */
         .link-item {
             display: flex;
             align-items: center;
@@ -501,7 +179,6 @@
             opacity: 0.6;
         }
 
-        /* 版权说明 */
         .copyright-section {
             margin-top: 20px;
         }
@@ -537,17 +214,7 @@
             margin: 20px 0;
         }
 
-        /* 页脚 */
-        .footer {
-            text-align: center;
-            padding: 60px 0;
-            color: rgba(244, 246, 240, 0.5);
-            font-size: 12px;
-            letter-spacing: 0.02em;
-            animation: fadeIn 2s ease 1s both;
-        }
 
-        /* 涟漪效果 */
         .ripple {
             position: absolute;
             border-radius: 50%;
@@ -564,7 +231,6 @@
             }
         }
 
-        /* 响应式设计 */
         @media (max-width: 768px) {
             .page-title {
                 font-size: 32px;
@@ -589,20 +255,20 @@
                 width: auto;
             }
 
-            .nav {
-                flex-direction: column;
-                gap: 15px;
-            }
 
-            .header {
-                flex-direction: column;
-                gap: 20px;
-                text-align: center;
-            }
         }
 
 
-    </style>
+    
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 10px; text-align: center; padding: 10px 12px; }
+            .nav { margin-left: 0; margin-right: 0; gap: 12px; flex-wrap: wrap; justify-content: center; }
+            .container { padding: 12px; }
+            .page-title { font-size: 28px; padding-top: 40px; }
+            .link-item { flex-direction: column; }
+        }
+</style>
 </head>
 <body>
     <div id="page-loading-mask" class="page-loading-mask">
