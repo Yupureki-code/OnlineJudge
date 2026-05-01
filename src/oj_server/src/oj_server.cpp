@@ -1092,6 +1092,25 @@ int main()
         }
         replyJson(rep, result, http_status);
     });
+    //查询当前用户是否通过了某道题目——用于前端展示通过状态
+    svr.Get(R"(/api/question/(\d+)/pass_status$)", [&ctl, &getCurrentUser, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value response;
+        User current_user;
+        if (!getCurrentUser(req, &current_user))
+        {
+            response["success"] = true;
+            response["passed"] = false;
+            response["logged_in"] = false;
+            replyJson(rep, response);
+            return;
+        }
+        std::string question_id = req.matches[1];
+        bool passed = ctl.Question().HasUserPassedQuestion(current_user.uid, question_id);
+        response["success"] = true;
+        response["passed"] = passed;
+        response["logged_in"] = true;
+        replyJson(rep, response);
+    });
     //运行单次测试——提交代码+测试类型，编译服务器编译运行后返回结果。
     //支持两种模式："sample"（用预设用例）和 "custom"（自定义输入）
     svr.Post(R"(/api/question/(\d+)/test$)", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
@@ -1184,6 +1203,102 @@ int main()
             {
                 http_status = 500;
             }
+        }
+        replyJson(rep, result, http_status);
+    });
+
+    //获取题解评论列表——分页返回某条题解下的顶层评论
+    svr.Get(R"(/api/solutions/(\d+)/comments$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+        long long solution_id = 0;
+        try { solution_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的题解ID"); return; }
+        int page = HttpUtil::ParsePositiveIntParam(req, "page", 1, 1, 1000000);
+        int size = HttpUtil::ParsePositiveIntParam(req, "size", 20, 1, 1000);
+        Json::Value result;
+        std::string err_code;
+        bool ok = ctl.Comment().GetTopLevelComments((unsigned long long)solution_id, page, size, &result, &err_code);
+        int http_status = 200;
+        if (!ok)
+        {
+            result["success"] = false;
+            result["error_code"] = err_code;
+            http_status = (err_code == "SOLUTION_NOT_FOUND" ? 404 : 500);
+        }
+        replyJson(rep, result, http_status);
+    });
+
+    //发表题解评论——登录用户可对某条题发表评论或回复
+    svr.Post(R"(/api/solutions/(\d+)/comments$)", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+        long long solution_id = 0;
+        try { solution_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的题解ID"); return; }
+        Json::Value in_value;
+        if (!parseBody(req, rep, &in_value)) return;
+        if (!in_value.isMember("content") || !in_value["content"].isString())
+        {
+            addCORSHeaders(rep);
+            HttpUtil::ReplyBadRequest(rep, "内容不能为空");
+            return;
+        }
+        std::string content = in_value["content"].asString();
+        unsigned long long parent_id = 0;
+        if (in_value.isMember("parent_id") && in_value["parent_id"].isIntegral())
+        {
+            parent_id = static_cast<unsigned long long>(in_value["parent_id"].asUInt64());
+        }
+        User current_user;
+        if (!requireAuth(req, rep, &current_user)) return;
+        Json::Value result;
+        std::string err_code;
+        bool ok = ctl.Comment().PostComment((unsigned long long)solution_id, current_user, content, &result, &err_code, parent_id);
+        int http_status = 200;
+        if (!ok)
+        {
+            result["success"] = false;
+            result["error_code"] = err_code;
+            http_status = (err_code == "UNAUTHORIZED" ? 401 : (err_code == "SOLUTION_NOT_FOUND" ? 404 : 400));
+        }
+        replyJson(rep, result, http_status);
+    });
+
+    //编辑评论——仅评论作者可修改自己的评论内容
+    svr.Put(R"(/api/comments/(\d+)$)", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+        long long comment_id = 0;
+        try { comment_id = std::stoll(req.matches[1]); } catch (...) { HttpUtil::ReplyBadRequest(rep, "无效的评论ID"); return; }
+        Json::Value in_value;
+        if (!parseBody(req, rep, &in_value)) return;
+        if (!in_value.isMember("content") || !in_value["content"].isString())
+        {
+            addCORSHeaders(rep);
+            HttpUtil::ReplyBadRequest(rep, "内容不能为空");
+            return;
+        }
+        std::string content = in_value["content"].asString();
+        User current_user;
+        if (!requireAuth(req, rep, &current_user)) return;
+        Json::Value result;
+        std::string err_code;
+        bool ok = ctl.Comment().EditComment((unsigned long long)comment_id, current_user, content, &result, &err_code);
+        int http_status = 200;
+        if (!ok)
+        {
+            result["success"] = false; result["error_code"] = err_code;
+            http_status = (err_code == "NOT_FOUND" ? 404 : (err_code == "FORBIDDEN" ? 403 : 400));
+        }
+        replyJson(rep, result, http_status);
+    });
+
+    //删除评论——仅评论作者可删除自己的评论
+    svr.Delete(R"(/api/comments/(\d+)$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+        long long comment_id = 0;
+        try { comment_id = std::stoll(req.matches[1]); } catch (...) { Json::Value r; r["success"] = false; r["error_code"] = "INVALID_ID"; replyJson(rep, r, 400); return; }
+        User current_user;
+        if (!requireAuth(req, rep, &current_user)) return;
+        Json::Value result; std::string err_code;
+        bool ok = ctl.Comment().DeleteComment((unsigned long long)comment_id, current_user, &result, &err_code);
+        int http_status = 200;
+        if (!ok)
+        {
+            result["success"] = false; result["error_code"] = err_code;
+            http_status = (err_code == "NOT_FOUND" ? 404 : (err_code == "FORBIDDEN" ? 403 : 400));
         }
         replyJson(rep, result, http_status);
     });
