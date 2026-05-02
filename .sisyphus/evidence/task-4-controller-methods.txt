@@ -1,5 +1,0 @@
-Controller methods added for Task 4:
-- bool PostComment(unsigned long long solution_id, const User& current_user, const std::string& content, Json::Value* result, std::string* err_code)
-- bool GetComments(unsigned long long solution_id, int page, int size, Json::Value* result, std::string* err_code)
-- bool EditComment(unsigned long long comment_id, const User& current_user, const std::string& content, Json::Value* result, std::string* err_code)
-- bool DeleteComment(unsigned long long comment_id, const User& current_user, Json::Value* result, std::string* err_code)

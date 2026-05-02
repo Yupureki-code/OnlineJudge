@@ -481,7 +481,6 @@ namespace ns_model
         //刷新缓存记录
         void FlushCacheMetrics()
         {
-            logger(ns_log::INFO)<<"刷新缓存";
             for (int t = 0; t < 5; ++t)
             {
                 auto& m = Metrics().actions[t];

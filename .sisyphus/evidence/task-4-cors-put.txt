@@ -1,4 +1,0 @@
-Cors preflight coverage (PUT allowed):
-- Access-Control-Allow-Methods includes PUT
-- Example snippet from code:
-  rep.set_header("Access-Control-Allow-Methods", "POST, GET, DELETE, OPTIONS, PUT");

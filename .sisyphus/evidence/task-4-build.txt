@@ -1,9 +1,0 @@
-Build commands used for Task 4:
-- mkdir build && cd build
-- cmake .. -DOJ_TESTS=tests -DOJ_QUESTIONS=questions -DOJ_USERS=users \
-  -DHOST=localhost -DUSER=oj_server -DPASSWD=password \
-  -DMYOJ=myoj -DPORT=3306 \
-  -DREDIS=tcp://127.0.0.1:6379
-- make -j$(nproc)
-
-Note: Build completed successfully in the actual environment.

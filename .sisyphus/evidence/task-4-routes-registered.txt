@@ -1,7 +1,0 @@
-Registered routes for Task 4 (comments API):
-- GET /api/solutions/(\d+)/comments
-- POST /api/solutions/(\d+)/comments
-- PUT /api/comments/(\d+)
-- DELETE /api/comments/(\d+)
-- OPTIONS /api/solutions/(\d+)/comments
-- OPTIONS /api/comments/(\d+) 

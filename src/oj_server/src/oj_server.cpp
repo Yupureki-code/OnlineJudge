@@ -1,3 +1,4 @@
+#include <Logger/logstrategy.h>
 #include <httplib.h>
 #include "../include/control/oj_control.hpp"
 #include "../../comm/comm.hpp"
@@ -161,6 +162,7 @@ std::string InjectUserInfo(const std::string& html, User* user, bool isLoggedIn,
 
 int main()
 {
+    ns_log::Logger::GetInstance().enable_file_log_strategy(LOG_PATH,"oj_server.log");
     // Initialize MySQL client library for thread safety
     mysql_library_init(0, nullptr, nullptr);
 
@@ -1540,7 +1542,7 @@ int main()
                     unsigned long long id = std::stoull(token);
                     ids.push_back(id);
                 } catch (...) {
-                    // skip invalid entries
+                    // 跳过
                 }
             }
         }
@@ -1595,7 +1597,7 @@ int main()
         addCORSHeaders(rep);
         rep.status = 200;
     });
-
+    Daemon(false, false);
     svr.listen("0.0.0.0", 8080);
     ctl.GetModel()->StopMetricsFlushWorker();
     return 0;

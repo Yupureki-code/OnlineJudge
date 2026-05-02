@@ -15,7 +15,7 @@ int main(int argv,char* argc[])
         std::cout<<"format: ./" << __FILE__ << " port"<<std::endl;
         return 1;
     }
-    //ns_log::Logger::GetInstance().enable_file_log_strategy(LOG_PATH,"compile_server.log");
+    ns_log::Logger::GetInstance().enable_file_log_strategy(LOG_PATH,"compile_server.log");
     HandlerEntry entry;
     Server svr;
     //配置:得到题目的答案->判断对错
@@ -29,7 +29,7 @@ int main(int argv,char* argc[])
         }
     });
     logger(INFO)<<"配置服务器 0.0.0.0:"<<argc[1]<<" 成功";
-    //Daemon(false, false);
+    Daemon(false, false);
     svr.listen("0.0.0.0", atoi(argc[1]));
     return 0;
 }

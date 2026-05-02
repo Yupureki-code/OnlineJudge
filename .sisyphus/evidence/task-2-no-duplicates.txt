@@ -1,6 +1,0 @@
-createRainLines: 1
-getQuestionIdFromPath: 1
-setMessage: 1
-loadQuestionMeta: 1
-setupLoginState: 1
-publishSolution: 1

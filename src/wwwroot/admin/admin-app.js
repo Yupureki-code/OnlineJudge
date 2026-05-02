@@ -165,8 +165,6 @@
             '<div class="metric"><div class="k">题目总数</div><div class="v">' + (data.question_count || 0) + '</div><div class="s">题库规模</div></div>',
             '<div class="metric"><div class="k">用户总数</div><div class="v">' + (data.user_count || 0) + '</div><div class="s">已注册账户</div></div>',
             '<div class="metric"><div class="k">管理员总数</div><div class="v">' + (data.admin_count || 0) + '</div><div class="s">后台可登录账户</div></div>',
-            '<div class="metric"><div class="k">列表缓存命中率</div><div class="v">' + formatRate(data.cache && data.cache.list_hit_rate) + '</div><div class="s">请求 ' + ((data.cache && data.cache.list_requests) || 0) + '</div></div>',
-            '<div class="metric"><div class="k">详情缓存命中率</div><div class="v">' + formatRate(data.cache && data.cache.detail_hit_rate) + '</div><div class="s">请求 ' + ((data.cache && data.cache.detail_requests) || 0) + '</div></div>',
             '<div class="metric"><div class="k">审计日志总量</div><div class="v">' + (data.recent_audit_total || 0) + '</div><div class="s">最近操作可追溯</div></div>',
             '</div>'
         ].join('');
@@ -225,22 +223,13 @@
             '<div class="overview-grid">',
             '<div class="stack">',
             '<section class="panel">',
-            '<h3>缓存运行概况</h3>',
-            '<div class="page-subtitle">用于观察主站题库页与详情页的命中情况</div>',
-            '<div class="pill-row">',
-            '<span class="pill">列表命中 ' + formatRate(cache.list_hit_rate) + '</span>',
-            '<span class="pill">详情命中 ' + formatRate(cache.detail_hit_rate) + '</span>',
-            '<span class="pill">静态页命中 ' + formatRate(cache.html_static_hit_rate) + '</span>',
-            '<span class="pill">列表HTML命中 ' + formatRate(cache.html_list_hit_rate) + '</span>',
-            '<span class="pill">详情HTML命中 ' + formatRate(cache.html_detail_hit_rate) + '</span>',
-            '</div>',
+            '<h3>缓存运行概况 <span style="font-size:12px;color:var(--muted);">(过去24小时)</span></h3>',
+            '<div class="page-subtitle">按业务类型展示缓存命中情况</div>',
+            '<div id="cache-pills" class="pill-row">加载中...</div>',
             '<table class="table-compact">',
-            '<thead><tr><th>链路</th><th>请求</th><th>Miss</th><th>DB回退</th><th>平均耗时</th></tr></thead>',
-            '<tbody>',
-            '<tr><td>题库列表</td><td>' + (cache.list_requests || 0) + '</td><td>' + (cache.list_misses || 0) + '</td><td>' + (cache.list_db_fallbacks || 0) + '</td><td>' + Number(cache.list_avg_ms || 0).toFixed(2) + ' ms</td></tr>',
-            '<tr><td>题目详情</td><td>' + (cache.detail_requests || 0) + '</td><td>' + (cache.detail_misses || 0) + '</td><td>' + (cache.detail_db_fallbacks || 0) + '</td><td>' + Number(cache.detail_avg_ms || 0).toFixed(2) + ' ms</td></tr>',
-            '</tbody></table>',
-            '</section>',
+            '<thead><tr><th>业务类型</th><th>请求</th><th>缓存命中</th><th>DB回退</th><th>命中率</th><th>总耗时</th></tr></thead>',
+            '<tbody id="cache-table-body">加载中...</tbody>',
+            '</table></section>',
             renderOverviewTable('最近注册用户', '按注册时间倒序展示最近 5 条', '<tr><th>UID</th><th>用户名</th><th>邮箱</th><th>注册时间</th></tr>', recentUsersBody),
             renderOverviewTable('最近更新题目', '帮助快速定位近期维护的题目', '<tr><th>题号</th><th>标题</th><th>难度</th><th>最近更新时间</th></tr>', recentQuestionsBody),
             '</div>',
@@ -257,6 +246,23 @@
             '</div>',
             '</div>'
         ].join('');
+        loadCacheMetrics();
+    }
+
+    async function loadCacheMetrics() {
+        var result = await getJson("/api/admin/cache/metrics");
+        if (!result.ok || !result.data.success) return;
+        var metrics = result.data.metrics || [];
+        var pillsHtml = metrics.map(function(m) {
+            return '<span class="pill">' + m.name + ' ' + (m.hit_rate || 0).toFixed(1) + '%</span>';
+        }).join('');
+        var tableHtml = metrics.map(function(m) {
+            return '<tr><td>' + m.name + '</td><td>' + m.total_requests + '</td><td>' + m.cache_hits + '</td><td>' + m.db_fallbacks + '</td><td>' + (m.hit_rate || 0).toFixed(1) + '%</td><td>' + m.total_ms + ' ms</td></tr>';
+        }).join('');
+        var pillsEl = document.getElementById('cache-pills');
+        var tableEl = document.getElementById('cache-table-body');
+        if (pillsEl) pillsEl.innerHTML = pillsHtml || '<span style="color:var(--muted)">暂无数据</span>';
+        if (tableEl) tableEl.innerHTML = tableHtml || '<tr><td colspan="6" class="empty">暂无数据</td></tr>';
     }
 
     async function renderUsers() {

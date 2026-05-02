@@ -312,9 +312,8 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			{
 				Json::Value item;
 				item["request_id"] = log.request_id;
-				item["operator_admin_id"] = log.operator_admin_id;
-				item["operator_uid"] = log.operator_uid;
-				item["operator_role"] = log.operator_role;
+                item["operator_admin_id"] = log.operator_admin_id;
+                item["operator_role"] = log.operator_role;
 				item["action"] = log.action;
 				item["resource_type"] = log.resource_type;
 				item["result"] = log.result;
@@ -1428,8 +1427,10 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 bool AdminServer::Start(const std::string& host, int port)
 {
 	Server svr;
+	ns_log::Logger::GetInstance().enable_file_log_strategy(LOG_PATH,"oj_admin.log");
 	RegisterRoutes(svr);
 	logger(INFO) << "admin server start at " << host << ":" << port;
+	Daemon(false, false);
 	return svr.listen(host.c_str(), port);
 }
 }

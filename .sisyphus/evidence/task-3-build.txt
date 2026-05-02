@@ -1,3 +1,0 @@
-Build successful:
-- Built target oj_admin
-- Built target oj_server

@@ -1,8 +1,0 @@
-- bool GetCommentsBySolutionId(unsigned long long solution_id, int page, int size,
--                              std::vector<Comment>* comments, int* total_count)
-- bool CreateComment(const Comment& comment, unsigned long long* comment_id = nullptr)
-- bool GetCommentById(unsigned long long comment_id, Comment* comment)
-- bool UpdateComment(unsigned long long comment_id, int user_id, const std::string& content)
-- bool DeleteComment(unsigned long long comment_id, int user_id, bool is_admin = false)
-- bool GetAdminByUid(int uid)
-- bool GetAdminByUid(int uid, AdminAccount* admin)

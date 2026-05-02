@@ -1,1 +1,0 @@
-169:        rep.set_header("Access-Control-Allow-Methods", "POST, GET, DELETE, OPTIONS, PUT");

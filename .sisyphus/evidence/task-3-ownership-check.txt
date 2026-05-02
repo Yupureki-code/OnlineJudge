@@ -1,2 +1,0 @@
-1458: << " and user_id = " << user_id;
-1517: del_sql << "delete from solution_comments where id=" << comment_id << " and user_id=" << user_id;
