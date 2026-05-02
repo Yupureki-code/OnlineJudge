@@ -20,6 +20,7 @@
 #include "model_user.hpp"
 #include "model_question.hpp"
 #include <mysql/mysql.h>
+#include <thread>
 
 // model: 主要用来和数据进行交互，对外提供访问数据的接口
 
@@ -170,33 +171,6 @@ namespace ns_model
             return table;
         }
 
-        struct CacheMetricsSnapshot
-        {
-            long long list_requests = 0;
-            long long list_hits = 0;
-            long long list_misses = 0;
-            long long list_db_fallbacks = 0;
-            long long list_total_ms = 0;
-
-            long long detail_requests = 0;
-            long long detail_hits = 0;
-            long long detail_misses = 0;
-            long long detail_db_fallbacks = 0;
-            long long detail_total_ms = 0;
-
-            long long html_static_requests = 0;
-            long long html_static_hits = 0;
-            long long html_static_misses = 0;
-
-            long long html_list_requests = 0;
-            long long html_list_hits = 0;
-            long long html_list_misses = 0;
-
-            long long html_detail_requests = 0;
-            long long html_detail_hits = 0;
-            long long html_detail_misses = 0;
-        };
-
         // 在cache中获取静态HTML页面
         bool GetHtmlPage(std::string *html,
                          std::shared_ptr<Cache::CacheKey> key)
@@ -243,18 +217,6 @@ namespace ns_model
         void InvalidatePage(std::shared_ptr<Cache::CacheKey> key)
         {
             _cache.InvalidatePage(key);
-        }
-        void RecordStaticHtmlCacheMetrics(bool cache_hit)
-        {
-            RecordHtmlStaticMetrics(cache_hit);
-        }
-        void RecordListHtmlCacheMetrics(bool cache_hit)
-        {
-            RecordHtmlListMetrics(cache_hit);
-        }
-        void RecordDetailHtmlCacheMetrics(bool cache_hit)
-        {
-            RecordHtmlDetailMetrics(cache_hit);
         }
 
 
@@ -505,37 +467,68 @@ namespace ns_model
             return QueryAuditLogs(sql.str(), logs);
         }
 
-        CacheMetricsSnapshot GetCacheMetricsSnapshot() const
+        void InsertCacheMetricSnapshot(int action_type, long long total, long long hits, long long falls, long long ms)
         {
-            const auto& m = Metrics();
-            CacheMetricsSnapshot s;
-            s.list_requests = m.list_requests.load(std::memory_order_relaxed);
-            s.list_hits = m.list_hits.load(std::memory_order_relaxed);
-            s.list_misses = m.list_misses.load(std::memory_order_relaxed);
-            s.list_db_fallbacks = m.list_db_fallbacks.load(std::memory_order_relaxed);
-            s.list_total_ms = m.list_total_ms.load(std::memory_order_relaxed);
+            auto my = CreateConnection();
+            if (!my) return;
+            std::ostringstream sql;
+            sql << "insert into cache_metrics_snapshots (action_type,total_requests,cache_hits,db_fallbacks,total_ms) values ("
+                << action_type << "," << total << "," << hits << "," << falls << "," << ms << ")";
+            mysql_query(my.get(), sql.str().c_str()); // best-effort
+        }
 
-            s.detail_requests = m.detail_requests.load(std::memory_order_relaxed);
-            s.detail_hits = m.detail_hits.load(std::memory_order_relaxed);
-            s.detail_misses = m.detail_misses.load(std::memory_order_relaxed);
-            s.detail_db_fallbacks = m.detail_db_fallbacks.load(std::memory_order_relaxed);
-            s.detail_total_ms = m.detail_total_ms.load(std::memory_order_relaxed);
+        void FlushCacheMetrics()
+        {
+            for (int t = 0; t < 5; ++t)
+            {
+                auto& m = Metrics().actions[t];
+                long long req = m.total_requests.exchange(0);
+                if (req == 0) continue;
+                long long hits = m.cache_hits.exchange(0);
+                long long falls = m.db_fallbacks.exchange(0);
+                long long ms = m.total_ms.exchange(0);
+                InsertCacheMetricSnapshot(t, req, hits, falls, ms);
+            }
+        }
 
-            s.html_static_requests = m.html_static_requests.load(std::memory_order_relaxed);
-            s.html_static_hits = m.html_static_hits.load(std::memory_order_relaxed);
-            s.html_static_misses = m.html_static_misses.load(std::memory_order_relaxed);
+        void StartMetricsFlushWorker()
+        {
+            _metrics_running = true;
+            _metrics_worker = std::thread([this]() {
+                while (_metrics_running)
+                {
+                    for (int i = 0; i < 30; ++i)
+                    {
+                        if (!_metrics_running) return;
+                        bool need_flush = false;
+                        for (int t = 0; t < 5; ++t)
+                            if (Metrics().actions[t].total_requests.load() >= 100) { need_flush = true; break; }
+                        if (need_flush) break;
+                        std::this_thread::sleep_for(std::chrono::seconds(1));
+                    }
+                    if (!_metrics_running) return;
+                    FlushCacheMetrics();
+                }
+            });
+        }
 
-            s.html_list_requests = m.html_list_requests.load(std::memory_order_relaxed);
-            s.html_list_hits = m.html_list_hits.load(std::memory_order_relaxed);
-            s.html_list_misses = m.html_list_misses.load(std::memory_order_relaxed);
+        void StopMetricsFlushWorker()
+        {
+            _metrics_running = false;
+            if (_metrics_worker.joinable()) _metrics_worker.join();
+        }
 
-            s.html_detail_requests = m.html_detail_requests.load(std::memory_order_relaxed);
-            s.html_detail_hits = m.html_detail_hits.load(std::memory_order_relaxed);
-            s.html_detail_misses = m.html_detail_misses.load(std::memory_order_relaxed);
-            return s;
+        void CleanupOldMetrics()
+        {
+            auto my = CreateConnection();
+            if (!my) return;
+            std::string sql = "delete from cache_metrics_snapshots where created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)";
+            mysql_query(my.get(), sql.c_str());
         }
 
     private:
+        std::atomic<bool> _metrics_running{false};
+        std::thread _metrics_worker;
     };
 
 };

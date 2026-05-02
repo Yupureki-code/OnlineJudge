@@ -166,6 +166,7 @@ int main()
 
     Server svr;
     ns_control::Control ctl;
+    ctl.GetModel()->StartMetricsFlushWorker();
     //添加CORS响应头的函数，供后续路由使用
     auto addCORSHeaders = [](Response& rep) {
         //添加CORS响应头，允许跨域访问
@@ -1596,5 +1597,6 @@ int main()
     });
 
     svr.listen("0.0.0.0", 8080);
+    ctl.GetModel()->StopMetricsFlushWorker();
     return 0;
 }

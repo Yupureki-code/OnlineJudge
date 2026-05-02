@@ -285,12 +285,12 @@ namespace ns_control
             auto html_key = _model.Question().BuildHtmlCacheKey(path, Cache::CacheKey::PageType::kHtml);
             if (_model.GetHtmlPage(html, html_key))
             {
-                _model.RecordStaticHtmlCacheMetrics(true);
+                _model.RecordCacheMetrics(ModelBase::RecordActionType::Question, true, false, 0);
                 logger(INFO) << "[html_cache][static] hit=1 page=" << path << " source=redis";
                 return true;
             }
 
-            _model.RecordStaticHtmlCacheMetrics(false);
+            _model.RecordCacheMetrics(ModelBase::RecordActionType::Question, false, false, 0);
             bool view_cache_hit = false;
             bool ok = _view.GetStaticHtml(path, html, &view_cache_hit);
             if (ok)

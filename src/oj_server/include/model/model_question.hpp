@@ -162,6 +162,7 @@ namespace ns_model
                 logger(ns_log::INFO) << "Cache hit for question list page " << key->GetCacheKeyString(&_cache);
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                RecordCacheMetrics(RecordActionType::Question, true, false, cost_ms);
                 return true;
             }
             // 缓存没命中就查数据库
@@ -229,10 +230,8 @@ namespace ns_model
             _cache.SetQuestionsByPage(write_key, questions, *total_count, *total_pages);
             auto end = std::chrono::steady_clock::now();
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+            RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
-            // 记录指标并返回
-            // 无论是缓存命中还是数据库回源成功，都会调用 RecordListMetrics(...)。
-            // 这里的统计不是为了业务逻辑本身，而是为了监控缓存效果和接口耗时。
         }
         //题目:获得单个题目
         bool GetOneQuestion(const std::string& number,Question& q)
@@ -252,6 +251,7 @@ namespace ns_model
                 logger(ns_log::INFO) << "Cache hit for question " << number;
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                RecordCacheMetrics(RecordActionType::Question, true, false, cost_ms);
                 return true;
             }
             // 缓存没命中就查数据库，先创建 MySQL 连接
@@ -281,6 +281,7 @@ namespace ns_model
             _cache.SetDetailedQuestion(detail_key, q);
             auto end = std::chrono::steady_clock::now();
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+            RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
 

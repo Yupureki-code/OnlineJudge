@@ -143,6 +143,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 	});
 
 	svr.set_mount_point("/admin/assets", HTML_PATH + std::string("/admin"));
+	svr.set_mount_point("/pictures", HTML_PATH + std::string("/pictures"));
 
 	svr.Get("/", [](const Request& req, Response& rep) {
 		(void)req;
@@ -264,7 +265,6 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		}
 		else
 		{
-			auto m = model->GetCacheMetricsSnapshot();
 			std::sort(all_questions.begin(), all_questions.end(), [](const Question& lhs, const Question& rhs) {
 				if (lhs.update_time != rhs.update_time)
 				{
@@ -279,21 +279,6 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 			response["data"]["admin_roles"]["super_admin"] = super_admin_count;
 			response["data"]["admin_roles"]["admin"] = admin_role_count;
 			response["data"]["recent_audit_total"] = recent_audit_total;
-			response["data"]["cache"]["list_requests"] = Json::Int64(m.list_requests);
-			response["data"]["cache"]["list_hits"] = Json::Int64(m.list_hits);
-			response["data"]["cache"]["list_misses"] = Json::Int64(m.list_misses);
-			response["data"]["cache"]["list_db_fallbacks"] = Json::Int64(m.list_db_fallbacks);
-			response["data"]["cache"]["list_avg_ms"] = m.list_requests > 0 ? (static_cast<double>(m.list_total_ms) / static_cast<double>(m.list_requests)) : 0.0;
-			response["data"]["cache"]["list_hit_rate"] = CalcRate(m.list_hits, m.list_requests);
-			response["data"]["cache"]["detail_requests"] = Json::Int64(m.detail_requests);
-			response["data"]["cache"]["detail_hits"] = Json::Int64(m.detail_hits);
-			response["data"]["cache"]["detail_misses"] = Json::Int64(m.detail_misses);
-			response["data"]["cache"]["detail_db_fallbacks"] = Json::Int64(m.detail_db_fallbacks);
-			response["data"]["cache"]["detail_avg_ms"] = m.detail_requests > 0 ? (static_cast<double>(m.detail_total_ms) / static_cast<double>(m.detail_requests)) : 0.0;
-			response["data"]["cache"]["detail_hit_rate"] = CalcRate(m.detail_hits, m.detail_requests);
-			response["data"]["cache"]["html_static_hit_rate"] = CalcRate(m.html_static_hits, m.html_static_requests);
-			response["data"]["cache"]["html_list_hit_rate"] = CalcRate(m.html_list_hits, m.html_list_requests);
-			response["data"]["cache"]["html_detail_hit_rate"] = CalcRate(m.html_detail_hits, m.html_detail_requests);
 
 			Json::Value recent_user_rows(Json::arrayValue);
 			for (const auto& user : recent_users)
@@ -351,6 +336,48 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		Json::FastWriter writer;
 		addCORSHeaders(rep);
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
+	});
+
+	svr.Get("/api/admin/cache/metrics", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
+		Json::Value response;
+		User u; AdminAccount a;
+		if (!RequireAdmin(req, &u, &a, getCurrentAdmin, addCORSHeaders, rep, true)) return;
+
+		auto my = model->CreateConnection();
+		if (!my) {
+			response["success"] = false; addCORSHeaders(rep);
+			Json::FastWriter w; rep.set_content(w.write(response), "application/json;charset=utf-8"); return;
+		}
+		std::string sql = "select action_type, sum(total_requests), sum(cache_hits), sum(db_fallbacks), sum(total_ms) from cache_metrics_snapshots where created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY) group by action_type";
+		if (mysql_query(my.get(), sql.c_str()) != 0) {
+			response["success"] = false; addCORSHeaders(rep);
+			Json::FastWriter w; rep.set_content(w.write(response), "application/json;charset=utf-8"); return;
+		}
+		MYSQL_RES* res = mysql_store_result(my.get());
+		Json::Value arr(Json::arrayValue);
+		const char* names[] = {"question", "auth", "comment", "solution", "user"};
+		if (res) {
+			for (int i = 0; i < mysql_num_rows(res); ++i) {
+				MYSQL_ROW row = mysql_fetch_row(res);
+				if (!row) continue;
+				Json::Value item;
+				int t = std::atoi(row[0]);
+				long long req = std::stoll(row[1]), hits = std::stoll(row[2]), falls = std::stoll(row[3]), ms = std::stoll(row[4]);
+				item["action_type"] = t;
+				item["name"] = names[t];
+				item["total_requests"] = Json::Int64(req);
+				item["cache_hits"] = Json::Int64(hits);
+				item["db_fallbacks"] = Json::Int64(falls);
+				item["total_ms"] = Json::Int64(ms);
+				item["hit_rate"] = req > 0 ? (static_cast<double>(hits) * 100.0 / static_cast<double>(req)) : 0.0;
+				arr.append(item);
+			}
+			mysql_free_result(res);
+		}
+		response["success"] = true;
+		response["metrics"] = arr;
+		addCORSHeaders(rep);
+		Json::FastWriter w; rep.set_content(w.write(response), "application/json;charset=utf-8");
 	});
 
 	svr.Get("/api/admin/users", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
@@ -1326,6 +1353,12 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 
 
 	svr.Options("/api/admin/overview", [addCORSHeaders](const Request& req, Response& rep) {
+		(void)req;
+		addCORSHeaders(rep);
+		rep.status = 200;
+	});
+
+	svr.Options("/api/admin/cache/metrics", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req;
 		addCORSHeaders(rep);
 		rep.status = 200;

@@ -45,11 +45,11 @@ namespace ns_control
             //如果没有找到再查询数据并生成HTML页面，最后将生成的HTML页面写入cache供下次访问使用
             if(_model.GetHtmlPage(html, html_key))
             {
-                _model.RecordListHtmlCacheMetrics(true);
+                _model.RecordCacheMetrics(ModelBase::RecordActionType::Question, true, false, 0);
                 logger(ns_log::INFO)<<"[html_cache][all_questions] hit=1 page=" << page << " size=" << size;
                 return true;
             }
-            _model.RecordListHtmlCacheMetrics(false);
+            _model.RecordCacheMetrics(ModelBase::RecordActionType::Question, false, false, 0);
             logger(INFO) << "[html_cache][all_questions] hit=0 page=" << page << " size=" << size;
             bool ret = true;
             std::vector<struct Question> page_questions;
