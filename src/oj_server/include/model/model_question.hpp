@@ -426,6 +426,41 @@ namespace ns_model
             return true;
         }
 
+        // Admin: Get ALL tests (not just samples) for a question
+        bool GetTestsByQuestionId(const std::string& question_id, Json::Value* result)
+        {
+            if (result == nullptr)
+                return false;
+
+            auto my = CreateConnection();
+            if (!my)
+                return false;
+
+            std::string safe_qid = EscapeSqlString(question_id, my.get());
+            std::string sql = "select id, question_id, `in`, `out`, is_sample from " + oj_tests +
+                              " where question_id='" + safe_qid + "' order by id asc";
+
+            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql, "MySql查询测试用例错误");
+            if (!res) return false;
+
+            Json::Value test_array(Json::arrayValue);
+            for (int i = 0; i < mysql_num_rows(res); ++i)
+            {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row == nullptr) continue;
+                Json::Value item;
+                item["id"] = row[0] ? std::atoi(row[0]) : 0;
+                item["question_id"] = row[1] ? row[1] : "";
+                item["in"] = row[2] ? row[2] : "";
+                item["out"] = row[3] ? row[3] : "";
+                item["is_sample"] = (row[4] && std::atoi(row[4]) != 0) ? true : false;
+                test_array.append(item);
+            }
+            mysql_free_result(res);
+            (*result)["tests"] = test_array;
+            return true;
+        }
+
         // Feature 2.5: Get a single test case by ID (for custom test execution)
         bool GetTestById(int test_id, const std::string& question_id, std::string* test_input, std::string* test_output)
         {

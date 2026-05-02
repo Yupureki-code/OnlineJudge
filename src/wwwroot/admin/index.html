@@ -392,6 +392,11 @@
             resize: vertical;
         }
 
+        #q-desc {
+            min-height: calc(100vh - 320px);
+            resize: vertical;
+        }
+
         .actions-row {
             display: flex;
             justify-content: space-between;
@@ -412,6 +417,11 @@
             text-align: center;
             border: 1px dashed rgba(255,255,255,0.1);
             border-radius: 12px;
+        }
+
+        .test-table-wrap {
+            max-height: 350px;
+            overflow-y: auto;
         }
 
         @media (max-width: 900px) {

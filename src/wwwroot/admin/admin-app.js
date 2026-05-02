@@ -414,7 +414,8 @@
 
         content.innerHTML = [
             '<div class="page-head"><div><h2>' + (isEditMode ? ('编辑题目 #' + escapeHtml(number)) : '新增题目') + '</h2><div class="page-subtitle">编辑页只负责单题维护，保存后可返回列表</div></div><div class="actions-inline"><button class="ghost" id="questions-back-btn">返回列表</button></div></div>',
-            '<section class="panel">',
+            (isEditMode ? '<div class="toolbar" style="margin-bottom:10px;"><button class="action q-tab-btn active" data-tab="info">编辑基本信息</button><button class="ghost q-tab-btn" data-tab="tests">编辑测试用例</button></div>' : ''),
+            '<section class="panel q-tab-panel" id="q-tab-info">',
             '<div class="form-grid">',
             '<div class="field-stack"><label for="q-number">题号</label><input id="q-number" type="text" placeholder="题号(数字)" value="' + escapeHtml(data.number || '') + '" ' + (isEditMode ? 'disabled' : '') + '></div>',
             '<div class="field-stack"><label for="q-title">标题</label><input id="q-title" type="text" placeholder="标题" value="' + escapeHtml(data.title || '') + '"></div>',
@@ -424,7 +425,8 @@
             '</div>',
             '<div class="field-stack"><label for="q-desc">题目描述</label><textarea id="q-desc" placeholder="题目描述">' + escapeHtml(data.desc || '') + '</textarea></div>',
             '<div class="actions-row"><div id="q-op-msg" class="muted"></div><div class="actions-inline"><button class="action" id="questions-save-btn">' + (isEditMode ? '更新题目' : '保存题目') + '</button></div></div>',
-            '</section>'
+            '</section>',
+            (isEditMode ? '<section class="panel q-tab-panel" id="q-tab-tests" style="display:none;"><div class="toolbar"><button class="action" id="tests-add-btn">新增测试用例</button></div><div class="test-table-wrap"><table><thead><tr><th>ID</th><th>输入</th><th>输出</th><th>样例</th><th>操作</th></tr></thead><tbody id="tests-tbody"><tr><td colspan="5" class="empty">加载中...</td></tr></tbody></table></div><div id="test-edit-form" class="panel" style="display:none; margin-top:12px;"><h4 id="test-edit-title">编辑测试用例</h4><div class="field-stack"><label>输入</label><textarea id="test-input" rows="4" placeholder="测试用例输入"></textarea></div><div class="field-stack"><label>输出</label><textarea id="test-output" rows="4" placeholder="测试用例输出"></textarea></div><div class="field-stack"><label><input type="checkbox" id="test-is-sample"> 作为样例数据</label></div><input type="hidden" id="test-form-test-id" value=""><div class="actions-row"><div></div><div class="actions-inline"><button class="ghost" id="test-cancel-btn">取消</button><button class="action" id="test-save-btn">保存测试用例</button></div></div></div></section>' : '')
         ].join('');
 
         document.getElementById("questions-back-btn").onclick = function () {
@@ -475,6 +477,150 @@
                 navigateTo(questionEditorPath(payload.number));
             }
         };
+
+        if (isEditMode) {
+            var tabBtns = document.querySelectorAll(".q-tab-btn");
+            for (var t = 0; t < tabBtns.length; t++) {
+                tabBtns[t].onclick = function () {
+                    var tabName = this.getAttribute("data-tab");
+                    var allTabs = document.querySelectorAll(".q-tab-btn");
+                    var allPanels = document.querySelectorAll(".q-tab-panel");
+                    for (var a = 0; a < allTabs.length; a++) {
+                        allTabs[a].classList.toggle("active", allTabs[a].getAttribute("data-tab") === tabName);
+                    }
+                    for (var b = 0; b < allPanels.length; b++) {
+                        allPanels[b].style.display = allPanels[b].id === "q-tab-" + tabName ? "" : "none";
+                    }
+                    if (tabName === "tests") refreshTests(number);
+                };
+            }
+
+            var addBtn = document.getElementById("tests-add-btn");
+            if (addBtn) addBtn.onclick = function () { showTestEditForm(number, null); };
+
+            var saveBtn = document.getElementById("test-save-btn");
+            if (saveBtn) saveBtn.onclick = function () { saveTest(number); };
+
+            var cancelBtn = document.getElementById("test-cancel-btn");
+            if (cancelBtn) cancelBtn.onclick = hideTestEditForm;
+
+            refreshTests(number);
+        }
+    }
+
+    async function loadTests(questionId) {
+        var result = await getJson("/api/admin/questions/" + encodeURIComponent(questionId) + "/tests");
+        if (isAuthFailure(result)) { redirectToLogin(); return []; }
+        if (!result.ok || !result.data.success) { return []; }
+        return result.data.tests || [];
+    }
+
+    function renderTests(tests, questionId) {
+        var tbody = document.getElementById("tests-tbody");
+        if (!tbody) return;
+
+        if (!tests || !tests.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">暂无测试用例</td></tr>';
+            return;
+        }
+
+        var rows = [];
+        for (var i = 0; i < tests.length; i++) {
+            var t = tests[i];
+            var previewIn = String(t["in"] || t.input || "").substring(0, 50);
+            var previewOut = String(t["out"] || t.output || "").substring(0, 50);
+            if (String(t["in"] || t.input || "").length > 50) previewIn += "...";
+            if (String(t["out"] || t.output || "").length > 50) previewOut += "...";
+            rows.push('<tr>');
+            rows.push('<td>' + escapeHtml(t.id) + '</td>');
+            rows.push('<td><code>' + escapeHtml(previewIn) + '</code></td>');
+            rows.push('<td><code>' + escapeHtml(previewOut) + '</code></td>');
+            rows.push('<td>' + (t.is_sample ? '<span class="pill">样例</span>' : '-') + '</td>');
+            rows.push('<td><div class="actions-inline"><button class="action test-edit-btn" data-test-id="' + t.id + '">编辑</button><button class="ghost test-delete-btn" data-test-id="' + t.id + '">删除</button></div></td>');
+            rows.push('</tr>');
+        }
+        tbody.innerHTML = rows.join('');
+
+        var editBtns = tbody.querySelectorAll(".test-edit-btn");
+        for (var j = 0; j < editBtns.length; j++) {
+            editBtns[j].onclick = function () {
+                var testId = parseInt(this.getAttribute("data-test-id"));
+                var testData = null;
+                for (var k = 0; k < tests.length; k++) {
+                    if (tests[k].id === testId) { testData = tests[k]; break; }
+                }
+                if (testData) showTestEditForm(questionId, testData);
+            };
+        }
+
+        var deleteBtns = tbody.querySelectorAll(".test-delete-btn");
+        for (var m = 0; m < deleteBtns.length; m++) {
+            deleteBtns[m].onclick = function () {
+                deleteTest(parseInt(this.getAttribute("data-test-id")), questionId);
+            };
+        }
+    }
+
+    function showTestEditForm(questionId, testData) {
+        var form = document.getElementById("test-edit-form");
+        if (!form) return;
+        form.style.display = "block";
+        var titleEl = document.getElementById("test-edit-title");
+        if (titleEl) titleEl.textContent = testData ? "编辑测试用例 #" + testData.id : "新增测试用例";
+        var inputEl = document.getElementById("test-input");
+        if (inputEl) inputEl.value = testData ? (testData["in"] || testData.input || "") : "";
+        var outputEl = document.getElementById("test-output");
+        if (outputEl) outputEl.value = testData ? (testData["out"] || testData.output || "") : "";
+        var sampleEl = document.getElementById("test-is-sample");
+        if (sampleEl) sampleEl.checked = testData ? (testData.is_sample || false) : false;
+        var testIdEl = document.getElementById("test-form-test-id");
+        if (testIdEl) testIdEl.value = testData ? testData.id : "";
+    }
+
+    function hideTestEditForm() {
+        var form = document.getElementById("test-edit-form");
+        if (form) form.style.display = "none";
+    }
+
+    async function deleteTest(testId, questionId) {
+        if (!window.confirm("确认删除测试用例 #" + testId + " ?")) return;
+        var result = await deleteJson("/api/admin/tests/" + testId);
+        if (isAuthFailure(result)) { redirectToLogin(); return; }
+        if (!result.ok || !result.data.success) {
+            window.alert("删除失败: " + ((result.data && result.data.error) || "未知错误"));
+            return;
+        }
+        refreshTests(questionId);
+    }
+
+    async function saveTest(questionId) {
+        var testIdEl = document.getElementById("test-form-test-id");
+        var testId = testIdEl ? testIdEl.value : "";
+        var payload = {
+            "in": (document.getElementById("test-input") || {}).value || "",
+            "out": (document.getElementById("test-output") || {}).value || "",
+            is_sample: (document.getElementById("test-is-sample") || {}).checked || false
+        };
+
+        var result;
+        if (testId) {
+            result = await putJson("/api/admin/tests/" + testId, payload);
+        } else {
+            result = await postJson("/api/admin/questions/" + encodeURIComponent(questionId) + "/tests", payload);
+        }
+
+        if (isAuthFailure(result)) { redirectToLogin(); return; }
+        if (!result.ok || !result.data.success) {
+            window.alert("保存失败: " + ((result.data && result.data.error) || "未知错误"));
+            return;
+        }
+        hideTestEditForm();
+        refreshTests(questionId);
+    }
+
+    async function refreshTests(questionId) {
+        var tests = await loadTests(questionId);
+        if (tests !== null) renderTests(tests, questionId);
     }
 
     async function renderCurrentRoute() {

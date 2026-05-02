@@ -734,6 +734,101 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		rep.set_content(writer.write(response), "application/json;charset=utf-8");
 	});
 
+	// 获取题目的所有测试用例
+	svr.Get(R"(/api/admin/questions/(\d+)/tests$)", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
+		Json::Value response;
+		User u; AdminAccount a;
+		if (!RequireAdmin(req, &u, &a, getCurrentAdmin, addCORSHeaders, rep, true)) return;
+
+		std::string qid = req.matches[1];
+		Json::Value tests;
+		if (model->Question().GetTestsByQuestionId(qid, &tests)) {
+			response["success"] = true;
+			response["tests"] = tests["tests"];
+		} else {
+			response["success"] = false;
+			response["error"] = "获取测试用例失败";
+			rep.status = 500;
+		}
+		addCORSHeaders(rep);
+		Json::FastWriter w; rep.set_content(w.write(response), "application/json;charset=utf-8");
+	});
+
+	// 新增测试用例
+	svr.Post(R"(/api/admin/questions/(\d+)/tests$)", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
+		Json::Value response;
+		User u; AdminAccount a;
+		if (!RequireAdmin(req, &u, &a, getCurrentAdmin, addCORSHeaders, rep, true)) return;
+
+		Json::Value in;
+		if (!JsonUtil::ParseJsonBody(req, &in)) {
+			addCORSHeaders(rep); HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON"); return;
+		}
+		std::string qid = req.matches[1];
+		std::string input = in.isMember("in") ? in["in"].asString() : "";
+		std::string output = in.isMember("out") ? in["out"].asString() : "";
+		bool is_sample = in.isMember("is_sample") ? in["is_sample"].asBool() : false;
+
+		auto my = model->CreateConnection();
+		if (!my) { response["success"] = false; rep.status = 500; addCORSHeaders(rep); Json::FastWriter w; rep.set_content(w.write(response), "application/json;charset=utf-8"); return; }
+		std::ostringstream sql;
+		sql << "insert into tests (question_id, `in`, `out`, is_sample) values ('"
+			<< qid << "', '" << model->EscapeSqlString(input, my.get()) << "', '"
+			<< model->EscapeSqlString(output, my.get()) << "', " << (is_sample ? 1 : 0) << ")";
+		if (mysql_query(my.get(), sql.str().c_str()) == 0) {
+			response["success"] = true;
+			response["test_id"] = static_cast<Json::UInt64>(mysql_insert_id(my.get()));
+		} else {
+			response["success"] = false;
+			response["error"] = "新增测试用例失败";
+		}
+		addCORSHeaders(rep);
+		Json::FastWriter w; rep.set_content(w.write(response), "application/json;charset=utf-8");
+	});
+
+	// 编辑测试用例
+	svr.Put(R"(/api/admin/tests/(\d+)$)", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
+		Json::Value response;
+		User u; AdminAccount a;
+		if (!RequireAdmin(req, &u, &a, getCurrentAdmin, addCORSHeaders, rep, true)) return;
+
+		Json::Value in;
+		if (!JsonUtil::ParseJsonBody(req, &in)) {
+			addCORSHeaders(rep); HttpUtil::ReplyBadRequest(rep, "请求体必须是 JSON"); return;
+		}
+		int test_id = std::stoi(req.matches[1]);
+		auto my = model->CreateConnection();
+		if (!my) { response["success"] = false; rep.status = 500; addCORSHeaders(rep); Json::FastWriter w; rep.set_content(w.write(response), "application/json;charset=utf-8"); return; }
+		std::ostringstream sql;
+		sql << "update tests set ";
+		bool first = true;
+		if (in.isMember("in")) { sql << "`in`='" << model->EscapeSqlString(in["in"].asString(), my.get()) << "'"; first = false; }
+		if (in.isMember("out")) { if (!first) sql << ", "; sql << "`out`='" << model->EscapeSqlString(in["out"].asString(), my.get()) << "'"; first = false; }
+		if (in.isMember("is_sample")) { if (!first) sql << ", "; sql << "is_sample=" << (in["is_sample"].asBool() ? 1 : 0); }
+		sql << " where id=" << test_id;
+		if (mysql_query(my.get(), sql.str().c_str()) == 0)
+			response["success"] = true;
+		else { response["success"] = false; response["error"] = "编辑测试用例失败"; }
+		addCORSHeaders(rep);
+		Json::FastWriter w; rep.set_content(w.write(response), "application/json;charset=utf-8");
+	});
+
+	// 删除测试用例
+	svr.Delete(R"(/api/admin/tests/(\d+)$)", [this, model, getCurrentAdmin, addCORSHeaders](const Request& req, Response& rep) {
+		Json::Value response;
+		User u; AdminAccount a;
+		if (!RequireAdmin(req, &u, &a, getCurrentAdmin, addCORSHeaders, rep, true)) return;
+		int test_id = std::stoi(req.matches[1]);
+		auto my = model->CreateConnection();
+		if (!my) { response["success"] = false; rep.status = 500; addCORSHeaders(rep); Json::FastWriter w; rep.set_content(w.write(response), "application/json;charset=utf-8"); return; }
+		std::string sql = "delete from tests where id=" + std::to_string(test_id);
+		if (mysql_query(my.get(), sql.c_str()) == 0)
+			response["success"] = true;
+		else { response["success"] = false; response["error"] = "删除测试用例失败"; }
+		addCORSHeaders(rep);
+		Json::FastWriter w; rep.set_content(w.write(response), "application/json;charset=utf-8");
+	});
+
 	svr.Options("/api/admin/questions/cache/invalidate", [addCORSHeaders](const Request& req, Response& rep) {
 		(void)req; addCORSHeaders(rep); rep.status = 204; });
 
