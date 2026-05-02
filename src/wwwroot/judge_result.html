@@ -729,7 +729,7 @@
     <div class="rain-lines" id="rainLines"></div>
     <div class="header">
         <div class="nav">
-            <img src="./pictures/icon.png" type="icon" width="40px" height="40px">
+            <img src="./pictures/icon.png" width="40px" height="40px">
             <p class="logo">Yupureki-OJ</p>
             <a href="/">首页</a>
             <a href="/all_questions">题库</a>
@@ -740,8 +740,10 @@
                 <input type="text" id="navbar-search" class="search-input" placeholder="搜索题目...">
         </div>
         <div class="nav">
-            <a href="#"><img src="./pictures/message.png" width="40px" height="40px"></a>
-            <a href="#"><img src="./pictures/head.jpg" width="40px" height="40px" style="border-radius: 50%;"></a>
+            <div id="user-auth" style="display: block;">
+                <button class="auth-btn" id="sign-in-button">登录/注册</button>
+            </div>
+            <div id="user-profile" style="display: none;"></div>
         </div>
     </div>
     <div class="container">
