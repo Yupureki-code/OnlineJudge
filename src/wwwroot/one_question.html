@@ -2389,7 +2389,7 @@
 
                 var cmtAvatarUrl = comment.author_avatar || '/pictures/head.jpg';
                 var headerHtml = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
-                headerHtml += '<div class="sol-comment-avatar" style="width:24px;height:24px;"><img src="' + cmtAvatarUrl + '" alt="" onerror="this.style.display=\'none\'">' + escapeHtml((comment.author_name || '?').charAt(0).toUpperCase()) + '</div>';
+                headerHtml += '<div class="sol-comment-avatar" style="width:24px;height:24px;"><img src="' + cmtAvatarUrl + '" alt="" onerror="this.style.display=\'none\';this.parentElement.textContent=\'' + escapeHtml((comment.author_name || '?').charAt(0).toUpperCase()) + '\'"></div>';
                 headerHtml += '<span style="color:rgba(244,246,240,0.6);font-size:12px;">' + escapeHtml(comment.author_name || '匿名') + '</span>';
                 headerHtml += '<span style="color:rgba(244,246,240,0.4);font-size:11px;margin-left:8px;">' + formatRelativeTime(comment.created_at) + '</span>';
                 if (comment.is_edited) headerHtml += '<span style="color:rgba(244,246,240,0.4);font-size:11px;margin-left:4px;">(已编辑)</span>';
