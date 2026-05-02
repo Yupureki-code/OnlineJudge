@@ -1901,7 +1901,7 @@
                                 var excerpt = s.content_md ? s.content_md.substring(0, 100).replace(/\n/g, ' ') + '...' : '';
                                 html += '<div class="solution-item" onclick="showSolutionDetail(' + s.id + ')">';
                                 var avatarUrl = s.author_avatar || '/pictures/head.jpg';
-                                html += '<div class="solution-avatar"><img src="' + avatarUrl + '" alt="" onerror="this.style.display=\'none\';this.parentElement.textContent=\'' + initial + '\'">' + initial + '</div>';
+                                html += '<div class="solution-avatar"><img src="' + avatarUrl + '" alt="" onerror="this.style.display=\'none\';this.parentElement.textContent=\'' + initial + '\'"></div>';
                                 html += '<div class="solution-info">';
                                 html += '<div class="solution-author">' + (s.author_name || '') + '</div>';
                                 html += '<div class="solution-title-text">' + (s.title || '') + '</div>';
@@ -2007,7 +2007,7 @@
                 var html = '';
                 html += '<button class="sol-detail-back" onclick="hideSolutionDetail()">&larr; \u8fd4\u56de\u9898\u89e3\u5217\u8868</button>';
                 html += '<div class="sol-detail-header">';
-                html += '<div class="sol-detail-avatar"><img src="' + (data.author_avatar || '/pictures/head.jpg') + '" alt="" onerror="this.style.display=\'none\'">' + escapeHtml(initial) + '</div>';
+                html += '<div class="sol-detail-avatar"><img src="' + (data.author_avatar || '/pictures/head.jpg') + '" alt="" onerror="this.style.display=\'none\';this.parentElement.textContent=\'' + escapeHtml(initial) + '\'"></div>';
                 html += '<div class="sol-detail-meta">';
                 html += '<div class="sol-detail-author">' + escapeHtml(data.author_name || '\u533f\u540d') + '</div>';
                 html += '<div class="sol-detail-title">' + escapeHtml(data.title || '') + '</div>';
@@ -2185,7 +2185,7 @@
 
                 var headerHtml = '<div class="sol-comment-header">';
                 var cmtAvatarUrl = comment.author_avatar || '/pictures/head.jpg';
-                headerHtml += '<div class="sol-comment-avatar"><img src="' + cmtAvatarUrl + '" alt="" onerror="this.style.display=\'none\'">' + escapeHtml((comment.author_name || '?').charAt(0).toUpperCase()) + '</div>';
+                headerHtml += '<div class="sol-comment-avatar"><img src="' + cmtAvatarUrl + '" alt="" onerror="this.style.display=\'none\';this.parentElement.textContent=\'' + escapeHtml((comment.author_name || '?').charAt(0).toUpperCase()) + '\'"></div>';
                 headerHtml += '<span class="sol-comment-author">' + escapeHtml(comment.author_name || '\u533f\u540d') + '</span>';
                 headerHtml += '<span class="sol-comment-time">' + formatRelativeTime(comment.created_at) + '</span>';
                 if (comment.is_edited) {

@@ -1227,6 +1227,51 @@ int main()
         replyJson(rep, result, http_status);
     });
 
+    //发布题解——需登录，输入标题+Markdown内容
+    svr.Post(R"(/api/questions/(\d+)/solutions$)", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+        Json::Value response;
+        User current_user;
+        if (!requireAuth(req, rep, &current_user)) return;
+
+        Json::Value in_value;
+        if (!parseBody(req, rep, &in_value)) return;
+        if (!in_value.isMember("title") || !in_value["title"].isString())
+        {
+            addCORSHeaders(rep);
+            HttpUtil::ReplyBadRequest(rep, "标题不能为空");
+            return;
+        }
+        if (!in_value.isMember("content_md") || !in_value["content_md"].isString())
+        {
+            addCORSHeaders(rep);
+            HttpUtil::ReplyBadRequest(rep, "题解内容不能为空");
+            return;
+        }
+
+        const std::string question_id = req.matches[1];
+        const std::string title = in_value["title"].asString();
+        const std::string content_md = in_value["content_md"].asString();
+
+        unsigned long long solution_id = 0;
+        std::string err_code;
+        bool ok = ctl.Solution().PublishSolution(question_id, current_user, title, content_md, &solution_id, &err_code);
+
+        response["success"] = ok;
+        int http_status = 200;
+        if (!ok)
+        {
+            response["error_code"] = err_code;
+            if (err_code == "QUESTION_NOT_FOUND") http_status = 404;
+            else if (err_code == "UNAUTHORIZED" || err_code == "NOT_PASSED") http_status = 401;
+            else http_status = 400;
+        }
+        else
+        {
+            response["solution_id"] = Json::UInt64(solution_id);
+            response["question_id"] = question_id;
+        }
+        replyJson(rep, response, http_status);
+    });
 
     //题解列表（分页，支持 ?status=&sort=&page=&size=）
     svr.Get(R"(/api/questions/(\d+)/solutions$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
