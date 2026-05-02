@@ -167,6 +167,7 @@ namespace ns_model
                     user->email = val["email"].asString();
                     user->create_time = val["create_time"].asString();
                     user->last_login = val["last_login"].asString();
+                    RecordDetailMetrics(true, false, 0);
                     return true;
                 }
             }
@@ -184,6 +185,7 @@ namespace ns_model
                 val["last_login"] = user->last_login;
                 Json::FastWriter writer;
                 _cache.SetStringByAnyKey(cache_key, writer.write(val), _cache.BuildJitteredTtl(3600, 600));
+                RecordDetailMetrics(false, true, 0);
             }
             return ok;
         }

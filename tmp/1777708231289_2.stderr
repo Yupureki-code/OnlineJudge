@@ -1,0 +1,5 @@
+编译命令: g++ ../tmp/1777708231289_2.cpp -o ../tmp/1777708231289_2.exe -std=c++11
+../tmp/1777708231289_2.cpp: In function ‘int main()’:
+../tmp/1777708231289_2.cpp:6:5: error: ‘ret’ was not declared in this scope
+    6 |     ret
+      |     ^~~

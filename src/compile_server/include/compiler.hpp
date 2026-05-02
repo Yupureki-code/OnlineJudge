@@ -29,7 +29,7 @@ namespace ns_compile
                 pid_t pid = fork();
                 if(pid == 0)
                 {
-                    int _stderr = open(PathUtil::Compile_err(file_name).c_str(),O_CREAT | O_WRONLY | O_TRUNC,0x644);
+                    int _stderr = open(PathUtil::Stderr(file_name).c_str(),O_CREAT | O_WRONLY | O_TRUNC,0644);
                     if(_stderr < 0)
                     {
                         logger(ns_log::FATAL)<<"打开编译错误文件失败: "<<PathUtil::Compile_err(file_name);

@@ -55,6 +55,7 @@ namespace ns_model
                         }
                     }
                     logger(ns_log::INFO) << "Cache hit for comment list " << cache_key;
+                    RecordListMetrics(true, false, 0);
                     return true;
                 }
             }
@@ -163,6 +164,7 @@ namespace ns_model
             std::string json_str = writer.write(root);
             _cache.SetStringByAnyKey(cache_key, json_str, _cache.BuildJitteredTtl(300, 60));
             logger(ns_log::INFO) << "Cache miss for comment list, written to cache " << cache_key;
+            RecordListMetrics(false, true, 0);
 
             return true;
         }
@@ -486,6 +488,7 @@ namespace ns_model
                         }
                     }
                     logger(ns_log::INFO) << "Cache hit for reply list " << reply_cache_key;
+                    RecordListMetrics(true, false, 0);
                     return true;
                 }
             }
@@ -572,6 +575,7 @@ namespace ns_model
             _cache.SetStringByAnyKey(reply_cache_key, writer.write(cache_value),
                                      _cache.BuildJitteredTtl(120, 30));
             logger(ns_log::INFO) << "Cache miss for reply list, written to cache " << reply_cache_key;
+            RecordListMetrics(false, true, 0);
 
             return true;
         }

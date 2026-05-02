@@ -475,7 +475,11 @@ namespace ns_control
             item["like_count"] = c.like_count;
             item["favorite_count"] = c.favorite_count;
             item["author_name"] = c.author_name;
-            item["author_avatar"] = "/pictures/head.jpg";
+            // 使用文件系统查找用户头像，优先使用用户上传的头像
+            {
+                User author; author.uid = c.user_id;
+                item["author_avatar"] = GetEffectiveAvatarUrl(author);
+            }
         }
 
         /// 通用切换操作（点赞/收藏）

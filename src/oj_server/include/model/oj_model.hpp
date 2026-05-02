@@ -31,126 +31,6 @@ namespace ns_model
     class Model : public ModelBase
     {
     private:
-        struct CacheMetrics// 缓存指标结构体:记录题目列表和题目详情这两条查询链路的运行指标。
-        {
-            std::atomic<long long> list_requests{0};// all_questions请求总数
-            std::atomic<long long> list_hits{0};// all_questions缓存命中数
-            std::atomic<long long> list_misses{0};// all_questions缓存未命中数
-            std::atomic<long long> list_db_fallbacks{0};// all_questions数据库回退数
-            std::atomic<long long> list_total_ms{0};// all_questions总耗时
-
-            std::atomic<long long> detail_requests{0};// one_question请求总数
-            std::atomic<long long> detail_hits{0};// one_question缓存命中数
-            std::atomic<long long> detail_misses{0};// one_question缓存未命中数
-            std::atomic<long long> detail_db_fallbacks{0};// one_question数据库回退数
-            std::atomic<long long> detail_total_ms{0};// one_question总耗时
-
-            std::atomic<long long> html_static_requests{0};
-            std::atomic<long long> html_static_hits{0};
-            std::atomic<long long> html_static_misses{0};
-
-            std::atomic<long long> html_list_requests{0};
-            std::atomic<long long> html_list_hits{0};
-            std::atomic<long long> html_list_misses{0};
-
-            std::atomic<long long> html_detail_requests{0};
-            std::atomic<long long> html_detail_hits{0};
-            std::atomic<long long> html_detail_misses{0};
-        };
-
-        static CacheMetrics& Metrics()// 获取缓存指标实例
-        {
-            static CacheMetrics m;
-            return m;
-        }
-
-        // 记录题目列表查询的指标数据
-        void RecordListMetrics(bool cache_hit, bool db_fallback, long long cost_ms)
-        {
-            auto& m = Metrics();
-            long long req = m.list_requests.fetch_add(1, std::memory_order_relaxed) + 1;
-            if (cache_hit)
-                m.list_hits.fetch_add(1, std::memory_order_relaxed);
-            else
-                m.list_misses.fetch_add(1, std::memory_order_relaxed);
-            if (db_fallback)
-                m.list_db_fallbacks.fetch_add(1, std::memory_order_relaxed);
-            m.list_total_ms.fetch_add(cost_ms, std::memory_order_relaxed);
-
-            if (req % 20 == 0)
-            {
-                long long hits = m.list_hits.load(std::memory_order_relaxed);
-                long long misses = m.list_misses.load(std::memory_order_relaxed);
-                long long fallbacks = m.list_db_fallbacks.load(std::memory_order_relaxed);
-                long long total_ms = m.list_total_ms.load(std::memory_order_relaxed);
-                double avg_ms = req == 0 ? 0.0 : static_cast<double>(total_ms) / static_cast<double>(req);
-                logger(ns_log::INFO) << "[metrics][all_questions] req=" << req
-                                     << " hit=" << hits
-                                     << " miss=" << misses
-                                     << " db_fallback=" << fallbacks
-                                     << " avg_ms=" << avg_ms;
-            }
-        }
-
-        // 记录题目详情查询的指标数据  
-        void RecordDetailMetrics(bool cache_hit, bool db_fallback, long long cost_ms)
-        {
-            auto& m = Metrics();
-            long long req = m.detail_requests.fetch_add(1, std::memory_order_relaxed) + 1;
-            if (cache_hit)
-                m.detail_hits.fetch_add(1, std::memory_order_relaxed);
-            else
-                m.detail_misses.fetch_add(1, std::memory_order_relaxed);
-            if (db_fallback)
-                m.detail_db_fallbacks.fetch_add(1, std::memory_order_relaxed);
-            m.detail_total_ms.fetch_add(cost_ms, std::memory_order_relaxed);
-
-            if (req % 20 == 0)
-            {
-                long long hits = m.detail_hits.load(std::memory_order_relaxed);
-                long long misses = m.detail_misses.load(std::memory_order_relaxed);
-                long long fallbacks = m.detail_db_fallbacks.load(std::memory_order_relaxed);
-                long long total_ms = m.detail_total_ms.load(std::memory_order_relaxed);
-                double avg_ms = req == 0 ? 0.0 : static_cast<double>(total_ms) / static_cast<double>(req);
-                logger(ns_log::INFO) << "[metrics][one_question] req=" << req
-                                     << " hit=" << hits
-                                     << " miss=" << misses
-                                     << " db_fallback=" << fallbacks
-                                     << " avg_ms=" << avg_ms;
-            }
-        }
-        // 记录静态HTML页面查询的指标数据
-        void RecordHtmlStaticMetrics(bool cache_hit)
-        {
-            auto& m = Metrics();
-            m.html_static_requests.fetch_add(1, std::memory_order_relaxed);
-            if (cache_hit)
-                m.html_static_hits.fetch_add(1, std::memory_order_relaxed);
-            else
-                m.html_static_misses.fetch_add(1, std::memory_order_relaxed);
-        }
-
-        void RecordHtmlListMetrics(bool cache_hit)
-        {
-            auto& m = Metrics();
-            m.html_list_requests.fetch_add(1, std::memory_order_relaxed);
-            if (cache_hit)
-                m.html_list_hits.fetch_add(1, std::memory_order_relaxed);
-            else
-                m.html_list_misses.fetch_add(1, std::memory_order_relaxed);
-        }
-
-        void RecordHtmlDetailMetrics(bool cache_hit)
-        {
-            auto& m = Metrics();
-            m.html_detail_requests.fetch_add(1, std::memory_order_relaxed);
-            if (cache_hit)
-                m.html_detail_hits.fetch_add(1, std::memory_order_relaxed);
-            else
-                m.html_detail_misses.fetch_add(1, std::memory_order_relaxed);
-        }
-
-    private:
 
         bool QueryAdminAccount(const std::string& sql, AdminAccount* admin)
         {
@@ -255,12 +135,11 @@ namespace ns_model
                 AdminAuditLog item;
                 item.request_id = row[0] == nullptr ? "" : row[0];
                 item.operator_admin_id = row[1] == nullptr ? 0 : std::atoi(row[1]);
-                item.operator_uid = row[2] == nullptr ? 0 : std::atoi(row[2]);
-                item.operator_role = row[3] == nullptr ? "" : row[3];
-                item.action = row[4] == nullptr ? "" : row[4];
-                item.resource_type = row[5] == nullptr ? "" : row[5];
-                item.result = row[6] == nullptr ? "" : row[6];
-                item.payload_text = row[7] == nullptr ? "" : row[7];
+                item.operator_role = row[2] == nullptr ? "" : row[2];
+                item.action = row[3] == nullptr ? "" : row[3];
+                item.resource_type = row[4] == nullptr ? "" : row[4];
+                item.result = row[5] == nullptr ? "" : row[5];
+                item.payload_text = row[6] == nullptr ? "" : row[6];
                 logs->push_back(item);
             }
 
@@ -548,8 +427,8 @@ namespace ns_model
 
             std::ostringstream sql;
             sql << "insert into " << AdminAuditLogsTable()
-                << " (request_id, operator_admin_id, operator_uid, operator_role, action, resource_type, result, created_at, payload_text) values ('"
-                << safe_request_id << "', " << log.operator_admin_id << ", " << log.operator_uid << ", '"
+                << " (request_id, operator_admin_id, operator_role, action, resource_type, result, created_at, payload_text) values ('"
+                << safe_request_id << "', " << log.operator_admin_id << ", '"
                 << safe_role << "', '" << safe_action << "', '" << safe_resource_type << "', '"
                 << safe_result << "', NOW(), '" << safe_payload << "')";
 
@@ -618,7 +497,7 @@ namespace ns_model
             }
 
             std::ostringstream sql;
-            sql << "select request_id,operator_admin_id,operator_uid,operator_role,action,resource_type,result,payload_text from "
+            sql << "select request_id,operator_admin_id,operator_role,action,resource_type,result,payload_text from "
                 << AdminAuditLogsTable()
                 << where_clause
                 << " order by log_id desc limit " << safe_size << " offset " << offset;

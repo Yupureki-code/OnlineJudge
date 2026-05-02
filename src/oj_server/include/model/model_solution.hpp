@@ -165,6 +165,7 @@ namespace ns_model
                         }
                     }
                     logger(ns_log::INFO) << "Cache hit for solution list " << cache_key->GetCacheKeyString(&_cache);
+                    RecordListMetrics(true, false, 0);
                     return true;
                 }
             }
@@ -276,6 +277,7 @@ namespace ns_model
             _cache.SetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), json_str,
                                      _cache.BuildJitteredTtl(600, 120));
             logger(ns_log::INFO) << "Cache miss for solution list, written to cache " << cache_key->GetCacheKeyString(&_cache);
+            RecordListMetrics(false, true, 0);
 
             return true;
         }
@@ -311,6 +313,7 @@ namespace ns_model
                     solution->created_at = json_value["created_at"].asString();
                     solution->updated_at = json_value["updated_at"].asString();
                     logger(ns_log::INFO) << "Cache hit for solution detail " << cache_key->GetCacheKeyString(&_cache);
+                    RecordDetailMetrics(true, false, 0);
                     return true;
                 }
             }
@@ -379,6 +382,7 @@ namespace ns_model
             _cache.SetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), json_str,
                                      _cache.BuildJitteredTtl(600, 120));
             logger(ns_log::INFO) << "Cache miss for solution detail, written to cache " << cache_key->GetCacheKeyString(&_cache);
+            RecordDetailMetrics(false, true, 0);
 
             return true;
         }
