@@ -11,6 +11,21 @@
             box-sizing: border-box;
         }
 
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            width: 100dvw;
+            height: 100dvh;              /* 现代浏览器动态视口 */
+            object-fit: contain;         /* 保证完整显示 */
+            z-index: 0;
+             filter: brightness(0.9);
+            /* 放大一点点，遮盖因模糊产生的透明边缘 */
+            transform: scale(1.05);
+        }
+
         .page-loading-mask {
             position: fixed;
             inset: 0;
@@ -693,14 +708,18 @@
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .test-cases-grid { grid-template-columns: 1fr; }
             .actions { flex-wrap: wrap; }
+            .video-background {
+                object-fit: cover;          /* 填满容器，允许裁剪 */
+                object-position: center;    /* 裁剪时以视频正中为焦点 */
+            }
         }
 </style>
 </head>
 <body>
 
-        <div id="page-loading-mask" class="page-loading-mask">
-            <div class="page-loading-text">加载中...</div>
-        </div>
+    <video class="video-background" autoplay muted loop playsinline preload="auto">
+        <source src="/pictures/b2.mp4" type="video/mp4">
+    </video>
 
     
     <!-- 背景图片 -->

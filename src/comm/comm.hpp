@@ -21,7 +21,6 @@ struct User
     int uid; //用户ID
     std::string name; //用户名
     std::string email; //邮箱
-    std::string avatar_path; //头像路径
     std::string create_time; //创建时间
     std::string last_login; //最后登录时间
     std::string password_algo; //密码算法

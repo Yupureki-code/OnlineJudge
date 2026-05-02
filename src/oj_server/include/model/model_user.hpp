@@ -35,9 +35,8 @@ namespace ns_model
                 item.uid = row[0] == nullptr ? 0 : std::atoi(row[0]);
                 item.name = row[1] == nullptr ? "" : row[1];
                 item.email = row[2] == nullptr ? "" : row[2];
-                item.avatar_path = row[3] == nullptr ? "" : row[3];
-                item.create_time = row[4] == nullptr ? "" : row[4];
-                item.last_login = row[5] == nullptr ? "" : row[5];
+                item.create_time = row[3] == nullptr ? "" : row[3];
+                item.last_login = row[4] == nullptr ? "" : row[4];
                 users->push_back(item);
             }
 
@@ -132,7 +131,7 @@ namespace ns_model
                 return false;
 
             std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "select uid,name,email,avatar_path,create_time,last_login,password_algo from " + oj_users + " where email='" + safe_email + "'";
+            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where email='" + safe_email + "'";
             return QueryUser(sql, user);
         }
 
@@ -166,7 +165,6 @@ namespace ns_model
                     user->uid = val["uid"].asInt();
                     user->name = val["name"].asString();
                     user->email = val["email"].asString();
-                    user->avatar_path = val["avatar_path"].asString();
                     user->create_time = val["create_time"].asString();
                     user->last_login = val["last_login"].asString();
                     return true;
@@ -174,7 +172,7 @@ namespace ns_model
             }
 
             // Cache miss — query MySQL
-            std::string sql = "select uid,name,email,avatar_path,create_time,last_login,password_algo from " + oj_users + " where uid=" + std::to_string(uid);
+            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where uid=" + std::to_string(uid);
             bool ok = QueryUser(sql, user);
             if (ok) {
                 // Write to cache
@@ -182,7 +180,6 @@ namespace ns_model
                 val["uid"] = user->uid;
                 val["name"] = user->name;
                 val["email"] = user->email;
-                val["avatar_path"] = user->avatar_path;
                 val["create_time"] = user->create_time;
                 val["last_login"] = user->last_login;
                 Json::FastWriter writer;
@@ -191,219 +188,22 @@ namespace ns_model
             return ok;
         }
 
-        // 批量获取用户信息（修复N+1查询问题）
-        bool GetUsersByIds(const std::set<int>& user_ids, std::map<int, User>* users)
+        bool UpdateUserName(int uid, const std::string& new_name)
         {
-            if (users == nullptr || user_ids.empty())
-                return false;
-
-            users->clear();
-            std::ostringstream idlist;
-            int i = 0;
-            for (int uid : user_ids)
-            {
-                if (i++ > 0) idlist << ",";
-                idlist << uid;
-            }
-
             auto my = CreateConnection();
             if (!my) return false;
 
-            std::string sql = "select uid,name,email,avatar_path,create_time,last_login,password_algo from "
-                            + oj_users + " where uid in (" + idlist.str() + ")";
-            MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql批量用户查询错误");
-            if (!res) return false;
-
-            int rows = mysql_num_rows(res);
-            for (int r = 0; r < rows; ++r)
-            {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr) continue;
-                User user;
-                user.uid = atoi(row[0]);
-                user.name = row[1] ? row[1] : "";
-                user.email = row[2] ? row[2] : "";
-                user.avatar_path = row[3] ? row[3] : "";
-                user.create_time = row[4] ? row[4] : "";
-                user.last_login = row[5] ? row[5] : "";
-                (*users)[user.uid] = user;
-            }
-            mysql_free_result(res);
-            return true;
-        }
-
-        bool GetUserCount(int* count)
-        {
-            if(count == nullptr)
-            {
-                return false;
-            }
-            std::string key = "user_counts";
-            std::string value;
-            if(_cache.GetStringByAnyKey(key, &value))
-            {
-                *count = std::atoi(value.c_str());
-                logger(ns_log::INFO) << "Cache hit for user count";
-                return true;
-            }
-            std::string sql = "select count(*) from " + oj_users;
-            if(!QueryCount(sql, count))
-            {
-                return false;
-             }
-             _cache.SetStringByAnyKey(key, std::to_string(*count), _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
-             return true;
-        }
-
-        bool GetUsersPaged(std::shared_ptr<Cache::CacheListKey> key,std::vector<User>* users, int* total_count,int * total_pages)
-        {
-            auto begin = std::chrono::steady_clock::now();
-            if (users == nullptr || total_count == nullptr || total_pages == nullptr)
-            {
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-                return false;
-            }
-
-            if (_cache.GetUsersByPage(key, *users, total_count, total_pages))
-            {
-                logger(ns_log::INFO) << "Cache hit for user list page " << key->GetCacheKeyString(&_cache);
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-                return true;
-            }
-
-            auto my = CreateConnection();
-            if (!my)
-            {
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-                return false;
-            }
-
-            std::string where_clause = BuildUserWhereClause(key->GetQueryHash(), my.get());
-
-            std::string count_sql = "select count(*) from " + oj_users + where_clause;
-            if (!QueryCount(count_sql, total_count))
-            {
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-                return false;
-            }
-
-            if (*total_count <= 0)
-            {
-                *total_pages = 0;
-                users->clear();
-                _cache.SetUsersByPage(key, *users, *total_count, *total_pages);
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-                return true;
-            }
-
-            int size = key->GetSize();
-            int page = key->GetPage();
-            *total_pages = (*total_count + size - 1) / size;
-            int safe_page = std::min(page, *total_pages);
-            int offset = (safe_page - 1) * size;
-
-            std::ostringstream page_sql;
-            page_sql << "select uid,name,email,avatar_path,create_time,last_login from " << oj_users
-                     << where_clause
-                     << " order by uid desc limit " << size << " offset " << offset;
-
-            if (!QueryUsers(page_sql.str(), users))
-            {
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-                return false;
-            }
-
-            auto write_key = _cache.BuildListCacheKey(key->GetQueryHash(), safe_page, size, key->GetListVersion(), Cache::CacheKey::PageType::kData, key->GetListType());
-            _cache.SetUsersByPage(write_key, *users, *total_count, *total_pages);
-            auto end = std::chrono::steady_clock::now();
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-            return true;
-        }
-        //设置用户密码到MySQL中
-        bool SetUserPassword(const std::string& email, const std::string& password_hash, const std::string& password_algo)
-        {
-            auto my = CreateConnection();
-            if(!my)
-                return false;
-
-            std::string safe_email = EscapeSqlString(email, my.get());
-            std::string safe_hash = EscapeSqlString(password_hash, my.get());
-            std::string safe_algo = EscapeSqlString(password_algo, my.get());
-            std::string sql = "update " + oj_users +
-                              " set password_hash='" + safe_hash +
-                              "', password_algo='" + safe_algo +
-                              "', password_update_at=NOW() where email='" + safe_email + "'";
-            return ExecuteSql(sql);
-        }
-
-        bool GetUserPasswordAuth(const std::string& email, std::string* password_hash, std::string* password_algo)
-        {
-            auto my = CreateConnection();
-            if(!my)
-                return false;
-
-            std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "select password_hash,password_algo from " + oj_users + " where email='" + safe_email + "'";
-            return QueryUserPasswordAuth(sql, password_hash, password_algo);
-        }
-
-        bool UpdateUserEmail(const std::string& old_email, const std::string& new_email)
-        {
-            auto my = CreateConnection();
-            if(!my)
-                return false;
-
-            std::string safe_old_email = EscapeSqlString(old_email, my.get());
-            std::string safe_new_email = EscapeSqlString(new_email, my.get());
-            std::string sql = "update " + oj_users +
-                              " set email='" + safe_new_email +
-                              "' where email='" + safe_old_email + "'";
-            if (!ExecuteSql(sql))
-                return false;
-
-            // 清除用户缓存（邮箱是缓存的用户信息的一部分）
-            User user;
-            if (GetUser(new_email, &user))
-            {
-                _cache.DeleteStringByAnyKey("user:id:" + std::to_string(user.uid));
-            }
-            return true;
-        }
-
-        bool DeleteUserByEmail(const std::string& email)
-        {
-            auto my = CreateConnection();
-            if(!my)
-                return false;
-
-            std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "delete from " + oj_users + " where email='" + safe_email + "'";
-            return ExecuteSql(sql);
-        }
-
-        bool UpdateUserAvatar(int uid, const std::string& avatar_path)
-        {
-            auto my = CreateConnection();
-            if (!my)
-                return false;
-
-            std::string safe_path = EscapeSqlString(avatar_path, my.get());
+            std::string safe_name = EscapeSqlString(new_name, my.get());
             std::ostringstream sql;
-            sql << "update " << oj_users << " set avatar_path='" << safe_path
+            sql << "update " << oj_users << " set name='" << safe_name
                 << "' where uid=" << uid;
             bool ok = ExecuteSql(sql.str());
             if (ok) {
-                // Invalidate user cache so next GetUserById refetches from DB
                 _cache.DeleteStringByAnyKey("user:id:" + std::to_string(uid));
             }
             return ok;
         }
+
 
         bool GetUserByName(const std::string& name, User* user)
         {
@@ -412,8 +212,42 @@ namespace ns_model
                 return false;
 
             std::string safe_name = EscapeSqlString(name, my.get());
-            std::string sql = "select uid,name,email,avatar_path,create_time,last_login,password_algo from " + oj_users + " where name='" + safe_name + "'";
+            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where name='" + safe_name + "'";
             return QueryUser(sql, user);
+        }
+
+        bool GetUserCount(int* count)
+        {
+            if (count == nullptr) return false;
+            std::string sql = "select count(*) from " + oj_users;
+            if (!QueryCount(sql, count)) return false;
+            return true;
+        }
+
+        bool GetUsersPaged(std::shared_ptr<ns_cache::Cache::CacheListKey> key, std::vector<User>* users, int* total_count, int* total_pages)
+        {
+            if (!users || !total_count || !total_pages) return false;
+            auto my = CreateConnection(); if (!my) return false;
+            std::ostringstream count_sql;
+            count_sql << "select count(*) from " << oj_users;
+            if (!QueryCount(count_sql.str(), total_count)) return false;
+            *total_pages = (*total_count + key->GetSize() - 1) / key->GetSize();
+            if (*total_count <= 0) { users->clear(); return true; }
+            int offset = (key->GetPage() - 1) * key->GetSize();
+            std::ostringstream sql;
+            sql << "select uid,name,email,create_time,last_login from " << oj_users
+                << " order by uid desc limit " << key->GetSize() << " offset " << offset;
+            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "分页用户查询错误");
+            if (!res) return false;
+            users->clear();
+            for (int r = 0; r < mysql_num_rows(res); ++r) {
+                MYSQL_ROW row = mysql_fetch_row(res); if (!row) continue;
+                User u; u.uid = atoi(row[0]); u.name = row[1] ? row[1] : "";
+                u.email = row[2] ? row[2] : "";
+                u.create_time = row[3] ? row[3] : ""; u.last_login = row[4] ? row[4] : "";
+                users->push_back(u);
+            }
+            mysql_free_result(res); return true;
         }
 
         bool RecordUserSubmit(int user_id, const std::string& question_id, const std::string& result_json, bool is_pass)
@@ -604,6 +438,84 @@ namespace ns_model
                 _cache.SetStringByAnyKey(cache_key, writer.write(*stats), _cache.BuildJitteredTtl(180, 60));
             }
 
+            return true;
+        }
+
+        bool SetUserPassword(const std::string& email, const std::string& password_hash, const std::string& password_algo)
+        {
+            auto my = CreateConnection();
+            if (!my) return false;
+            std::string safe_email = EscapeSqlString(email, my.get());
+            std::string safe_hash = EscapeSqlString(password_hash, my.get());
+            std::string safe_algo = EscapeSqlString(password_algo, my.get());
+            std::string sql = "update " + oj_users + " set password_hash='" + safe_hash +
+                              "', password_algo='" + safe_algo +
+                              "', password_update_at=NOW() where email='" + safe_email + "'";
+            return ExecuteSql(sql);
+        }
+
+        bool GetUserPasswordAuth(const std::string& email, std::string* password_hash, std::string* password_algo)
+        {
+            auto my = CreateConnection();
+            if (!my) return false;
+            std::string safe_email = EscapeSqlString(email, my.get());
+            std::string sql = "select password_hash,password_algo from " + oj_users + " where email='" + safe_email + "'";
+            return QueryUserPasswordAuth(sql, password_hash, password_algo);
+        }
+
+        bool UpdateUserEmail(const std::string& old_email, const std::string& new_email)
+        {
+            auto my = CreateConnection();
+            if (!my) return false;
+            std::string safe_old = EscapeSqlString(old_email, my.get());
+            std::string safe_new = EscapeSqlString(new_email, my.get());
+            std::string sql = "update " + oj_users + " set email='" + safe_new +
+                              "' where email='" + safe_old + "'";
+            bool ok = ExecuteSql(sql);
+            if (ok) {
+                User user;
+                if (GetUser(new_email, &user))
+                    _cache.DeleteStringByAnyKey("user:id:" + std::to_string(user.uid));
+            }
+            return ok;
+        }
+
+        bool DeleteUserByEmail(const std::string& email)
+        {
+            auto my = CreateConnection();
+            if (!my) return false;
+            std::string safe_email = EscapeSqlString(email, my.get());
+            std::string sql = "delete from " + oj_users + " where email='" + safe_email + "'";
+            return ExecuteSql(sql);
+        }
+
+        bool GetUsersByIds(const std::set<int>& user_ids, std::map<int, User>* users)
+        {
+            if (users == nullptr || user_ids.empty()) return false;
+            users->clear();
+            std::ostringstream idlist;
+            int i = 0;
+            for (int uid : user_ids) {
+                if (i++ > 0) idlist << ",";
+                idlist << uid;
+            }
+            auto my = CreateConnection();
+            if (!my) return false;
+            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where uid in (" + idlist.str() + ")";
+            MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql批量用户查询错误");
+            if (!res) return false;
+            for (int r = 0; r < mysql_num_rows(res); ++r) {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (!row) continue;
+                User user;
+                user.uid = atoi(row[0]);
+                user.name = row[1] ? row[1] : "";
+                user.email = row[2] ? row[2] : "";
+                user.create_time = row[3] ? row[3] : "";
+                user.last_login = row[4] ? row[4] : "";
+                (*users)[user.uid] = user;
+            }
+            mysql_free_result(res);
             return true;
         }
     };

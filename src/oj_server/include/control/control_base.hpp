@@ -363,7 +363,6 @@ namespace ns_control
             return _session_manager.GetClearCookieHeader();
         }
 
-    protected:
         // 按用户ID在avatars目录下查找头像文件，仅依赖文件系统，不依赖DB的avatar_path
         std::string GetEffectiveAvatarUrl(const User& author) const
         {
@@ -377,6 +376,8 @@ namespace ns_control
             }
             return "/pictures/head.jpg";
         }
+
+    protected:
 
         std::string TrimSpace(const std::string& input) const
         {

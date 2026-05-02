@@ -344,6 +344,21 @@
             background: rgba(244, 246, 240, 0.5);
         }
 
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            width: 100dvw;
+            height: 100dvh;              /* 现代浏览器动态视口 */
+            object-fit: contain;         /* 保证完整显示 */
+            z-index: 0;
+             filter: brightness(0.9);
+            /* 放大一点点，遮盖因模糊产生的透明边缘 */
+            transform: scale(1.05);
+        }
+
         @media (max-width: 768px) {
 
             .container {
@@ -368,6 +383,7 @@
             .submission-status {
                 align-self: flex-end;
             }
+            
         }
 
     
@@ -378,6 +394,10 @@
             .container { padding: 12px; }
             .profile-header { flex-direction: column; text-align: center; }
             .user-stats { justify-content: center; }
+            .video-background {
+                object-fit: cover;          /* 填满容器，允许裁剪 */
+                object-position: center;    /* 裁剪时以视频正中为焦点 */
+            }
         }
 </style>
 </head>
@@ -386,7 +406,9 @@
         <div class="page-loading-text">正在加载中...</div>
     </div>
     <!-- 背景图片 -->
-    <div class="background"></div>
+    <video class="video-background" autoplay muted loop playsinline preload="auto">
+        <source src="/pictures/b2.mp4" type="video/mp4">
+    </video>
     
     <!-- 雨线效果 -->
     <div class="rain-lines" id="rainLines"></div>
@@ -428,7 +450,7 @@
                     <input type="file" id="avatar-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
                 </div>
                 <div class="user-info">
-                    <h1 id="profile-name">用户名</h1>
+                    <h1 id="profile-name" style="cursor:pointer;display:inline-block;transition:all 0.2s;" title="点击修改用户名">用户名</h1>
                     <p id="profile-email" style="color: rgba(244, 246, 240, 0.7);">邮箱：-</p>
                     <p id="profile-uid" style="color: rgba(244, 246, 240, 0.7);">uid：-</p>
 <div class="user-stats">
@@ -513,6 +535,59 @@
 
         // 初始化
         createRainLines();
+
+        // 用户名点击编辑
+        var nameEl = document.getElementById('profile-name');
+        nameEl.addEventListener('click', function() {
+            if (nameEl.querySelector('input')) return;
+            var currentName = nameEl.textContent;
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentName;
+            input.maxLength = 20;
+            input.style.cssText = 'font-size:32px;font-weight:300;color:#F4F6F0;background:rgba(255,255,255,0.08);border:1px solid rgba(244,246,240,0.3);border-radius:8px;padding:4px 12px;width:200px;outline:none;font-family:inherit;';
+            nameEl.textContent = '';
+            nameEl.appendChild(input);
+            input.focus();
+            input.select();
+
+            var saving = false;
+            function saveName() {
+                if (saving) return;
+                var newName = input.value.trim();
+                if (!newName || newName === currentName) { nameEl.textContent = currentName; return; }
+                if (newName.length > 20) { alert('用户名不能超过20个字符'); return; }
+                saving = true;
+                input.disabled = true;
+                fetch('/api/user/name', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ name: newName })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        nameEl.textContent = data.name;
+                    } else if (data.error_code === 'NAME_TAKEN') {
+                        alert('该用户名已被占用');
+                        nameEl.textContent = currentName;
+                    } else {
+                        alert('修改失败，请重试');
+                        nameEl.textContent = currentName;
+                    }
+                })
+                .catch(function() {
+                    alert('网络错误');
+                    nameEl.textContent = currentName;
+                });
+            }
+            input.addEventListener('blur', saveName);
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { input.blur(); }
+                if (e.key === 'Escape') { nameEl.textContent = currentName; }
+            });
+        });
 
         async function syncProfileUserInfo() {
             if (window.__showPageLoading) window.__showPageLoading('正在加载中...');

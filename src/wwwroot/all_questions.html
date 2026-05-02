@@ -517,6 +517,21 @@
             font-weight: 400;
         }
 
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            width: 100dvw;
+            height: 100dvh;              /* 现代浏览器动态视口 */
+            object-fit: contain;         /* 保证完整显示 */
+            z-index: 0;
+             filter: brightness(0.9);
+            /* 放大一点点，遮盖因模糊产生的透明边缘 */
+            transform: scale(1.05);
+        }
+
         @media (max-width: 768px) {
             .pagination-container {
                 flex-direction: column;
@@ -530,6 +545,10 @@
                 flex-wrap: wrap;
                 justify-content: center;
             }
+            .video-background {
+                object-fit: cover;          /* 填满容器，允许裁剪 */
+                object-position: center;    /* 裁剪时以视频正中为焦点 */
+            }
         }
 
 
@@ -540,7 +559,9 @@
         <div class="page-loading-text">正在加载中...</div>
     </div>
     <!-- 背景图片 -->
-    <div class="background"></div>
+    <video class="video-background" autoplay muted loop playsinline preload="auto">
+        <source src="/pictures/b2.mp4" type="video/mp4">
+    </video>
     <!-- 雨线效果 -->
     <div class="rain-lines" id="rainLines"></div>
     <div class="header">

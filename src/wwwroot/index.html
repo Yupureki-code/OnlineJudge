@@ -2,15 +2,50 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Yupureki-OJ - 在线编程评测系统</title>
     <link rel="stylesheet" href="/css/common.css">
     <style>
+        /* ---------- 全局防溢出 ---------- */
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100vh;
+            overflow-x: hidden;          /* 禁止横向滚动 */
+        }
+
+        /* ---------- 视频背景（移动端动态高度） ---------- */
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            width: 100dvw;
+            height: 100dvh;              /* 现代浏览器动态视口 */
+            object-fit: contain;         /* 保证完整显示 */
+            z-index: 0;
+             filter: brightness(0.9);
+            /* 放大一点点，遮盖因模糊产生的透明边缘 */
+            transform: scale(1.05);
+        }
+        /* 降级：不支持 dvh 的浏览器 */
+        @supports not (height: 100dvh) {
+            .video-background {
+                width: 100%;
+                height: 100%;
+            }
+        }
+
+        /* ---------- 内容层 ---------- */
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-
             position: relative;
             z-index: 2;
         }
@@ -211,21 +246,6 @@
             animation: ripple 0.4s linear;
             pointer-events: none;
         }
-        .video-background
-        {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            min-width: 100%;
-            min-height: 100%;
-            width: auto;
-            height: auto;
-            transform: translate(-50%, -50%);
-            z-index: -1;
-            object-fit: cover;  /* 保持完整内容，不裁剪 */
-            background-color: #000;
-            pointer-events: none;
-        }
 
         @keyframes ripple {
             to {
@@ -234,37 +254,92 @@
             }
         }
 
+        /* ---------- 移动端适配 ---------- */
         @media (max-width: 768px) {
             .hero h1 {
-                font-size: 48px;
+                font-size: 42px;               /* 稍小但清晰 */
+            }
+            .hero p {
+                font-size: 15px;
+                margin-bottom: 40px;
+            }
+            .hero {
+                padding: 60px 20px 80px;       /* 减少纵向留白 */
+            }
+            .cta-button {
+                padding: 14px 36px;
+                font-size: 13px;
+            }
+
+            /* 顶栏响应式：确保不挤压、不换行错乱 */
+            .header {
+                flex-wrap: wrap;
+                justify-content: space-between;
+                padding: 10px 15px;
             }
             .nav {
-                gap: 20px;
+                flex-wrap: wrap;
+                gap: 12px;
+                justify-content: center;
             }
-            .header {
-                flex-direction: column;
-                gap: 20px;
-                text-align: center;
+            /* 搜索框在小屏显示为单独一行，或自适应宽度 */
+            .search-container {
+                order: 2;                       /* 放到导航下方 */
+                width: 100%;
+                margin: 8px 0;
             }
+            #navbar-search {
+                width: 100%;
+            }
+
             .login-section {
-                padding: 0 20px;
+                padding: 0 15px;
+            }
+            .glass-card {
+                padding: 25px 20px;
+            }
+            .form-group input {
+                font-size: 16px;               /* 移动端避免缩放 */
+                padding: 14px 16px;
+            }
+             /* 移动端视频壁纸：铺满屏幕，裁剪两侧，保留中间 */
+            .video-background {
+                object-fit: cover;          /* 填满容器，允许裁剪 */
+                object-position: center;    /* 裁剪时以视频正中为焦点 */
+            }
+        }
+
+        /* 超小屏（320-480）进一步优化 */
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 34px;
+            }
+            .hero p {
+                font-size: 14px;
+            }
+            .logo {
+                font-size: 16px;
+            }
+            .nav a {
+                font-size: 14px;
             }
         }
     </style>
 </head>
- <body>
+<body>
     <video class="video-background" autoplay muted loop playsinline preload="auto">
-        <source src="pictures/b2.mp4" type="video/mp4">
+        <source src="/pictures/b2.mp4" type="video/mp4">
     </video>
+
     <div id="page-loading-mask" class="page-loading-mask">
         <div class="page-loading-text">加载中...</div>
     </div>
-    <!-- 背景图片、雨线等保持不变 -->
+
     <div class="rain-lines" id="rainLines"></div>
 
     <div class="header">
         <div class="nav">
-            <img src="./pictures/icon.png" width="40px" height="40px">
+            <img src="./pictures/icon.png" width="40px" height="40px" alt="logo">
             <p class="logo">Yupureki-OJ</p>
             <a href="/">首页</a>
             <a href="/all_questions">题库</a>
@@ -275,13 +350,10 @@
             <input type="text" id="navbar-search" class="search-input" placeholder="搜索题目...">
         </div>
         <div class="nav">
-            <!-- 未登录状态 -->
             <div id="user-auth" style="display: block;">
                 <button class="auth-btn" id="sign-in-button">登录/注册</button>
             </div>
-            <!-- 登录状态 -->
-            <div id="user-profile" style="display: none;">
-            </div>
+            <div id="user-profile" style="display: none;"></div>
         </div>
     </div>
 
@@ -301,26 +373,26 @@
             </div>
         </div>
     </div>
+
     <script>
         const v = document.querySelector('video');
-console.log('video元素存在？', v);
-if(v) {
-  console.log('readyState:', v.readyState);        // 0=尚无数据,1=元数据已加载,2=当前帧可用,3=至少下帧可用,4=全部可用
-  console.log('networkState:', v.networkState);    // 0=空,1=加载中,2=已加载元数据,3=加载失败
-  console.log('paused:', v.paused);                // 是否暂停
-  console.log('ended:', v.ended);
-  console.log('currentTime:', v.currentTime);      // 当前播放时间（秒）
-  console.log('duration:', v.duration);            // 总时长
-  console.log('videoWidth/Height:', v.videoWidth, v.videoHeight);
-  console.log('error code:', v.error?.code);       // 如果有错误会显示
-  v.play().then(() => console.log('play()成功')).catch(e => console.log('play()失败', e));
-  // 强制尝试跳转到0.1秒
-  v.currentTime = 0.1;
-  setTimeout(() => console.log('强制跳转后 currentTime:', v.currentTime), 100);
-}
+        console.log('video元素存在？', v);
+        if(v) {
+          console.log('readyState:', v.readyState);
+          console.log('networkState:', v.networkState);
+          console.log('paused:', v.paused);
+          console.log('ended:', v.ended);
+          console.log('currentTime:', v.currentTime);
+          console.log('duration:', v.duration);
+          console.log('videoWidth/Height:', v.videoWidth, v.videoHeight);
+          console.log('error code:', v.error?.code);
+          v.play().then(() => console.log('play()成功')).catch(e => console.log('play()失败', e));
+          v.currentTime = 0.1;
+          setTimeout(() => console.log('强制跳转后 currentTime:', v.currentTime), 100);
+        }
     </script>
     <script src="/js/page-loading.js"></script>
     <script src="/js/auth.js?v=20260423"></script>
-<script src="/js/search.js"></script>
+    <script src="/js/search.js"></script>
 </body>
 </html>

@@ -55,13 +55,14 @@ namespace ns_control
             }
 
             // 删除旧头像文件（防止换扩展名后旧文件残留）
-            if (!current_user.avatar_path.empty()
-                && current_user.avatar_path.find("../") == std::string::npos
-                && current_user.avatar_path.find("/pictures/avatars/") == 0
-                && current_user.avatar_path != relative_path)
+            static const char* kExts[] = {".jpg", ".png", ".gif", ".webp"};
+            for (const char* old_ext : kExts)
             {
-                std::string old_path = std::string(HTML_PATH) + "pictures/avatars/" + std::string(current_user.avatar_path.substr(current_user.avatar_path.rfind('/') + 1));
-                unlink(old_path.c_str());
+                std::string old_path = absolute_dir + std::to_string(current_user.uid) + old_ext;
+                if (old_path != absolute_dir + filename)
+                {
+                    unlink(old_path.c_str());
+                }
             }
 
             std::string absolute_path = absolute_dir + filename;
@@ -71,16 +72,9 @@ namespace ns_control
                 return false;
             }
 
-            if (!_model.User().UpdateUserAvatar(current_user.uid, relative_path))
-            {
-                unlink(absolute_path.c_str());
-                *err_code = "DB_ERROR";
-                return false;
-            }
-
             (*result)["success"] = true;
             (*result)["avatar_url"] = relative_path;
-            _model.SetCachedStringByAnyKey("avatar:user:" + std::to_string(current_user.uid), relative_path, 3600);
+            _model.DeleteCachedStringByAnyKey("avatar:user:" + std::to_string(current_user.uid));
             return true;
         }
 
@@ -89,25 +83,16 @@ namespace ns_control
             if (result == nullptr || err_code == nullptr)
                 return false;
 
-            // 删除磁盘上的旧头像文件（仅限 avatars 目录下的文件，防止路径穿越）
-            if (!current_user.avatar_path.empty())
+            // 删除磁盘上的所有旧头像文件
+            std::string absolute_dir = std::string(HTML_PATH) + "pictures/avatars/";
+            static const char* kExts[] = {".jpg", ".png", ".gif", ".webp"};
+            for (const char* ext : kExts)
             {
-                std::string rel = current_user.avatar_path;
-                if (rel.find("../") == std::string::npos && rel.find("/pictures/avatars/") == 0)
-                {
-                    std::string absolute_path = std::string(HTML_PATH) + "pictures/avatars/" + std::string(rel.substr(rel.rfind('/') + 1));
-                    unlink(absolute_path.c_str());
-                }
-            }
-
-            if (!_model.User().UpdateUserAvatar(current_user.uid, ""))
-            {
-                *err_code = "DB_ERROR";
-                return false;
+                unlink((absolute_dir + std::to_string(current_user.uid) + ext).c_str());
             }
 
             (*result)["success"] = true;
-            _model.SetCachedStringByAnyKey("avatar:user:" + std::to_string(current_user.uid), "", 3600);
+            _model.DeleteCachedStringByAnyKey("avatar:user:" + std::to_string(current_user.uid));
             return true;
         }
 

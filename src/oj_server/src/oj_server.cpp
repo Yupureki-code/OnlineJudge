@@ -120,7 +120,7 @@ std::shared_ptr<QueryStruct> ParseQuestionQuery(const Request& req)
 } // namespace
 
 //向html中注入用户信息的脚本，供前端使用
-std::string InjectUserInfo(const std::string& html, User* user, bool isLoggedIn)
+std::string InjectUserInfo(const std::string& html, User* user, bool isLoggedIn, ns_control::Control& ctl)
 {
     std::string result = html;
     
@@ -132,7 +132,7 @@ std::string InjectUserInfo(const std::string& html, User* user, bool isLoggedIn)
         userInfoScript += ", name: \"" + user->name + "\"";
         userInfoScript += ", email: \"" + user->email + "\"";
         userInfoScript += ", uid: " + std::to_string(user->uid);
-        userInfoScript += ", avatar_url: \"" + user->avatar_path + "\"";
+        userInfoScript += ", avatar_url: \"" + ctl.GetEffectiveAvatarUrl(*user) + "\"";
     }
     userInfoScript += "};";
     
@@ -210,10 +210,9 @@ int main()
         return true;
     };
     //设置静态文件目录
-    svr.set_mount_point("/", HTML_PATH + std::string("pictures"));
+    svr.set_mount_point("/", HTML_PATH);
     svr.set_mount_point("/pictures", HTML_PATH + std::string("pictures"));
     svr.set_mount_point("/css", HTML_PATH + std::string("css"));
-    svr.set_mount_point("/spa", HTML_PATH + std::string("spa"));
     //设置路由和处理函数
     // ── 静态资源 ──
     svr.Get("/js/(.*)", [](const Request& req, Response& rep){
@@ -232,7 +231,7 @@ int main()
         ctl.GetStaticHtml("index.html", &html);
         User user;
         bool isLoggedIn = getCurrentUser(req, &user);
-        html = InjectUserInfo(html, &user, isLoggedIn);
+        html = InjectUserInfo(html, &user, isLoggedIn, ctl);
         rep.set_content(html, "text/html;charset=utf-8");
     });
     //访问题库的路由，返回题库HTML
@@ -248,7 +247,7 @@ int main()
         User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
-        html = InjectUserInfo(html, &user, isLoggedIn);
+        html = InjectUserInfo(html, &user, isLoggedIn, ctl);
         
         rep.set_content(html,"text/html;charset=utf-8");
         auto end = std::chrono::steady_clock::now();
@@ -265,7 +264,7 @@ int main()
         User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
-        html = InjectUserInfo(html, &user, isLoggedIn);
+        html = InjectUserInfo(html, &user, isLoggedIn, ctl);
         
         rep.set_content(html, "text/html;charset=utf-8");
     });
@@ -277,7 +276,7 @@ int main()
         User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
-        html = InjectUserInfo(html, &user, isLoggedIn);
+        html = InjectUserInfo(html, &user, isLoggedIn, ctl);
         
         rep.set_content(html, "text/html;charset=utf-8");
     });
@@ -289,7 +288,7 @@ int main()
         User user;
         bool isLoggedIn = getCurrentUser(req, &user);
 
-        html = InjectUserInfo(html, &user, isLoggedIn);
+        html = InjectUserInfo(html, &user, isLoggedIn, ctl);
 
         rep.set_content(html, "text/html;charset=utf-8");
     });
@@ -303,7 +302,7 @@ int main()
         User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
-        html = InjectUserInfo(html, &user, isLoggedIn);
+        html = InjectUserInfo(html, &user, isLoggedIn, ctl);
         
         rep.set_content(html,"text/html;charset=utf-8");
         auto end = std::chrono::steady_clock::now();
@@ -318,7 +317,7 @@ int main()
         User user;
         bool isLoggedIn = getCurrentUser(req, &user);
 
-        html = InjectUserInfo(html, &user, isLoggedIn);
+        html = InjectUserInfo(html, &user, isLoggedIn, ctl);
 
         rep.set_content(html, "text/html;charset=utf-8");
     });
@@ -330,7 +329,7 @@ int main()
         User user;
         bool isLoggedIn = getCurrentUser(req, &user);
 
-        html = InjectUserInfo(html, &user, isLoggedIn);
+        html = InjectUserInfo(html, &user, isLoggedIn, ctl);
 
         rep.set_content(html, "text/html;charset=utf-8");
     });
@@ -348,7 +347,7 @@ int main()
         User user;
         bool isLoggedIn = getCurrentUser(req, &user);
         
-        html = InjectUserInfo(html, &user, isLoggedIn);
+        html = InjectUserInfo(html, &user, isLoggedIn, ctl);
         
         rep.set_content(html, "text/html;charset=utf-8");
     });
@@ -1029,7 +1028,7 @@ int main()
             response["user"]["uid"] = user.uid;
             response["user"]["name"] = user.name;
             response["user"]["email"] = user.email;
-            response["user"]["avatar_url"] = user.avatar_path;
+            response["user"]["avatar_url"] = ctl.GetEffectiveAvatarUrl(user);
             response["user"]["create_time"] = user.create_time;
         } else {
             response["success"] = false;
@@ -1077,6 +1076,37 @@ int main()
             http_status = 500;
         }
         replyJson(rep, result, http_status);
+    });
+    //修改用户名
+    svr.Post("/api/user/name", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+        User current_user;
+        if (!requireAuth(req, rep, &current_user)) return;
+        Json::Value in_value;
+        if (!parseBody(req, rep, &in_value)) return;
+        if (!in_value.isMember("name") || !in_value["name"].isString()) {
+            Json::Value r; r["success"] = false; r["error_code"] = "INVALID_NAME";
+            replyJson(rep, r, 400); return;
+        }
+        std::string new_name = StringUtil::Trim(in_value["name"].asString());
+        if (new_name.empty() || new_name.size() > 20) {
+            Json::Value r; r["success"] = false; r["error_code"] = "INVALID_NAME";
+            replyJson(rep, r, 400); return;
+        }
+        //检查用户名是否已被占用
+        User existing;
+        if (ctl.GetModel()->User().GetUserByName(new_name, &existing) && existing.uid != current_user.uid) {
+            Json::Value r; r["success"] = false; r["error_code"] = "NAME_TAKEN";
+            replyJson(rep, r, 409); return;
+        }
+        //更新用户名
+        if (!ctl.GetModel()->User().UpdateUserName(current_user.uid, new_name)) {
+            Json::Value r; r["success"] = false; r["error_code"] = "DB_ERROR";
+            replyJson(rep, r, 500); return;
+        }
+        Json::Value result;
+        result["success"] = true;
+        result["name"] = new_name;
+        replyJson(rep, result, 200);
     });
     //获取题目基本信息——返回题号、标题等元数据，用于题解发布页等
     svr.Get(R"(/api/question/(\d+)$)", [&ctl, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {

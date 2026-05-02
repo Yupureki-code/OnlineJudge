@@ -186,10 +186,9 @@ namespace ns_model
             user->uid = atoi(row[0]);
             user->name = row[1];
             user->email = row[2];
-            user->avatar_path = row[3] == nullptr ? "" : row[3];
-            user->create_time = row[4];
-            user->last_login = row[5];
-            user->password_algo = row[6] == nullptr ? "" : row[6];
+            user->create_time = row[3];
+            user->last_login = row[4];
+            user->password_algo = row[5] == nullptr ? "" : row[5];
             mysql_free_result(res);
             return true;
         }

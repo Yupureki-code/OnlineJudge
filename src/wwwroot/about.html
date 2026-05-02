@@ -6,35 +6,6 @@
     <title>关于 - Yupureki-OJ</title>
     <link rel="stylesheet" href="/css/common.css">
     <style>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         @keyframes rain {
             from {
                 transform: translateY(-100%);
@@ -59,23 +30,6 @@
             position: relative;
             z-index: 2;
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         .about-content {
             max-width: 800px;
@@ -224,6 +178,21 @@
             pointer-events: none;
         }
 
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            width: 100dvw;
+            height: 100dvh;              /* 现代浏览器动态视口 */
+            object-fit: contain;         /* 保证完整显示 */
+            z-index: 0;
+             filter: brightness(0.9);
+            /* 放大一点点，遮盖因模糊产生的透明边缘 */
+            transform: scale(1.05);
+        }
+
         @keyframes rippleEffect {
             to {
                 transform: scale(4);
@@ -254,12 +223,13 @@
             .link-label {
                 width: auto;
             }
-
+            .video-background {
+                object-fit: cover;          /* 填满容器，允许裁剪 */
+                object-position: center;    /* 裁剪时以视频正中为焦点 */
+            }
 
         }
-
-
-    
+   
         /* 移动端适配 */
         @media (max-width: 768px) {
             .header { flex-direction: column; gap: 10px; text-align: center; padding: 10px 12px; }
@@ -271,11 +241,10 @@
 </style>
 </head>
 <body>
-    <div id="page-loading-mask" class="page-loading-mask">
-        <div class="page-loading-text">加载中...</div>
-    </div>
     <!-- 背景图片 -->
-    <div class="background"></div>
+     <video class="video-background" autoplay muted loop playsinline preload="auto">
+        <source src="/pictures/b2.mp4" type="video/mp4">
+    </video>
     
     <!-- 雨线效果 -->
     <div class="rain-lines" id="rainLines"></div>
