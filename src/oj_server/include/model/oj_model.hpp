@@ -466,7 +466,7 @@ namespace ns_model
 
             return QueryAuditLogs(sql.str(), logs);
         }
-
+        //在MySQL中插入缓存记录
         void InsertCacheMetricSnapshot(int action_type, long long total, long long hits, long long falls, long long ms)
         {
             auto my = CreateConnection();
@@ -474,11 +474,14 @@ namespace ns_model
             std::ostringstream sql;
             sql << "insert into cache_metrics_snapshots (action_type,total_requests,cache_hits,db_fallbacks,total_ms) values ("
                 << action_type << "," << total << "," << hits << "," << falls << "," << ms << ")";
-            mysql_query(my.get(), sql.str().c_str()); // best-effort
+            mysql_query(my.get(), sql.str().c_str());
+            if (mysql_errno(my.get()) != 0)
+                logger(ns_log::WARNING) << "InsertCacheMetricSnapshot failed: " << mysql_error(my.get());
         }
-
+        //刷新缓存记录
         void FlushCacheMetrics()
         {
+            logger(ns_log::INFO)<<"刷新缓存";
             for (int t = 0; t < 5; ++t)
             {
                 auto& m = Metrics().actions[t];
@@ -490,9 +493,10 @@ namespace ns_model
                 InsertCacheMetricSnapshot(t, req, hits, falls, ms);
             }
         }
-
+        //刷新缓存线程的工作区
         void StartMetricsFlushWorker()
         {
+            //每隔30秒或者缓存条数大于或等于100->刷新
             _metrics_running = true;
             _metrics_worker = std::thread([this]() {
                 while (_metrics_running)
@@ -511,13 +515,13 @@ namespace ns_model
                 }
             });
         }
-
+        //停止缓存刷新的功能
         void StopMetricsFlushWorker()
         {
             _metrics_running = false;
             if (_metrics_worker.joinable()) _metrics_worker.join();
         }
-
+        //清理MySQL中的旧缓存记录
         void CleanupOldMetrics()
         {
             auto my = CreateConnection();

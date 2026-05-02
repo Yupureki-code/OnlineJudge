@@ -16,6 +16,7 @@ namespace ns_model
             {
                 return false;
             }
+            auto _metrics_begin = std::chrono::steady_clock::now();
             //构建cache_key
             std::string cache_key = "comment:list:sid:" + std::to_string(solution_id)
                                   + ":page:" + std::to_string(page)
@@ -55,7 +56,9 @@ namespace ns_model
                         }
                     }
                     logger(ns_log::INFO) << "Cache hit for comment list " << cache_key;
-                    RecordCacheMetrics(RecordActionType::Comment, true, false, 0);
+                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - _metrics_begin).count();
+                    RecordCacheMetrics(RecordActionType::Comment, true, false, cost_ms);
                     return true;
                 }
             }
@@ -164,7 +167,9 @@ namespace ns_model
             std::string json_str = writer.write(root);
             _cache.SetStringByAnyKey(cache_key, json_str, _cache.BuildJitteredTtl(300, 60));
             logger(ns_log::INFO) << "Cache miss for comment list, written to cache " << cache_key;
-            RecordCacheMetrics(RecordActionType::Comment, false, true, 0);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - _metrics_begin).count();
+            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
 
             return true;
         }
@@ -448,6 +453,7 @@ namespace ns_model
             {
                 return false;
             }
+            auto _metrics_begin = std::chrono::steady_clock::now();
 
             int safe_page = std::max(1, page);
             int safe_size = std::max(1, size);
@@ -488,7 +494,9 @@ namespace ns_model
                         }
                     }
                     logger(ns_log::INFO) << "Cache hit for reply list " << reply_cache_key;
-                    RecordCacheMetrics(RecordActionType::Comment, true, false, 0);
+                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - _metrics_begin).count();
+                    RecordCacheMetrics(RecordActionType::Comment, true, false, cost_ms);
                     return true;
                 }
             }
@@ -575,7 +583,9 @@ namespace ns_model
             _cache.SetStringByAnyKey(reply_cache_key, writer.write(cache_value),
                                      _cache.BuildJitteredTtl(120, 30));
             logger(ns_log::INFO) << "Cache miss for reply list, written to cache " << reply_cache_key;
-            RecordCacheMetrics(RecordActionType::Comment, false, true, 0);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - _metrics_begin).count();
+            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
 
             return true;
         }

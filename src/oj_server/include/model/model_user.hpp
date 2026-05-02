@@ -151,6 +151,7 @@ namespace ns_model
         bool GetUserById(int uid, User* user)
         {
             if (user == nullptr) return false;
+            auto _metrics_begin = std::chrono::steady_clock::now();
 
             // Try cache first
             std::string cache_key = "user:id:" + std::to_string(uid);
@@ -167,7 +168,9 @@ namespace ns_model
                     user->email = val["email"].asString();
                     user->create_time = val["create_time"].asString();
                     user->last_login = val["last_login"].asString();
-                    RecordCacheMetrics(RecordActionType::User, true, false, 0);
+                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - _metrics_begin).count();
+                    RecordCacheMetrics(RecordActionType::User, true, false, cost_ms);
                     return true;
                 }
             }
@@ -185,7 +188,9 @@ namespace ns_model
                 val["last_login"] = user->last_login;
                 Json::FastWriter writer;
                 _cache.SetStringByAnyKey(cache_key, writer.write(val), _cache.BuildJitteredTtl(3600, 600));
-                RecordCacheMetrics(RecordActionType::User, false, true, 0);
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - _metrics_begin).count();
+                RecordCacheMetrics(RecordActionType::User, false, true, cost_ms);
             }
             return ok;
         }

@@ -114,6 +114,7 @@ namespace ns_model
             {
                 return false;
             }
+            auto _metrics_begin = std::chrono::steady_clock::now();
 
             //构造cache key
             SolutionStatus status = SolutionStatus::approved;
@@ -165,7 +166,9 @@ namespace ns_model
                         }
                     }
                     logger(ns_log::INFO) << "Cache hit for solution list " << cache_key->GetCacheKeyString(&_cache);
-                    RecordCacheMetrics(RecordActionType::Solution, true, false, 0);
+                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - _metrics_begin).count();
+                    RecordCacheMetrics(RecordActionType::Solution, true, false, cost_ms);
                     return true;
                 }
             }
@@ -277,7 +280,9 @@ namespace ns_model
             _cache.SetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), json_str,
                                      _cache.BuildJitteredTtl(600, 120));
             logger(ns_log::INFO) << "Cache miss for solution list, written to cache " << cache_key->GetCacheKeyString(&_cache);
-            RecordCacheMetrics(RecordActionType::Solution, false, true, 0);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - _metrics_begin).count();
+            RecordCacheMetrics(RecordActionType::Solution, false, true, cost_ms);
 
             return true;
         }
@@ -288,6 +293,7 @@ namespace ns_model
             {
                 return false;
             }
+            auto _metrics_begin = std::chrono::steady_clock::now();
 
             //构造cache key
             auto cache_key = _cache.BuildSolutionDetailCacheKey(solution_id);
@@ -313,7 +319,9 @@ namespace ns_model
                     solution->created_at = json_value["created_at"].asString();
                     solution->updated_at = json_value["updated_at"].asString();
                     logger(ns_log::INFO) << "Cache hit for solution detail " << cache_key->GetCacheKeyString(&_cache);
-                    RecordCacheMetrics(RecordActionType::Solution, true, false, 0);
+                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - _metrics_begin).count();
+                    RecordCacheMetrics(RecordActionType::Solution, true, false, cost_ms);
                     return true;
                 }
             }
@@ -382,7 +390,9 @@ namespace ns_model
             _cache.SetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), json_str,
                                      _cache.BuildJitteredTtl(600, 120));
             logger(ns_log::INFO) << "Cache miss for solution detail, written to cache " << cache_key->GetCacheKeyString(&_cache);
-            RecordCacheMetrics(RecordActionType::Solution, false, true, 0);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - _metrics_begin).count();
+            RecordCacheMetrics(RecordActionType::Solution, false, true, cost_ms);
 
             return true;
         }
