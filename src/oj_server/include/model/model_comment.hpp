@@ -182,6 +182,7 @@ namespace ns_model
                 return false;
             }
 
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if (!my)
             {
@@ -341,6 +342,9 @@ namespace ns_model
                 }
             }
 
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
             return true;
         }
 
@@ -353,6 +357,7 @@ namespace ns_model
                 return false;
             }
 
+            auto _metrics_begin = std::chrono::steady_clock::now();
             // 先查Redis缓存
             std::string cache_key = "comment:detail:" + std::to_string(comment_id);
             std::string cached;
@@ -375,6 +380,9 @@ namespace ns_model
                     comment->created_at = val["created_at"].asString();
                     comment->updated_at = val["updated_at"].asString();
                     comment->reply_to_user_name = val["reply_to_user_name"].asString();
+                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - _metrics_begin).count();
+                    RecordCacheMetrics(RecordActionType::Comment, true, false, cost_ms);
                     return true;
                 }
             }
@@ -442,6 +450,9 @@ namespace ns_model
             cache_val["reply_to_user_name"] = comment->reply_to_user_name;
             Json::FastWriter writer;
             _cache.SetStringByAnyKey(cache_key, writer.write(cache_val), _cache.BuildJitteredTtl(300, 60));
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - _metrics_begin).count();
+            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
             return true;
         }
 
@@ -593,6 +604,7 @@ namespace ns_model
         // Comments: update a comment (ownership check included)
         bool UpdateComment(unsigned long long comment_id, int user_id, const std::string& content)
         {
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if (!my)
             {
@@ -616,12 +628,16 @@ namespace ns_model
             }
             // 清除评论缓存
             _cache.DeleteStringByAnyKey("comment:detail:" + std::to_string(comment_id));
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
             return true;
         }
 
         // Comments: delete a comment (admin override supported) with cascade delete for replies
         bool DeleteComment(unsigned long long comment_id, int user_id, bool is_admin = false)
         {
+            auto begin = std::chrono::steady_clock::now();
             // first fetch the related solution_id
             auto my = CreateConnection();
             if (!my)
@@ -745,6 +761,9 @@ namespace ns_model
             // Invalidate reply cache for the deleted comment's own replies
             _cache.DeleteStringByAnyKey("reply:list:pid:" + std::to_string(comment_id) + ":page:1:size:50");
 
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
             return true;
         }
 
@@ -761,6 +780,7 @@ namespace ns_model
             {
                 return true;
             }
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if (!my)
             {
@@ -793,6 +813,9 @@ namespace ns_model
                 }
             }
             mysql_free_result(res);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
             return true;
         }
 
@@ -805,6 +828,7 @@ namespace ns_model
                 return false;
             }
 
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if (!my)
             {
@@ -941,6 +965,9 @@ namespace ns_model
             }
             *new_count = static_cast<unsigned int>(std::atoi(cnt_row[0]));
             mysql_free_result(cnt_res);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
             return true;
         }
     };

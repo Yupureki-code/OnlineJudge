@@ -293,6 +293,7 @@ namespace ns_model
                 return false;
             }
 
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if (!my)
                 return false;
@@ -322,6 +323,9 @@ namespace ns_model
             auto detail_html_key = _cache.BuildDetailCacheKey(input.number, Cache::CacheKey::PageType::kHtml);
             _cache.InvalidatePage(detail_html_key);
             TouchQuestionListVersion();
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
 
@@ -332,6 +336,7 @@ namespace ns_model
                 return false;
             }
 
+            auto begin = std::chrono::steady_clock::now();
             std::string sql = "delete from " + oj_questions + " where id=" + number;
             if (!ExecuteSql(sql))
             {
@@ -343,6 +348,9 @@ namespace ns_model
             auto detail_html_key = _cache.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kHtml);
             _cache.InvalidatePage(detail_html_key);
             TouchQuestionListVersion();
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
 
@@ -352,12 +360,16 @@ namespace ns_model
             {
                 return false;
             }
+            auto begin = std::chrono::steady_clock::now();
             std::string key = "question_counts";
             std::string value;
             if(_cache.GetStringByAnyKey(key, &value))
             {
                 *count = std::atoi(value.c_str());
                 logger(ns_log::INFO) << "Cache hit for question count";
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count();
+                RecordCacheMetrics(RecordActionType::Question, true, false, cost_ms);
                 return true;
             }
             std::string sql = "select count(*) from " + oj_questions;
@@ -366,6 +378,9 @@ namespace ns_model
                 return false;
              }
              _cache.SetStringByAnyKey(key, std::to_string(*count), _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
+             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                 std::chrono::steady_clock::now() - begin).count();
+             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
              return true;
         }
 
@@ -400,6 +415,7 @@ namespace ns_model
             if (tests == nullptr)
                 return false;
 
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if (!my)
                 return false;
@@ -424,6 +440,9 @@ namespace ns_model
                 tests->append(item);
             }
             mysql_free_result(res);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
 
@@ -433,6 +452,7 @@ namespace ns_model
             if (result == nullptr)
                 return false;
 
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if (!my)
                 return false;
@@ -459,6 +479,9 @@ namespace ns_model
             }
             mysql_free_result(res);
             (*result)["tests"] = test_array;
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
 
@@ -468,6 +491,7 @@ namespace ns_model
             if (test_input == nullptr || test_output == nullptr)
                 return false;
 
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if (!my)
                 return false;
@@ -490,6 +514,9 @@ namespace ns_model
             *test_input = row[0];
             *test_output = row[1];
             mysql_free_result(res);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
     };

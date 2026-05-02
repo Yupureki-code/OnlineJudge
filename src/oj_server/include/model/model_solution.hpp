@@ -49,6 +49,7 @@ namespace ns_model
                 return false;
             }
 
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if (!my)
             {
@@ -98,6 +99,9 @@ namespace ns_model
 
             logger(ns_log::INFO) << "Invalidated solution list cache for question " << input.question_id;
 
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Solution, false, true, cost_ms);
             return true;
         }
         //获取分页的题解列表
@@ -405,6 +409,7 @@ namespace ns_model
                 return false;
             }
 
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if (!my)
             {
@@ -514,6 +519,9 @@ namespace ns_model
             _cache.DeleteStringByAnyKey(detail_key->GetCacheKeyString(&_cache));
             logger(ns_log::INFO) << "Invalidated solution detail cache after action toggle for solution " << solution_id;
 
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Solution, false, true, cost_ms);
                 return true;
         }
 
@@ -525,6 +533,7 @@ namespace ns_model
                 return true;
             }
 
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if (!my)
             {
@@ -557,6 +566,9 @@ namespace ns_model
             }
 
             mysql_free_result(res);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Solution, false, true, cost_ms);
             return true;
         }
 

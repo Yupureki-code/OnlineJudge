@@ -1,12 +1,14 @@
 #pragma once
 
 #include "model_base.hpp"
+#include <chrono>
 
 namespace ns_model
 {
     class ModelUser : public ModelBase
     {
     private:
+        //查询一批用户数据
         bool QueryUsers(const std::string& sql, std::vector<User>* users)
         {
             if (users == nullptr)
@@ -94,6 +96,7 @@ namespace ns_model
         //用户:检查用户是否存在
         bool CheckUser(const std::string& email)
         {
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if(!my)
                 return false;
@@ -102,15 +105,25 @@ namespace ns_model
             std::string sql = "select * from " + oj_users + " where email='" + safe_email + "'";
 
             MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql查询错误");
-            if (!res) return false;
+            if (!res)
+            {
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count();
+                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+                return false;
+            }
             int rows = mysql_num_rows(res);
             mysql_free_result(res);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
             return rows > 0;
         }
 
         //用户:创建新用户
         bool CreateUser(const std::string& name, const std::string& email)
         {
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if(!my)
                 return false;
@@ -120,31 +133,47 @@ namespace ns_model
             std::string sql = "insert into " + oj_users +
                               " (name, password_hash, email, password_algo) values ('" +
                               safe_name + "', '', '" + safe_email + "', 'none')";
-            return ExecuteSql(sql);
+            auto ok = ExecuteSql(sql);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            if (ok)
+                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+            return ok;
         }
 
         //用户:获取用户信息
         bool GetUser(const std::string& email, User* user)
         {
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if(!my)
                 return false;
 
             std::string safe_email = EscapeSqlString(email, my.get());
             std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where email='" + safe_email + "'";
-            return QueryUser(sql, user);
+            auto ok = QueryUser(sql, user);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+            return ok;
         }
 
         //用户:更新最后登录时间
         bool UpdateLastLogin(const std::string& email)
         {
+            auto begin = std::chrono::steady_clock::now();
             auto my = CreateConnection();
             if(!my)
                 return false;
 
             std::string safe_email = EscapeSqlString(email, my.get());
             std::string sql = "update " + oj_users + " set last_login=NOW() where email='" + safe_email + "'";
-            return ExecuteSql(sql);
+            auto ok = ExecuteSql(sql);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            if (ok)
+                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+            return ok;
         }
 
         //用户:通过ID获取用户信息 (with Redis read cache)
@@ -199,14 +228,17 @@ namespace ns_model
         {
             auto my = CreateConnection();
             if (!my) return false;
-
+            auto begin = std::chrono::steady_clock::now();
             std::string safe_name = EscapeSqlString(new_name, my.get());
             std::ostringstream sql;
             sql << "update " << oj_users << " set name='" << safe_name
                 << "' where uid=" << uid;
             bool ok = ExecuteSql(sql.str());
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
             if (ok) {
                 _cache.DeleteStringByAnyKey("user:id:" + std::to_string(uid));
+                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
             }
             return ok;
         }
@@ -217,18 +249,26 @@ namespace ns_model
             auto my = CreateConnection();
             if(!my)
                 return false;
-
+            auto begin = std::chrono::steady_clock::now();
             std::string safe_name = EscapeSqlString(name, my.get());
             std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where name='" + safe_name + "'";
-            return QueryUser(sql, user);
+            bool ok = QueryUser(sql, user);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+            return ok;
         }
 
         bool GetUserCount(int* count)
         {
             if (count == nullptr) return false;
+            auto begin = std::chrono::steady_clock::now();
             std::string sql = "select count(*) from " + oj_users;
-            if (!QueryCount(sql, count)) return false;
-            return true;
+            auto ok = QueryCount(sql, count);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+            return ok;
         }
 
         bool GetUsersPaged(std::shared_ptr<ns_cache::Cache::CacheListKey> key, std::vector<User>* users, int* total_count, int* total_pages)
@@ -237,6 +277,7 @@ namespace ns_model
             auto my = CreateConnection(); if (!my) return false;
             std::ostringstream count_sql;
             count_sql << "select count(*) from " << oj_users;
+            auto begin = std::chrono::steady_clock::now();
             if (!QueryCount(count_sql.str(), total_count)) return false;
             *total_pages = (*total_count + key->GetSize() - 1) / key->GetSize();
             if (*total_count <= 0) { users->clear(); return true; }
@@ -245,7 +286,13 @@ namespace ns_model
             sql << "select uid,name,email,create_time,last_login from " << oj_users
                 << " order by uid desc limit " << key->GetSize() << " offset " << offset;
             MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "分页用户查询错误");
-            if (!res) return false;
+            if (!res)
+            {
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+                return false;
+            }
             users->clear();
             for (int r = 0; r < mysql_num_rows(res); ++r) {
                 MYSQL_ROW row = mysql_fetch_row(res); if (!row) continue;
@@ -254,6 +301,9 @@ namespace ns_model
                 u.create_time = row[3] ? row[3] : ""; u.last_login = row[4] ? row[4] : "";
                 users->push_back(u);
             }
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
             mysql_free_result(res); return true;
         }
 
@@ -262,7 +312,7 @@ namespace ns_model
             auto my = CreateConnection();
             if (!my)
                 return false;
-
+            auto begin = std::chrono::steady_clock::now();
             std::string safe_qid = EscapeSqlString(question_id, my.get());
             std::string safe_json = EscapeSqlString(result_json, my.get());
 
@@ -270,11 +320,19 @@ namespace ns_model
             sql << "insert into user_submits (user_id, question_id, result_json, is_pass, action_time) values ("
                 << user_id << ", '" << safe_qid << "', '" << safe_json << "', " << (is_pass ? 1 : 0) << ", NOW())";
             if (!ExecuteSql(sql.str()))
+            {
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
                 return false;
+            }
 
             _cache.DeleteStringByAnyKey("submit:user:" + std::to_string(user_id) + ":q:" + question_id);
             _cache.DeleteStringByAnyKey("stats:user:" + std::to_string(user_id));
             _cache.DeleteStringByAnyKey("pass:user:" + std::to_string(user_id) + ":q:" + question_id);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
             return true;
         }
         //检查该用户是否通过该题目
@@ -283,8 +341,12 @@ namespace ns_model
         {
             std::string cache_key = "pass:user:" + std::to_string(user_id) + ":q:" + question_id;
             std::string cached;
+            auto begin = std::chrono::steady_clock::now();
             if (_cache.GetStringByAnyKey(cache_key, &cached))
             {
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+                RecordCacheMetrics(ModelBase::RecordActionType::User, true, false, cost_ms);
                 return cached == "1";
             }
 
@@ -301,7 +363,9 @@ namespace ns_model
             if (!QueryCount(sql.str(), &count))
                 return false;
             bool passed = count > 0;
-
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
             // 缓存结果，长期有效（通过的记录不会改变）
             _cache.SetStringByAnyKey(cache_key, passed ? "1" : "0", 
                                      _cache.BuildJitteredTtl(1800, 300));
@@ -313,7 +377,7 @@ namespace ns_model
         {
             if (submits == nullptr)
                 return false;
-
+            auto begin = std::chrono::steady_clock::now();
             // 先查缓存
             std::string cache_key = "submit:user:" + std::to_string(user_id) + ":q:" + question_id;
             std::string cached;
@@ -324,6 +388,9 @@ namespace ns_model
                 std::istringstream ss(cached);
                 if (Json::parseFromStream(builder, ss, &cached_val, nullptr) && cached_val.isArray())
                 {
+                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+                    RecordCacheMetrics(ModelBase::RecordActionType::User, true, false, cost_ms);
                     *submits = cached_val;
                     logger(ns_log::INFO) << "Cache hit for user submits user=" << user_id << " q=" << question_id;
                     return true;
@@ -361,7 +428,9 @@ namespace ns_model
             Json::FastWriter writer;
             std::string json_str = writer.write(*submits);
             _cache.SetStringByAnyKey(cache_key, json_str, _cache.BuildJitteredTtl(600, 120));
-
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
             return true;
         }
 
@@ -370,7 +439,7 @@ namespace ns_model
         {
             if (stats == nullptr)
                 return false;
-
+            auto begin = std::chrono::steady_clock::now();
             std::string cache_key = "stats:user:" + std::to_string(user_id);
             std::string cached;
             if (_cache.GetStringByAnyKey(cache_key, &cached))
@@ -380,6 +449,9 @@ namespace ns_model
                 if (Json::parseFromStream(builder, ss, stats, nullptr))
                 {
                     logger(ns_log::INFO) << "Cache hit for user stats user=" << user_id;
+                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+                    RecordCacheMetrics(ModelBase::RecordActionType::User, true, false, cost_ms);
                     return true;
                 }
             }
@@ -420,8 +492,16 @@ namespace ns_model
                        << " order by us.action_time desc limit 20";
 
             MYSQL_RES* res = QueryMySql(my.get(), recent_sql.str(), "MySql查询最近提交错误");
-            if (!res) return false;
-
+            if (!res)
+            {
+                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+                return false;
+            }
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
             Json::Value recent_arr(Json::arrayValue);
             for (int i = 0; i < mysql_num_rows(res); ++i)
             {
@@ -444,7 +524,7 @@ namespace ns_model
             {
                 _cache.SetStringByAnyKey(cache_key, writer.write(*stats), _cache.BuildJitteredTtl(180, 60));
             }
-
+            
             return true;
         }
 
@@ -452,38 +532,53 @@ namespace ns_model
         {
             auto my = CreateConnection();
             if (!my) return false;
+            auto begin = std::chrono::steady_clock::now();
             std::string safe_email = EscapeSqlString(email, my.get());
             std::string safe_hash = EscapeSqlString(password_hash, my.get());
             std::string safe_algo = EscapeSqlString(password_algo, my.get());
             std::string sql = "update " + oj_users + " set password_hash='" + safe_hash +
                               "', password_algo='" + safe_algo +
                               "', password_update_at=NOW() where email='" + safe_email + "'";
-            return ExecuteSql(sql);
+            auto ok = ExecuteSql(sql);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+            return ok;
         }
 
         bool GetUserPasswordAuth(const std::string& email, std::string* password_hash, std::string* password_algo)
         {
             auto my = CreateConnection();
             if (!my) return false;
+            auto begin = std::chrono::steady_clock::now();
             std::string safe_email = EscapeSqlString(email, my.get());
             std::string sql = "select password_hash,password_algo from " + oj_users + " where email='" + safe_email + "'";
-            return QueryUserPasswordAuth(sql, password_hash, password_algo);
+            auto ok = QueryUserPasswordAuth(sql, password_hash, password_algo);
+             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+            return ok;
         }
 
         bool UpdateUserEmail(const std::string& old_email, const std::string& new_email)
         {
             auto my = CreateConnection();
             if (!my) return false;
+            auto begin = std::chrono::steady_clock::now();
             std::string safe_old = EscapeSqlString(old_email, my.get());
             std::string safe_new = EscapeSqlString(new_email, my.get());
             std::string sql = "update " + oj_users + " set email='" + safe_new +
                               "' where email='" + safe_old + "'";
+                              
             bool ok = ExecuteSql(sql);
             if (ok) {
                 User user;
                 if (GetUser(new_email, &user))
                     _cache.DeleteStringByAnyKey("user:id:" + std::to_string(user.uid));
             }
+             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
             return ok;
         }
 
@@ -491,9 +586,14 @@ namespace ns_model
         {
             auto my = CreateConnection();
             if (!my) return false;
+            auto begin = std::chrono::steady_clock::now();
             std::string safe_email = EscapeSqlString(email, my.get());
             std::string sql = "delete from " + oj_users + " where email='" + safe_email + "'";
-            return ExecuteSql(sql);
+            auto ok = ExecuteSql(sql);
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+            return ok;
         }
 
         bool GetUsersByIds(const std::set<int>& user_ids, std::map<int, User>* users)
@@ -508,8 +608,12 @@ namespace ns_model
             }
             auto my = CreateConnection();
             if (!my) return false;
+            auto begin = std::chrono::steady_clock::now();
             std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where uid in (" + idlist.str() + ")";
             MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql批量用户查询错误");
+            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
             if (!res) return false;
             for (int r = 0; r < mysql_num_rows(res); ++r) {
                 MYSQL_ROW row = mysql_fetch_row(res);
