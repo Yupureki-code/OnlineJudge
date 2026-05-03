@@ -367,19 +367,13 @@ namespace ns_util
             for(int i = 1;;i++)
             {
                 std::string test_file = file_name + "_" + std::to_string(i);
-                std::string _stdin = PathUtil::Stdin(test_file);
-                if(FileUtil::IsFileExist(_stdin)) unlink(_stdin.c_str());
-                else break;
-                std::string _stderr = PathUtil::Stderr(test_file);
-                if(FileUtil::IsFileExist(_stderr)) unlink(_stderr.c_str());
-                else break;
-                std::string _stdout = PathUtil::Stdout(test_file);
-                if(FileUtil::IsFileExist(_stdout)) unlink(_stdout.c_str());
-                else break;
-                std::string _ans = PathUtil::Ans(test_file);
-                if(FileUtil::IsFileExist(_ans)) unlink(_ans.c_str());
-                else break;
+                if(!FileUtil::IsFileExist(PathUtil::Stdin(test_file))) break;
+                unlink(PathUtil::Stdin(test_file).c_str());
+                unlink(PathUtil::Stderr(test_file).c_str());
+                unlink(PathUtil::Stdout(test_file).c_str());
+                unlink(PathUtil::Ans(test_file).c_str());
             }
+            unlink(PathUtil::Stderr(file_name).c_str());
         }
     };
     //字符串工具

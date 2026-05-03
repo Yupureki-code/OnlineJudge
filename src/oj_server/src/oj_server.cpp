@@ -1168,9 +1168,9 @@ int main()
     });
     //运行单次测试——提交代码+测试类型，编译服务器编译运行后返回结果。
     //支持两种模式："sample"（用预设用例）和 "custom"（自定义输入）
-    svr.Post(R"(/api/question/(\d+)/test$)", [&ctl, &requireAuth, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Post(R"(/api/question/(\d+)/test$)", [&ctl, &getCurrentUser, &parseBody, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         User current_user;
-        if (!requireAuth(req, rep, &current_user)) return;
+        getCurrentUser(req, &current_user);
 
         std::string question_id = req.matches[1];
         Json::Value in_value;
@@ -1198,9 +1198,15 @@ int main()
         replyJson(rep, result, http_status);
     });
     //获取当前用户的提交记录——返回该用户在此题目下的所有历史提交（状态、时间、通过与否）
-    svr.Get(R"(/api/question/(\d+)/submits$)", [&ctl, &requireAuth, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
+    svr.Get(R"(/api/question/(\d+)/submits$)", [&ctl, &getCurrentUser, &replyJson, &addCORSHeaders](const Request& req, Response& rep) {
         User current_user;
-        if (!requireAuth(req, rep, &current_user)) return;
+        if (!getCurrentUser(req, &current_user))
+        {
+            Json::Value r; r["success"] = true; r["guest"] = true;
+            r["message"] = "您还未登录，快去登录吧~";
+            replyJson(rep, r, 200);
+            return;
+        }
 
         std::string question_id = req.matches[1];
         //获取用户历史提交记录

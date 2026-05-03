@@ -21,7 +21,7 @@ int main(int argv,char* argc[])
     //配置:得到题目的答案->判断对错
     svr.Post("/compile_and_run", [&entry](const Request &req, Response &rep){
         std::string in_json = req.body;
-        std::cout<<"获得一个请求:"<<in_json<<std::endl;
+        logger(ns_log::INFO)<<"获得一个请求:"<<in_json;
         if(!in_json.empty())
         {
             std::string out_json = entry.Run(in_json);
