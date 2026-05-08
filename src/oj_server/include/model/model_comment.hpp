@@ -278,14 +278,50 @@ namespace ns_model
                 }
             }
 
-            // Invalidate reply list cache for the parent comment (all common page sizes)
             if (comment.parent_id > 0)
             {
-                std::string reply_base = "reply:list:pid:" + std::to_string(comment.parent_id);
-                _cache.DeleteStringByAnyKey(reply_base + ":page:1:size:50");
-                _cache.DeleteStringByAnyKey(reply_base + ":page:1:size:20");
-                _cache.DeleteStringByAnyKey(reply_base + ":page:1:size:1000000");
-                logger(ns_log::INFO) << "Invalidated reply list cache for parent " << comment.parent_id;
+                unsigned long long new_id = (comment_id != nullptr) ? *comment_id : comment.id;
+                int sizes[] = {20, 50, 1000000};
+                for (int sz : sizes)
+                {
+                    std::string reply_key = "reply:list:pid:" + std::to_string(comment.parent_id) + ":page:1:size:" + std::to_string(sz);
+                    std::string reply_json;
+                    if (_cache.GetStringByAnyKey(reply_key, &reply_json))
+                    {
+                        Json::CharReaderBuilder builder;
+                        Json::Value reply_val;
+                        std::istringstream ss(reply_json);
+                        if (Json::parseFromStream(builder, ss, &reply_val, nullptr) &&
+                            reply_val.isMember("comments") && reply_val["comments"].isArray())
+                        {
+                            Json::Value new_reply;
+                            new_reply["id"] = Json::UInt64(new_id);
+                            new_reply["solution_id"] = Json::UInt64(comment.solution_id);
+                            new_reply["user_id"] = comment.user_id;
+                            new_reply["content"] = comment.content;
+                            new_reply["is_edited"] = false;
+                            new_reply["parent_id"] = Json::UInt64(comment.parent_id);
+                            new_reply["reply_to_user_id"] = comment.reply_to_user_id;
+                            new_reply["like_count"] = 0;
+                            new_reply["favorite_count"] = 0;
+                            new_reply["created_at"] = "";
+                            new_reply["updated_at"] = "";
+                            new_reply["reply_to_user_name"] = "";
+                            new_reply["author_name"] = "";
+                            Json::Value updated_arr(Json::arrayValue);
+                            updated_arr.append(new_reply);
+                            for (const auto& item : reply_val["comments"])
+                                updated_arr.append(item);
+                            reply_val["comments"] = updated_arr;
+                            if (reply_val.isMember("total"))
+                                reply_val["total"] = reply_val["total"].asInt() + 1;
+                            Json::FastWriter writer;
+                            _cache.SetStringByAnyKey(reply_key, writer.write(reply_val),
+                                                     _cache.BuildJitteredTtl(120, 30));
+                            logger(ns_log::INFO) << "Prepended reply " << new_id << " to reply list cache " << reply_key;
+                        }
+                    }
+                }
             }
 
             // Invalidate comment list cache for this solution
@@ -626,8 +662,116 @@ namespace ns_model
             {
                 return false;
             }
-            // 清除评论缓存
-            _cache.DeleteStringByAnyKey("comment:detail:" + std::to_string(comment_id));
+            unsigned long long s_id = 0;
+            unsigned long long p_id = 0;
+            std::string new_updated_at;
+            {
+                std::ostringstream q_sql;
+                q_sql << "select solution_id, parent_id, updated_at from solution_comments where id = " << comment_id;
+                MYSQL_RES* q_res = QueryMySql(my.get(), q_sql.str(), "MySql查询评论信息错误");
+                if (q_res)
+                {
+                    MYSQL_ROW q_row = mysql_fetch_row(q_res);
+                    if (q_row)
+                    {
+                        if (q_row[0]) try { s_id = std::stoull(q_row[0]); } catch (...) {}
+                        if (q_row[1]) try { p_id = std::stoull(q_row[1]); } catch (...) {}
+                        if (q_row[2]) new_updated_at = q_row[2];
+                    }
+                    mysql_free_result(q_res);
+                }
+            }
+
+            {
+                std::string detail_key = "comment:detail:" + std::to_string(comment_id);
+                std::string detail_json;
+                if (_cache.GetStringByAnyKey(detail_key, &detail_json))
+                {
+                    Json::CharReaderBuilder builder;
+                    Json::Value detail_val;
+                    std::istringstream ss(detail_json);
+                    if (Json::parseFromStream(builder, ss, &detail_val, nullptr))
+                    {
+                        detail_val["content"] = content;
+                        detail_val["is_edited"] = true;
+                        if (!new_updated_at.empty())
+                            detail_val["updated_at"] = new_updated_at;
+                        Json::FastWriter writer;
+                        _cache.SetStringByAnyKey(detail_key, writer.write(detail_val),
+                                                 _cache.BuildJitteredTtl(300, 60));
+                    }
+                }
+            }
+
+
+            if (s_id > 0)
+            {
+                int sizes[] = {10, 20, 50};
+                for (int sz : sizes)
+                {
+                    std::string list_key = "comment:list:sid:" + std::to_string(s_id) + ":page:1:size:" + std::to_string(sz);
+                    std::string list_json;
+                    if (_cache.GetStringByAnyKey(list_key, &list_json))
+                    {
+                        Json::CharReaderBuilder builder;
+                        Json::Value list_val;
+                        std::istringstream ss(list_json);
+                        if (Json::parseFromStream(builder, ss, &list_val, nullptr) &&
+                            list_val.isMember("comments") && list_val["comments"].isArray())
+                        {
+                            for (Json::Value& item : list_val["comments"])
+                            {
+                                if (item.isMember("id") && item["id"].asUInt64() == comment_id)
+                                {
+                                    item["content"] = content;
+                                    item["is_edited"] = true;
+                                    if (!new_updated_at.empty())
+                                        item["updated_at"] = new_updated_at;
+                                    Json::FastWriter writer;
+                                    _cache.SetStringByAnyKey(list_key, writer.write(list_val),
+                                                             _cache.BuildJitteredTtl(300, 60));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            if (p_id > 0)
+            {
+                int reply_sizes[] = {20, 50, 1000000};
+                for (int sz : reply_sizes)
+                {
+                    std::string reply_key = "reply:list:pid:" + std::to_string(p_id) + ":page:1:size:" + std::to_string(sz);
+                    std::string reply_json;
+                    if (_cache.GetStringByAnyKey(reply_key, &reply_json))
+                    {
+                        Json::CharReaderBuilder builder;
+                        Json::Value reply_val;
+                        std::istringstream ss(reply_json);
+                        if (Json::parseFromStream(builder, ss, &reply_val, nullptr) &&
+                            reply_val.isMember("comments") && reply_val["comments"].isArray())
+                        {
+                            for (Json::Value& item : reply_val["comments"])
+                            {
+                                if (item.isMember("id") && item["id"].asUInt64() == comment_id)
+                                {
+                                    item["content"] = content;
+                                    item["is_edited"] = true;
+                                    if (!new_updated_at.empty())
+                                        item["updated_at"] = new_updated_at;
+                                    Json::FastWriter writer;
+                                    _cache.SetStringByAnyKey(reply_key, writer.write(reply_val),
+                                                             _cache.BuildJitteredTtl(120, 30));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
@@ -965,6 +1109,91 @@ namespace ns_model
             }
             *new_count = static_cast<unsigned int>(std::atoi(cnt_row[0]));
             mysql_free_result(cnt_res);
+
+            unsigned long long solution_id = 0;
+            unsigned long long parent_id_val = 0;
+            {
+                std::ostringstream q_sql;
+                q_sql << "select solution_id, parent_id from solution_comments where id = " << comment_id;
+                MYSQL_RES* q_res = QueryMySql(my.get(), q_sql.str(), "MySql查询评论所属题解错误");
+                if (q_res)
+                {
+                    MYSQL_ROW q_row = mysql_fetch_row(q_res);
+                    if (q_row)
+                    {
+                        if (q_row[0]) try { solution_id = std::stoull(q_row[0]); } catch (...) {}
+                        if (q_row[1]) try { parent_id_val = std::stoull(q_row[1]); } catch (...) {}
+                    }
+                    mysql_free_result(q_res);
+                }
+            }
+            if (solution_id > 0)
+            {
+                int sizes[] = {10, 20, 50};
+                for (int sz : sizes)
+                {
+                    std::string list_key = "comment:list:sid:" + std::to_string(solution_id) + ":page:1:size:" + std::to_string(sz);
+                    std::string list_json;
+                    if (_cache.GetStringByAnyKey(list_key, &list_json))
+                    {
+                        Json::CharReaderBuilder builder;
+                        Json::Value list_val;
+                        std::istringstream ss(list_json);
+                        if (Json::parseFromStream(builder, ss, &list_val, nullptr) &&
+                            list_val.isMember("comments") && list_val["comments"].isArray())
+                        {
+                            for (Json::Value& item : list_val["comments"])
+                            {
+                                if (item.isMember("id") && item["id"].asUInt64() == comment_id)
+                                {
+                                    if (action_type == "like")
+                                        item["like_count"] = *new_count;
+                                    else if (action_type == "favorite")
+                                        item["favorite_count"] = *new_count;
+                                    Json::FastWriter writer;
+                                    _cache.SetStringByAnyKey(list_key, writer.write(list_val),
+                                                             _cache.BuildJitteredTtl(300, 60));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (parent_id_val > 0)
+            {
+                int reply_sizes[] = {20, 50, 1000000};
+                for (int sz : reply_sizes)
+                {
+                    std::string reply_key = "reply:list:pid:" + std::to_string(parent_id_val) + ":page:1:size:" + std::to_string(sz);
+                    std::string reply_json;
+                    if (_cache.GetStringByAnyKey(reply_key, &reply_json))
+                    {
+                        Json::CharReaderBuilder builder;
+                        Json::Value reply_val;
+                        std::istringstream ss(reply_json);
+                        if (Json::parseFromStream(builder, ss, &reply_val, nullptr) &&
+                            reply_val.isMember("comments") && reply_val["comments"].isArray())
+                        {
+                            for (Json::Value& item : reply_val["comments"])
+                            {
+                                if (item.isMember("id") && item["id"].asUInt64() == comment_id)
+                                {
+                                    if (action_type == "like")
+                                        item["like_count"] = *new_count;
+                                    else if (action_type == "favorite")
+                                        item["favorite_count"] = *new_count;
+                                    Json::FastWriter writer;
+                                    _cache.SetStringByAnyKey(reply_key, writer.write(reply_val),
+                                                             _cache.BuildJitteredTtl(120, 30));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);

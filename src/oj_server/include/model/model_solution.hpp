@@ -34,14 +34,14 @@ namespace ns_model
             static const std::string table = "solution_actions";
             return table;
         }
-
+        //创建题解
         bool CreateSolution(const Solution& input, unsigned long long* solution_id = nullptr)
         {
+            //参数校验
             if (input.question_id.empty() || input.user_id <= 0)
             {
                 return false;
             }
-
             std::string trimmed_title = TrimCopy(input.title);
             std::string trimmed_content = TrimCopy(input.content_md);
             if (trimmed_title.empty() || trimmed_content.empty())
@@ -55,7 +55,7 @@ namespace ns_model
             {
                 return false;
             }
-
+            //SQL注入防护
             std::string safe_question_id = EscapeSqlString(input.question_id, my.get());
             std::string safe_title = EscapeSqlString(trimmed_title, my.get());
             std::string safe_content = EscapeSqlString(trimmed_content, my.get());
@@ -81,7 +81,7 @@ namespace ns_model
             {
                 *solution_id = static_cast<unsigned long long>(mysql_insert_id(my.get()));
             }
-            // Invalidate solution list cache for this question (multiple page/size combos)
+            // 缓存失效
             const int pages[] = {1, 2, 3};
             const int sizes[] = {10, 20, 50};
             const std::string sorts[] = {"1", "1"};  // version key for latest and hot
@@ -514,10 +514,25 @@ namespace ns_model
                 *new_count = static_cast<unsigned int>(std::atoi(cnt_row[0]));
                 mysql_free_result(cnt_res);
 
-            // Invalidate solution detail cache since like/favorite count changed
             auto detail_key = _cache.BuildSolutionDetailCacheKey(solution_id);
-            _cache.DeleteStringByAnyKey(detail_key->GetCacheKeyString(&_cache));
-            logger(ns_log::INFO) << "Invalidated solution detail cache after action toggle for solution " << solution_id;
+            std::string detail_key_str = detail_key->GetCacheKeyString(&_cache);
+            std::string cached_detail;
+            if (_cache.GetStringByAnyKey(detail_key_str, &cached_detail))
+            {
+                Json::CharReaderBuilder builder;
+                Json::Value val;
+                std::istringstream ss(cached_detail);
+                if (Json::parseFromStream(builder, ss, &val, nullptr))
+                {
+                    if (action_type == "like" && val.isMember("like_count"))
+                        val["like_count"] = *new_count;
+                    else if (action_type == "favorite" && val.isMember("favorite_count"))
+                        val["favorite_count"] = *new_count;
+                    Json::FastWriter writer;
+                    _cache.SetStringByAnyKey(detail_key_str, writer.write(val), _cache.BuildJitteredTtl(600, 120));
+                    logger(ns_log::INFO) << "Updated solution detail cache after action toggle for solution " << solution_id;
+                }
+            }
 
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();

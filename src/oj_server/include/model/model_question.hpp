@@ -319,16 +319,19 @@ namespace ns_model
 
             Question cached = input;
             auto detail_key = _cache.BuildDetailCacheKey(input.number, Cache::CacheKey::PageType::kData);
+            //更新题目缓存
             _cache.SetDetailedQuestion(detail_key, cached);
             auto detail_html_key = _cache.BuildDetailCacheKey(input.number, Cache::CacheKey::PageType::kHtml);
+            //使旧题目列表的html缓存失效
             _cache.InvalidatePage(detail_html_key);
+            //更新题目列表版本
             TouchQuestionListVersion();
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
-
+        //删除题目
         bool DeleteQuestion(const std::string& number)
         {
             if (!IsAllDigits(number))
@@ -344,16 +347,19 @@ namespace ns_model
             }
 
             auto detail_key = _cache.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kData);
+            //设置无效缓存，防止缓存穿透
             _cache.SetQuestionNotFound(detail_key, number);
             auto detail_html_key = _cache.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kHtml);
+            //使旧题目列表的html缓存失效
             _cache.InvalidatePage(detail_html_key);
+            //更新题目列表版本
             TouchQuestionListVersion();
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
-
+        //得到题目数量
         bool GetQuestionCount(int* count)
         {
             if(count == nullptr)
@@ -391,6 +397,7 @@ namespace ns_model
             logger(ns_log::INFO) << "Question list version bumped to " << version;
             return version;
         }
+        // 获得题目列表版本
         std::string GetQuestionsListVersion()
         {
             return _cache.GetListVersion(ListType::Questions);
@@ -409,7 +416,7 @@ namespace ns_model
             return _cache.BuildStaticCacheKey(page_name, page_type);
         }
 
-        // Feature 2.5a: Get sample tests for a question
+        // 通过题目id获取该题目的样例
         bool GetSampleTestsByQuestionId(const std::string& question_id, Json::Value* tests)
         {
             if (tests == nullptr)
@@ -446,7 +453,7 @@ namespace ns_model
             return true;
         }
 
-        // Admin: Get ALL tests (not just samples) for a question
+        // 通过题目id获取该题目的测试用例
         bool GetTestsByQuestionId(const std::string& question_id, Json::Value* result)
         {
             if (result == nullptr)
