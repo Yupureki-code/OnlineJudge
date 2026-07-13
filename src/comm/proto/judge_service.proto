@@ -1,0 +1,64 @@
+syntax = "proto3";
+package oj_judge;
+option cc_generic_services = true;
+
+// ==================== 判题请求/响应 ====================
+
+message SubmitRequest {
+    uint32 submission_id = 1;   // Business Service 生成的提交记录 ID
+    string question_id = 2;
+    uint32 user_id = 3;
+    string code = 4;
+    string language = 5;        // cpp/python/java
+    bool is_custom_test = 6;
+    string custom_input = 7;
+    int32 time_limit = 8;        // ms
+    int32 memory_limit = 9;      // MB
+}
+
+// ==================== 判题结果 ====================
+
+message DockerWorkDoneRequest{
+    string id = 1;       // task_id → 找到存储的协程句柄
+    string status = 2;   // OK / COMPILE_ERROR / MEMORY_LIMIT / SEGV / FPE / TIME_LIMIT
+    int32  exit_code = 3; // 进程退出码
+}
+
+message NullRsp{}
+
+message TestCaseResult {
+    int32 index = 1;
+    string status = 2;       // AC/WA/TLE/MLE/RTE
+    int32 time_ms = 3;
+    int64 memory_bytes = 4;
+    string diff_info = 5;
+}
+
+message JudgeResult {
+    uint32 submission_id = 1;
+    string status = 2;           // AC/WA/TLE/MLE/CE/RTE/PENDING/JUDGING
+    int32 time_used_ms = 3;
+    int64 memory_used_bytes = 4;
+    string compile_error = 5;
+    repeated TestCaseResult test_cases = 6;
+}
+
+message GetStatusRequest {
+    uint32 submission_id = 1;
+}
+
+message SubmitResponse {
+    bool success = 1;
+    uint32 submission_id = 2;
+}
+
+// ==================== JudgeService ====================
+
+service JudgeService {
+    // 容器内脚本完成时回调（编译容器/运行容器都会调用）
+    rpc DockerWorkDone(DockerWorkDoneRequest) returns (NullRsp);
+    // 提交判题任务
+    rpc Submit(SubmitRequest) returns (SubmitResponse);
+    // 查询判题状态
+    rpc GetStatus(GetStatusRequest) returns (JudgeResult);
+}

@@ -1,0 +1,29 @@
+# docker/Dockerfile.compiler
+# 编译容器镜像 — 包含完整编译工具，每次编译新建销毁
+#
+# 构建: docker build -t oj-compiler:latest -f docker/Dockerfile.compiler .
+
+FROM ubuntu:22.04
+
+LABEL maintainer="OnlineJudge Project"
+LABEL description="OJ Compiler Container - g++ for code compilation"
+
+# 安装编译器和 curl（用于通知 JudgeService）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 创建非 root 用户
+RUN useradd -m -s /bin/bash judge
+
+# 复制编译脚本
+COPY scripts/compile.sh /judge/compile.sh
+RUN chmod +x /judge/compile.sh
+
+USER judge
+WORKDIR /home/judge
+
+# 默认执行编译脚本
+CMD ["/bin/bash", "/judge/compile.sh"]

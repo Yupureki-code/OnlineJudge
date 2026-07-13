@@ -19,7 +19,7 @@
 namespace ns_judge
 {
     using namespace ns_hanlder;
-    using namespace ns_util;
+    using namespace oj_util;
     using namespace ns_log;
 
     class HandlerJudge : public HandlerProgram

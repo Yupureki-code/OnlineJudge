@@ -1,0 +1,39 @@
+syntax = "proto3";
+package oj.gateway;
+
+import "common.proto";
+
+// ==================== Gateway 内部消息 ====================
+
+// Gateway 验证 JWT 后，将用户身份注入 brpc 请求头
+// 此消息仅用于 Gateway 内部记录，不直接传输
+
+message AuthContext {
+    uint32 user_id = 1;
+    string email = 2;
+    int32 role = 3;          // 0=user, 1=admin, 2=super_admin
+    string jti = 4;          // JWT ID（用于黑名单）
+    int64 exp = 5;           // 过期时间戳
+}
+
+message RouteEntry {
+    string path_prefix = 1;   // 如 /api/user
+    string backend_service = 2;  // business / judge
+    string backend_method = 3;  // RPC 方法名
+    bool require_auth = 4;
+    bool require_admin = 5;
+}
+
+message RouteTable {
+    repeated RouteEntry routes = 1;
+}
+
+// ==================== 健康检查 ====================
+
+message PingRequest {}
+
+message PingResponse {
+    string status = 1;
+    int64 timestamp = 2;
+    string version = 3;
+}

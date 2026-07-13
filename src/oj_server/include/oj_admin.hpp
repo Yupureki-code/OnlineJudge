@@ -12,7 +12,7 @@
 
 namespace ns_admin
 {
-	using namespace ns_util;
+	using namespace oj_util;
 	constexpr const char* kAdminVersion = "v0.2.0";
 	constexpr const char* kAdminSessionCookieName = "oj_admin_session_id";
 	constexpr const char* kAdminSessionPrefix = "oj:prod:v1:session:admin:";

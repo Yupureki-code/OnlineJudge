@@ -14,7 +14,7 @@ namespace ns_session
 {
     using namespace sw::redis;
     using namespace ns_log;
-    using namespace ns_util;
+    using namespace oj_util;
 
     const std::string SESSION_COOKIE_NAME = "oj_session_id";
     const int SESSION_EXPIRE_SECONDS = 7 * 24 * 60 * 60;

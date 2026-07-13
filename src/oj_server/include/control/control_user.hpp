@@ -66,7 +66,7 @@ namespace ns_control
             }
 
             std::string absolute_path = absolute_dir + filename;
-            if (!ns_util::FileUtil::WriteFile(absolute_path, file_content))
+            if (!oj_util::FileUtil::WriteFile(absolute_path, file_content))
             {
                 *err_code = "SAVE_FAILED";
                 return false;

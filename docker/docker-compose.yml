@@ -1,0 +1,129 @@
+# docker/docker-compose.yml
+# OnlineJudge 微服务开发环境
+#
+# 启动：docker-compose up -d
+# 停止：docker-compose down
+# 查看日志：docker-compose logs -f
+
+version: '3.8'
+
+services:
+  # ==================== 基础设施 ====================
+
+  mysql:
+    image: mysql:8.0
+    container_name: oj-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: myoj
+      MYSQL_USER: oj_server
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../sql:/docker-entrypoint-initdb.d  # 自动执行 sql/*.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: oj-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: oj-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: oj
+      RABBITMQ_DEFAULT_PASS: ojpassword
+    ports:
+      - "5672:5672"    # AMQP 端口
+      - "15672:15672"  # 管理界面
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== 应用服务（开发阶段手动构建） ====================
+
+  # gateway:
+  #   build:
+  #     context: ..
+  #     dockerfile: docker/Dockerfile.gateway
+  #   container_name: oj-gateway
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   environment:
+  #     OJ_JWT_SECRET: dev_secret_change_in_production
+  #     OJ_GATEWAY_CONF: /app/conf/gateway.conf
+  #   volumes:
+  #     - ../conf:/app/conf
+  #     - ../wwwroot:/app/wwwroot
+
+  # business_service:
+  #   build:
+  #     context: ..
+  #     dockerfile: docker/Dockerfile.business
+  #   container_name: oj-business
+  #   ports:
+  #     - "8081:8081"
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   environment:
+  #     OJ_DB_HOST: mysql
+  #     OJ_DB_USER: oj_server
+  #     OJ_DB_PASS: password
+  #     OJ_DB_NAME: myoj
+  #     OJ_REDIS_ADDR: tcp://redis:6379
+
+  # judge_service:
+  #   build:
+  #     context: ..
+  #     dockerfile: docker/Dockerfile.judge
+  #   container_name: oj-judge
+  #   ports:
+  #     - "8082:8082"
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   environment:
+  #     OJ_DB_HOST: mysql
+  #     OJ_DB_USER: oj_server
+  #     OJ_DB_PASS: password
+  #     OJ_DB_NAME: myoj
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker 用于沙箱
+
+# ==================== 数据卷 ====================
+
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:

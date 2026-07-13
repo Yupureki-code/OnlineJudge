@@ -26,7 +26,7 @@ namespace ns_runner
 {
     using namespace ns_hanlder;
     using namespace ns_log;
-    using namespace ns_util;
+    using namespace oj_util;
 
     struct Test
     {

@@ -32,7 +32,7 @@ namespace ns_control
 {
     using namespace ns_model;
     using namespace ns_log;
-    using namespace ns_util;
+    using namespace oj_util;
     using namespace ns_view;
     using namespace ns_session;
 

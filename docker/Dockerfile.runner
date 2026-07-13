@@ -1,0 +1,28 @@
+# docker/Dockerfile.runner
+# 运行容器镜像 — 仅包含运行时动态库，预热池复用
+#
+# 构建: docker build -t oj-runner:latest -f docker/Dockerfile.runner .
+
+FROM ubuntu:22.04
+
+LABEL maintainer="OnlineJudge Project"
+LABEL description="OJ Runner Container - runtime only, lightweight for pooling"
+
+# 仅安装运行时动态库和 curl（用于通知 JudgeService）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libstdc++6 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 创建非 root 用户
+RUN useradd -m -s /bin/bash judge
+
+# 复制运行脚本
+COPY scripts/run.sh /judge/run.sh
+RUN chmod +x /judge/run.sh
+
+USER judge
+WORKDIR /home/judge
+
+# 默认执行运行脚本
+CMD ["/bin/bash", "/judge/run.sh"]

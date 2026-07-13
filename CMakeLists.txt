@@ -15,6 +15,19 @@ set(ADMIN_PORT "8090" CACHE STRING "admin server bind port")
 
 configure_file(${CMAKE_SOURCE_DIR}/config.in.h ${CMAKE_SOURCE_DIR}/src/comm/config.h)
 
+# ==================== 微服务改造新增 ====================
+# Protobuf IDL 生成
+add_subdirectory(proto)
+
+# ODB ORM 模型生成
+add_subdirectory(src/comm/models)
+
+# 微服务
+add_subdirectory(src/gateway)
+# add_subdirectory(src/business_service)  # Phase 2 启用
+add_subdirectory(src/judge_service)
+
+# ==================== 现有单体服务（保持运行） ====================
 # 添加子目录
 add_subdirectory(src/compile_server)
 add_subdirectory(src/oj_server)

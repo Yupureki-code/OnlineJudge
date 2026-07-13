@@ -1,20 +1,39 @@
 #pragma once
 
 #include "config.h"
-#include <httplib.h>
 #include <jsoncpp/json/json.h>
 #include <chrono>
 #include <condition_variable>
 #include <deque>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <memory>
 #include <string>
 #include <atomic>
 #include <sys/time.h>
-
-using namespace httplib;
+#include <any>
+#include <signal.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <regex>
+#include <chrono>
 
 inline constexpr const char root[] = "/";
 inline constexpr const char dev_null[] = "/dev/null";
+
+namespace OnlineJudge
+{
+    struct Response 
+    {
+        bool status = true;         // 0 表示成功，负值表示错误
+        std::string errmsg;  // 错误信息
+        std::any value;      // 返回的任意数据
+        
+        Response() : status(true) {}
+        Response(int s, const std::string& msg = "") : status(s), errmsg(msg) {}
+    };
+}
+
 
 struct User
 {
@@ -241,7 +260,7 @@ inline void Daemon(bool ischdir, bool isclose)
 
 
 //工具类
-namespace ns_util
+namespace oj_util
 {
     const std::string default_path = "../tmp/";
     //时间工具
@@ -249,11 +268,11 @@ namespace ns_util
     {
     public:
         //获取时间戳
-        static std::string GetTimeStamp()
+        static inline int64_t GetTimeStamp()
         {
-            struct timeval _time;
-            gettimeofday(&_time, nullptr);
-            return std::to_string(_time.tv_sec);
+            auto now = std::chrono::system_clock::now();
+            auto ms  = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
+            return ms.count();
         }
         //获取毫秒级别时间戳
         static std::string GetTimeMs()
@@ -299,81 +318,6 @@ namespace ns_util
         static std::string Ans(const std::string& file_name)
         {
             return default_path + AddSuffix(file_name, ".ans");
-        }
-    };
-    //文件工具
-    class FileUtil
-    {
-    public:
-        //判断文件是否存在
-        static bool IsFileExist(const std::string& path_name)
-        {
-            struct stat st;
-            if(stat(path_name.c_str(),&st) == 0)
-                return true;
-            return false;
-        }
-        //获得一个唯一的文件名字
-        static std::string GetUniqueFileName()
-        {
-             static std::atomic_uint id(0);
-            id++;
-            std::string ms = TimeUtil::GetTimeMs();
-            std::string uniq_id = std::to_string(id);
-            return ms + "_" + uniq_id;
-        }
-        //向文件中写入
-        static bool WriteFile(const std::string &target, const std::string &content)
-        {
-            std::ofstream out(target);
-            if (!out.is_open())
-            {
-                return false;
-            }
-            out.write(content.c_str(), content.size());
-            out.close();
-            return true;
-        }
-        //从文件中读取
-        static bool ReadFile(const std::string &target, std::string *content, bool keep = false)
-        {
-            (*content).clear();
-
-            std::ifstream in(target);
-            if (!in.is_open())
-            {
-                return false;
-            }
-            std::string line;
-            while (std::getline(in, line))
-            {
-                (*content) += line;
-                (*content) += (keep ? "\n" : "");
-            }
-            in.close();
-            return true;
-        }
-        //移除临时文件
-        static void RemoveTmpFiles(const std::string& file_name)
-        {
-            std::string _src = PathUtil::Src(file_name);
-            if(FileUtil::IsFileExist(_src)) unlink(_src.c_str());
-
-            std::string _compiler_error = PathUtil::Compile_err(file_name);
-            if(FileUtil::IsFileExist(_compiler_error)) unlink(_compiler_error.c_str());
-
-            std::string _execute = PathUtil::Exe(file_name);
-            if(FileUtil::IsFileExist(_execute)) unlink(_execute.c_str());
-            for(int i = 1;;i++)
-            {
-                std::string test_file = file_name + "_" + std::to_string(i);
-                if(!FileUtil::IsFileExist(PathUtil::Stdin(test_file))) break;
-                unlink(PathUtil::Stdin(test_file).c_str());
-                unlink(PathUtil::Stderr(test_file).c_str());
-                unlink(PathUtil::Stdout(test_file).c_str());
-                unlink(PathUtil::Ans(test_file).c_str());
-            }
-            unlink(PathUtil::Stderr(file_name).c_str());
         }
     };
     //字符串工具
@@ -453,110 +397,6 @@ namespace ns_util
                 return false;
             }
             return std::all_of(code.begin(), code.end(), [](unsigned char ch){ return std::isdigit(ch); });
-        }
-    };
-    class JsonUtil
-    {
-    public:
-        //从请求体中解析出json
-        static bool ParseJsonBody(const Request& req, Json::Value* out)
-        {
-            if (out == nullptr || req.body.empty())
-            {
-                return false;
-            }
-
-            Json::CharReaderBuilder builder;
-            std::string errs;
-            std::istringstream ss(req.body);
-            return Json::parseFromStream(builder, ss, out, &errs);
-        }
-        //从Json中提取email，并验证格式是否合法
-        static bool ExtractAndValidateEmail(const Json::Value& in_value, std::string* email)
-        {
-            if (email == nullptr || !in_value.isMember("email") || !in_value["email"].isString())
-            {
-                return false;
-            }
-
-            *email = StringUtil::Trim(in_value["email"].asString());
-            if (email->empty() || !StringUtil::IsValidEmail(*email))
-            {
-                return false;
-            }
-            return true;
-        }
-        //从Json中提取password，并验证格式是否合法
-        static bool ExtractAndValidatePassword(const Json::Value& in_value, std::string* password)
-        {
-            if (password == nullptr || !in_value.isMember("password") || !in_value["password"].isString())
-            {
-                return false;
-            }
-
-            *password = in_value["password"].asString();
-            if (password->empty())
-            {
-                return false;
-            }
-            return true;
-        }
-
-    };
-    class HttpUtil
-    {
-    public:
-        //对字符串进行URL编码
-        static std::string url_encode(const std::string &value) 
-        {
-            std::string result;
-            result.reserve(value.size());
-            for (char c : value) 
-            {
-                if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') 
-                {
-                    result += c;
-                } 
-                else 
-                {
-                    result += '%';
-                    char hex[3];
-                    snprintf(hex, sizeof(hex), "%02X", static_cast<unsigned char>(c));
-                    result += hex;
-                }
-            }
-            return result;
-        }
-        //回复400错误的函数，返回一个JSON格式的错误信息
-        static void ReplyBadRequest(Response& rep, const std::string& message)
-        {
-            Json::Value response;
-            response["success"] = false;
-            response["error"] = message;
-            Json::FastWriter writer;
-            rep.status = 400;
-            rep.set_content(writer.write(response), "application/json;charset=utf-8");
-        }
-        //从请求中解析正整数参数
-        static int ParsePositiveIntParam(const Request& req, const std::string& key, int default_value, int min_value, int max_value)
-        {
-            if (!req.has_param(key))
-            {
-                return default_value;
-            }
-
-            try
-            {
-                int value = std::stoi(req.get_param_value(key));
-                if (value < min_value) return min_value;
-                if (value > max_value) return max_value;
-                return value;
-            }
-            catch (...)
-            {
-                return default_value;
-            }
-            
         }
     };
 }

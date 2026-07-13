@@ -13,6 +13,7 @@
 #include <assert.h>
 #include "../../comm/comm.hpp"
 #include <Logger/logstrategy.h>
+#include "../../comm/filesystem.hpp"
 namespace ns_runner {
     extern thread_local bool g_is_custom_test;
 }
@@ -22,7 +23,7 @@ namespace ns_runner {
 namespace ns_hanlder
 {
     using namespace ns_log;
-    using namespace ns_util;
+    using namespace oj_util;
 
     //题目状态码
     enum Status
@@ -40,6 +41,28 @@ namespace ns_hanlder
     //模板类
     class HandlerProgram
     {
+    private:
+        void RemoveTmpFiles(const std::string& file_name)
+        {
+            std::string _src = PathUtil::Src(file_name);
+            if(_file_system.IsFileExist(_src)) unlink(_src.c_str());
+
+            std::string _compiler_error = PathUtil::Compile_err(file_name);
+            if(_file_system.IsFileExist(_compiler_error)) unlink(_compiler_error.c_str());
+
+            std::string _execute = PathUtil::Exe(file_name);
+            if(_file_system.IsFileExist(_execute)) unlink(_execute.c_str());
+            for(int i = 1;;i++)
+            {
+                std::string test_file = file_name + "_" + std::to_string(i);
+                if(!_file_system.IsFileExist(PathUtil::Stdin(test_file))) break;
+                unlink(PathUtil::Stdin(test_file).c_str());
+                unlink(PathUtil::Stderr(test_file).c_str());
+                unlink(PathUtil::Stdout(test_file).c_str());
+                unlink(PathUtil::Ans(test_file).c_str());
+            }
+            unlink(PathUtil::Stderr(file_name).c_str());
+        }
     public:
         virtual std::string Execute(const std::string&,const std::string&) = 0;
         void Set_next(std::shared_ptr<HandlerProgram>& next)
@@ -138,14 +161,14 @@ namespace ns_hanlder
                 out_value["status"] = std::string("OK");
                 out_value["desc"] = std::string("");
                 std::string _stdout;
-                FileUtil::ReadFile(PathUtil::Stdout(file_name + "_1"), &_stdout, true);
+                _file_system.read(PathUtil::Stdout(file_name + "_1"), _stdout);
                 out_value["stdout"] = _stdout;
                 std::string _stderr;
-                FileUtil::ReadFile(PathUtil::Stderr(file_name + "_1"), &_stderr, true);
+                _file_system.read(PathUtil::Stderr(file_name + "_1"), _stdout);
                 out_value["stderr"] = _stderr;
                 Json::StyledWriter writer;
                 std::string out_json = writer.write(out_value);
-                FileUtil::RemoveTmpFiles(file_name);
+                RemoveTmpFiles(file_name);
                 logger(DEBUG) <<"out_json:"<<out_json;
                 return out_json;
             }
@@ -171,10 +194,10 @@ namespace ns_hanlder
                 // 有运行时错误、内存错误等
                 out_value["desc"] = StatusToDesc(result[0]);
                 std::string _stdout;
-                FileUtil::ReadFile(PathUtil::Stdout(file_name), &_stdout, true);
+                _file_system.read(PathUtil::Stdout(file_name), _stdout);
                 out_value["stdout"] = _stdout;
                 std::string _stderr;
-                FileUtil::ReadFile(PathUtil::Stderr(file_name), &_stderr, true);
+                _file_system.read(PathUtil::Stderr(file_name), _stdout);
                 out_value["stderr"] = _stderr;
             }
             else if(has_wa)
@@ -190,13 +213,14 @@ namespace ns_hanlder
             
             Json::StyledWriter writer;
             std::string out_json = writer.write(out_value);
-            FileUtil::RemoveTmpFiles(file_name);
+            RemoveTmpFiles(file_name);
             logger(DEBUG)<<"out_json:"<<out_json;
             return out_json;
         }
     protected:
         std::shared_ptr<HandlerProgram> _next;
         bool _is_enable = true;
+        fileUtil::FileSystem _file_system;
     };
     #define HandlerProgramEnd(a,b) (HandlerProgramEnd(a,b,__LINE__,__FILE__))
 };

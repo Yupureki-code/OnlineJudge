@@ -7,7 +7,7 @@
 using namespace httplib;
 using namespace ns_log;
 using namespace ns_admin;
-using namespace ns_util;
+using namespace oj_util;
 
 namespace ns_admin
 {

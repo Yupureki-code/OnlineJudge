@@ -15,7 +15,7 @@
 namespace ns_mail
 {
     using namespace ns_log;
-    using namespace ns_util;
+    using namespace oj_util;
     struct MailSendResult
     {
         bool ok = false;
