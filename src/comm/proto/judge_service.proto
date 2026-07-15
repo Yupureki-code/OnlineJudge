@@ -9,11 +9,38 @@ message SubmitRequest {
     string question_id = 2;
     uint32 user_id = 3;
     string code = 4;
-    string language = 5;        // cpp/python/java
-    bool is_custom_test = 6;
-    string custom_input = 7;
-    int32 time_limit = 8;        // ms
-    int32 memory_limit = 9;      // MB
+    uint64 timestamp = 5;
+    string language = 6;        // cpp/python/java
+    int32 time_limit = 7;        // ms
+    int32 memory_limit = 8;      // MB
+    bool is_custom_test = 9;
+    string custom_input = 10;
+}
+
+enum SubmitResult
+{
+    AC = 0;
+    WA = 1;
+    COMPILE_ERROR = 2;
+    MEMORY_LIMIT = 3;
+    TIME_LIMIT = 4;
+    SEGV_ERROR = 5;
+    FPE_ERROR = 6;
+    RUNTIME_ERROR = 7;
+    UNKNOWN = 8;
+}
+
+message SubmitStatus{
+    int32 time_cost = 1;
+    int32 memory_cost = 2;
+    SubmitResult result = 3;
+}
+
+message JudgeFinishedRequest {
+    uint32 submission_id = 1;
+    string question_id = 2;
+    uint32 user_id = 3;
+    repeated SubmitStatus status_list = 4;
 }
 
 // ==================== 判题结果 ====================
@@ -47,18 +74,9 @@ message GetStatusRequest {
     uint32 submission_id = 1;
 }
 
-message SubmitResponse {
-    bool success = 1;
-    uint32 submission_id = 2;
-}
-
 // ==================== JudgeService ====================
 
 service JudgeService {
     // 容器内脚本完成时回调（编译容器/运行容器都会调用）
     rpc DockerWorkDone(DockerWorkDoneRequest) returns (NullRsp);
-    // 提交判题任务
-    rpc Submit(SubmitRequest) returns (SubmitResponse);
-    // 查询判题状态
-    rpc GetStatus(GetStatusRequest) returns (JudgeResult);
 }

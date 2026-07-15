@@ -3,7 +3,7 @@
 #
 # 构建: docker build -t oj-runner:latest -f docker/Dockerfile.runner .
 
-FROM ubuntu:22.04
+FROM debian:bookworm-slim
 
 LABEL maintainer="OnlineJudge Project"
 LABEL description="OJ Runner Container - runtime only, lightweight for pooling"
@@ -24,5 +24,5 @@ RUN chmod +x /judge/run.sh
 USER judge
 WORKDIR /home/judge
 
-# 默认执行运行脚本
-CMD ["/bin/bash", "/judge/run.sh"]
+# 默认保持容器运行（判题通过 Exec 执行脚本）
+CMD ["sleep", "infinity"]

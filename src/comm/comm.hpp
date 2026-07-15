@@ -324,6 +324,14 @@ namespace oj_util
     class StringUtil
     {
     public:
+        static std::string GetUniqueName()
+        {
+            static std::atomic_uint id(0);
+            id++;
+            std::string ms = TimeUtil::GetTimeMs();
+            std::string uniq_id = std::to_string(id);
+            return ms + "_" + uniq_id;
+        } 
         //从字符串中根据分隔符，获得每部分的字符串
         static void SplitString(std::string str,std::string space,std::vector<std::string>* v)
         {

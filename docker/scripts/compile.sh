@@ -26,7 +26,7 @@ fi
 
 # 3. 通知 JudgeService
 curl -s -X POST \
-    "http://${JUDGE_HOST:-host.docker.internal:8082}/DockerWorkDone" \
+    "http://${JUDGE_HOST:-host.docker.internal:8082}/JudgeService/DockerWorkDone" \
     -H "Content-Type: application/json" \
     -d "{\"id\":\"${TASK_ID}\",\"status\":\"${STATUS}\",\"exit_code\":${EXIT_CODE}}"
 

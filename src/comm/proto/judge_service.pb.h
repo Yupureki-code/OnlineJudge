@@ -30,6 +30,7 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>  // IWYU pragma: export
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
+#include <google/protobuf/generated_enum_reflection.h>
 #include <google/protobuf/service.h>
 #include <google/protobuf/unknown_field_set.h>
 // @@protoc_insertion_point(includes)
@@ -53,6 +54,9 @@ extern DockerWorkDoneRequestDefaultTypeInternal _DockerWorkDoneRequest_default_i
 class GetStatusRequest;
 struct GetStatusRequestDefaultTypeInternal;
 extern GetStatusRequestDefaultTypeInternal _GetStatusRequest_default_instance_;
+class JudgeFinishedRequest;
+struct JudgeFinishedRequestDefaultTypeInternal;
+extern JudgeFinishedRequestDefaultTypeInternal _JudgeFinishedRequest_default_instance_;
 class JudgeResult;
 struct JudgeResultDefaultTypeInternal;
 extern JudgeResultDefaultTypeInternal _JudgeResult_default_instance_;
@@ -62,6 +66,9 @@ extern NullRspDefaultTypeInternal _NullRsp_default_instance_;
 class SubmitRequest;
 struct SubmitRequestDefaultTypeInternal;
 extern SubmitRequestDefaultTypeInternal _SubmitRequest_default_instance_;
+class SubmitStatus;
+struct SubmitStatusDefaultTypeInternal;
+extern SubmitStatusDefaultTypeInternal _SubmitStatus_default_instance_;
 class TestCaseResult;
 struct TestCaseResultDefaultTypeInternal;
 extern TestCaseResultDefaultTypeInternal _TestCaseResult_default_instance_;
@@ -69,13 +76,47 @@ extern TestCaseResultDefaultTypeInternal _TestCaseResult_default_instance_;
 PROTOBUF_NAMESPACE_OPEN
 template<> ::oj_judge::DockerWorkDoneRequest* Arena::CreateMaybeMessage<::oj_judge::DockerWorkDoneRequest>(Arena*);
 template<> ::oj_judge::GetStatusRequest* Arena::CreateMaybeMessage<::oj_judge::GetStatusRequest>(Arena*);
+template<> ::oj_judge::JudgeFinishedRequest* Arena::CreateMaybeMessage<::oj_judge::JudgeFinishedRequest>(Arena*);
 template<> ::oj_judge::JudgeResult* Arena::CreateMaybeMessage<::oj_judge::JudgeResult>(Arena*);
 template<> ::oj_judge::NullRsp* Arena::CreateMaybeMessage<::oj_judge::NullRsp>(Arena*);
 template<> ::oj_judge::SubmitRequest* Arena::CreateMaybeMessage<::oj_judge::SubmitRequest>(Arena*);
+template<> ::oj_judge::SubmitStatus* Arena::CreateMaybeMessage<::oj_judge::SubmitStatus>(Arena*);
 template<> ::oj_judge::TestCaseResult* Arena::CreateMaybeMessage<::oj_judge::TestCaseResult>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
 namespace oj_judge {
 
+enum SubmitResult : int {
+  AC = 0,
+  WA = 1,
+  COMPILE_ERROR = 2,
+  MEMORY_LIMIT = 3,
+  TIME_LIMIT = 4,
+  SEGV_ERROR = 5,
+  FPE_ERROR = 6,
+  RUNTIME_ERROR = 7,
+  UNKNOWN = 8,
+  SubmitResult_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
+  SubmitResult_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
+};
+bool SubmitResult_IsValid(int value);
+constexpr SubmitResult SubmitResult_MIN = AC;
+constexpr SubmitResult SubmitResult_MAX = UNKNOWN;
+constexpr int SubmitResult_ARRAYSIZE = SubmitResult_MAX + 1;
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* SubmitResult_descriptor();
+template<typename T>
+inline const std::string& SubmitResult_Name(T enum_t_value) {
+  static_assert(::std::is_same<T, SubmitResult>::value ||
+    ::std::is_integral<T>::value,
+    "Incorrect type passed to function SubmitResult_Name.");
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    SubmitResult_descriptor(), enum_t_value);
+}
+inline bool SubmitResult_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, SubmitResult* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<SubmitResult>(
+    SubmitResult_descriptor(), name, value);
+}
 // ===================================================================
 
 class SubmitRequest final :
@@ -201,13 +242,14 @@ class SubmitRequest final :
   enum : int {
     kQuestionIdFieldNumber = 2,
     kCodeFieldNumber = 4,
-    kLanguageFieldNumber = 5,
-    kCustomInputFieldNumber = 7,
+    kLanguageFieldNumber = 6,
+    kCustomInputFieldNumber = 10,
     kSubmissionIdFieldNumber = 1,
     kUserIdFieldNumber = 3,
-    kIsCustomTestFieldNumber = 6,
-    kTimeLimitFieldNumber = 8,
-    kMemoryLimitFieldNumber = 9,
+    kTimestampFieldNumber = 5,
+    kTimeLimitFieldNumber = 7,
+    kMemoryLimitFieldNumber = 8,
+    kIsCustomTestFieldNumber = 9,
   };
   // string question_id = 2;
   void clear_question_id();
@@ -237,7 +279,7 @@ class SubmitRequest final :
   std::string* _internal_mutable_code();
   public:
 
-  // string language = 5;
+  // string language = 6;
   void clear_language();
   const std::string& language() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -251,7 +293,7 @@ class SubmitRequest final :
   std::string* _internal_mutable_language();
   public:
 
-  // string custom_input = 7;
+  // string custom_input = 10;
   void clear_custom_input();
   const std::string& custom_input() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -283,16 +325,16 @@ class SubmitRequest final :
   void _internal_set_user_id(uint32_t value);
   public:
 
-  // bool is_custom_test = 6;
-  void clear_is_custom_test();
-  bool is_custom_test() const;
-  void set_is_custom_test(bool value);
+  // uint64 timestamp = 5;
+  void clear_timestamp();
+  uint64_t timestamp() const;
+  void set_timestamp(uint64_t value);
   private:
-  bool _internal_is_custom_test() const;
-  void _internal_set_is_custom_test(bool value);
+  uint64_t _internal_timestamp() const;
+  void _internal_set_timestamp(uint64_t value);
   public:
 
-  // int32 time_limit = 8;
+  // int32 time_limit = 7;
   void clear_time_limit();
   int32_t time_limit() const;
   void set_time_limit(int32_t value);
@@ -301,13 +343,22 @@ class SubmitRequest final :
   void _internal_set_time_limit(int32_t value);
   public:
 
-  // int32 memory_limit = 9;
+  // int32 memory_limit = 8;
   void clear_memory_limit();
   int32_t memory_limit() const;
   void set_memory_limit(int32_t value);
   private:
   int32_t _internal_memory_limit() const;
   void _internal_set_memory_limit(int32_t value);
+  public:
+
+  // bool is_custom_test = 9;
+  void clear_is_custom_test();
+  bool is_custom_test() const;
+  void set_is_custom_test(bool value);
+  private:
+  bool _internal_is_custom_test() const;
+  void _internal_set_is_custom_test(bool value);
   public:
 
   // @@protoc_insertion_point(class_scope:oj_judge.SubmitRequest)
@@ -324,9 +375,375 @@ class SubmitRequest final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr custom_input_;
     uint32_t submission_id_;
     uint32_t user_id_;
-    bool is_custom_test_;
+    uint64_t timestamp_;
     int32_t time_limit_;
     int32_t memory_limit_;
+    bool is_custom_test_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_judge_5fservice_2eproto;
+};
+// -------------------------------------------------------------------
+
+class SubmitStatus final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:oj_judge.SubmitStatus) */ {
+ public:
+  inline SubmitStatus() : SubmitStatus(nullptr) {}
+  ~SubmitStatus() override;
+  explicit PROTOBUF_CONSTEXPR SubmitStatus(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  SubmitStatus(const SubmitStatus& from);
+  SubmitStatus(SubmitStatus&& from) noexcept
+    : SubmitStatus() {
+    *this = ::std::move(from);
+  }
+
+  inline SubmitStatus& operator=(const SubmitStatus& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline SubmitStatus& operator=(SubmitStatus&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const SubmitStatus& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const SubmitStatus* internal_default_instance() {
+    return reinterpret_cast<const SubmitStatus*>(
+               &_SubmitStatus_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    1;
+
+  friend void swap(SubmitStatus& a, SubmitStatus& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(SubmitStatus* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(SubmitStatus* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  SubmitStatus* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<SubmitStatus>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const SubmitStatus& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const SubmitStatus& from) {
+    SubmitStatus::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(SubmitStatus* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "oj_judge.SubmitStatus";
+  }
+  protected:
+  explicit SubmitStatus(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kTimeCostFieldNumber = 1,
+    kMemoryCostFieldNumber = 2,
+    kResultFieldNumber = 3,
+  };
+  // int32 time_cost = 1;
+  void clear_time_cost();
+  int32_t time_cost() const;
+  void set_time_cost(int32_t value);
+  private:
+  int32_t _internal_time_cost() const;
+  void _internal_set_time_cost(int32_t value);
+  public:
+
+  // int32 memory_cost = 2;
+  void clear_memory_cost();
+  int32_t memory_cost() const;
+  void set_memory_cost(int32_t value);
+  private:
+  int32_t _internal_memory_cost() const;
+  void _internal_set_memory_cost(int32_t value);
+  public:
+
+  // .oj_judge.SubmitResult result = 3;
+  void clear_result();
+  ::oj_judge::SubmitResult result() const;
+  void set_result(::oj_judge::SubmitResult value);
+  private:
+  ::oj_judge::SubmitResult _internal_result() const;
+  void _internal_set_result(::oj_judge::SubmitResult value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:oj_judge.SubmitStatus)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    int32_t time_cost_;
+    int32_t memory_cost_;
+    int result_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_judge_5fservice_2eproto;
+};
+// -------------------------------------------------------------------
+
+class JudgeFinishedRequest final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:oj_judge.JudgeFinishedRequest) */ {
+ public:
+  inline JudgeFinishedRequest() : JudgeFinishedRequest(nullptr) {}
+  ~JudgeFinishedRequest() override;
+  explicit PROTOBUF_CONSTEXPR JudgeFinishedRequest(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  JudgeFinishedRequest(const JudgeFinishedRequest& from);
+  JudgeFinishedRequest(JudgeFinishedRequest&& from) noexcept
+    : JudgeFinishedRequest() {
+    *this = ::std::move(from);
+  }
+
+  inline JudgeFinishedRequest& operator=(const JudgeFinishedRequest& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline JudgeFinishedRequest& operator=(JudgeFinishedRequest&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const JudgeFinishedRequest& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const JudgeFinishedRequest* internal_default_instance() {
+    return reinterpret_cast<const JudgeFinishedRequest*>(
+               &_JudgeFinishedRequest_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    2;
+
+  friend void swap(JudgeFinishedRequest& a, JudgeFinishedRequest& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(JudgeFinishedRequest* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(JudgeFinishedRequest* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  JudgeFinishedRequest* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<JudgeFinishedRequest>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const JudgeFinishedRequest& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const JudgeFinishedRequest& from) {
+    JudgeFinishedRequest::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(JudgeFinishedRequest* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "oj_judge.JudgeFinishedRequest";
+  }
+  protected:
+  explicit JudgeFinishedRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kStatusListFieldNumber = 4,
+    kQuestionIdFieldNumber = 2,
+    kSubmissionIdFieldNumber = 1,
+    kUserIdFieldNumber = 3,
+  };
+  // repeated .oj_judge.SubmitStatus status_list = 4;
+  int status_list_size() const;
+  private:
+  int _internal_status_list_size() const;
+  public:
+  void clear_status_list();
+  ::oj_judge::SubmitStatus* mutable_status_list(int index);
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::oj_judge::SubmitStatus >*
+      mutable_status_list();
+  private:
+  const ::oj_judge::SubmitStatus& _internal_status_list(int index) const;
+  ::oj_judge::SubmitStatus* _internal_add_status_list();
+  public:
+  const ::oj_judge::SubmitStatus& status_list(int index) const;
+  ::oj_judge::SubmitStatus* add_status_list();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::oj_judge::SubmitStatus >&
+      status_list() const;
+
+  // string question_id = 2;
+  void clear_question_id();
+  const std::string& question_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_question_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_question_id();
+  PROTOBUF_NODISCARD std::string* release_question_id();
+  void set_allocated_question_id(std::string* question_id);
+  private:
+  const std::string& _internal_question_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_question_id(const std::string& value);
+  std::string* _internal_mutable_question_id();
+  public:
+
+  // uint32 submission_id = 1;
+  void clear_submission_id();
+  uint32_t submission_id() const;
+  void set_submission_id(uint32_t value);
+  private:
+  uint32_t _internal_submission_id() const;
+  void _internal_set_submission_id(uint32_t value);
+  public:
+
+  // uint32 user_id = 3;
+  void clear_user_id();
+  uint32_t user_id() const;
+  void set_user_id(uint32_t value);
+  private:
+  uint32_t _internal_user_id() const;
+  void _internal_set_user_id(uint32_t value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:oj_judge.JudgeFinishedRequest)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::oj_judge::SubmitStatus > status_list_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr question_id_;
+    uint32_t submission_id_;
+    uint32_t user_id_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -382,7 +799,7 @@ class DockerWorkDoneRequest final :
                &_DockerWorkDoneRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    1;
+    3;
 
   friend void swap(DockerWorkDoneRequest& a, DockerWorkDoneRequest& b) {
     a.Swap(&b);
@@ -456,6 +873,8 @@ class DockerWorkDoneRequest final :
 
   enum : int {
     kIdFieldNumber = 1,
+    kStatusFieldNumber = 2,
+    kExitCodeFieldNumber = 3,
   };
   // string id = 1;
   void clear_id();
@@ -471,6 +890,29 @@ class DockerWorkDoneRequest final :
   std::string* _internal_mutable_id();
   public:
 
+  // string status = 2;
+  void clear_status();
+  const std::string& status() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_status(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_status();
+  PROTOBUF_NODISCARD std::string* release_status();
+  void set_allocated_status(std::string* status);
+  private:
+  const std::string& _internal_status() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_status(const std::string& value);
+  std::string* _internal_mutable_status();
+  public:
+
+  // int32 exit_code = 3;
+  void clear_exit_code();
+  int32_t exit_code() const;
+  void set_exit_code(int32_t value);
+  private:
+  int32_t _internal_exit_code() const;
+  void _internal_set_exit_code(int32_t value);
+  public:
+
   // @@protoc_insertion_point(class_scope:oj_judge.DockerWorkDoneRequest)
  private:
   class _Internal;
@@ -480,6 +922,8 @@ class DockerWorkDoneRequest final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr status_;
+    int32_t exit_code_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -534,7 +978,7 @@ class NullRsp final :
                &_NullRsp_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    2;
+    4;
 
   friend void swap(NullRsp& a, NullRsp& b) {
     a.Swap(&b);
@@ -653,7 +1097,7 @@ class TestCaseResult final :
                &_TestCaseResult_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    3;
+    5;
 
   friend void swap(TestCaseResult& a, TestCaseResult& b) {
     a.Swap(&b);
@@ -855,7 +1299,7 @@ class JudgeResult final :
                &_JudgeResult_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    4;
+    6;
 
   friend void swap(JudgeResult& a, JudgeResult& b) {
     a.Swap(&b);
@@ -1077,7 +1521,7 @@ class GetStatusRequest final :
                &_GetStatusRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    5;
+    7;
 
   friend void swap(GetStatusRequest& a, GetStatusRequest& b) {
     a.Swap(&b);
@@ -1194,6 +1638,10 @@ class JudgeService : public ::PROTOBUF_NAMESPACE_ID::Service {
                        const ::oj_judge::DockerWorkDoneRequest* request,
                        ::oj_judge::NullRsp* response,
                        ::google::protobuf::Closure* done);
+  virtual void JudgeFinished(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj_judge::JudgeFinishedRequest* request,
+                       ::oj_judge::NullRsp* response,
+                       ::google::protobuf::Closure* done);
 
   // implements Service ----------------------------------------------
 
@@ -1225,6 +1673,10 @@ class JudgeService_Stub : public JudgeService {
 
   void DockerWorkDone(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::oj_judge::DockerWorkDoneRequest* request,
+                       ::oj_judge::NullRsp* response,
+                       ::google::protobuf::Closure* done);
+  void JudgeFinished(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj_judge::JudgeFinishedRequest* request,
                        ::oj_judge::NullRsp* response,
                        ::google::protobuf::Closure* done);
  private:
@@ -1385,7 +1837,27 @@ inline void SubmitRequest::set_allocated_code(std::string* code) {
   // @@protoc_insertion_point(field_set_allocated:oj_judge.SubmitRequest.code)
 }
 
-// string language = 5;
+// uint64 timestamp = 5;
+inline void SubmitRequest::clear_timestamp() {
+  _impl_.timestamp_ = uint64_t{0u};
+}
+inline uint64_t SubmitRequest::_internal_timestamp() const {
+  return _impl_.timestamp_;
+}
+inline uint64_t SubmitRequest::timestamp() const {
+  // @@protoc_insertion_point(field_get:oj_judge.SubmitRequest.timestamp)
+  return _internal_timestamp();
+}
+inline void SubmitRequest::_internal_set_timestamp(uint64_t value) {
+  
+  _impl_.timestamp_ = value;
+}
+inline void SubmitRequest::set_timestamp(uint64_t value) {
+  _internal_set_timestamp(value);
+  // @@protoc_insertion_point(field_set:oj_judge.SubmitRequest.timestamp)
+}
+
+// string language = 6;
 inline void SubmitRequest::clear_language() {
   _impl_.language_.ClearToEmpty();
 }
@@ -1435,7 +1907,47 @@ inline void SubmitRequest::set_allocated_language(std::string* language) {
   // @@protoc_insertion_point(field_set_allocated:oj_judge.SubmitRequest.language)
 }
 
-// bool is_custom_test = 6;
+// int32 time_limit = 7;
+inline void SubmitRequest::clear_time_limit() {
+  _impl_.time_limit_ = 0;
+}
+inline int32_t SubmitRequest::_internal_time_limit() const {
+  return _impl_.time_limit_;
+}
+inline int32_t SubmitRequest::time_limit() const {
+  // @@protoc_insertion_point(field_get:oj_judge.SubmitRequest.time_limit)
+  return _internal_time_limit();
+}
+inline void SubmitRequest::_internal_set_time_limit(int32_t value) {
+  
+  _impl_.time_limit_ = value;
+}
+inline void SubmitRequest::set_time_limit(int32_t value) {
+  _internal_set_time_limit(value);
+  // @@protoc_insertion_point(field_set:oj_judge.SubmitRequest.time_limit)
+}
+
+// int32 memory_limit = 8;
+inline void SubmitRequest::clear_memory_limit() {
+  _impl_.memory_limit_ = 0;
+}
+inline int32_t SubmitRequest::_internal_memory_limit() const {
+  return _impl_.memory_limit_;
+}
+inline int32_t SubmitRequest::memory_limit() const {
+  // @@protoc_insertion_point(field_get:oj_judge.SubmitRequest.memory_limit)
+  return _internal_memory_limit();
+}
+inline void SubmitRequest::_internal_set_memory_limit(int32_t value) {
+  
+  _impl_.memory_limit_ = value;
+}
+inline void SubmitRequest::set_memory_limit(int32_t value) {
+  _internal_set_memory_limit(value);
+  // @@protoc_insertion_point(field_set:oj_judge.SubmitRequest.memory_limit)
+}
+
+// bool is_custom_test = 9;
 inline void SubmitRequest::clear_is_custom_test() {
   _impl_.is_custom_test_ = false;
 }
@@ -1455,7 +1967,7 @@ inline void SubmitRequest::set_is_custom_test(bool value) {
   // @@protoc_insertion_point(field_set:oj_judge.SubmitRequest.is_custom_test)
 }
 
-// string custom_input = 7;
+// string custom_input = 10;
 inline void SubmitRequest::clear_custom_input() {
   _impl_.custom_input_.ClearToEmpty();
 }
@@ -1505,44 +2017,202 @@ inline void SubmitRequest::set_allocated_custom_input(std::string* custom_input)
   // @@protoc_insertion_point(field_set_allocated:oj_judge.SubmitRequest.custom_input)
 }
 
-// int32 time_limit = 8;
-inline void SubmitRequest::clear_time_limit() {
-  _impl_.time_limit_ = 0;
+// -------------------------------------------------------------------
+
+// SubmitStatus
+
+// int32 time_cost = 1;
+inline void SubmitStatus::clear_time_cost() {
+  _impl_.time_cost_ = 0;
 }
-inline int32_t SubmitRequest::_internal_time_limit() const {
-  return _impl_.time_limit_;
+inline int32_t SubmitStatus::_internal_time_cost() const {
+  return _impl_.time_cost_;
 }
-inline int32_t SubmitRequest::time_limit() const {
-  // @@protoc_insertion_point(field_get:oj_judge.SubmitRequest.time_limit)
-  return _internal_time_limit();
+inline int32_t SubmitStatus::time_cost() const {
+  // @@protoc_insertion_point(field_get:oj_judge.SubmitStatus.time_cost)
+  return _internal_time_cost();
 }
-inline void SubmitRequest::_internal_set_time_limit(int32_t value) {
+inline void SubmitStatus::_internal_set_time_cost(int32_t value) {
   
-  _impl_.time_limit_ = value;
+  _impl_.time_cost_ = value;
 }
-inline void SubmitRequest::set_time_limit(int32_t value) {
-  _internal_set_time_limit(value);
-  // @@protoc_insertion_point(field_set:oj_judge.SubmitRequest.time_limit)
+inline void SubmitStatus::set_time_cost(int32_t value) {
+  _internal_set_time_cost(value);
+  // @@protoc_insertion_point(field_set:oj_judge.SubmitStatus.time_cost)
 }
 
-// int32 memory_limit = 9;
-inline void SubmitRequest::clear_memory_limit() {
-  _impl_.memory_limit_ = 0;
+// int32 memory_cost = 2;
+inline void SubmitStatus::clear_memory_cost() {
+  _impl_.memory_cost_ = 0;
 }
-inline int32_t SubmitRequest::_internal_memory_limit() const {
-  return _impl_.memory_limit_;
+inline int32_t SubmitStatus::_internal_memory_cost() const {
+  return _impl_.memory_cost_;
 }
-inline int32_t SubmitRequest::memory_limit() const {
-  // @@protoc_insertion_point(field_get:oj_judge.SubmitRequest.memory_limit)
-  return _internal_memory_limit();
+inline int32_t SubmitStatus::memory_cost() const {
+  // @@protoc_insertion_point(field_get:oj_judge.SubmitStatus.memory_cost)
+  return _internal_memory_cost();
 }
-inline void SubmitRequest::_internal_set_memory_limit(int32_t value) {
+inline void SubmitStatus::_internal_set_memory_cost(int32_t value) {
   
-  _impl_.memory_limit_ = value;
+  _impl_.memory_cost_ = value;
 }
-inline void SubmitRequest::set_memory_limit(int32_t value) {
-  _internal_set_memory_limit(value);
-  // @@protoc_insertion_point(field_set:oj_judge.SubmitRequest.memory_limit)
+inline void SubmitStatus::set_memory_cost(int32_t value) {
+  _internal_set_memory_cost(value);
+  // @@protoc_insertion_point(field_set:oj_judge.SubmitStatus.memory_cost)
+}
+
+// .oj_judge.SubmitResult result = 3;
+inline void SubmitStatus::clear_result() {
+  _impl_.result_ = 0;
+}
+inline ::oj_judge::SubmitResult SubmitStatus::_internal_result() const {
+  return static_cast< ::oj_judge::SubmitResult >(_impl_.result_);
+}
+inline ::oj_judge::SubmitResult SubmitStatus::result() const {
+  // @@protoc_insertion_point(field_get:oj_judge.SubmitStatus.result)
+  return _internal_result();
+}
+inline void SubmitStatus::_internal_set_result(::oj_judge::SubmitResult value) {
+  
+  _impl_.result_ = value;
+}
+inline void SubmitStatus::set_result(::oj_judge::SubmitResult value) {
+  _internal_set_result(value);
+  // @@protoc_insertion_point(field_set:oj_judge.SubmitStatus.result)
+}
+
+// -------------------------------------------------------------------
+
+// JudgeFinishedRequest
+
+// uint32 submission_id = 1;
+inline void JudgeFinishedRequest::clear_submission_id() {
+  _impl_.submission_id_ = 0u;
+}
+inline uint32_t JudgeFinishedRequest::_internal_submission_id() const {
+  return _impl_.submission_id_;
+}
+inline uint32_t JudgeFinishedRequest::submission_id() const {
+  // @@protoc_insertion_point(field_get:oj_judge.JudgeFinishedRequest.submission_id)
+  return _internal_submission_id();
+}
+inline void JudgeFinishedRequest::_internal_set_submission_id(uint32_t value) {
+  
+  _impl_.submission_id_ = value;
+}
+inline void JudgeFinishedRequest::set_submission_id(uint32_t value) {
+  _internal_set_submission_id(value);
+  // @@protoc_insertion_point(field_set:oj_judge.JudgeFinishedRequest.submission_id)
+}
+
+// string question_id = 2;
+inline void JudgeFinishedRequest::clear_question_id() {
+  _impl_.question_id_.ClearToEmpty();
+}
+inline const std::string& JudgeFinishedRequest::question_id() const {
+  // @@protoc_insertion_point(field_get:oj_judge.JudgeFinishedRequest.question_id)
+  return _internal_question_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void JudgeFinishedRequest::set_question_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.question_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:oj_judge.JudgeFinishedRequest.question_id)
+}
+inline std::string* JudgeFinishedRequest::mutable_question_id() {
+  std::string* _s = _internal_mutable_question_id();
+  // @@protoc_insertion_point(field_mutable:oj_judge.JudgeFinishedRequest.question_id)
+  return _s;
+}
+inline const std::string& JudgeFinishedRequest::_internal_question_id() const {
+  return _impl_.question_id_.Get();
+}
+inline void JudgeFinishedRequest::_internal_set_question_id(const std::string& value) {
+  
+  _impl_.question_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* JudgeFinishedRequest::_internal_mutable_question_id() {
+  
+  return _impl_.question_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* JudgeFinishedRequest::release_question_id() {
+  // @@protoc_insertion_point(field_release:oj_judge.JudgeFinishedRequest.question_id)
+  return _impl_.question_id_.Release();
+}
+inline void JudgeFinishedRequest::set_allocated_question_id(std::string* question_id) {
+  if (question_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.question_id_.SetAllocated(question_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.question_id_.IsDefault()) {
+    _impl_.question_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:oj_judge.JudgeFinishedRequest.question_id)
+}
+
+// uint32 user_id = 3;
+inline void JudgeFinishedRequest::clear_user_id() {
+  _impl_.user_id_ = 0u;
+}
+inline uint32_t JudgeFinishedRequest::_internal_user_id() const {
+  return _impl_.user_id_;
+}
+inline uint32_t JudgeFinishedRequest::user_id() const {
+  // @@protoc_insertion_point(field_get:oj_judge.JudgeFinishedRequest.user_id)
+  return _internal_user_id();
+}
+inline void JudgeFinishedRequest::_internal_set_user_id(uint32_t value) {
+  
+  _impl_.user_id_ = value;
+}
+inline void JudgeFinishedRequest::set_user_id(uint32_t value) {
+  _internal_set_user_id(value);
+  // @@protoc_insertion_point(field_set:oj_judge.JudgeFinishedRequest.user_id)
+}
+
+// repeated .oj_judge.SubmitStatus status_list = 4;
+inline int JudgeFinishedRequest::_internal_status_list_size() const {
+  return _impl_.status_list_.size();
+}
+inline int JudgeFinishedRequest::status_list_size() const {
+  return _internal_status_list_size();
+}
+inline void JudgeFinishedRequest::clear_status_list() {
+  _impl_.status_list_.Clear();
+}
+inline ::oj_judge::SubmitStatus* JudgeFinishedRequest::mutable_status_list(int index) {
+  // @@protoc_insertion_point(field_mutable:oj_judge.JudgeFinishedRequest.status_list)
+  return _impl_.status_list_.Mutable(index);
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::oj_judge::SubmitStatus >*
+JudgeFinishedRequest::mutable_status_list() {
+  // @@protoc_insertion_point(field_mutable_list:oj_judge.JudgeFinishedRequest.status_list)
+  return &_impl_.status_list_;
+}
+inline const ::oj_judge::SubmitStatus& JudgeFinishedRequest::_internal_status_list(int index) const {
+  return _impl_.status_list_.Get(index);
+}
+inline const ::oj_judge::SubmitStatus& JudgeFinishedRequest::status_list(int index) const {
+  // @@protoc_insertion_point(field_get:oj_judge.JudgeFinishedRequest.status_list)
+  return _internal_status_list(index);
+}
+inline ::oj_judge::SubmitStatus* JudgeFinishedRequest::_internal_add_status_list() {
+  return _impl_.status_list_.Add();
+}
+inline ::oj_judge::SubmitStatus* JudgeFinishedRequest::add_status_list() {
+  ::oj_judge::SubmitStatus* _add = _internal_add_status_list();
+  // @@protoc_insertion_point(field_add:oj_judge.JudgeFinishedRequest.status_list)
+  return _add;
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::oj_judge::SubmitStatus >&
+JudgeFinishedRequest::status_list() const {
+  // @@protoc_insertion_point(field_list:oj_judge.JudgeFinishedRequest.status_list)
+  return _impl_.status_list_;
 }
 
 // -------------------------------------------------------------------
@@ -1597,6 +2267,76 @@ inline void DockerWorkDoneRequest::set_allocated_id(std::string* id) {
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:oj_judge.DockerWorkDoneRequest.id)
+}
+
+// string status = 2;
+inline void DockerWorkDoneRequest::clear_status() {
+  _impl_.status_.ClearToEmpty();
+}
+inline const std::string& DockerWorkDoneRequest::status() const {
+  // @@protoc_insertion_point(field_get:oj_judge.DockerWorkDoneRequest.status)
+  return _internal_status();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void DockerWorkDoneRequest::set_status(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.status_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:oj_judge.DockerWorkDoneRequest.status)
+}
+inline std::string* DockerWorkDoneRequest::mutable_status() {
+  std::string* _s = _internal_mutable_status();
+  // @@protoc_insertion_point(field_mutable:oj_judge.DockerWorkDoneRequest.status)
+  return _s;
+}
+inline const std::string& DockerWorkDoneRequest::_internal_status() const {
+  return _impl_.status_.Get();
+}
+inline void DockerWorkDoneRequest::_internal_set_status(const std::string& value) {
+  
+  _impl_.status_.Set(value, GetArenaForAllocation());
+}
+inline std::string* DockerWorkDoneRequest::_internal_mutable_status() {
+  
+  return _impl_.status_.Mutable(GetArenaForAllocation());
+}
+inline std::string* DockerWorkDoneRequest::release_status() {
+  // @@protoc_insertion_point(field_release:oj_judge.DockerWorkDoneRequest.status)
+  return _impl_.status_.Release();
+}
+inline void DockerWorkDoneRequest::set_allocated_status(std::string* status) {
+  if (status != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.status_.SetAllocated(status, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.status_.IsDefault()) {
+    _impl_.status_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:oj_judge.DockerWorkDoneRequest.status)
+}
+
+// int32 exit_code = 3;
+inline void DockerWorkDoneRequest::clear_exit_code() {
+  _impl_.exit_code_ = 0;
+}
+inline int32_t DockerWorkDoneRequest::_internal_exit_code() const {
+  return _impl_.exit_code_;
+}
+inline int32_t DockerWorkDoneRequest::exit_code() const {
+  // @@protoc_insertion_point(field_get:oj_judge.DockerWorkDoneRequest.exit_code)
+  return _internal_exit_code();
+}
+inline void DockerWorkDoneRequest::_internal_set_exit_code(int32_t value) {
+  
+  _impl_.exit_code_ = value;
+}
+inline void DockerWorkDoneRequest::set_exit_code(int32_t value) {
+  _internal_set_exit_code(value);
+  // @@protoc_insertion_point(field_set:oj_judge.DockerWorkDoneRequest.exit_code)
 }
 
 // -------------------------------------------------------------------
@@ -2008,10 +2748,24 @@ inline void GetStatusRequest::set_submission_id(uint32_t value) {
 
 // -------------------------------------------------------------------
 
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace oj_judge
+
+PROTOBUF_NAMESPACE_OPEN
+
+template <> struct is_proto_enum< ::oj_judge::SubmitResult> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::oj_judge::SubmitResult>() {
+  return ::oj_judge::SubmitResult_descriptor();
+}
+
+PROTOBUF_NAMESPACE_CLOSE
 
 // @@protoc_insertion_point(global_scope)
 

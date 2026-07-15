@@ -1,7 +1,9 @@
 syntax = "proto3";
 package oj.biz;
+option cc_generic_services = true;
 
 import "common.proto";
+import "judge_service.proto";
 
 // ==================== UserService ====================
 
@@ -389,4 +391,6 @@ message GetSubmissionStatusResponse {
 service SubmissionService {
     rpc UpdateSubmissionResult (UpdateSubmissionResultRequest) returns (UpdateSubmissionResultResponse);
     rpc GetSubmissionStatus (GetSubmissionStatusRequest) returns (GetSubmissionStatusResponse);
+    // Judge Service 判题完成后调用此 RPC 回传结果
+    rpc UpdateJudgeResult (oj_judge.JudgeFinishedRequest) returns (oj_judge.NullRsp);
 }

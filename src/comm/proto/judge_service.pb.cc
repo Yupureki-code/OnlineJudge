@@ -29,9 +29,10 @@ PROTOBUF_CONSTEXPR SubmitRequest::SubmitRequest(
   , /*decltype(_impl_.custom_input_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.submission_id_)*/0u
   , /*decltype(_impl_.user_id_)*/0u
-  , /*decltype(_impl_.is_custom_test_)*/false
+  , /*decltype(_impl_.timestamp_)*/uint64_t{0u}
   , /*decltype(_impl_.time_limit_)*/0
   , /*decltype(_impl_.memory_limit_)*/0
+  , /*decltype(_impl_.is_custom_test_)*/false
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct SubmitRequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR SubmitRequestDefaultTypeInternal()
@@ -42,9 +43,42 @@ struct SubmitRequestDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 SubmitRequestDefaultTypeInternal _SubmitRequest_default_instance_;
+PROTOBUF_CONSTEXPR SubmitStatus::SubmitStatus(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.time_cost_)*/0
+  , /*decltype(_impl_.memory_cost_)*/0
+  , /*decltype(_impl_.result_)*/0
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct SubmitStatusDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR SubmitStatusDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~SubmitStatusDefaultTypeInternal() {}
+  union {
+    SubmitStatus _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 SubmitStatusDefaultTypeInternal _SubmitStatus_default_instance_;
+PROTOBUF_CONSTEXPR JudgeFinishedRequest::JudgeFinishedRequest(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.status_list_)*/{}
+  , /*decltype(_impl_.question_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.submission_id_)*/0u
+  , /*decltype(_impl_.user_id_)*/0u
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct JudgeFinishedRequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR JudgeFinishedRequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~JudgeFinishedRequestDefaultTypeInternal() {}
+  union {
+    JudgeFinishedRequest _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 JudgeFinishedRequestDefaultTypeInternal _JudgeFinishedRequest_default_instance_;
 PROTOBUF_CONSTEXPR DockerWorkDoneRequest::DockerWorkDoneRequest(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.status_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.exit_code_)*/0
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct DockerWorkDoneRequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR DockerWorkDoneRequestDefaultTypeInternal()
@@ -115,8 +149,8 @@ struct GetStatusRequestDefaultTypeInternal {
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetStatusRequestDefaultTypeInternal _GetStatusRequest_default_instance_;
 }  // namespace oj_judge
-static ::_pb::Metadata file_level_metadata_judge_5fservice_2eproto[6];
-static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_judge_5fservice_2eproto = nullptr;
+static ::_pb::Metadata file_level_metadata_judge_5fservice_2eproto[8];
+static const ::_pb::EnumDescriptor* file_level_enum_descriptors_judge_5fservice_2eproto[1];
 static const ::_pb::ServiceDescriptor* file_level_service_descriptors_judge_5fservice_2eproto[1];
 
 const uint32_t TableStruct_judge_5fservice_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
@@ -130,11 +164,31 @@ const uint32_t TableStruct_judge_5fservice_2eproto::offsets[] PROTOBUF_SECTION_V
   PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitRequest, _impl_.question_id_),
   PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitRequest, _impl_.user_id_),
   PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitRequest, _impl_.code_),
+  PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitRequest, _impl_.timestamp_),
   PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitRequest, _impl_.language_),
-  PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitRequest, _impl_.is_custom_test_),
-  PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitRequest, _impl_.custom_input_),
   PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitRequest, _impl_.time_limit_),
   PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitRequest, _impl_.memory_limit_),
+  PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitRequest, _impl_.is_custom_test_),
+  PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitRequest, _impl_.custom_input_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitStatus, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitStatus, _impl_.time_cost_),
+  PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitStatus, _impl_.memory_cost_),
+  PROTOBUF_FIELD_OFFSET(::oj_judge::SubmitStatus, _impl_.result_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::oj_judge::JudgeFinishedRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::oj_judge::JudgeFinishedRequest, _impl_.submission_id_),
+  PROTOBUF_FIELD_OFFSET(::oj_judge::JudgeFinishedRequest, _impl_.question_id_),
+  PROTOBUF_FIELD_OFFSET(::oj_judge::JudgeFinishedRequest, _impl_.user_id_),
+  PROTOBUF_FIELD_OFFSET(::oj_judge::JudgeFinishedRequest, _impl_.status_list_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::oj_judge::DockerWorkDoneRequest, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -142,6 +196,8 @@ const uint32_t TableStruct_judge_5fservice_2eproto::offsets[] PROTOBUF_SECTION_V
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::oj_judge::DockerWorkDoneRequest, _impl_.id_),
+  PROTOBUF_FIELD_OFFSET(::oj_judge::DockerWorkDoneRequest, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::oj_judge::DockerWorkDoneRequest, _impl_.exit_code_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::oj_judge::NullRsp, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -181,15 +237,19 @@ const uint32_t TableStruct_judge_5fservice_2eproto::offsets[] PROTOBUF_SECTION_V
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::oj_judge::SubmitRequest)},
-  { 15, -1, -1, sizeof(::oj_judge::DockerWorkDoneRequest)},
-  { 22, -1, -1, sizeof(::oj_judge::NullRsp)},
-  { 28, -1, -1, sizeof(::oj_judge::TestCaseResult)},
-  { 39, -1, -1, sizeof(::oj_judge::JudgeResult)},
-  { 51, -1, -1, sizeof(::oj_judge::GetStatusRequest)},
+  { 16, -1, -1, sizeof(::oj_judge::SubmitStatus)},
+  { 25, -1, -1, sizeof(::oj_judge::JudgeFinishedRequest)},
+  { 35, -1, -1, sizeof(::oj_judge::DockerWorkDoneRequest)},
+  { 44, -1, -1, sizeof(::oj_judge::NullRsp)},
+  { 50, -1, -1, sizeof(::oj_judge::TestCaseResult)},
+  { 61, -1, -1, sizeof(::oj_judge::JudgeResult)},
+  { 73, -1, -1, sizeof(::oj_judge::GetStatusRequest)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
   &::oj_judge::_SubmitRequest_default_instance_._instance,
+  &::oj_judge::_SubmitStatus_default_instance_._instance,
+  &::oj_judge::_JudgeFinishedRequest_default_instance_._instance,
   &::oj_judge::_DockerWorkDoneRequest_default_instance_._instance,
   &::oj_judge::_NullRsp_default_instance_._instance,
   &::oj_judge::_TestCaseResult_default_instance_._instance,
@@ -198,30 +258,42 @@ static const ::_pb::Message* const file_default_instances[] = {
 };
 
 const char descriptor_table_protodef_judge_5fservice_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
-  "\n\023judge_service.proto\022\010oj_judge\"\304\001\n\rSubm"
+  "\n\023judge_service.proto\022\010oj_judge\"\327\001\n\rSubm"
   "itRequest\022\025\n\rsubmission_id\030\001 \001(\r\022\023\n\013ques"
   "tion_id\030\002 \001(\t\022\017\n\007user_id\030\003 \001(\r\022\014\n\004code\030\004"
-  " \001(\t\022\020\n\010language\030\005 \001(\t\022\026\n\016is_custom_test"
-  "\030\006 \001(\010\022\024\n\014custom_input\030\007 \001(\t\022\022\n\ntime_lim"
-  "it\030\010 \001(\005\022\024\n\014memory_limit\030\t \001(\005\"#\n\025Docker"
-  "WorkDoneRequest\022\n\n\002id\030\001 \001(\t\"\t\n\007NullRsp\"i"
-  "\n\016TestCaseResult\022\r\n\005index\030\001 \001(\005\022\016\n\006statu"
-  "s\030\002 \001(\t\022\017\n\007time_ms\030\003 \001(\005\022\024\n\014memory_bytes"
-  "\030\004 \001(\003\022\021\n\tdiff_info\030\005 \001(\t\"\252\001\n\013JudgeResul"
-  "t\022\025\n\rsubmission_id\030\001 \001(\r\022\016\n\006status\030\002 \001(\t"
-  "\022\024\n\014time_used_ms\030\003 \001(\005\022\031\n\021memory_used_by"
-  "tes\030\004 \001(\003\022\025\n\rcompile_error\030\005 \001(\t\022,\n\ntest"
-  "_cases\030\006 \003(\0132\030.oj_judge.TestCaseResult\")"
-  "\n\020GetStatusRequest\022\025\n\rsubmission_id\030\001 \001("
-  "\r2T\n\014JudgeService\022D\n\016DockerWorkDone\022\037.oj"
-  "_judge.DockerWorkDoneRequest\032\021.oj_judge."
-  "NullRspB\003\200\001\001b\006proto3"
+  " \001(\t\022\021\n\ttimestamp\030\005 \001(\004\022\020\n\010language\030\006 \001("
+  "\t\022\022\n\ntime_limit\030\007 \001(\005\022\024\n\014memory_limit\030\010 "
+  "\001(\005\022\026\n\016is_custom_test\030\t \001(\010\022\024\n\014custom_in"
+  "put\030\n \001(\t\"^\n\014SubmitStatus\022\021\n\ttime_cost\030\001"
+  " \001(\005\022\023\n\013memory_cost\030\002 \001(\005\022&\n\006result\030\003 \001("
+  "\0162\026.oj_judge.SubmitResult\"\200\001\n\024JudgeFinis"
+  "hedRequest\022\025\n\rsubmission_id\030\001 \001(\r\022\023\n\013que"
+  "stion_id\030\002 \001(\t\022\017\n\007user_id\030\003 \001(\r\022+\n\013statu"
+  "s_list\030\004 \003(\0132\026.oj_judge.SubmitStatus\"F\n\025"
+  "DockerWorkDoneRequest\022\n\n\002id\030\001 \001(\t\022\016\n\006sta"
+  "tus\030\002 \001(\t\022\021\n\texit_code\030\003 \001(\005\"\t\n\007NullRsp\""
+  "i\n\016TestCaseResult\022\r\n\005index\030\001 \001(\005\022\016\n\006stat"
+  "us\030\002 \001(\t\022\017\n\007time_ms\030\003 \001(\005\022\024\n\014memory_byte"
+  "s\030\004 \001(\003\022\021\n\tdiff_info\030\005 \001(\t\"\252\001\n\013JudgeResu"
+  "lt\022\025\n\rsubmission_id\030\001 \001(\r\022\016\n\006status\030\002 \001("
+  "\t\022\024\n\014time_used_ms\030\003 \001(\005\022\031\n\021memory_used_b"
+  "ytes\030\004 \001(\003\022\025\n\rcompile_error\030\005 \001(\t\022,\n\ntes"
+  "t_cases\030\006 \003(\0132\030.oj_judge.TestCaseResult\""
+  ")\n\020GetStatusRequest\022\025\n\rsubmission_id\030\001 \001"
+  "(\r*\222\001\n\014SubmitResult\022\006\n\002AC\020\000\022\006\n\002WA\020\001\022\021\n\rC"
+  "OMPILE_ERROR\020\002\022\020\n\014MEMORY_LIMIT\020\003\022\016\n\nTIME"
+  "_LIMIT\020\004\022\016\n\nSEGV_ERROR\020\005\022\r\n\tFPE_ERROR\020\006\022"
+  "\021\n\rRUNTIME_ERROR\020\007\022\013\n\007UNKNOWN\020\0102\230\001\n\014Judg"
+  "eService\022D\n\016DockerWorkDone\022\037.oj_judge.Do"
+  "ckerWorkDoneRequest\032\021.oj_judge.NullRsp\022B"
+  "\n\rJudgeFinished\022\036.oj_judge.JudgeFinished"
+  "Request\032\021.oj_judge.NullRspB\003\200\001\001b\006proto3"
   ;
 static ::_pbi::once_flag descriptor_table_judge_5fservice_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_judge_5fservice_2eproto = {
-    false, false, 700, descriptor_table_protodef_judge_5fservice_2eproto,
+    false, false, 1199, descriptor_table_protodef_judge_5fservice_2eproto,
     "judge_service.proto",
-    &descriptor_table_judge_5fservice_2eproto_once, nullptr, 0, 6,
+    &descriptor_table_judge_5fservice_2eproto_once, nullptr, 0, 8,
     schemas, file_default_instances, TableStruct_judge_5fservice_2eproto::offsets,
     file_level_metadata_judge_5fservice_2eproto, file_level_enum_descriptors_judge_5fservice_2eproto,
     file_level_service_descriptors_judge_5fservice_2eproto,
@@ -233,6 +305,27 @@ PROTOBUF_ATTRIBUTE_WEAK const ::_pbi::DescriptorTable* descriptor_table_judge_5f
 // Force running AddDescriptors() at dynamic initialization time.
 PROTOBUF_ATTRIBUTE_INIT_PRIORITY2 static ::_pbi::AddDescriptorsRunner dynamic_init_dummy_judge_5fservice_2eproto(&descriptor_table_judge_5fservice_2eproto);
 namespace oj_judge {
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* SubmitResult_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_judge_5fservice_2eproto);
+  return file_level_enum_descriptors_judge_5fservice_2eproto[0];
+}
+bool SubmitResult_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+      return true;
+    default:
+      return false;
+  }
+}
+
 
 // ===================================================================
 
@@ -256,9 +349,10 @@ SubmitRequest::SubmitRequest(const SubmitRequest& from)
     , decltype(_impl_.custom_input_){}
     , decltype(_impl_.submission_id_){}
     , decltype(_impl_.user_id_){}
-    , decltype(_impl_.is_custom_test_){}
+    , decltype(_impl_.timestamp_){}
     , decltype(_impl_.time_limit_){}
     , decltype(_impl_.memory_limit_){}
+    , decltype(_impl_.is_custom_test_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -295,8 +389,8 @@ SubmitRequest::SubmitRequest(const SubmitRequest& from)
       _this->GetArenaForAllocation());
   }
   ::memcpy(&_impl_.submission_id_, &from._impl_.submission_id_,
-    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.memory_limit_) -
-    reinterpret_cast<char*>(&_impl_.submission_id_)) + sizeof(_impl_.memory_limit_));
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.is_custom_test_) -
+    reinterpret_cast<char*>(&_impl_.submission_id_)) + sizeof(_impl_.is_custom_test_));
   // @@protoc_insertion_point(copy_constructor:oj_judge.SubmitRequest)
 }
 
@@ -311,9 +405,10 @@ inline void SubmitRequest::SharedCtor(
     , decltype(_impl_.custom_input_){}
     , decltype(_impl_.submission_id_){0u}
     , decltype(_impl_.user_id_){0u}
-    , decltype(_impl_.is_custom_test_){false}
+    , decltype(_impl_.timestamp_){uint64_t{0u}}
     , decltype(_impl_.time_limit_){0}
     , decltype(_impl_.memory_limit_){0}
+    , decltype(_impl_.is_custom_test_){false}
     , /*decltype(_impl_._cached_size_)*/{}
   };
   _impl_.question_id_.InitDefault();
@@ -366,8 +461,8 @@ void SubmitRequest::Clear() {
   _impl_.language_.ClearToEmpty();
   _impl_.custom_input_.ClearToEmpty();
   ::memset(&_impl_.submission_id_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&_impl_.memory_limit_) -
-      reinterpret_cast<char*>(&_impl_.submission_id_)) + sizeof(_impl_.memory_limit_));
+      reinterpret_cast<char*>(&_impl_.is_custom_test_) -
+      reinterpret_cast<char*>(&_impl_.submission_id_)) + sizeof(_impl_.is_custom_test_));
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -413,9 +508,17 @@ const char* SubmitRequest::_InternalParse(const char* ptr, ::_pbi::ParseContext*
         } else
           goto handle_unusual;
         continue;
-      // string language = 5;
+      // uint64 timestamp = 5;
       case 5:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
+          _impl_.timestamp_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string language = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
           auto str = _internal_mutable_language();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -423,37 +526,37 @@ const char* SubmitRequest::_InternalParse(const char* ptr, ::_pbi::ParseContext*
         } else
           goto handle_unusual;
         continue;
-      // bool is_custom_test = 6;
-      case 6:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
-          _impl_.is_custom_test_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
-          CHK_(ptr);
-        } else
-          goto handle_unusual;
-        continue;
-      // string custom_input = 7;
+      // int32 time_limit = 7;
       case 7:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 58)) {
-          auto str = _internal_mutable_custom_input();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "oj_judge.SubmitRequest.custom_input"));
-        } else
-          goto handle_unusual;
-        continue;
-      // int32 time_limit = 8;
-      case 8:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 56)) {
           _impl_.time_limit_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
-      // int32 memory_limit = 9;
-      case 9:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 72)) {
+      // int32 memory_limit = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
           _impl_.memory_limit_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool is_custom_test = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 72)) {
+          _impl_.is_custom_test_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string custom_input = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 82)) {
+          auto str = _internal_mutable_custom_input();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj_judge.SubmitRequest.custom_input"));
         } else
           goto handle_unusual;
         continue;
@@ -518,42 +621,48 @@ uint8_t* SubmitRequest::_InternalSerialize(
         4, this->_internal_code(), target);
   }
 
-  // string language = 5;
+  // uint64 timestamp = 5;
+  if (this->_internal_timestamp() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(5, this->_internal_timestamp(), target);
+  }
+
+  // string language = 6;
   if (!this->_internal_language().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_language().data(), static_cast<int>(this->_internal_language().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "oj_judge.SubmitRequest.language");
     target = stream->WriteStringMaybeAliased(
-        5, this->_internal_language(), target);
+        6, this->_internal_language(), target);
   }
 
-  // bool is_custom_test = 6;
+  // int32 time_limit = 7;
+  if (this->_internal_time_limit() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(7, this->_internal_time_limit(), target);
+  }
+
+  // int32 memory_limit = 8;
+  if (this->_internal_memory_limit() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(8, this->_internal_memory_limit(), target);
+  }
+
+  // bool is_custom_test = 9;
   if (this->_internal_is_custom_test() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteBoolToArray(6, this->_internal_is_custom_test(), target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(9, this->_internal_is_custom_test(), target);
   }
 
-  // string custom_input = 7;
+  // string custom_input = 10;
   if (!this->_internal_custom_input().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_custom_input().data(), static_cast<int>(this->_internal_custom_input().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "oj_judge.SubmitRequest.custom_input");
     target = stream->WriteStringMaybeAliased(
-        7, this->_internal_custom_input(), target);
-  }
-
-  // int32 time_limit = 8;
-  if (this->_internal_time_limit() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteInt32ToArray(8, this->_internal_time_limit(), target);
-  }
-
-  // int32 memory_limit = 9;
-  if (this->_internal_memory_limit() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteInt32ToArray(9, this->_internal_memory_limit(), target);
+        10, this->_internal_custom_input(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -586,14 +695,14 @@ size_t SubmitRequest::ByteSizeLong() const {
         this->_internal_code());
   }
 
-  // string language = 5;
+  // string language = 6;
   if (!this->_internal_language().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_language());
   }
 
-  // string custom_input = 7;
+  // string custom_input = 10;
   if (!this->_internal_custom_input().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
@@ -610,19 +719,24 @@ size_t SubmitRequest::ByteSizeLong() const {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_user_id());
   }
 
-  // bool is_custom_test = 6;
-  if (this->_internal_is_custom_test() != 0) {
-    total_size += 1 + 1;
+  // uint64 timestamp = 5;
+  if (this->_internal_timestamp() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_timestamp());
   }
 
-  // int32 time_limit = 8;
+  // int32 time_limit = 7;
   if (this->_internal_time_limit() != 0) {
     total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_time_limit());
   }
 
-  // int32 memory_limit = 9;
+  // int32 memory_limit = 8;
   if (this->_internal_memory_limit() != 0) {
     total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_memory_limit());
+  }
+
+  // bool is_custom_test = 9;
+  if (this->_internal_is_custom_test() != 0) {
+    total_size += 1 + 1;
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
@@ -661,14 +775,17 @@ void SubmitRequest::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::
   if (from._internal_user_id() != 0) {
     _this->_internal_set_user_id(from._internal_user_id());
   }
-  if (from._internal_is_custom_test() != 0) {
-    _this->_internal_set_is_custom_test(from._internal_is_custom_test());
+  if (from._internal_timestamp() != 0) {
+    _this->_internal_set_timestamp(from._internal_timestamp());
   }
   if (from._internal_time_limit() != 0) {
     _this->_internal_set_time_limit(from._internal_time_limit());
   }
   if (from._internal_memory_limit() != 0) {
     _this->_internal_set_memory_limit(from._internal_memory_limit());
+  }
+  if (from._internal_is_custom_test() != 0) {
+    _this->_internal_set_is_custom_test(from._internal_is_custom_test());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -706,8 +823,8 @@ void SubmitRequest::InternalSwap(SubmitRequest* other) {
       &other->_impl_.custom_input_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(SubmitRequest, _impl_.memory_limit_)
-      + sizeof(SubmitRequest::_impl_.memory_limit_)
+      PROTOBUF_FIELD_OFFSET(SubmitRequest, _impl_.is_custom_test_)
+      + sizeof(SubmitRequest::_impl_.is_custom_test_)
       - PROTOBUF_FIELD_OFFSET(SubmitRequest, _impl_.submission_id_)>(
           reinterpret_cast<char*>(&_impl_.submission_id_),
           reinterpret_cast<char*>(&other->_impl_.submission_id_));
@@ -717,6 +834,541 @@ void SubmitRequest::InternalSwap(SubmitRequest* other) {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_judge_5fservice_2eproto_getter, &descriptor_table_judge_5fservice_2eproto_once,
       file_level_metadata_judge_5fservice_2eproto[0]);
+}
+
+// ===================================================================
+
+class SubmitStatus::_Internal {
+ public:
+};
+
+SubmitStatus::SubmitStatus(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:oj_judge.SubmitStatus)
+}
+SubmitStatus::SubmitStatus(const SubmitStatus& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  SubmitStatus* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.time_cost_){}
+    , decltype(_impl_.memory_cost_){}
+    , decltype(_impl_.result_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::memcpy(&_impl_.time_cost_, &from._impl_.time_cost_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.result_) -
+    reinterpret_cast<char*>(&_impl_.time_cost_)) + sizeof(_impl_.result_));
+  // @@protoc_insertion_point(copy_constructor:oj_judge.SubmitStatus)
+}
+
+inline void SubmitStatus::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.time_cost_){0}
+    , decltype(_impl_.memory_cost_){0}
+    , decltype(_impl_.result_){0}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+}
+
+SubmitStatus::~SubmitStatus() {
+  // @@protoc_insertion_point(destructor:oj_judge.SubmitStatus)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void SubmitStatus::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+}
+
+void SubmitStatus::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void SubmitStatus::Clear() {
+// @@protoc_insertion_point(message_clear_start:oj_judge.SubmitStatus)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  ::memset(&_impl_.time_cost_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.result_) -
+      reinterpret_cast<char*>(&_impl_.time_cost_)) + sizeof(_impl_.result_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* SubmitStatus::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // int32 time_cost = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.time_cost_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // int32 memory_cost = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.memory_cost_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // .oj_judge.SubmitResult result = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_result(static_cast<::oj_judge::SubmitResult>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* SubmitStatus::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:oj_judge.SubmitStatus)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // int32 time_cost = 1;
+  if (this->_internal_time_cost() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(1, this->_internal_time_cost(), target);
+  }
+
+  // int32 memory_cost = 2;
+  if (this->_internal_memory_cost() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(2, this->_internal_memory_cost(), target);
+  }
+
+  // .oj_judge.SubmitResult result = 3;
+  if (this->_internal_result() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      3, this->_internal_result(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:oj_judge.SubmitStatus)
+  return target;
+}
+
+size_t SubmitStatus::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:oj_judge.SubmitStatus)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // int32 time_cost = 1;
+  if (this->_internal_time_cost() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_time_cost());
+  }
+
+  // int32 memory_cost = 2;
+  if (this->_internal_memory_cost() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_memory_cost());
+  }
+
+  // .oj_judge.SubmitResult result = 3;
+  if (this->_internal_result() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_result());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData SubmitStatus::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    SubmitStatus::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*SubmitStatus::GetClassData() const { return &_class_data_; }
+
+
+void SubmitStatus::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<SubmitStatus*>(&to_msg);
+  auto& from = static_cast<const SubmitStatus&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:oj_judge.SubmitStatus)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (from._internal_time_cost() != 0) {
+    _this->_internal_set_time_cost(from._internal_time_cost());
+  }
+  if (from._internal_memory_cost() != 0) {
+    _this->_internal_set_memory_cost(from._internal_memory_cost());
+  }
+  if (from._internal_result() != 0) {
+    _this->_internal_set_result(from._internal_result());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void SubmitStatus::CopyFrom(const SubmitStatus& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:oj_judge.SubmitStatus)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool SubmitStatus::IsInitialized() const {
+  return true;
+}
+
+void SubmitStatus::InternalSwap(SubmitStatus* other) {
+  using std::swap;
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(SubmitStatus, _impl_.result_)
+      + sizeof(SubmitStatus::_impl_.result_)
+      - PROTOBUF_FIELD_OFFSET(SubmitStatus, _impl_.time_cost_)>(
+          reinterpret_cast<char*>(&_impl_.time_cost_),
+          reinterpret_cast<char*>(&other->_impl_.time_cost_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata SubmitStatus::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_judge_5fservice_2eproto_getter, &descriptor_table_judge_5fservice_2eproto_once,
+      file_level_metadata_judge_5fservice_2eproto[1]);
+}
+
+// ===================================================================
+
+class JudgeFinishedRequest::_Internal {
+ public:
+};
+
+JudgeFinishedRequest::JudgeFinishedRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:oj_judge.JudgeFinishedRequest)
+}
+JudgeFinishedRequest::JudgeFinishedRequest(const JudgeFinishedRequest& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  JudgeFinishedRequest* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.status_list_){from._impl_.status_list_}
+    , decltype(_impl_.question_id_){}
+    , decltype(_impl_.submission_id_){}
+    , decltype(_impl_.user_id_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.question_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.question_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_question_id().empty()) {
+    _this->_impl_.question_id_.Set(from._internal_question_id(), 
+      _this->GetArenaForAllocation());
+  }
+  ::memcpy(&_impl_.submission_id_, &from._impl_.submission_id_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.user_id_) -
+    reinterpret_cast<char*>(&_impl_.submission_id_)) + sizeof(_impl_.user_id_));
+  // @@protoc_insertion_point(copy_constructor:oj_judge.JudgeFinishedRequest)
+}
+
+inline void JudgeFinishedRequest::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.status_list_){arena}
+    , decltype(_impl_.question_id_){}
+    , decltype(_impl_.submission_id_){0u}
+    , decltype(_impl_.user_id_){0u}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.question_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.question_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+JudgeFinishedRequest::~JudgeFinishedRequest() {
+  // @@protoc_insertion_point(destructor:oj_judge.JudgeFinishedRequest)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void JudgeFinishedRequest::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.status_list_.~RepeatedPtrField();
+  _impl_.question_id_.Destroy();
+}
+
+void JudgeFinishedRequest::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void JudgeFinishedRequest::Clear() {
+// @@protoc_insertion_point(message_clear_start:oj_judge.JudgeFinishedRequest)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.status_list_.Clear();
+  _impl_.question_id_.ClearToEmpty();
+  ::memset(&_impl_.submission_id_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.user_id_) -
+      reinterpret_cast<char*>(&_impl_.submission_id_)) + sizeof(_impl_.user_id_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* JudgeFinishedRequest::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // uint32 submission_id = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.submission_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string question_id = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_question_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj_judge.JudgeFinishedRequest.question_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 user_id = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _impl_.user_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // repeated .oj_judge.SubmitStatus status_list = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            ptr = ctx->ParseMessage(_internal_add_status_list(), ptr);
+            CHK_(ptr);
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<34>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* JudgeFinishedRequest::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:oj_judge.JudgeFinishedRequest)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // uint32 submission_id = 1;
+  if (this->_internal_submission_id() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_submission_id(), target);
+  }
+
+  // string question_id = 2;
+  if (!this->_internal_question_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_question_id().data(), static_cast<int>(this->_internal_question_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj_judge.JudgeFinishedRequest.question_id");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_question_id(), target);
+  }
+
+  // uint32 user_id = 3;
+  if (this->_internal_user_id() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(3, this->_internal_user_id(), target);
+  }
+
+  // repeated .oj_judge.SubmitStatus status_list = 4;
+  for (unsigned i = 0,
+      n = static_cast<unsigned>(this->_internal_status_list_size()); i < n; i++) {
+    const auto& repfield = this->_internal_status_list(i);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+        InternalWriteMessage(4, repfield, repfield.GetCachedSize(), target, stream);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:oj_judge.JudgeFinishedRequest)
+  return target;
+}
+
+size_t JudgeFinishedRequest::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:oj_judge.JudgeFinishedRequest)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // repeated .oj_judge.SubmitStatus status_list = 4;
+  total_size += 1UL * this->_internal_status_list_size();
+  for (const auto& msg : this->_impl_.status_list_) {
+    total_size +=
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
+  }
+
+  // string question_id = 2;
+  if (!this->_internal_question_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_question_id());
+  }
+
+  // uint32 submission_id = 1;
+  if (this->_internal_submission_id() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_submission_id());
+  }
+
+  // uint32 user_id = 3;
+  if (this->_internal_user_id() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_user_id());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData JudgeFinishedRequest::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    JudgeFinishedRequest::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*JudgeFinishedRequest::GetClassData() const { return &_class_data_; }
+
+
+void JudgeFinishedRequest::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<JudgeFinishedRequest*>(&to_msg);
+  auto& from = static_cast<const JudgeFinishedRequest&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:oj_judge.JudgeFinishedRequest)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  _this->_impl_.status_list_.MergeFrom(from._impl_.status_list_);
+  if (!from._internal_question_id().empty()) {
+    _this->_internal_set_question_id(from._internal_question_id());
+  }
+  if (from._internal_submission_id() != 0) {
+    _this->_internal_set_submission_id(from._internal_submission_id());
+  }
+  if (from._internal_user_id() != 0) {
+    _this->_internal_set_user_id(from._internal_user_id());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void JudgeFinishedRequest::CopyFrom(const JudgeFinishedRequest& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:oj_judge.JudgeFinishedRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool JudgeFinishedRequest::IsInitialized() const {
+  return true;
+}
+
+void JudgeFinishedRequest::InternalSwap(JudgeFinishedRequest* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  _impl_.status_list_.InternalSwap(&other->_impl_.status_list_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.question_id_, lhs_arena,
+      &other->_impl_.question_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(JudgeFinishedRequest, _impl_.user_id_)
+      + sizeof(JudgeFinishedRequest::_impl_.user_id_)
+      - PROTOBUF_FIELD_OFFSET(JudgeFinishedRequest, _impl_.submission_id_)>(
+          reinterpret_cast<char*>(&_impl_.submission_id_),
+          reinterpret_cast<char*>(&other->_impl_.submission_id_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata JudgeFinishedRequest::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_judge_5fservice_2eproto_getter, &descriptor_table_judge_5fservice_2eproto_once,
+      file_level_metadata_judge_5fservice_2eproto[2]);
 }
 
 // ===================================================================
@@ -736,6 +1388,8 @@ DockerWorkDoneRequest::DockerWorkDoneRequest(const DockerWorkDoneRequest& from)
   DockerWorkDoneRequest* const _this = this; (void)_this;
   new (&_impl_) Impl_{
       decltype(_impl_.id_){}
+    , decltype(_impl_.status_){}
+    , decltype(_impl_.exit_code_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -747,6 +1401,15 @@ DockerWorkDoneRequest::DockerWorkDoneRequest(const DockerWorkDoneRequest& from)
     _this->_impl_.id_.Set(from._internal_id(), 
       _this->GetArenaForAllocation());
   }
+  _impl_.status_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.status_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_status().empty()) {
+    _this->_impl_.status_.Set(from._internal_status(), 
+      _this->GetArenaForAllocation());
+  }
+  _this->_impl_.exit_code_ = from._impl_.exit_code_;
   // @@protoc_insertion_point(copy_constructor:oj_judge.DockerWorkDoneRequest)
 }
 
@@ -756,11 +1419,17 @@ inline void DockerWorkDoneRequest::SharedCtor(
   (void)is_message_owned;
   new (&_impl_) Impl_{
       decltype(_impl_.id_){}
+    , decltype(_impl_.status_){}
+    , decltype(_impl_.exit_code_){0}
     , /*decltype(_impl_._cached_size_)*/{}
   };
   _impl_.id_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.status_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.status_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -776,6 +1445,7 @@ DockerWorkDoneRequest::~DockerWorkDoneRequest() {
 inline void DockerWorkDoneRequest::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.id_.Destroy();
+  _impl_.status_.Destroy();
 }
 
 void DockerWorkDoneRequest::SetCachedSize(int size) const {
@@ -789,6 +1459,8 @@ void DockerWorkDoneRequest::Clear() {
   (void) cached_has_bits;
 
   _impl_.id_.ClearToEmpty();
+  _impl_.status_.ClearToEmpty();
+  _impl_.exit_code_ = 0;
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -805,6 +1477,24 @@ const char* DockerWorkDoneRequest::_InternalParse(const char* ptr, ::_pbi::Parse
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "oj_judge.DockerWorkDoneRequest.id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string status = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_status();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj_judge.DockerWorkDoneRequest.status"));
+        } else
+          goto handle_unusual;
+        continue;
+      // int32 exit_code = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _impl_.exit_code_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
@@ -847,6 +1537,22 @@ uint8_t* DockerWorkDoneRequest::_InternalSerialize(
         1, this->_internal_id(), target);
   }
 
+  // string status = 2;
+  if (!this->_internal_status().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_status().data(), static_cast<int>(this->_internal_status().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj_judge.DockerWorkDoneRequest.status");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_status(), target);
+  }
+
+  // int32 exit_code = 3;
+  if (this->_internal_exit_code() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(3, this->_internal_exit_code(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -870,6 +1576,18 @@ size_t DockerWorkDoneRequest::ByteSizeLong() const {
         this->_internal_id());
   }
 
+  // string status = 2;
+  if (!this->_internal_status().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_status());
+  }
+
+  // int32 exit_code = 3;
+  if (this->_internal_exit_code() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_exit_code());
+  }
+
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -890,6 +1608,12 @@ void DockerWorkDoneRequest::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, 
 
   if (!from._internal_id().empty()) {
     _this->_internal_set_id(from._internal_id());
+  }
+  if (!from._internal_status().empty()) {
+    _this->_internal_set_status(from._internal_status());
+  }
+  if (from._internal_exit_code() != 0) {
+    _this->_internal_set_exit_code(from._internal_exit_code());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -914,12 +1638,17 @@ void DockerWorkDoneRequest::InternalSwap(DockerWorkDoneRequest* other) {
       &_impl_.id_, lhs_arena,
       &other->_impl_.id_, rhs_arena
   );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.status_, lhs_arena,
+      &other->_impl_.status_, rhs_arena
+  );
+  swap(_impl_.exit_code_, other->_impl_.exit_code_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata DockerWorkDoneRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_judge_5fservice_2eproto_getter, &descriptor_table_judge_5fservice_2eproto_once,
-      file_level_metadata_judge_5fservice_2eproto[1]);
+      file_level_metadata_judge_5fservice_2eproto[3]);
 }
 
 // ===================================================================
@@ -959,7 +1688,7 @@ const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*NullRsp::GetClassData() const 
 ::PROTOBUF_NAMESPACE_ID::Metadata NullRsp::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_judge_5fservice_2eproto_getter, &descriptor_table_judge_5fservice_2eproto_once,
-      file_level_metadata_judge_5fservice_2eproto[2]);
+      file_level_metadata_judge_5fservice_2eproto[4]);
 }
 
 // ===================================================================
@@ -1296,7 +2025,7 @@ void TestCaseResult::InternalSwap(TestCaseResult* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata TestCaseResult::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_judge_5fservice_2eproto_getter, &descriptor_table_judge_5fservice_2eproto_once,
-      file_level_metadata_judge_5fservice_2eproto[3]);
+      file_level_metadata_judge_5fservice_2eproto[5]);
 }
 
 // ===================================================================
@@ -1667,7 +2396,7 @@ void JudgeResult::InternalSwap(JudgeResult* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata JudgeResult::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_judge_5fservice_2eproto_getter, &descriptor_table_judge_5fservice_2eproto_once,
-      file_level_metadata_judge_5fservice_2eproto[4]);
+      file_level_metadata_judge_5fservice_2eproto[6]);
 }
 
 // ===================================================================
@@ -1845,7 +2574,7 @@ void GetStatusRequest::InternalSwap(GetStatusRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetStatusRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_judge_5fservice_2eproto_getter, &descriptor_table_judge_5fservice_2eproto_once,
-      file_level_metadata_judge_5fservice_2eproto[5]);
+      file_level_metadata_judge_5fservice_2eproto[7]);
 }
 
 // ===================================================================
@@ -1869,6 +2598,14 @@ void JudgeService::DockerWorkDone(::PROTOBUF_NAMESPACE_ID::RpcController* contro
   done->Run();
 }
 
+void JudgeService::JudgeFinished(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                         const ::oj_judge::JudgeFinishedRequest*,
+                         ::oj_judge::NullRsp*,
+                         ::google::protobuf::Closure* done) {
+  controller->SetFailed("Method JudgeFinished() not implemented.");
+  done->Run();
+}
+
 void JudgeService::CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method,
                              ::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                              const ::PROTOBUF_NAMESPACE_ID::Message* request,
@@ -1879,6 +2616,14 @@ void JudgeService::CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* m
     case 0:
       DockerWorkDone(controller,
              ::PROTOBUF_NAMESPACE_ID::internal::DownCast<const ::oj_judge::DockerWorkDoneRequest*>(
+                 request),
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<::oj_judge::NullRsp*>(
+                 response),
+             done);
+      break;
+    case 1:
+      JudgeFinished(controller,
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<const ::oj_judge::JudgeFinishedRequest*>(
                  request),
              ::PROTOBUF_NAMESPACE_ID::internal::DownCast<::oj_judge::NullRsp*>(
                  response),
@@ -1896,6 +2641,8 @@ const ::PROTOBUF_NAMESPACE_ID::Message& JudgeService::GetRequestPrototype(
   switch(method->index()) {
     case 0:
       return ::oj_judge::DockerWorkDoneRequest::default_instance();
+    case 1:
+      return ::oj_judge::JudgeFinishedRequest::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
       return *::PROTOBUF_NAMESPACE_ID::MessageFactory::generated_factory()
@@ -1908,6 +2655,8 @@ const ::PROTOBUF_NAMESPACE_ID::Message& JudgeService::GetResponsePrototype(
   GOOGLE_DCHECK_EQ(method->service(), descriptor());
   switch(method->index()) {
     case 0:
+      return ::oj_judge::NullRsp::default_instance();
+    case 1:
       return ::oj_judge::NullRsp::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
@@ -1934,6 +2683,13 @@ void JudgeService_Stub::DockerWorkDone(::PROTOBUF_NAMESPACE_ID::RpcController* c
   channel_->CallMethod(descriptor()->method(0),
                        controller, request, response, done);
 }
+void JudgeService_Stub::JudgeFinished(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                              const ::oj_judge::JudgeFinishedRequest* request,
+                              ::oj_judge::NullRsp* response,
+                              ::google::protobuf::Closure* done) {
+  channel_->CallMethod(descriptor()->method(1),
+                       controller, request, response, done);
+}
 
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace oj_judge
@@ -1941,6 +2697,14 @@ PROTOBUF_NAMESPACE_OPEN
 template<> PROTOBUF_NOINLINE ::oj_judge::SubmitRequest*
 Arena::CreateMaybeMessage< ::oj_judge::SubmitRequest >(Arena* arena) {
   return Arena::CreateMessageInternal< ::oj_judge::SubmitRequest >(arena);
+}
+template<> PROTOBUF_NOINLINE ::oj_judge::SubmitStatus*
+Arena::CreateMaybeMessage< ::oj_judge::SubmitStatus >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::oj_judge::SubmitStatus >(arena);
+}
+template<> PROTOBUF_NOINLINE ::oj_judge::JudgeFinishedRequest*
+Arena::CreateMaybeMessage< ::oj_judge::JudgeFinishedRequest >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::oj_judge::JudgeFinishedRequest >(arena);
 }
 template<> PROTOBUF_NOINLINE ::oj_judge::DockerWorkDoneRequest*
 Arena::CreateMaybeMessage< ::oj_judge::DockerWorkDoneRequest >(Arena* arena) {

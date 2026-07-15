@@ -3,7 +3,7 @@
 #
 # 构建: docker build -t oj-compiler:latest -f docker/Dockerfile.compiler .
 
-FROM ubuntu:22.04
+FROM debian:bookworm-slim
 
 LABEL maintainer="OnlineJudge Project"
 LABEL description="OJ Compiler Container - g++ for code compilation"
@@ -25,5 +25,5 @@ RUN chmod +x /judge/compile.sh
 USER judge
 WORKDIR /home/judge
 
-# 默认执行编译脚本
-CMD ["/bin/bash", "/judge/compile.sh"]
+# 默认保持容器运行（判题通过 Exec 执行脚本）
+CMD ["sleep", "infinity"]

@@ -28,11 +28,7 @@ namespace fileUtil
         // 生成唯一文件名：年月日时分秒-毫秒级时间戳 + 原子计数器
         static std::string GetUniqueFileName()
         {
-             static std::atomic_uint id(0);
-            id++;
-            std::string ms = TimeUtil::GetTimeMs();
-            std::string uniq_id = std::to_string(id);
-            return ms + "_" + uniq_id;
+            return StringUtil::GetUniqueName();
         }
         // 读取文件内容
         Response read(const std::string& fullPath, 
@@ -89,7 +85,12 @@ namespace fileUtil
         {
             return write(fullPath, content, true);
         }
-
+        void remove(const std::string& fullpath)
+        {
+            if(!IsFileExist(fullpath))
+                return;
+            std::filesystem::remove(fullpath);
+        }
     private:
         
         // 使用 mmap 读取文件

@@ -139,10 +139,10 @@ public:
     void SetMessageHandler(MessageCallback callback) { _callback = std::move(callback); }
 
     void StartConsuming() {
-        if (_base && _connected.load()) {
-            std::cout << "[MQConsumer] Starting event loop" << std::endl;
-            event_base_dispatch(_base.get());
-        }
+        if (!_base) return;
+        std::cout << "[MQConsumer] Starting event loop" << std::endl;
+        // Run event loop — connection/handshake happens inside
+        event_base_dispatch(_base.get());
     }
 
     void Ack(uint64_t delivery_tag) {
