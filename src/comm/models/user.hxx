@@ -1,9 +1,13 @@
 #pragma once
-#include <odb/core.hxx>
-#include <string>
 #include <cstdint>
+#include <string>
 
-namespace ns_model {
+#include <odb/core.hxx>
+#include <odb/nullable.hxx>
+
+#include "types.hxx"
+
+namespace oj::db {
 
 // 用户表 — 对应 sql/users.sql
 #pragma db object table("users")
@@ -20,22 +24,20 @@ struct User {
     #pragma db type("VARCHAR(50)")
     std::string email;
 
-    #pragma db type("DATETIME") null
-    std::string create_time;
+    #pragma db type("DATETIME")
+    DateTime create_time;
 
-    #pragma db type("DATETIME") null
-    std::string last_login;
+    #pragma db type("DATETIME")
+    DateTime last_login;
 
     #pragma db type("VARCHAR(32)")
     std::string password_algo;
 
-    #pragma db type("DATETIME") null
-    std::string password_update_at;
+    #pragma db type("DATETIME")
+    DateTime password_update_at;
 
-    // role 字段在 admin_accounts 表中，users 表无此字段
-    // 头像字段（迁移 20260428_0001 添加）
-    #pragma db null
-    std::string avatar;
+    #pragma db type("VARCHAR(255)") null
+    odb::nullable<std::string> avatar;
 };
 
-} // namespace ns_model
+} // namespace oj::db

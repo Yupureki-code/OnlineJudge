@@ -52,7 +52,7 @@ namespace oj_judge
             } 
             catch (const std::exception& e) 
             {
-                LOG(ERROR) << "HandleMessage failed: " << e.what();
+                LOG_ERROR("HandleMessage failed: {}", e.what());
                 // 判题失败，NACK 并重新入队（限制重试次数）
                 _consumer->Nack(tag, redelivered ? false : true);
             }

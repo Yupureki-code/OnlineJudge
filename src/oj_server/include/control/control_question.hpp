@@ -46,11 +46,11 @@ namespace ns_control
             if(_model.GetHtmlPage(html, html_key))
             {
                 _model.RecordCacheMetrics(ModelBase::RecordActionType::Question, true, false, 0);
-                logger(ns_log::INFO)<<"[html_cache][all_questions] hit=1 page=" << page << " size=" << size;
+                LOG_INFO("{}{}{}{}", "[html_cache][all_questions] hit=1 page=", page, " size=", size);
                 return true;
             }
             _model.RecordCacheMetrics(ModelBase::RecordActionType::Question, false, false, 0);
-            logger(INFO) << "[html_cache][all_questions] hit=0 page=" << page << " size=" << size;
+            LOG_INFO("{}{}{}{}", "[html_cache][all_questions] hit=0 page=", page, " size=", size);
             bool ret = true;
             std::vector<struct Question> page_questions;
             int total_count = 0;

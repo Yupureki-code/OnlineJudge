@@ -1,0 +1,15 @@
+#pragma once
+
+#include "admin-odb.hxx"
+#include "admin_audit_log-odb.hxx"
+#include "cache_metrics_snapshot-odb.hxx"
+#include "comment-odb.hxx"
+#include "comment_action-odb.hxx"
+#include "judge_outbox-odb.hxx"
+#include "judge_result_receipt-odb.hxx"
+#include "question-odb.hxx"
+#include "solution-odb.hxx"
+#include "solution_action-odb.hxx"
+#include "submission-odb.hxx"
+#include "test_case-odb.hxx"
+#include "user-odb.hxx"

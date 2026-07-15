@@ -184,11 +184,11 @@ namespace ns_admin
 				}
 				catch (const std::exception& ex)
 				{
-					logger(WARNING) << "admin redis create session failed: " << ex.what();
+					LOG_WARNING("{}{}", "admin redis create session failed: ", ex.what());
 				}
 				catch (...)
 				{
-					logger(WARNING) << "admin redis create session failed: unknown exception";
+					LOG_WARNING("{}", "admin redis create session failed: unknown exception");
 				}
 			}
 
@@ -209,12 +209,12 @@ namespace ns_admin
 				}
 				catch (const std::exception& ex)
 				{
-					logger(WARNING) << "admin redis hgetall failed: " << ex.what();
+					LOG_WARNING("{}{}", "admin redis hgetall failed: ", ex.what());
 					return false;
 				}
 				catch (...)
 				{
-					logger(WARNING) << "admin redis hgetall failed: unknown exception";
+					LOG_WARNING("{}", "admin redis hgetall failed: unknown exception");
 					return false;
 				}
 				if (fields.empty())
@@ -245,12 +245,12 @@ namespace ns_admin
 				}
 				catch (const std::exception& ex)
 				{
-					logger(WARNING) << "admin redis session decode failed: " << ex.what();
+					LOG_WARNING("{}{}", "admin redis session decode failed: ", ex.what());
 					return false;
 				}
 				catch (...)
 				{
-					logger(WARNING) << "admin redis session decode failed: unknown exception";
+					LOG_WARNING("{}", "admin redis session decode failed: unknown exception");
 					return false;
 				}
 				session->last_access_time = now;
@@ -264,12 +264,12 @@ namespace ns_admin
 				}
 				catch (const std::exception& ex)
 				{
-					logger(WARNING) << "admin redis touch session failed: " << ex.what();
+					LOG_WARNING("{}{}", "admin redis touch session failed: ", ex.what());
 					return false;
 				}
 				catch (...)
 				{
-					logger(WARNING) << "admin redis touch session failed: unknown exception";
+					LOG_WARNING("{}", "admin redis touch session failed: unknown exception");
 					return false;
 				}
 				return true;
@@ -288,11 +288,11 @@ namespace ns_admin
 				}
 				catch (const std::exception& ex)
 				{
-					logger(WARNING) << "admin redis destroy session failed: " << ex.what();
+					LOG_WARNING("{}{}", "admin redis destroy session failed: ", ex.what());
 				}
 				catch (...)
 				{
-					logger(WARNING) << "admin redis destroy session failed: unknown exception";
+					LOG_WARNING("{}", "admin redis destroy session failed: unknown exception");
 				}
 			}
 
@@ -379,9 +379,9 @@ namespace ns_admin
 				+ " uid=" + std::to_string(item.operator_admin.uid)
 				+ " result=" + item.result;
 			if (item.result == "success")
-				logger(ns_log::INFO) << msg;
+				LOG_INFO("{}", msg);
 			else
-				logger(ns_log::WARNING) << msg;
+				LOG_WARNING("{}", msg);
 		}
 
 		void StartAuditWorker()
@@ -696,17 +696,16 @@ namespace ns_admin
 
 			if (!EnqueueAudit(PendingAudit(item)))
 			{
-				logger(WARNING) << "admin audit queue full, request_id=" << request_id;
+				LOG_WARNING("{}{}", "admin audit queue full, request_id=", request_id);
 			}
 		}
 		catch (const std::exception& ex)
 		{
-			logger(WARNING) << "admin audit enqueue threw exception, request_id="
-							<< request_id << " what=" << ex.what();
+			LOG_WARNING("{}{}{}{}", "admin audit enqueue threw exception, request_id=", request_id, " what=", ex.what());
 		}
 		catch (...)
 		{
-			logger(WARNING) << "admin audit enqueue threw unknown exception, request_id=" << request_id;
+			LOG_WARNING("{}{}", "admin audit enqueue threw unknown exception, request_id=", request_id);
 		}
 	}
 	//审计载荷构造

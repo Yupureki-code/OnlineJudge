@@ -8,12 +8,10 @@
 #include <unordered_map>
 #include <sw/redis++/redis++.h>
 #include "../../comm/comm.hpp"
-#include <Logger/logstrategy.h>
 
 namespace ns_session
 {
     using namespace sw::redis;
-    using namespace ns_log;
     using namespace oj_util;
 
     const std::string SESSION_COOKIE_NAME = "oj_session_id";
@@ -123,11 +121,11 @@ namespace ns_session
             }
             catch (const sw::redis::Error& e)
             {
-                logger(ERROR) << "Redis session write failed, fallback to local map: " << e.what();
+                LOG_ERROR("{}{}", "Redis session write failed, fallback to local map: ", e.what());
                 _sessions[session_id] = sess;
             }
             
-            logger(INFO) << "创建 Session: " << session_id << " for user: " << email;
+            LOG_INFO("Session created for user_id={}", user_id);
             return session_id;
         }
 
@@ -151,7 +149,7 @@ namespace ns_session
             }
             catch (const sw::redis::Error& e)
             {
-                logger(ERROR) << "Redis session read failed, fallback to local map: " << e.what();
+                LOG_ERROR("{}{}", "Redis session read failed, fallback to local map: ", e.what());
             }
 
             auto it = _sessions.find(session_id);
@@ -166,7 +164,7 @@ namespace ns_session
             {
                 //session 已过期，从 Redis 和本地 map 中删除 session 信息，返回 false
                 _sessions.erase(it);
-                logger(INFO) << "Session 过期: " << session_id;
+                LOG_INFO("Session expired");
                 return false;
             }
 
@@ -184,11 +182,11 @@ namespace ns_session
             }
             catch (const sw::redis::Error& e)
             {
-                logger(ERROR) << "Redis session delete failed: " << e.what();
+                LOG_ERROR("{}{}", "Redis session delete failed: ", e.what());
             }
 
             _sessions.erase(session_id); // fallback map cleanup
-            logger(INFO) << "销毁 Session: " << session_id;
+            LOG_INFO("Session destroyed");
         }
 
         std::string GetCookieHeader(const std::string& session_id)

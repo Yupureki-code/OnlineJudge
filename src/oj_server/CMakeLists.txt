@@ -1,8 +1,24 @@
 # 主服务器的 CMakeLists.txt
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(OJ_RUNTIME_ODB REQUIRED IMPORTED_TARGET libodb)
+pkg_check_modules(OJ_RUNTIME_ODB_MYSQL REQUIRED IMPORTED_TARGET libodb-mysql)
+
 # 添加可执行程序
 add_executable(oj_server src/oj_server.cpp)
 add_executable(oj_admin src/oj_admin.cpp)
+add_library(oj_runtime STATIC
+    src/runtime/business_executor.cpp
+    src/runtime/application_context.cpp
+)
+target_compile_features(oj_runtime PUBLIC cxx_std_20)
+target_include_directories(oj_runtime PUBLIC ${CMAKE_SOURCE_DIR}/src/oj_server/include)
+target_link_libraries(oj_runtime PUBLIC
+    pthread
+    spdlog::spdlog
+    PkgConfig::OJ_RUNTIME_ODB
+    PkgConfig::OJ_RUNTIME_ODB_MYSQL
+)
 
 set(SERVICE_MACHINE_CONF ${CONF_PATH}/service_machine.conf)
 
@@ -27,8 +43,8 @@ find_package(OpenSSL REQUIRED)
 find_package(spdlog REQUIRED)
 
 # 链接库
-target_link_libraries(oj_server PRIVATE pthread mysqlclient jsoncpp ctemplate cpp-httplib Logger CURL::libcurl OpenSSL::Crypto)
-target_link_libraries(oj_admin PRIVATE pthread mysqlclient jsoncpp ctemplate cpp-httplib Logger CURL::libcurl OpenSSL::Crypto)
+target_link_libraries(oj_server PRIVATE pthread mysqlclient jsoncpp ctemplate cpp-httplib spdlog::spdlog CURL::libcurl OpenSSL::Crypto)
+target_link_libraries(oj_admin PRIVATE pthread mysqlclient jsoncpp ctemplate cpp-httplib spdlog::spdlog CURL::libcurl OpenSSL::Crypto)
 
 # Redis client libraries (redis++ depends on hiredis)
 find_library(REDIS_PLUS_PLUS_LIB NAMES redis++ redis++_static)

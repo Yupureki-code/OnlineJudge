@@ -1,11 +1,9 @@
 #include "../include/oj_admin.hpp"
-#include <Logger/logstrategy.h>
 #include <algorithm>
 #include <cctype>
 #include <functional>
 
 using namespace httplib;
-using namespace ns_log;
 using namespace ns_admin;
 using namespace oj_util;
 
@@ -187,7 +185,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		{
 			rep.status = 500;
 			rep.set_content("admin index load failed", "text/plain;charset=utf-8");
-			logger(ns_log::FATAL)<<"failed to load admin index.html!";
+			LOG_CRITICAL("{}", "failed to load admin index.html!");
 			return;
 		}
 		html = InjectUserInfo(html, &current_user, &current_admin, true);
@@ -878,7 +876,7 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 		response["success"] = true;
 		response["operator"] = admin.uid;
 
-		logger(INFO) << "[admin][cache] list version invalidated by admin_id=" << admin.admin_id;
+		LOG_INFO("{}{}", "[admin][cache] list version invalidated by admin_id=", admin.admin_id);
 
 		Json::FastWriter writer;
 		addCORSHeaders(rep);
@@ -1427,9 +1425,8 @@ void AdminServer::RegisterRoutes(httplib::Server& svr)
 bool AdminServer::Start(const std::string& host, int port)
 {
 	Server svr;
-	ns_log::Logger::GetInstance().enable_file_log_strategy(LOG_PATH,"oj_admin.log");
 	RegisterRoutes(svr);
-	logger(INFO) << "admin server start at " << host << ":" << port;
+	LOG_INFO("{}{}{}{}", "admin server start at ", host, ":", port);
 	Daemon(false, false);
 	return svr.listen(host.c_str(), port);
 }
@@ -1437,7 +1434,10 @@ bool AdminServer::Start(const std::string& host, int port)
 
 int main()
 {
+	if (!ns_logger::InitLogger("oj_admin", LOG_PATH + "oj_admin.log", spdlog::level::info))
+		LOG_ERROR("Failed to initialize oj_admin file logger");
 	ns_admin::AdminServer server;
 	server.Start(admin_host, admin_port);
+	ns_logger::ShutdownLogger();
 	return 0;
 }

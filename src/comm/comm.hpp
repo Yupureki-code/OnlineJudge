@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.h"
+#include "logger.hpp"
 #include <jsoncpp/json/json.h>
 #include <chrono>
 #include <condition_variable>

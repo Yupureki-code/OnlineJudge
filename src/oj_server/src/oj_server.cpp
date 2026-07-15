@@ -1,4 +1,3 @@
-#include <Logger/logstrategy.h>
 #include <httplib.h>
 #include "../include/control/oj_control.hpp"
 #include "../../comm/comm.hpp"
@@ -10,7 +9,6 @@
 #include <chrono>
 
 using namespace httplib;
-using namespace ns_log;
 using namespace oj_util;
 
 namespace {
@@ -162,7 +160,8 @@ std::string InjectUserInfo(const std::string& html, User* user, bool isLoggedIn,
 
 int main()
 {
-    ns_log::Logger::GetInstance().enable_file_log_strategy(LOG_PATH,"oj_server.log");
+    if (!ns_logger::InitLogger("oj_server", LOG_PATH + "oj_server.log", spdlog::level::info))
+        LOG_ERROR("Failed to initialize oj_server file logger");
     // Initialize MySQL client library for thread safety
     mysql_library_init(0, nullptr, nullptr);
 
@@ -255,9 +254,7 @@ int main()
         rep.set_content(html,"text/html;charset=utf-8");
         auto end = std::chrono::steady_clock::now();
         long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-        logger(INFO) << "[metrics][route] GET /all_questions page=" << page
-                     << " size=" << size
-                     << " cost_ms=" << cost_ms;
+        LOG_INFO("{}{}{}{}{}{}", "[metrics][route] GET /all_questions page=", page, " size=", size, " cost_ms=", cost_ms);
     });
     //关于页面路由，返回关于页面HTML
     svr.Get("/about", [&ctl, &getCurrentUser](const Request& req, Response& rep){
@@ -310,7 +307,7 @@ int main()
         rep.set_content(html,"text/html;charset=utf-8");
         auto end = std::chrono::steady_clock::now();
         long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-        logger(INFO) << "[metrics][route] GET /questions/" << number << " cost_ms=" << cost_ms;
+        LOG_INFO("{}{}{}{}", "[metrics][route] GET /questions/", number, " cost_ms=", cost_ms);
     }); 
     // 发布题解页面路由，返回独立发布页面HTML
     svr.Get(R"(/questions/(\d+)/solutions/new$)", [&ctl, &getCurrentUser](const Request& req, Response& rep){
@@ -566,7 +563,7 @@ int main()
             return;
         }
 
-        logger(INFO)<<"用户登陆 email:"<<email;
+        LOG_INFO("Legacy user check requested");
         Json::Value response;
         response["success"] = true;
         ctl.Auth().CheckUser(email, response);
@@ -600,7 +597,7 @@ int main()
             return;
         }
 
-        logger(INFO)<<"创建新用户 name:"<<name<<" email:"<<email;
+        LOG_INFO("Legacy user creation requested");
         Json::Value response;
         response["success"] = true;
         ctl.Auth().CreateUser(name, email, response);
@@ -613,7 +610,7 @@ int main()
                 std::string session_id = ctl.CreateSession(user.uid, email);
                 std::string cookie = ctl.GetSetCookieHeader(session_id);
                 rep.set_header("Set-Cookie", cookie);
-                logger(INFO) << "用户登录成功，设置 Session: " << email;
+                LOG_INFO("Session created for user_id={}", user.uid);
             }
         }
         
@@ -662,7 +659,7 @@ int main()
                 std::string session_id = ctl.CreateSession(user.uid, email);
                 std::string cookie = ctl.GetSetCookieHeader(session_id);
                 rep.set_header("Set-Cookie", cookie);
-                logger(INFO) << "用户登录成功，设置 Session: " << email;
+                LOG_INFO("Session created for user_id={}", user.uid);
             }
         }
         
@@ -675,7 +672,7 @@ int main()
         if (ctl.GetSessionUser(cookie_header, &user))
         {
             ctl.DestroySessionByCookieHeader(cookie_header);
-            logger(INFO) << "用户退出登录: " << user.email;
+            LOG_INFO("Session destroyed for user_id={}", user.uid);
         }
         
         std::string cookie = ctl.GetClearCookieHeader();
@@ -1014,8 +1011,7 @@ int main()
         response["invalidated_pages"] = invalidated;
         response["count"] = static_cast<Json::UInt64>(invalidated.size());
 
-        logger(INFO) << "[cache] static html invalidated by " << user.email
-                     << ", count=" << invalidated.size();
+        LOG_INFO("[cache] static html invalidated count={} user_id={}", invalidated.size(), user.uid);
 
         replyJson(rep, response);
     });
@@ -1606,5 +1602,6 @@ int main()
     Daemon(false, false);
     svr.listen("0.0.0.0", 8080);
     ctl.GetModel()->StopMetricsFlushWorker();
+    ns_logger::ShutdownLogger();
     return 0;
 }

@@ -1,24 +1,32 @@
 #pragma once
-#include <odb/database.hxx>
-#include <odb/connection.hxx>
-#include <odb/mysql/database.hxx>
-#include <odb/transaction.hxx>
-#include <odb/schema-catalog.hxx>
-#include <odb/exceptions.hxx>
-#include <memory>
-#include <string>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
-#include <chrono>
-#include <atomic>
-#include <thread>
 
-namespace ns_odb 
+#include "../latecymonitor.hpp"
+
+#include <odb/connection.hxx>
+#include <odb/database.hxx>
+#include <odb/exceptions.hxx>
+#include <odb/mysql/database.hxx>
+#include <odb/schema-catalog.hxx>
+#include <odb/transaction.hxx>
+
+#include <algorithm>
+#include <chrono>
+#include <condition_variable>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <stdexcept>
+#include <string>
+#include <thread>
+#include <type_traits>
+#include <utility>
+
+namespace ns_odb
 {
     using DatabasePtr = std::unique_ptr<odb::mysql::database>;
-    /// ODB 连接池配置
-    struct ODBPoolConfig 
+
+    struct ODBPoolConfig
     {
         std::string host = "localhost";
         unsigned int port = 3306;
@@ -26,164 +34,361 @@ namespace ns_odb
         std::string password;
         std::string database;
         std::string charset = "utf8mb4";
-        unsigned int min_connections = 5;   // 最小空闲连接数
-        unsigned int max_connections = 50;  // 最大连接数
-        unsigned int idle_timeout_s = 300;  // 空闲连接超时(秒)
+        unsigned int min_connections = 5;
+        unsigned int max_connections = 50;
+        unsigned int idle_timeout_s = 300;
+        unsigned int health_check_interval_ms = 30000;
     };
 
-    // ==================== ODBConnectionPool（声明） ====================
-
-    class ODBConnectionPool 
+    class ODBConnectionPool
     {
-    private:
+    public:
+        using DatabaseFactory = std::function<DatabasePtr(const ODBPoolConfig&)>;
+        using DatabaseSetup = std::function<void(odb::mysql::database&, const ODBPoolConfig&)>;
+        using HealthCheck = std::function<void(odb::mysql::database&)>;
+
         ODBConnectionPool() = default;
+        ~ODBConnectionPool() { Shutdown(); }
+
         ODBConnectionPool(const ODBConnectionPool&) = delete;
         ODBConnectionPool& operator=(const ODBConnectionPool&) = delete;
 
-        DatabasePtr CreateDatabase() 
+        static ODBConnectionPool& Instance()
         {
-            auto db = std::make_unique<odb::mysql::database>(
-                _config.user, _config.password, _config.database, _config.host, _config.port);
-            db->connection()->execute("SET NAMES " + _config.charset);
-            return db;
-        }
-
-        void HealthCheckLoop() 
-        {
-            while (_running.load()) 
-            {
-                std::this_thread::sleep_for(std::chrono::seconds(30));
-                std::lock_guard<std::mutex> lock(_mtx);
-                auto now = std::chrono::steady_clock::now();
-                auto timeout = std::chrono::seconds(_config.idle_timeout_s);
-                std::queue<std::pair<DatabasePtr, std::chrono::steady_clock::time_point>> new_pool;
-                while (!_idle_pool.empty()) 
-                {
-                    auto item = std::move(_idle_pool.front()); _idle_pool.pop();
-                    if (new_pool.size() < _config.min_connections || (now - item.second) < timeout)
-                        new_pool.push(std::move(item));
-                }
-                _idle_pool = std::move(new_pool);
-            }
-        }
-    public:
-        static ODBConnectionPool& Instance() {
             static ODBConnectionPool instance;
             return instance;
         }
 
-        ~ODBConnectionPool() { Shutdown(); }
+        void Init(const ODBPoolConfig& config)
+        {
+            Init(config, nullptr);
+        }
 
-        void Init(const ODBPoolConfig& config) {
+        void Init(const ODBPoolConfig& config, latecyMonitor::LatencyMonitor& monitor)
+        {
+            Init(config, &monitor);
+        }
+
+        void Init(const ODBPoolConfig& config, latecyMonitor::LatencyMonitor* monitor,
+                  DatabaseFactory factory = {}, DatabaseSetup setup = {}, HealthCheck health_check = {})
+        {
+            if (config.max_connections == 0 || config.min_connections > config.max_connections)
+                throw std::invalid_argument("invalid ODB connection pool limits");
+
+            std::lock_guard<std::mutex> lifecycle_lock(_lifecycle_mtx);
             std::lock_guard<std::mutex> lock(_mtx);
-            if (_running.load()) return;
+            if (_running)
+                return;
+            if (_active_count != 0)
+                throw std::logic_error("cannot initialize ODB pool with checked-out connections");
+
             _config = config;
-            _running.store(true);
+            _monitor = monitor;
+            _database_factory = factory ? std::move(factory) : DefaultFactory();
+            _database_setup = setup ? std::move(setup) : DefaultSetup();
+            _health_check = health_check ? std::move(health_check) : DefaultHealthCheck();
+            _running = true;
 
             for (unsigned int i = 0; i < _config.min_connections; ++i) {
                 try {
-                    auto db = CreateDatabase();
-                    _idle_pool.push({std::move(db), std::chrono::steady_clock::now()});
-                } catch (const std::exception&) {
+                    _idle_pool.push({CreateDatabase(), std::chrono::steady_clock::now()});
+                } catch (...) {
                     break;
                 }
             }
 
-            _health_check_thread = std::make_unique<std::thread>([this]() { HealthCheckLoop(); });
+            try {
+                _health_check_thread = std::thread([this] { HealthCheckLoop(); });
+            } catch (...) {
+                _running = false;
+                while (!_idle_pool.empty())
+                    _idle_pool.pop();
+                throw;
+            }
         }
 
-        DatabasePtr GetDatabase() {
-            std::unique_lock<std::mutex> lock(_mtx);
-            _cv.wait(lock, [this]() {
-                return !_idle_pool.empty() || _active_count.load() < _config.max_connections || !_running.load();
-            });
+        DatabasePtr GetDatabase()
+        {
+            return Timed("DBPool.Acquire", [this]() -> DatabasePtr {
+                std::unique_lock<std::mutex> lock(_mtx);
+                _cv.wait(lock, [this] {
+                    return !_running || !_idle_pool.empty() ||
+                           _active_count < _config.max_connections;
+                });
 
-            if (!_running.load()) return nullptr;
+                if (!_running)
+                    return nullptr;
 
-            if (_idle_pool.empty()) {
-                _active_count.fetch_add(1);
-                lock.unlock();
-                try { return CreateDatabase(); } catch (...) {
-                    _active_count.fetch_sub(1); _cv.notify_one(); throw;
+                if (_idle_pool.empty()) {
+                    ++_active_count;
+                    lock.unlock();
+                    try {
+                        auto database = CreateDatabase();
+                        return FinishCheckout(std::move(database));
+                    } catch (...) {
+                        ReleaseReservation();
+                        throw;
+                    }
                 }
-            }
 
-            auto [db, ts] = std::move(_idle_pool.front());
-            _idle_pool.pop();
-            _active_count.fetch_add(1);
-            lock.unlock();
+                auto item = std::move(_idle_pool.front());
+                _idle_pool.pop();
+                ++_active_count;
+                lock.unlock();
 
-            try { db->connection()->execute("SELECT 1"); } catch (...) {
-                _active_count.fetch_sub(1);
-                try { auto ndb = CreateDatabase(); _active_count.fetch_add(1); return ndb; }
-                catch (...) { _cv.notify_one(); throw; }
-            }
-            return std::move(db);
+                try {
+                    Timed("DBPool.HealthCheck.Select1", [this, &item] {
+                        _health_check(*item.first);
+                    });
+                    return FinishCheckout(std::move(item.first));
+                } catch (...) {
+                    {
+                        std::lock_guard<std::mutex> state_lock(_mtx);
+                        if (!_running) {
+                            --_active_count;
+                            _cv.notify_all();
+                            return nullptr;
+                        }
+                    }
+
+                    try {
+                        auto replacement = Timed("DBPool.Replace", [this] {
+                            return CreateDatabase();
+                        });
+                        return FinishCheckout(std::move(replacement));
+                    } catch (...) {
+                        ReleaseReservation();
+                        throw;
+                    }
+                }
+            });
         }
 
-        void ReturnDatabase(DatabasePtr db) {
-            if (!db) return;
+        void ReturnDatabase(DatabasePtr database)
+        {
+            if (!database)
+                return;
+
+            {
+                std::lock_guard<std::mutex> lock(_mtx);
+                if (_active_count == 0)
+                    return;
+                --_active_count;
+                if (_running)
+                    _idle_pool.push({std::move(database), std::chrono::steady_clock::now()});
+            }
+            _cv.notify_all();
+        }
+
+        size_t ActiveCount() const
+        {
             std::lock_guard<std::mutex> lock(_mtx);
-            _idle_pool.push({std::move(db), std::chrono::steady_clock::now()});
-            _active_count.fetch_sub(1);
-            _cv.notify_one();
+            return _active_count;
         }
 
-        size_t ActiveCount() const { return _active_count.load(); }
-
-        size_t IdleCount() const {
+        size_t IdleCount() const
+        {
             std::lock_guard<std::mutex> lock(_mtx);
             return _idle_pool.size();
         }
 
-        void Shutdown() {
-            _running.store(false);
+        void Shutdown()
+        {
+            std::lock_guard<std::mutex> lifecycle_lock(_lifecycle_mtx);
+            {
+                std::lock_guard<std::mutex> lock(_mtx);
+                _running = false;
+            }
             _cv.notify_all();
-            if (_health_check_thread && _health_check_thread->joinable()) _health_check_thread->join();
+
+            if (_health_check_thread.joinable())
+                _health_check_thread.join();
+
             std::lock_guard<std::mutex> lock(_mtx);
-            while (!_idle_pool.empty()) _idle_pool.pop();
+            while (!_idle_pool.empty())
+                _idle_pool.pop();
         }
 
     private:
+        using IdleDatabase = std::pair<DatabasePtr, std::chrono::steady_clock::time_point>;
+
+        static DatabaseFactory DefaultFactory()
+        {
+            return [](const ODBPoolConfig& config) {
+                return std::make_unique<odb::mysql::database>(
+                    config.user, config.password, config.database, config.host, config.port);
+            };
+        }
+
+        static DatabaseSetup DefaultSetup()
+        {
+            return [](odb::mysql::database& database, const ODBPoolConfig& config) {
+                database.connection()->execute("SET NAMES " + config.charset);
+            };
+        }
+
+        static HealthCheck DefaultHealthCheck()
+        {
+            return [](odb::mysql::database& database) {
+                database.connection()->execute("SELECT 1");
+            };
+        }
+
+        template <typename Function>
+        std::invoke_result_t<Function> Timed(const std::string& operation, Function&& function)
+        {
+            if (_monitor != nullptr) {
+                latecyMonitor::Timer timer(*_monitor, operation);
+                return std::forward<Function>(function)();
+            }
+            return std::forward<Function>(function)();
+        }
+
+        DatabasePtr CreateDatabase()
+        {
+            auto database = Timed("DBPool.Create", [this] {
+                return _database_factory(_config);
+            });
+            if (!database)
+                throw std::runtime_error("ODB database factory returned null");
+            Timed("DBPool.SetNames", [this, &database] {
+                _database_setup(*database, _config);
+            });
+            return database;
+        }
+
+        DatabasePtr FinishCheckout(DatabasePtr database)
+        {
+            std::lock_guard<std::mutex> lock(_mtx);
+            if (_running)
+                return database;
+            --_active_count;
+            _cv.notify_all();
+            return nullptr;
+        }
+
+        void ReleaseReservation()
+        {
+            {
+                std::lock_guard<std::mutex> lock(_mtx);
+                --_active_count;
+            }
+            _cv.notify_all();
+        }
+
+        void HealthCheckLoop()
+        {
+            std::unique_lock<std::mutex> lock(_mtx);
+            while (_running) {
+                const auto interval = std::chrono::milliseconds(
+                    std::max(1u, _config.health_check_interval_ms));
+                if (_cv.wait_for(lock, interval, [this] { return !_running; }))
+                    break;
+
+                const auto now = std::chrono::steady_clock::now();
+                const auto timeout = std::chrono::seconds(_config.idle_timeout_s);
+                std::queue<IdleDatabase> retained;
+                while (!_idle_pool.empty()) {
+                    auto item = std::move(_idle_pool.front());
+                    _idle_pool.pop();
+                    if (retained.size() < _config.min_connections || now - item.second < timeout)
+                        retained.push(std::move(item));
+                }
+                _idle_pool = std::move(retained);
+            }
+        }
+
         ODBPoolConfig _config;
-        std::queue<std::pair<DatabasePtr, std::chrono::steady_clock::time_point>> _idle_pool;
+        std::queue<IdleDatabase> _idle_pool;
         mutable std::mutex _mtx;
+        std::mutex _lifecycle_mtx;
         std::condition_variable _cv;
-        std::atomic<size_t> _active_count{0};
-        std::atomic<bool> _running{false};
-        std::unique_ptr<std::thread> _health_check_thread;
+        size_t _active_count = 0;
+        bool _running = false;
+        std::thread _health_check_thread;
+        latecyMonitor::LatencyMonitor* _monitor = nullptr;
+        DatabaseFactory _database_factory;
+        DatabaseSetup _database_setup;
+        HealthCheck _health_check;
     };
 
-    // ==================== ScopedDB ====================
-
-    class ScopedDB {
+    class ScopedDB
+    {
     public:
-        ScopedDB() { _db = ODBConnectionPool::Instance().GetDatabase(); }
+        ScopedDB() : ScopedDB(ODBConnectionPool::Instance()) {}
+
+        explicit ScopedDB(ODBConnectionPool& pool) : _pool(&pool), _db(pool.GetDatabase()) {}
+
+        ~ScopedDB() { Reset(); }
+
+        ScopedDB(const ScopedDB&) = delete;
+        ScopedDB& operator=(const ScopedDB&) = delete;
+
+        ScopedDB(ScopedDB&& other) noexcept
+            : _pool(other._pool), _db(std::move(other._db))
+        {
+            other._pool = nullptr;
+        }
+
+        ScopedDB& operator=(ScopedDB&& other) noexcept
+        {
+            if (this != &other) {
+                Reset();
+                _pool = other._pool;
+                _db = std::move(other._db);
+                other._pool = nullptr;
+            }
+            return *this;
+        }
+
         odb::database* operator->() { return _db.get(); }
         odb::database& operator*() { return *_db; }
         odb::database* Get() { return _db.get(); }
-        ~ScopedDB() { if (_db) ODBConnectionPool::Instance().ReturnDatabase(std::move(_db)); }
-        ScopedDB(const ScopedDB&) = delete;
-        ScopedDB& operator=(const ScopedDB&) = delete;
-        ScopedDB(ScopedDB&&) = default;
-        ScopedDB& operator=(ScopedDB&&) = default;
 
     private:
+        void Reset() noexcept
+        {
+            if (_pool != nullptr && _db)
+                _pool->ReturnDatabase(std::move(_db));
+            _pool = nullptr;
+        }
+
+        ODBConnectionPool* _pool = nullptr;
         DatabasePtr _db;
     };
 
-    // ==================== ScopedTransaction ====================
-
-    class ScopedTransaction {
+    class ScopedTransaction
+    {
     public:
-        explicit ScopedTransaction(odb::database& db) {
-            _tx = std::make_unique<odb::transaction>(db.begin());
+        explicit ScopedTransaction(odb::database& database)
+            : _tx(std::make_unique<odb::transaction>(database.begin())) {}
+
+        void Commit()
+        {
+            if (_tx && !_committed) {
+                _tx->commit();
+                _committed = true;
+            }
         }
-        void Commit() { if (_tx && !_committed) { _tx->commit(); _committed = true; } }
-        void Rollback() { if (_tx && !_committed) { _tx->rollback(); _committed = true; } }
-        ~ScopedTransaction() {
-            if (_tx && !_committed) { try { _tx->rollback(); } catch (...) {} }
+
+        void Rollback()
+        {
+            if (_tx && !_committed) {
+                _tx->rollback();
+                _committed = true;
+            }
         }
+
+        ~ScopedTransaction()
+        {
+            if (_tx && !_committed) {
+                try {
+                    _tx->rollback();
+                } catch (...) {
+                }
+            }
+        }
+
         ScopedTransaction(const ScopedTransaction&) = delete;
         ScopedTransaction& operator=(const ScopedTransaction&) = delete;
 
@@ -191,5 +396,4 @@ namespace ns_odb
         std::unique_ptr<odb::transaction> _tx;
         bool _committed = false;
     };
-
 } // namespace ns_odb

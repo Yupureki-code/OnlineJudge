@@ -11,7 +11,6 @@
 #include <chrono>
 #include <atomic>
 #include <map>
-#include <Logger/logstrategy.h>
 #include "../../../comm/comm.hpp"
 #include "../oj_cache.hpp"
 #include "model_base.hpp"
@@ -26,7 +25,6 @@
 
 namespace ns_model
 {
-    using namespace ns_log;
     using namespace ns_cache;
     //用户属性
     class Model : public ModelBase
@@ -251,7 +249,7 @@ namespace ns_model
             if(_cache.GetStringByAnyKey(key, &value))
             {
                 *count = std::atoi(value.c_str());
-                logger(ns_log::INFO) << "Cache hit for admin count";
+                LOG_INFO("{}", "Cache hit for admin count");
                 return true;
             }
             std::string sql = "select count(*) from " + AdminAccountsTable();
@@ -273,7 +271,7 @@ namespace ns_model
             if(_cache.GetStringByAnyKey(role, &value))
             {
                 *count = std::atoi(value.c_str());
-                logger(ns_log::INFO) << "Cache hit for role count of role " << role;
+                LOG_INFO("{}{}", "Cache hit for role count of role ", role);
                 return true;
             }
             auto my = CreateConnection();
@@ -376,7 +374,7 @@ namespace ns_model
             auto my = CreateConnection();
             if (!my)
             {
-                logger(ns_log::FATAL) << "无法连接数据库，无法记录审计日志!";
+                LOG_CRITICAL("{}", "无法连接数据库，无法记录审计日志!");
                 return false;
             }
 
@@ -476,7 +474,7 @@ namespace ns_model
                 << action_type << "," << total << "," << hits << "," << falls << "," << ms << ")";
             mysql_query(my.get(), sql.str().c_str());
             if (mysql_errno(my.get()) != 0)
-                logger(ns_log::WARNING) << "InsertCacheMetricSnapshot failed: " << mysql_error(my.get());
+                LOG_WARNING("{}{}", "InsertCacheMetricSnapshot failed: ", mysql_error(my.get()));
         }
         //刷新缓存记录
         void FlushCacheMetrics()

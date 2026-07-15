@@ -1,0 +1,15 @@
+add_executable(oj_server_legacy_contract_test legacy_contract_test.cpp)
+add_executable(oj_admin_legacy_contract_test admin_contract_test.cpp)
+add_executable(application_context_test application_context_test.cpp)
+
+target_compile_features(oj_server_legacy_contract_test PRIVATE cxx_std_17)
+target_compile_features(oj_admin_legacy_contract_test PRIVATE cxx_std_17)
+target_compile_features(application_context_test PRIVATE cxx_std_20)
+
+target_include_directories(oj_server_legacy_contract_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(oj_admin_legacy_contract_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(application_context_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(oj_server_legacy_contract_test PRIVATE phase3_proto_contract)
+target_link_libraries(oj_admin_legacy_contract_test PRIVATE phase3_proto_contract)
+target_link_libraries(application_context_test PRIVATE oj_runtime)

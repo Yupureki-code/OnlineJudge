@@ -2,7 +2,6 @@
 #include "../../comm/comm.hpp"
 #include "../../comm/logger.hpp"
 #include "../../comm/filesystem.hpp"
-#include <butil/logging.h>
 #include <memory>
 #include "event_loop.hpp"
 #include "docker_sandbox.hpp"
@@ -30,14 +29,14 @@ public:
     /// @return 判题结果
     CoTask Run(const oj_judge::SubmitRequest& request) 
     {
-        std::cerr << "[Judger::Run] START submission_id=" << request.submission_id() << std::endl;
+        LOG_INFO("Judger started submission_id={}", request.submission_id());
         // ① 生成唯一文件名，写入源代码到宿主机临时目录
         std::string file_name = oj_util::StringUtil::GetUniqueName();
         std::string src_path = oj_util::PathUtil::Src(file_name);
         std::string exe_path = oj_util::PathUtil::Exe(file_name);
         std::string err_path = oj_util::PathUtil::Compile_err(file_name);
         _file_system.write(src_path, request.code());
-        std::cerr << "[Judger::Run] source written to " << src_path << std::endl;
+        LOG_DEBUG("Submission source staged");
 
         // ② 创建编译容器（每次新建，编译完销毁）
         oj_sandbox::DockerSandbox compile_sandbox;
@@ -47,9 +46,9 @@ public:
         compile_config.read_only_root = false;
         compile_config.work_dir = "/home/judge";
         std::string compile_container_id = compile_sandbox.Create(compile_config);
-        std::cerr << "[Judger::Run] compile container: '" << compile_container_id << "'" << std::endl;
+        LOG_DEBUG("Compile container created id={}", compile_container_id);
         if (compile_container_id.empty()) {
-            std::cerr << "[Judger::Run] FAILED to create compile container" << std::endl;
+            LOG_ERROR("Failed to create compile container");
             auto resp = std::make_shared<JudgeFinishedRequest>();
             resp->set_submission_id(request.submission_id());
             resp->set_question_id(request.question_id());
@@ -59,7 +58,7 @@ public:
             co_return resp;
         }
         compile_sandbox.Start();
-        std::cerr << "[Judger::Run] compile container started" << std::endl;
+        LOG_DEBUG("Compile container started");
 
         // ③ 写入源代码到编译容器
         compile_sandbox.WriteFile("/home/judge/source.cpp", request.code());
@@ -78,15 +77,14 @@ public:
             std::string cmd = "export TASK_ID=" + task_id + 
                              " && export JUDGE_HOST=" + judge_host + 
                              " && " + script;
-            std::cerr << "[Judger] Exec compile: " << cmd.substr(0, 100) << std::endl;
+            LOG_DEBUG("Starting detached compile task");
             compile_sandbox.ExecDetached(cmd);  // non-blocking — awaits DockerWorkDone callback
-            std::cerr << "[Judger] Exec compile STARTED (detached)" << std::endl;
+            LOG_DEBUG("Detached compile task started");
         };
-        std::cerr << "[Judger::Run] co_await compile..." << std::endl;
+        LOG_DEBUG("Waiting for compile task");
 
         co_await compile_awaitable;
-        std::cerr << "[Judger::Run] compile await resumed, status=" 
-                  << _handle.promise().result.status << std::endl;
+        LOG_DEBUG("Compile task resumed status={}", _handle.promise().result.status);
 
         // ⑤ 协程恢复，检查编译结果
         auto& compile_result = _handle.promise().result;
@@ -178,7 +176,7 @@ public:
             } else {
                 // 运行成功，比较输出
                 std::string user_output = runner_sandbox->ReadFile("/home/judge/output.txt");
-                ns_logger::LOG_DEBUG("user_code_output: {}",user_output);
+                LOG_DEBUG("User program completed");
                 std::string expected = test.output;
                 if (RemoveAllWhitespace(user_output) == RemoveAllWhitespace(expected)) {
                     status->set_result(AC);

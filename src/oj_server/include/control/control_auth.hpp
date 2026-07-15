@@ -94,7 +94,7 @@ namespace ns_control
             }
             catch (const sw::redis::Error& e)
             {
-                logger(ERROR) << "Redis auth send code failed: " << e.what();
+                LOG_ERROR("{}{}", "Redis auth send code failed: ", e.what());
                 if (err_code != nullptr)
                 {
                     *err_code = "REDIS_ERROR";
@@ -244,7 +244,7 @@ namespace ns_control
             }
             catch (const sw::redis::Error& e)
             {
-                logger(ERROR) << "Redis auth verify failed: " << e.what();
+                LOG_ERROR("{}{}", "Redis auth verify failed: ", e.what());
                 if (err_code != nullptr)
                 {
                     *err_code = "REDIS_ERROR";
@@ -260,7 +260,7 @@ namespace ns_control
             response["exists"] = exists;
             if(exists)
             {
-                logger(ns_log::INFO)<<"用户存在 email:"<<email;
+                LOG_INFO("User lookup matched an existing account");
                 User user;
                 if(_model.User().GetUser(email, &user))
                 {
@@ -407,7 +407,7 @@ namespace ns_control
             }
             catch (const sw::redis::Error& e)
             {
-                logger(ERROR) << "Redis auth verify failed: " << e.what();
+                LOG_ERROR("{}{}", "Redis auth verify failed: ", e.what());
                 if (err_code != nullptr)
                 {
                     *err_code = "REDIS_ERROR";

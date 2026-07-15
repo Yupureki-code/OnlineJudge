@@ -55,7 +55,7 @@ namespace ns_model
                             comments->push_back(c);
                         }
                     }
-                    logger(ns_log::INFO) << "Cache hit for comment list " << cache_key;
+                    LOG_INFO("{}{}", "Cache hit for comment list ", cache_key);
                     long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - _metrics_begin).count();
                     RecordCacheMetrics(RecordActionType::Comment, true, false, cost_ms);
@@ -166,7 +166,7 @@ namespace ns_model
             Json::FastWriter writer;
             std::string json_str = writer.write(root);
             _cache.SetStringByAnyKey(cache_key, json_str, _cache.BuildJitteredTtl(300, 60));
-            logger(ns_log::INFO) << "Cache miss for comment list, written to cache " << cache_key;
+            LOG_INFO("{}{}", "Cache miss for comment list, written to cache ", cache_key);
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - _metrics_begin).count();
             RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
@@ -226,8 +226,7 @@ namespace ns_model
 
             if (mysql_query(my.get(), sql.str().c_str()) != 0)
             {
-                logger(ns_log::FATAL) << "MySql执行错误! errno=" << mysql_errno(my.get())
-                                      << " error=" << mysql_error(my.get());
+                LOG_CRITICAL("{}{}{}{}", "MySql执行错误! errno=", mysql_errno(my.get()), " error=", mysql_error(my.get()));
                 return false;
             }
 
@@ -274,7 +273,7 @@ namespace ns_model
                         Cache::CacheKey::PageType::kList,
                         SolutionStatus::approved, SolutionSort::latest);
                     _cache.DeleteStringByAnyKey(list_key->GetCacheKeyString(&_cache));
-                    logger(ns_log::INFO) << "Invalidated solution list cache after comment creation for question " << question_id;
+                    LOG_INFO("{}{}", "Invalidated solution list cache after comment creation for question ", question_id);
                 }
             }
 
@@ -318,7 +317,7 @@ namespace ns_model
                             Json::FastWriter writer;
                             _cache.SetStringByAnyKey(reply_key, writer.write(reply_val),
                                                      _cache.BuildJitteredTtl(120, 30));
-                            logger(ns_log::INFO) << "Prepended reply " << new_id << " to reply list cache " << reply_key;
+                            LOG_INFO("{}{}{}{}", "Prepended reply ", new_id, " to reply list cache ", reply_key);
                         }
                     }
                 }
@@ -329,7 +328,7 @@ namespace ns_model
             _cache.DeleteStringByAnyKey(comment_list_key_prefix + ":page:1:size:10");
             _cache.DeleteStringByAnyKey(comment_list_key_prefix + ":page:1:size:20");
             _cache.DeleteStringByAnyKey(comment_list_key_prefix + ":page:1:size:50");
-            logger(ns_log::INFO) << "Invalidated comment list cache for solution " << comment.solution_id;
+            LOG_INFO("{}{}", "Invalidated comment list cache for solution ", comment.solution_id);
 
             // Pre-warm: try to read and update the comment list cache with the new comment
             if (comment.parent_id == 0)
@@ -372,7 +371,7 @@ namespace ns_model
                             Json::FastWriter writer;
                             _cache.SetStringByAnyKey(warm_key, writer.write(warm_value),
                                                      _cache.BuildJitteredTtl(300, 60));
-                            logger(ns_log::INFO) << "Pre-warmed comment list cache for solution " << comment.solution_id;
+                            LOG_INFO("{}{}", "Pre-warmed comment list cache for solution ", comment.solution_id);
                         }
                     }
                 }
@@ -540,7 +539,7 @@ namespace ns_model
                             replies->push_back(c);
                         }
                     }
-                    logger(ns_log::INFO) << "Cache hit for reply list " << reply_cache_key;
+                    LOG_INFO("{}{}", "Cache hit for reply list ", reply_cache_key);
                     long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - _metrics_begin).count();
                     RecordCacheMetrics(RecordActionType::Comment, true, false, cost_ms);
@@ -629,7 +628,7 @@ namespace ns_model
             Json::FastWriter writer;
             _cache.SetStringByAnyKey(reply_cache_key, writer.write(cache_value),
                                      _cache.BuildJitteredTtl(120, 30));
-            logger(ns_log::INFO) << "Cache miss for reply list, written to cache " << reply_cache_key;
+            LOG_INFO("{}{}", "Cache miss for reply list, written to cache ", reply_cache_key);
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - _metrics_begin).count();
             RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
@@ -655,7 +654,7 @@ namespace ns_model
 
             if (mysql_query(my.get(), sql.str().c_str()) != 0)
             {
-                logger(ns_log::FATAL) << "MySql更新评论错误!";
+                LOG_CRITICAL("{}", "MySql更新评论错误!");
                 return false;
             }
             if (mysql_affected_rows(my.get()) == 0)
@@ -800,7 +799,7 @@ namespace ns_model
                     if (row[0] != nullptr) {
                         try { solution_id = std::stoull(row[0]); }
                         catch (const std::exception& e) {
-                            logger(ns_log::ERROR) << "stoull failed for solution_id: " << e.what();
+                            LOG_ERROR("{}{}", "stoull failed for solution_id: ", e.what());
                             mysql_free_result(res);
                             return false;
                         }
@@ -832,8 +831,7 @@ namespace ns_model
             del_children << "delete from solution_comments where parent_id=" << comment_id;
             if (mysql_query(my.get(), del_children.str().c_str()) != 0)
             {
-                logger(ns_log::FATAL) << "MySql删除子评论错误! errno=" << mysql_errno(my.get())
-                                      << " error=" << mysql_error(my.get());
+                LOG_CRITICAL("{}{}{}{}", "MySql删除子评论错误! errno=", mysql_errno(my.get()), " error=", mysql_error(my.get()));
                 return false;
             }
             // delete main comment
@@ -848,8 +846,7 @@ namespace ns_model
             }
             if (mysql_query(my.get(), del_sql.str().c_str()) != 0)
             {
-                logger(ns_log::FATAL) << "MySql删除评论错误! errno=" << mysql_errno(my.get())
-                                      << " error=" << mysql_error(my.get());
+                LOG_CRITICAL("{}{}{}{}", "MySql删除评论错误! errno=", mysql_errno(my.get()), " error=", mysql_error(my.get()));
                 return false;
             }
             // Properly consume the DELETE result to keep the connection clean
@@ -899,7 +896,7 @@ namespace ns_model
                     Cache::CacheKey::PageType::kList,
                     SolutionStatus::approved, SolutionSort::latest);
                 _cache.DeleteStringByAnyKey(list_key->GetCacheKeyString(&_cache));
-                logger(ns_log::INFO) << "Invalidated solution list cache after comment deletion for question " << question_id;
+                LOG_INFO("{}{}", "Invalidated solution list cache after comment deletion for question ", question_id);
             }
 
             // Invalidate reply cache for the deleted comment's own replies
@@ -1046,7 +1043,7 @@ namespace ns_model
                         << " and action_type='" << safe_action << "'";
                 if (mysql_query(my.get(), del_sql.str().c_str()) != 0)
                 {
-                    logger(ns_log::FATAL) << "MySql删除评论交互记录错误!";
+                    LOG_CRITICAL("{}", "MySql删除评论交互记录错误!");
                     return false;
                 }
 
@@ -1055,7 +1052,7 @@ namespace ns_model
                         << " where id = " << comment_id;
                 if (mysql_query(my.get(), dec_sql.str().c_str()) != 0)
                 {
-                    logger(ns_log::FATAL) << "MySql更新评论计数错误!";
+                    LOG_CRITICAL("{}", "MySql更新评论计数错误!");
                     return false;
                 }
 
@@ -1068,7 +1065,7 @@ namespace ns_model
                         << comment_id << ", " << user_id << ", '" << safe_action << "', NOW())";
                 if (mysql_query(my.get(), ins_sql.str().c_str()) != 0)
                 {
-                    logger(ns_log::FATAL) << "MySql插入评论交互记录错误!";
+                    LOG_CRITICAL("{}", "MySql插入评论交互记录错误!");
                     return false;
                 }
 
@@ -1077,7 +1074,7 @@ namespace ns_model
                         << " where id = " << comment_id;
                 if (mysql_query(my.get(), inc_sql.str().c_str()) != 0)
                 {
-                    logger(ns_log::FATAL) << "MySql更新评论计数错误!";
+                    LOG_CRITICAL("{}", "MySql更新评论计数错误!");
                     return false;
                 }
 

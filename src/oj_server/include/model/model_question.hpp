@@ -31,13 +31,13 @@ namespace ns_model
                 return false;
             if(mysql_query(my.get(), sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL)<<"MySql查询错误: "<<mysql_error(my.get());
+                LOG_CRITICAL("{}{}", "MySql查询错误: ", mysql_error(my.get()));
                 return false;
             }
             MYSQL_RES* res = mysql_store_result(my.get());
             if (res == nullptr)
             {
-                logger(ns_log::FATAL) << "MySql结果集为空!";
+                LOG_CRITICAL("{}", "MySql结果集为空!");
                 return false;
             }
             int rows = mysql_num_rows(res);
@@ -159,7 +159,7 @@ namespace ns_model
             //  同时记录一次"缓存命中"的指标。
             if(_cache.GetQuestionsByPage(key,  questions,total_count, total_pages))
             {
-                logger(ns_log::INFO) << "Cache hit for question list page " << key->GetCacheKeyString(&_cache);
+                LOG_INFO("{}{}", "Cache hit for question list page ", key->GetCacheKeyString(&_cache));
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 RecordCacheMetrics(RecordActionType::Question, true, false, cost_ms);
@@ -248,7 +248,7 @@ namespace ns_model
             // 先查缓存，缓存命中直接返回
             if(_cache.GetDetailedQuestion(detail_key, q))
             {
-                logger(ns_log::INFO) << "Cache hit for question " << number;
+                LOG_INFO("{}{}", "Cache hit for question ", number);
                 auto end = std::chrono::steady_clock::now();
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 RecordCacheMetrics(RecordActionType::Question, true, false, cost_ms);
@@ -372,7 +372,7 @@ namespace ns_model
             if(_cache.GetStringByAnyKey(key, &value))
             {
                 *count = std::atoi(value.c_str());
-                logger(ns_log::INFO) << "Cache hit for question count";
+                LOG_INFO("{}", "Cache hit for question count");
                 long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - begin).count();
                 RecordCacheMetrics(RecordActionType::Question, true, false, cost_ms);
@@ -394,7 +394,7 @@ namespace ns_model
         std::string TouchQuestionListVersion()
         {   
             std::string version = _cache.BumpListVersion(ListType::Questions);
-            logger(ns_log::INFO) << "Question list version bumped to " << version;
+            LOG_INFO("{}{}", "Question list version bumped to ", version);
             return version;
         }
         // 获得题目列表版本

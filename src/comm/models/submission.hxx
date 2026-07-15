@@ -1,64 +1,61 @@
 #pragma once
-#include <odb/core.hxx>
-#include <string>
 #include <cstdint>
+#include <string>
 
-namespace ns_model {
+#include <odb/core.hxx>
+#include <odb/nullable.hxx>
 
-// 用户提交记录表 — 对应 sql/user_submits.sql
-#pragma db object table("user_submits")
-struct UserSubmit {
-    #pragma db id auto
-    uint32_t id;
+#include "types.hxx"
 
-    uint32_t user_id;
+namespace oj::db {
 
-    #pragma db type("VARCHAR(5)")
-    std::string question_id;
-
-    #pragma db type("TEXT")
-    std::string result_json;
-
-    #pragma db type("BIT(1)")
-    bool is_pass;
-
-    #pragma db type("DATETIME") null
-    std::string action_time;
-};
-
-// 判题任务追踪表 — 对应 sql/judge_tasks.sql
-#pragma db object table("judge_tasks")
-struct JudgeTask {
-    #pragma db id auto
-    uint64_t id;
-
+// 正式提交表 — 由 20260715_01_submissions_and_outbox.sql 创建
+#pragma db object table("submissions")
+struct Submission {
+    #pragma db id auto type("BIGINT UNSIGNED")
     uint64_t submission_id;
 
+    #pragma db type("INT UNSIGNED")
+    uint32_t user_id;
+
     #pragma db type("VARCHAR(5)")
     std::string question_id;
 
-    uint32_t user_id;
+    #pragma db type("LONGTEXT") null
+    odb::nullable<std::string> code;
 
-    #pragma db type("ENUM('QUEUED','JUDGING','COMPLETED','FAILED')") default("QUEUED")
+    #pragma db type("VARCHAR(32)") null
+    odb::nullable<std::string> language;
+
+    #pragma db type("VARCHAR(32)") default("PENDING")
     std::string status;
 
-    #pragma db type("VARCHAR(64)") null
-    std::string worker_id;
+    #pragma db type("LONGTEXT") null
+    odb::nullable<std::string> result_json;
 
-    #pragma db type("DATETIME") null
-    std::string queued_at;
+    #pragma db type("TINYINT(1)") null
+    odb::nullable<bool> is_pass;
 
-    #pragma db type("DATETIME") null
-    std::string started_at;
+    #pragma db type("BIGINT UNSIGNED") null
+    odb::nullable<uint64_t> time_used_ms;
 
-    #pragma db type("DATETIME") null
-    std::string completed_at;
-
-    #pragma db type("TEXT") null
-    std::string result_json;
+    #pragma db type("BIGINT UNSIGNED") null
+    odb::nullable<uint64_t> memory_used_bytes;
 
     #pragma db type("TEXT") null
-    std::string error_message;
+    odb::nullable<std::string> compile_error;
+
+    #pragma db type("DATETIME")
+    DateTime created_at;
+
+    #pragma db type("DATETIME") null
+    odb::nullable<DateTime> completed_at;
+
+    #pragma db type("BIGINT UNSIGNED") default(0)
+    uint64_t result_version;
+
+    #pragma db type("BIGINT UNSIGNED") null
+    odb::nullable<uint64_t> legacy_user_submit_id;
 };
 
-} // namespace ns_model
+} // namespace oj::db

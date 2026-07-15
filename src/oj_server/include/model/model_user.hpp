@@ -392,7 +392,7 @@ namespace ns_model
                         std::chrono::steady_clock::now() - begin).count();
                     RecordCacheMetrics(ModelBase::RecordActionType::User, true, false, cost_ms);
                     *submits = cached_val;
-                    logger(ns_log::INFO) << "Cache hit for user submits user=" << user_id << " q=" << question_id;
+                    LOG_INFO("{}{}{}{}", "Cache hit for user submits user=", user_id, " q=", question_id);
                     return true;
                 }
             }
@@ -448,7 +448,7 @@ namespace ns_model
                 std::istringstream ss(cached);
                 if (Json::parseFromStream(builder, ss, stats, nullptr))
                 {
-                    logger(ns_log::INFO) << "Cache hit for user stats user=" << user_id;
+                    LOG_INFO("{}{}", "Cache hit for user stats user=", user_id);
                     long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - begin).count();
                     RecordCacheMetrics(ModelBase::RecordActionType::User, true, false, cost_ms);

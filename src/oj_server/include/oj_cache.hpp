@@ -1,5 +1,4 @@
 #pragma once
-#include <Logger/logstrategy.h>
 #include <httplib.h>
 #include <iterator>
 #include <jsoncpp/json/reader.h>
@@ -16,7 +15,6 @@
 #include "../../comm/comm.hpp"
 
 using namespace sw::redis;
-using namespace ns_log;
 
 namespace ns_cache
 {
@@ -240,7 +238,7 @@ namespace ns_cache
             }
             catch (const sw::redis::Error &e)
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
                 return false;
             }
         }
@@ -258,7 +256,7 @@ namespace ns_cache
             }
             catch (const sw::redis::Error &e)
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
                 return false;
             }
         }
@@ -271,7 +269,7 @@ namespace ns_cache
             }
             catch (const sw::redis::Error &e)
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
                 return false;
             }
         }
@@ -288,7 +286,7 @@ namespace ns_cache
                         std::string json_str = result.value();
                         if (json_str == "__NULL__")
                         {
-                            logger(ns_log::INFO) << "Null cache hit for question " << key_str;
+                            LOG_INFO("{}{}", "Null cache hit for question ", key_str);
                             return false;
                         }
                         Json::CharReaderBuilder builder;
@@ -305,23 +303,23 @@ namespace ns_cache
                             question.create_time = json_value["create_time"].asString();
                             question.update_time = json_value["update_time"].asString();
 
-                            logger(ns_log::INFO) << "Cache hit for question " << key_str;
+                            LOG_INFO("{}{}", "Cache hit for question ", key_str);
                             return true;
                         }
                     }
 
-                    logger(ns_log::WARNING) << "Invalid cache payload for question " << key_str;
+                    LOG_WARNING("{}{}", "Invalid cache payload for question ", key_str);
                     return false;
                 }
                 else
                 {
-                    logger(ns_log::INFO) << "Cache miss for question " << key_str;
+                    LOG_INFO("{}{}", "Cache miss for question ", key_str);
                     return false;
                 }
             } 
             catch (const sw::redis::Error &e) 
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
                 return false;
             
             }
@@ -343,11 +341,11 @@ namespace ns_cache
             try 
             {
                 _redis.setex(key->GetCacheKeyString(this), BuildJitteredTtl(3600, 300), json_str);
-                logger(ns_log::INFO) << "Question " << question.number << " cached successfully";
+                LOG_INFO("{}{}{}", "Question ", question.number, " cached successfully");
             } 
             catch (const sw::redis::Error &e) 
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
             }
         }
 
@@ -360,7 +358,7 @@ namespace ns_cache
             }
             catch (const sw::redis::Error &e)
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
             }
         }
         //获取题目列表
@@ -403,18 +401,18 @@ namespace ns_cache
                             }
                         }
                     }
-                    logger(ns_log::INFO) << "Cache hit for question list " << key->GetCacheKeyString(this);
+                    LOG_INFO("{}{}", "Cache hit for question list ", key->GetCacheKeyString(this));
                     return true;
                 }
                 else
                 {
-                    logger(ns_log::INFO) << "Cache miss for question list " << key->GetCacheKeyString(this)  ;
+                    LOG_INFO("{}{}", "Cache miss for question list ", key->GetCacheKeyString(this));
                     return false;
                 }
             } 
             catch (const sw::redis::Error &e) 
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
                 return false;
             }
         }
@@ -457,18 +455,18 @@ namespace ns_cache
                             }
                         }
                     }
-                    logger(ns_log::INFO) << "Cache hit for user list " << key->GetCacheKeyString(this);
+                    LOG_INFO("{}{}", "Cache hit for user list ", key->GetCacheKeyString(this));
                     return true;
                 }
                 else
                 {                    
-                    logger(ns_log::INFO) << "Cache miss for user list " << key->GetCacheKeyString(this)  ;
+                    LOG_INFO("{}{}", "Cache miss for user list ", key->GetCacheKeyString(this));
                     return false;
                 }
             } 
             catch (const sw::redis::Error &e)             
             {                
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
             }
             return false;
         }
@@ -503,11 +501,11 @@ namespace ns_cache
             {
                 int ttl = total_count <= 0 ? BuildJitteredTtl(60, 30) : BuildJitteredTtl(600, 120);
                 _redis.setex(key->GetCacheKeyString(this), ttl, json_str);
-                logger(ns_log::INFO) << "User list " << key->GetCacheKeyString(this) << " cached successfully";
+                LOG_INFO("{}{}{}", "User list ", key->GetCacheKeyString(this), " cached successfully");
             } 
             catch (const sw::redis::Error &e) 
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
                 return false;
             }
             return true;
@@ -542,11 +540,11 @@ namespace ns_cache
             {
                 int ttl = total_count <= 0 ? BuildJitteredTtl(60, 30) : BuildJitteredTtl(600, 120);
                 _redis.setex(key->GetCacheKeyString(this), ttl, json_str);
-                logger(ns_log::INFO) << "Question list " << key->GetCacheKeyString(this) << " cached successfully";
+                LOG_INFO("{}{}{}", "Question list ", key->GetCacheKeyString(this), " cached successfully");
             } 
             catch (const sw::redis::Error &e) 
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
             }
         }
         // 获取当前题库版本号
@@ -565,7 +563,7 @@ namespace ns_cache
             }
             catch (const sw::redis::Error &e)
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
                 return "1";
             }
         }
@@ -580,7 +578,7 @@ namespace ns_cache
             }
             catch (const sw::redis::Error &e)
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
                 return "1";
             }
         }
@@ -589,7 +587,7 @@ namespace ns_cache
         {
             if(key->GetPageType() != CacheKey::PageType::kHtml)
             {
-                logger(ns_log::ERROR) << "Invalid cache key type for GetHtmlPage: " << key->PageTypeToString();
+                LOG_ERROR("{}{}", "Invalid cache key type for GetHtmlPage: ", key->PageTypeToString());
                 return false;
             }
             std::string key_str = key->GetCacheKeyString(this);
@@ -599,15 +597,15 @@ namespace ns_cache
                 if (result)
                 {
                     *html = result.value();
-                    logger(ns_log::INFO) << "Html page " << key_str << " cache hit";
+                    LOG_INFO("{}{}{}", "Html page ", key_str, " cache hit");
                     return true;
                 }
             }
             catch (const sw::redis::Error &e)
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
             }
-             logger(ns_log::INFO) << "Html page " << key_str << " cache miss";
+             LOG_INFO("{}{}{}", "Html page ", key_str, " cache miss");
              return false;
         }
         //在redis中设置html资源
@@ -615,17 +613,17 @@ namespace ns_cache
         {
             if(key->GetPageType() != CacheKey::PageType::kHtml)
             {
-                logger(ns_log::ERROR) << "Invalid cache key type for SetHtmlPage: " << key->PageTypeToString();
+                LOG_ERROR("{}{}", "Invalid cache key type for SetHtmlPage: ", key->PageTypeToString());
                 return;
             }
             try
             {
                 _redis.setex(key->GetCacheKeyString(this), BuildJitteredTtl(21600, 3600), *html);
-                logger(ns_log::INFO) << "Html page " << key->GetCacheKeyString(this) << " cached successfully";
+                LOG_INFO("{}{}{}", "Html page ", key->GetCacheKeyString(this), " cached successfully");
             }
             catch (const sw::redis::Error &e)
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
             }
         }
         // 使缓存失效
@@ -639,11 +637,11 @@ namespace ns_cache
             {
                 std::string key_str = key->GetCacheKeyString(this);
                 long long deleted = _redis.del(key_str);
-                logger(ns_log::INFO) << "Invalidate cache key=" << key_str << " deleted=" << deleted;
+                LOG_INFO("{}{}{}{}", "Invalidate cache key=", key_str, " deleted=", deleted);
             }
             catch (const sw::redis::Error &e)
             {
-                logger(ns_log::ERROR) << "Redis error: " << e.what();
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
             }
         }
         std::shared_ptr<CacheListKey> BuildListCacheKey(const std::shared_ptr<QueryStruct>& query_struct, int page, int size, const std::string& list_version, CacheKey::PageType page_type, ListType list_type = ListType::Questions)
@@ -787,4 +785,3 @@ namespace ns_cache
         std::string _version;
     };
 }
-

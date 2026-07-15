@@ -26,6 +26,8 @@ PROTOBUF_CONSTEXPR TestCaseInput::TestCaseInput(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.input_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.expected_output_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.test_case_id_)*/uint64_t{0u}
+  , /*decltype(_impl_.index_)*/0u
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct TestCaseInputDefaultTypeInternal {
   PROTOBUF_CONSTEXPR TestCaseInputDefaultTypeInternal()
@@ -39,18 +41,19 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 PROTOBUF_CONSTEXPR JudgeTaskMessage::JudgeTaskMessage(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.test_cases_)*/{}
+  , /*decltype(_impl_.message_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.question_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.code_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.language_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.custom_input_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.submission_id_)*/0u
   , /*decltype(_impl_.user_id_)*/0u
-  , /*decltype(_impl_.is_custom_test_)*/false
-  , /*decltype(_impl_.time_limit_)*/0
-  , /*decltype(_impl_.timestamp_)*/int64_t{0}
-  , /*decltype(_impl_.memory_limit_)*/0
-  , /*decltype(_impl_.retry_count_)*/0u
-  , /*decltype(_impl_._cached_size_)*/{}} {}
+  , /*decltype(_impl_.time_limit_ms_)*/0u
+  , /*decltype(_impl_.memory_limit_mb_)*/0u
+  , /*decltype(_impl_.delivery_attempt_)*/0u
+  , /*decltype(_impl_.created_at_)*/int64_t{0}
+  , /*decltype(_impl_.task_id_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_._oneof_case_)*/{}} {}
 struct JudgeTaskMessageDefaultTypeInternal {
   PROTOBUF_CONSTEXPR JudgeTaskMessageDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -60,28 +63,9 @@ struct JudgeTaskMessageDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 JudgeTaskMessageDefaultTypeInternal _JudgeTaskMessage_default_instance_;
-PROTOBUF_CONSTEXPR JudgeResultCallback::JudgeResultCallback(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.status_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.compile_error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.test_cases_json_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.submission_id_)*/0u
-  , /*decltype(_impl_.time_used_ms_)*/0
-  , /*decltype(_impl_.memory_used_bytes_)*/int64_t{0}
-  , /*decltype(_impl_.completed_at_)*/int64_t{0}
-  , /*decltype(_impl_._cached_size_)*/{}} {}
-struct JudgeResultCallbackDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR JudgeResultCallbackDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~JudgeResultCallbackDefaultTypeInternal() {}
-  union {
-    JudgeResultCallback _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 JudgeResultCallbackDefaultTypeInternal _JudgeResultCallback_default_instance_;
 }  // namespace mq
 }  // namespace oj
-static ::_pb::Metadata file_level_metadata_mq_5fmessage_2eproto[3];
+static ::_pb::Metadata file_level_metadata_mq_5fmessage_2eproto[2];
 static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_mq_5fmessage_2eproto = nullptr;
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_mq_5fmessage_2eproto = nullptr;
 
@@ -92,74 +76,60 @@ const uint32_t TableStruct_mq_5fmessage_2eproto::offsets[] PROTOBUF_SECTION_VARI
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::oj::mq::TestCaseInput, _impl_.test_case_id_),
+  PROTOBUF_FIELD_OFFSET(::oj::mq::TestCaseInput, _impl_.index_),
   PROTOBUF_FIELD_OFFSET(::oj::mq::TestCaseInput, _impl_.input_),
   PROTOBUF_FIELD_OFFSET(::oj::mq::TestCaseInput, _impl_.expected_output_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _internal_metadata_),
   ~0u,  // no _extensions_
-  ~0u,  // no _oneof_case_
+  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_._oneof_case_[0]),
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.submission_id_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.question_id_),
+  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.message_id_),
+  ::_pbi::kInvalidFieldOffsetTag,
+  ::_pbi::kInvalidFieldOffsetTag,
   PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.user_id_),
+  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.question_id_),
   PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.code_),
   PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.language_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.is_custom_test_),
+  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.time_limit_ms_),
+  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.memory_limit_mb_),
   PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.custom_input_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.time_limit_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.memory_limit_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.timestamp_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.retry_count_),
   PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.test_cases_),
-  ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeResultCallback, _internal_metadata_),
-  ~0u,  // no _extensions_
-  ~0u,  // no _oneof_case_
-  ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeResultCallback, _impl_.submission_id_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeResultCallback, _impl_.status_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeResultCallback, _impl_.time_used_ms_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeResultCallback, _impl_.memory_used_bytes_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeResultCallback, _impl_.compile_error_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeResultCallback, _impl_.test_cases_json_),
-  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeResultCallback, _impl_.completed_at_),
+  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.created_at_),
+  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.delivery_attempt_),
+  PROTOBUF_FIELD_OFFSET(::oj::mq::JudgeTaskMessage, _impl_.task_id_),
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::oj::mq::TestCaseInput)},
-  { 8, -1, -1, sizeof(::oj::mq::JudgeTaskMessage)},
-  { 26, -1, -1, sizeof(::oj::mq::JudgeResultCallback)},
+  { 10, -1, -1, sizeof(::oj::mq::JudgeTaskMessage)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
   &::oj::mq::_TestCaseInput_default_instance_._instance,
   &::oj::mq::_JudgeTaskMessage_default_instance_._instance,
-  &::oj::mq::_JudgeResultCallback_default_instance_._instance,
 };
 
 const char descriptor_table_protodef_mq_5fmessage_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
-  "\n\020mq_message.proto\022\005oj.mq\"7\n\rTestCaseInp"
-  "ut\022\r\n\005input\030\001 \001(\t\022\027\n\017expected_output\030\002 \001"
-  "(\t\"\231\002\n\020JudgeTaskMessage\022\025\n\rsubmission_id"
-  "\030\001 \001(\r\022\023\n\013question_id\030\002 \001(\t\022\017\n\007user_id\030\003"
-  " \001(\r\022\014\n\004code\030\004 \001(\t\022\020\n\010language\030\005 \001(\t\022\026\n\016"
-  "is_custom_test\030\006 \001(\010\022\024\n\014custom_input\030\007 \001"
-  "(\t\022\022\n\ntime_limit\030\010 \001(\005\022\024\n\014memory_limit\030\t"
-  " \001(\005\022\021\n\ttimestamp\030\n \001(\003\022\023\n\013retry_count\030\013"
-  " \001(\r\022(\n\ntest_cases\030\014 \003(\0132\024.oj.mq.TestCas"
-  "eInput\"\263\001\n\023JudgeResultCallback\022\025\n\rsubmis"
-  "sion_id\030\001 \001(\r\022\016\n\006status\030\002 \001(\t\022\024\n\014time_us"
-  "ed_ms\030\003 \001(\005\022\031\n\021memory_used_bytes\030\004 \001(\003\022\025"
-  "\n\rcompile_error\030\005 \001(\t\022\027\n\017test_cases_json"
-  "\030\006 \001(\t\022\024\n\014completed_at\030\007 \001(\003B\003\200\001\001b\006proto"
-  "3"
+  "\n\020mq_message.proto\022\005oj.mq\"\\\n\rTestCaseInp"
+  "ut\022\024\n\014test_case_id\030\001 \001(\004\022\r\n\005index\030\002 \001(\r\022"
+  "\r\n\005input\030\003 \001(\t\022\027\n\017expected_output\030\004 \001(\t\""
+  "\316\002\n\020JudgeTaskMessage\022\022\n\nmessage_id\030\001 \001(\t"
+  "\022\027\n\rsubmission_id\030\003 \001(\004H\000\022\030\n\016custom_task"
+  "_id\030\004 \001(\tH\000\022\017\n\007user_id\030\005 \001(\r\022\023\n\013question"
+  "_id\030\006 \001(\t\022\014\n\004code\030\007 \001(\t\022\020\n\010language\030\010 \001("
+  "\t\022\025\n\rtime_limit_ms\030\t \001(\r\022\027\n\017memory_limit"
+  "_mb\030\n \001(\r\022\024\n\014custom_input\030\013 \001(\t\022(\n\ntest_"
+  "cases\030\014 \003(\0132\024.oj.mq.TestCaseInput\022\022\n\ncre"
+  "ated_at\030\r \001(\003\022\030\n\020delivery_attempt\030\016 \001(\rB"
+  "\t\n\007task_idJ\004\010\002\020\003b\006proto3"
   ;
 static ::_pbi::once_flag descriptor_table_mq_5fmessage_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_mq_5fmessage_2eproto = {
-    false, false, 561, descriptor_table_protodef_mq_5fmessage_2eproto,
+    false, false, 464, descriptor_table_protodef_mq_5fmessage_2eproto,
     "mq_message.proto",
-    &descriptor_table_mq_5fmessage_2eproto_once, nullptr, 0, 3,
+    &descriptor_table_mq_5fmessage_2eproto_once, nullptr, 0, 2,
     schemas, file_default_instances, TableStruct_mq_5fmessage_2eproto::offsets,
     file_level_metadata_mq_5fmessage_2eproto, file_level_enum_descriptors_mq_5fmessage_2eproto,
     file_level_service_descriptors_mq_5fmessage_2eproto,
@@ -191,6 +161,8 @@ TestCaseInput::TestCaseInput(const TestCaseInput& from)
   new (&_impl_) Impl_{
       decltype(_impl_.input_){}
     , decltype(_impl_.expected_output_){}
+    , decltype(_impl_.test_case_id_){}
+    , decltype(_impl_.index_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -199,7 +171,7 @@ TestCaseInput::TestCaseInput(const TestCaseInput& from)
     _impl_.input_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_input().empty()) {
-    _this->_impl_.input_.Set(from._internal_input(), 
+    _this->_impl_.input_.Set(from._internal_input(),
       _this->GetArenaForAllocation());
   }
   _impl_.expected_output_.InitDefault();
@@ -207,9 +179,12 @@ TestCaseInput::TestCaseInput(const TestCaseInput& from)
     _impl_.expected_output_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_expected_output().empty()) {
-    _this->_impl_.expected_output_.Set(from._internal_expected_output(), 
+    _this->_impl_.expected_output_.Set(from._internal_expected_output(),
       _this->GetArenaForAllocation());
   }
+  ::memcpy(&_impl_.test_case_id_, &from._impl_.test_case_id_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.index_) -
+    reinterpret_cast<char*>(&_impl_.test_case_id_)) + sizeof(_impl_.index_));
   // @@protoc_insertion_point(copy_constructor:oj.mq.TestCaseInput)
 }
 
@@ -220,6 +195,8 @@ inline void TestCaseInput::SharedCtor(
   new (&_impl_) Impl_{
       decltype(_impl_.input_){}
     , decltype(_impl_.expected_output_){}
+    , decltype(_impl_.test_case_id_){uint64_t{0u}}
+    , decltype(_impl_.index_){0u}
     , /*decltype(_impl_._cached_size_)*/{}
   };
   _impl_.input_.InitDefault();
@@ -259,6 +236,9 @@ void TestCaseInput::Clear() {
 
   _impl_.input_.ClearToEmpty();
   _impl_.expected_output_.ClearToEmpty();
+  ::memset(&_impl_.test_case_id_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.index_) -
+      reinterpret_cast<char*>(&_impl_.test_case_id_)) + sizeof(_impl_.index_));
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -268,9 +248,25 @@ const char* TestCaseInput::_InternalParse(const char* ptr, ::_pbi::ParseContext*
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // string input = 1;
+      // uint64 test_case_id = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.test_case_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 index = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.index_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string input = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
           auto str = _internal_mutable_input();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -278,9 +274,9 @@ const char* TestCaseInput::_InternalParse(const char* ptr, ::_pbi::ParseContext*
         } else
           goto handle_unusual;
         continue;
-      // string expected_output = 2;
-      case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+      // string expected_output = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
           auto str = _internal_mutable_expected_output();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -317,24 +313,36 @@ uint8_t* TestCaseInput::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // string input = 1;
+  // uint64 test_case_id = 1;
+  if (this->_internal_test_case_id() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(1, this->_internal_test_case_id(), target);
+  }
+
+  // uint32 index = 2;
+  if (this->_internal_index() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(2, this->_internal_index(), target);
+  }
+
+  // string input = 3;
   if (!this->_internal_input().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_input().data(), static_cast<int>(this->_internal_input().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "oj.mq.TestCaseInput.input");
     target = stream->WriteStringMaybeAliased(
-        1, this->_internal_input(), target);
+        3, this->_internal_input(), target);
   }
 
-  // string expected_output = 2;
+  // string expected_output = 4;
   if (!this->_internal_expected_output().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_expected_output().data(), static_cast<int>(this->_internal_expected_output().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "oj.mq.TestCaseInput.expected_output");
     target = stream->WriteStringMaybeAliased(
-        2, this->_internal_expected_output(), target);
+        4, this->_internal_expected_output(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -353,18 +361,28 @@ size_t TestCaseInput::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // string input = 1;
+  // string input = 3;
   if (!this->_internal_input().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_input());
   }
 
-  // string expected_output = 2;
+  // string expected_output = 4;
   if (!this->_internal_expected_output().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_expected_output());
+  }
+
+  // uint64 test_case_id = 1;
+  if (this->_internal_test_case_id() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_test_case_id());
+  }
+
+  // uint32 index = 2;
+  if (this->_internal_index() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_index());
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
@@ -390,6 +408,12 @@ void TestCaseInput::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::
   }
   if (!from._internal_expected_output().empty()) {
     _this->_internal_set_expected_output(from._internal_expected_output());
+  }
+  if (from._internal_test_case_id() != 0) {
+    _this->_internal_set_test_case_id(from._internal_test_case_id());
+  }
+  if (from._internal_index() != 0) {
+    _this->_internal_set_index(from._internal_index());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -418,6 +442,12 @@ void TestCaseInput::InternalSwap(TestCaseInput* other) {
       &_impl_.expected_output_, lhs_arena,
       &other->_impl_.expected_output_, rhs_arena
   );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(TestCaseInput, _impl_.index_)
+      + sizeof(TestCaseInput::_impl_.index_)
+      - PROTOBUF_FIELD_OFFSET(TestCaseInput, _impl_.test_case_id_)>(
+          reinterpret_cast<char*>(&_impl_.test_case_id_),
+          reinterpret_cast<char*>(&other->_impl_.test_case_id_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata TestCaseInput::GetMetadata() const {
@@ -443,26 +473,35 @@ JudgeTaskMessage::JudgeTaskMessage(const JudgeTaskMessage& from)
   JudgeTaskMessage* const _this = this; (void)_this;
   new (&_impl_) Impl_{
       decltype(_impl_.test_cases_){from._impl_.test_cases_}
+    , decltype(_impl_.message_id_){}
     , decltype(_impl_.question_id_){}
     , decltype(_impl_.code_){}
     , decltype(_impl_.language_){}
     , decltype(_impl_.custom_input_){}
-    , decltype(_impl_.submission_id_){}
     , decltype(_impl_.user_id_){}
-    , decltype(_impl_.is_custom_test_){}
-    , decltype(_impl_.time_limit_){}
-    , decltype(_impl_.timestamp_){}
-    , decltype(_impl_.memory_limit_){}
-    , decltype(_impl_.retry_count_){}
-    , /*decltype(_impl_._cached_size_)*/{}};
+    , decltype(_impl_.time_limit_ms_){}
+    , decltype(_impl_.memory_limit_mb_){}
+    , decltype(_impl_.delivery_attempt_){}
+    , decltype(_impl_.created_at_){}
+    , decltype(_impl_.task_id_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , /*decltype(_impl_._oneof_case_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.message_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.message_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_message_id().empty()) {
+    _this->_impl_.message_id_.Set(from._internal_message_id(),
+      _this->GetArenaForAllocation());
+  }
   _impl_.question_id_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.question_id_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_question_id().empty()) {
-    _this->_impl_.question_id_.Set(from._internal_question_id(), 
+    _this->_impl_.question_id_.Set(from._internal_question_id(),
       _this->GetArenaForAllocation());
   }
   _impl_.code_.InitDefault();
@@ -470,7 +509,7 @@ JudgeTaskMessage::JudgeTaskMessage(const JudgeTaskMessage& from)
     _impl_.code_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_code().empty()) {
-    _this->_impl_.code_.Set(from._internal_code(), 
+    _this->_impl_.code_.Set(from._internal_code(),
       _this->GetArenaForAllocation());
   }
   _impl_.language_.InitDefault();
@@ -478,7 +517,7 @@ JudgeTaskMessage::JudgeTaskMessage(const JudgeTaskMessage& from)
     _impl_.language_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_language().empty()) {
-    _this->_impl_.language_.Set(from._internal_language(), 
+    _this->_impl_.language_.Set(from._internal_language(),
       _this->GetArenaForAllocation());
   }
   _impl_.custom_input_.InitDefault();
@@ -486,12 +525,26 @@ JudgeTaskMessage::JudgeTaskMessage(const JudgeTaskMessage& from)
     _impl_.custom_input_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (!from._internal_custom_input().empty()) {
-    _this->_impl_.custom_input_.Set(from._internal_custom_input(), 
+    _this->_impl_.custom_input_.Set(from._internal_custom_input(),
       _this->GetArenaForAllocation());
   }
-  ::memcpy(&_impl_.submission_id_, &from._impl_.submission_id_,
-    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.retry_count_) -
-    reinterpret_cast<char*>(&_impl_.submission_id_)) + sizeof(_impl_.retry_count_));
+  ::memcpy(&_impl_.user_id_, &from._impl_.user_id_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.created_at_) -
+    reinterpret_cast<char*>(&_impl_.user_id_)) + sizeof(_impl_.created_at_));
+  clear_has_task_id();
+  switch (from.task_id_case()) {
+    case kSubmissionId: {
+      _this->_internal_set_submission_id(from._internal_submission_id());
+      break;
+    }
+    case kCustomTaskId: {
+      _this->_internal_set_custom_task_id(from._internal_custom_task_id());
+      break;
+    }
+    case TASK_ID_NOT_SET: {
+      break;
+    }
+  }
   // @@protoc_insertion_point(copy_constructor:oj.mq.JudgeTaskMessage)
 }
 
@@ -501,19 +554,24 @@ inline void JudgeTaskMessage::SharedCtor(
   (void)is_message_owned;
   new (&_impl_) Impl_{
       decltype(_impl_.test_cases_){arena}
+    , decltype(_impl_.message_id_){}
     , decltype(_impl_.question_id_){}
     , decltype(_impl_.code_){}
     , decltype(_impl_.language_){}
     , decltype(_impl_.custom_input_){}
-    , decltype(_impl_.submission_id_){0u}
     , decltype(_impl_.user_id_){0u}
-    , decltype(_impl_.is_custom_test_){false}
-    , decltype(_impl_.time_limit_){0}
-    , decltype(_impl_.timestamp_){int64_t{0}}
-    , decltype(_impl_.memory_limit_){0}
-    , decltype(_impl_.retry_count_){0u}
+    , decltype(_impl_.time_limit_ms_){0u}
+    , decltype(_impl_.memory_limit_mb_){0u}
+    , decltype(_impl_.delivery_attempt_){0u}
+    , decltype(_impl_.created_at_){int64_t{0}}
+    , decltype(_impl_.task_id_){}
     , /*decltype(_impl_._cached_size_)*/{}
+    , /*decltype(_impl_._oneof_case_)*/{}
   };
+  _impl_.message_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.message_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.question_id_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.question_id_.Set("", GetArenaForAllocation());
@@ -530,6 +588,7 @@ inline void JudgeTaskMessage::SharedCtor(
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.custom_input_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  clear_has_task_id();
 }
 
 JudgeTaskMessage::~JudgeTaskMessage() {
@@ -544,15 +603,38 @@ JudgeTaskMessage::~JudgeTaskMessage() {
 inline void JudgeTaskMessage::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.test_cases_.~RepeatedPtrField();
+  _impl_.message_id_.Destroy();
   _impl_.question_id_.Destroy();
   _impl_.code_.Destroy();
   _impl_.language_.Destroy();
   _impl_.custom_input_.Destroy();
+  if (has_task_id()) {
+    clear_task_id();
+  }
 }
 
 void JudgeTaskMessage::SetCachedSize(int size) const {
   _impl_._cached_size_.Set(size);
 }
+
+void JudgeTaskMessage::clear_task_id() {
+// @@protoc_insertion_point(one_of_clear_start:oj.mq.JudgeTaskMessage)
+  switch (task_id_case()) {
+    case kSubmissionId: {
+      // No need to clear
+      break;
+    }
+    case kCustomTaskId: {
+      _impl_.task_id_.custom_task_id_.Destroy();
+      break;
+    }
+    case TASK_ID_NOT_SET: {
+      break;
+    }
+  }
+  _impl_._oneof_case_[0] = TASK_ID_NOT_SET;
+}
+
 
 void JudgeTaskMessage::Clear() {
 // @@protoc_insertion_point(message_clear_start:oj.mq.JudgeTaskMessage)
@@ -561,13 +643,15 @@ void JudgeTaskMessage::Clear() {
   (void) cached_has_bits;
 
   _impl_.test_cases_.Clear();
+  _impl_.message_id_.ClearToEmpty();
   _impl_.question_id_.ClearToEmpty();
   _impl_.code_.ClearToEmpty();
   _impl_.language_.ClearToEmpty();
   _impl_.custom_input_.ClearToEmpty();
-  ::memset(&_impl_.submission_id_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&_impl_.retry_count_) -
-      reinterpret_cast<char*>(&_impl_.submission_id_)) + sizeof(_impl_.retry_count_));
+  ::memset(&_impl_.user_id_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.created_at_) -
+      reinterpret_cast<char*>(&_impl_.user_id_)) + sizeof(_impl_.created_at_));
+  clear_task_id();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -577,17 +661,45 @@ const char* JudgeTaskMessage::_InternalParse(const char* ptr, ::_pbi::ParseConte
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // uint32 submission_id = 1;
+      // string message_id = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
-          _impl_.submission_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_message_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj.mq.JudgeTaskMessage.message_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 submission_id = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _internal_set_submission_id(::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr));
           CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
-      // string question_id = 2;
-      case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+      // string custom_task_id = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_custom_task_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj.mq.JudgeTaskMessage.custom_task_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 user_id = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
+          _impl_.user_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string question_id = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
           auto str = _internal_mutable_question_id();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -595,17 +707,9 @@ const char* JudgeTaskMessage::_InternalParse(const char* ptr, ::_pbi::ParseConte
         } else
           goto handle_unusual;
         continue;
-      // uint32 user_id = 3;
-      case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
-          _impl_.user_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
-          CHK_(ptr);
-        } else
-          goto handle_unusual;
-        continue;
-      // string code = 4;
-      case 4:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+      // string code = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 58)) {
           auto str = _internal_mutable_code();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -613,9 +717,9 @@ const char* JudgeTaskMessage::_InternalParse(const char* ptr, ::_pbi::ParseConte
         } else
           goto handle_unusual;
         continue;
-      // string language = 5;
-      case 5:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+      // string language = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 66)) {
           auto str = _internal_mutable_language();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -623,53 +727,29 @@ const char* JudgeTaskMessage::_InternalParse(const char* ptr, ::_pbi::ParseConte
         } else
           goto handle_unusual;
         continue;
-      // bool is_custom_test = 6;
-      case 6:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
-          _impl_.is_custom_test_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+      // uint32 time_limit_ms = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 72)) {
+          _impl_.time_limit_ms_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
-      // string custom_input = 7;
-      case 7:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 58)) {
+      // uint32 memory_limit_mb = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
+          _impl_.memory_limit_mb_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string custom_input = 11;
+      case 11:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 90)) {
           auto str = _internal_mutable_custom_input();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "oj.mq.JudgeTaskMessage.custom_input"));
-        } else
-          goto handle_unusual;
-        continue;
-      // int32 time_limit = 8;
-      case 8:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
-          _impl_.time_limit_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
-          CHK_(ptr);
-        } else
-          goto handle_unusual;
-        continue;
-      // int32 memory_limit = 9;
-      case 9:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 72)) {
-          _impl_.memory_limit_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
-          CHK_(ptr);
-        } else
-          goto handle_unusual;
-        continue;
-      // int64 timestamp = 10;
-      case 10:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
-          _impl_.timestamp_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
-          CHK_(ptr);
-        } else
-          goto handle_unusual;
-        continue;
-      // uint32 retry_count = 11;
-      case 11:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 88)) {
-          _impl_.retry_count_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
-          CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
@@ -683,6 +763,22 @@ const char* JudgeTaskMessage::_InternalParse(const char* ptr, ::_pbi::ParseConte
             CHK_(ptr);
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<98>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      // int64 created_at = 13;
+      case 13:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 104)) {
+          _impl_.created_at_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 delivery_attempt = 14;
+      case 14:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 112)) {
+          _impl_.delivery_attempt_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
@@ -715,86 +811,88 @@ uint8_t* JudgeTaskMessage::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // uint32 submission_id = 1;
-  if (this->_internal_submission_id() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_submission_id(), target);
+  // string message_id = 1;
+  if (!this->_internal_message_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_message_id().data(), static_cast<int>(this->_internal_message_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj.mq.JudgeTaskMessage.message_id");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_message_id(), target);
   }
 
-  // string question_id = 2;
+  // uint64 submission_id = 3;
+  if (_internal_has_submission_id()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(3, this->_internal_submission_id(), target);
+  }
+
+  // string custom_task_id = 4;
+  if (_internal_has_custom_task_id()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_custom_task_id().data(), static_cast<int>(this->_internal_custom_task_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj.mq.JudgeTaskMessage.custom_task_id");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_custom_task_id(), target);
+  }
+
+  // uint32 user_id = 5;
+  if (this->_internal_user_id() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(5, this->_internal_user_id(), target);
+  }
+
+  // string question_id = 6;
   if (!this->_internal_question_id().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_question_id().data(), static_cast<int>(this->_internal_question_id().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "oj.mq.JudgeTaskMessage.question_id");
     target = stream->WriteStringMaybeAliased(
-        2, this->_internal_question_id(), target);
+        6, this->_internal_question_id(), target);
   }
 
-  // uint32 user_id = 3;
-  if (this->_internal_user_id() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(3, this->_internal_user_id(), target);
-  }
-
-  // string code = 4;
+  // string code = 7;
   if (!this->_internal_code().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_code().data(), static_cast<int>(this->_internal_code().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "oj.mq.JudgeTaskMessage.code");
     target = stream->WriteStringMaybeAliased(
-        4, this->_internal_code(), target);
+        7, this->_internal_code(), target);
   }
 
-  // string language = 5;
+  // string language = 8;
   if (!this->_internal_language().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_language().data(), static_cast<int>(this->_internal_language().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "oj.mq.JudgeTaskMessage.language");
     target = stream->WriteStringMaybeAliased(
-        5, this->_internal_language(), target);
+        8, this->_internal_language(), target);
   }
 
-  // bool is_custom_test = 6;
-  if (this->_internal_is_custom_test() != 0) {
+  // uint32 time_limit_ms = 9;
+  if (this->_internal_time_limit_ms() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteBoolToArray(6, this->_internal_is_custom_test(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(9, this->_internal_time_limit_ms(), target);
   }
 
-  // string custom_input = 7;
+  // uint32 memory_limit_mb = 10;
+  if (this->_internal_memory_limit_mb() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(10, this->_internal_memory_limit_mb(), target);
+  }
+
+  // string custom_input = 11;
   if (!this->_internal_custom_input().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_custom_input().data(), static_cast<int>(this->_internal_custom_input().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "oj.mq.JudgeTaskMessage.custom_input");
     target = stream->WriteStringMaybeAliased(
-        7, this->_internal_custom_input(), target);
-  }
-
-  // int32 time_limit = 8;
-  if (this->_internal_time_limit() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteInt32ToArray(8, this->_internal_time_limit(), target);
-  }
-
-  // int32 memory_limit = 9;
-  if (this->_internal_memory_limit() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteInt32ToArray(9, this->_internal_memory_limit(), target);
-  }
-
-  // int64 timestamp = 10;
-  if (this->_internal_timestamp() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteInt64ToArray(10, this->_internal_timestamp(), target);
-  }
-
-  // uint32 retry_count = 11;
-  if (this->_internal_retry_count() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(11, this->_internal_retry_count(), target);
+        11, this->_internal_custom_input(), target);
   }
 
   // repeated .oj.mq.TestCaseInput test_cases = 12;
@@ -803,6 +901,18 @@ uint8_t* JudgeTaskMessage::_InternalSerialize(
     const auto& repfield = this->_internal_test_cases(i);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
         InternalWriteMessage(12, repfield, repfield.GetCachedSize(), target, stream);
+  }
+
+  // int64 created_at = 13;
+  if (this->_internal_created_at() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt64ToArray(13, this->_internal_created_at(), target);
+  }
+
+  // uint32 delivery_attempt = 14;
+  if (this->_internal_delivery_attempt() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(14, this->_internal_delivery_attempt(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -828,69 +938,83 @@ size_t JudgeTaskMessage::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
-  // string question_id = 2;
+  // string message_id = 1;
+  if (!this->_internal_message_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_message_id());
+  }
+
+  // string question_id = 6;
   if (!this->_internal_question_id().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_question_id());
   }
 
-  // string code = 4;
+  // string code = 7;
   if (!this->_internal_code().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_code());
   }
 
-  // string language = 5;
+  // string language = 8;
   if (!this->_internal_language().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_language());
   }
 
-  // string custom_input = 7;
+  // string custom_input = 11;
   if (!this->_internal_custom_input().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_custom_input());
   }
 
-  // uint32 submission_id = 1;
-  if (this->_internal_submission_id() != 0) {
-    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_submission_id());
-  }
-
-  // uint32 user_id = 3;
+  // uint32 user_id = 5;
   if (this->_internal_user_id() != 0) {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_user_id());
   }
 
-  // bool is_custom_test = 6;
-  if (this->_internal_is_custom_test() != 0) {
-    total_size += 1 + 1;
+  // uint32 time_limit_ms = 9;
+  if (this->_internal_time_limit_ms() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_time_limit_ms());
   }
 
-  // int32 time_limit = 8;
-  if (this->_internal_time_limit() != 0) {
-    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_time_limit());
+  // uint32 memory_limit_mb = 10;
+  if (this->_internal_memory_limit_mb() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_memory_limit_mb());
   }
 
-  // int64 timestamp = 10;
-  if (this->_internal_timestamp() != 0) {
-    total_size += ::_pbi::WireFormatLite::Int64SizePlusOne(this->_internal_timestamp());
+  // uint32 delivery_attempt = 14;
+  if (this->_internal_delivery_attempt() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_delivery_attempt());
   }
 
-  // int32 memory_limit = 9;
-  if (this->_internal_memory_limit() != 0) {
-    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_memory_limit());
+  // int64 created_at = 13;
+  if (this->_internal_created_at() != 0) {
+    total_size += ::_pbi::WireFormatLite::Int64SizePlusOne(this->_internal_created_at());
   }
 
-  // uint32 retry_count = 11;
-  if (this->_internal_retry_count() != 0) {
-    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_retry_count());
+  switch (task_id_case()) {
+    // uint64 submission_id = 3;
+    case kSubmissionId: {
+      total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_submission_id());
+      break;
+    }
+    // string custom_task_id = 4;
+    case kCustomTaskId: {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_custom_task_id());
+      break;
+    }
+    case TASK_ID_NOT_SET: {
+      break;
+    }
   }
-
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -910,6 +1034,9 @@ void JudgeTaskMessage::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const
   (void) cached_has_bits;
 
   _this->_impl_.test_cases_.MergeFrom(from._impl_.test_cases_);
+  if (!from._internal_message_id().empty()) {
+    _this->_internal_set_message_id(from._internal_message_id());
+  }
   if (!from._internal_question_id().empty()) {
     _this->_internal_set_question_id(from._internal_question_id());
   }
@@ -922,26 +1049,33 @@ void JudgeTaskMessage::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const
   if (!from._internal_custom_input().empty()) {
     _this->_internal_set_custom_input(from._internal_custom_input());
   }
-  if (from._internal_submission_id() != 0) {
-    _this->_internal_set_submission_id(from._internal_submission_id());
-  }
   if (from._internal_user_id() != 0) {
     _this->_internal_set_user_id(from._internal_user_id());
   }
-  if (from._internal_is_custom_test() != 0) {
-    _this->_internal_set_is_custom_test(from._internal_is_custom_test());
+  if (from._internal_time_limit_ms() != 0) {
+    _this->_internal_set_time_limit_ms(from._internal_time_limit_ms());
   }
-  if (from._internal_time_limit() != 0) {
-    _this->_internal_set_time_limit(from._internal_time_limit());
+  if (from._internal_memory_limit_mb() != 0) {
+    _this->_internal_set_memory_limit_mb(from._internal_memory_limit_mb());
   }
-  if (from._internal_timestamp() != 0) {
-    _this->_internal_set_timestamp(from._internal_timestamp());
+  if (from._internal_delivery_attempt() != 0) {
+    _this->_internal_set_delivery_attempt(from._internal_delivery_attempt());
   }
-  if (from._internal_memory_limit() != 0) {
-    _this->_internal_set_memory_limit(from._internal_memory_limit());
+  if (from._internal_created_at() != 0) {
+    _this->_internal_set_created_at(from._internal_created_at());
   }
-  if (from._internal_retry_count() != 0) {
-    _this->_internal_set_retry_count(from._internal_retry_count());
+  switch (from.task_id_case()) {
+    case kSubmissionId: {
+      _this->_internal_set_submission_id(from._internal_submission_id());
+      break;
+    }
+    case kCustomTaskId: {
+      _this->_internal_set_custom_task_id(from._internal_custom_task_id());
+      break;
+    }
+    case TASK_ID_NOT_SET: {
+      break;
+    }
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -964,6 +1098,10 @@ void JudgeTaskMessage::InternalSwap(JudgeTaskMessage* other) {
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   _impl_.test_cases_.InternalSwap(&other->_impl_.test_cases_);
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.message_id_, lhs_arena,
+      &other->_impl_.message_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.question_id_, lhs_arena,
       &other->_impl_.question_id_, rhs_arena
   );
@@ -980,428 +1118,19 @@ void JudgeTaskMessage::InternalSwap(JudgeTaskMessage* other) {
       &other->_impl_.custom_input_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(JudgeTaskMessage, _impl_.retry_count_)
-      + sizeof(JudgeTaskMessage::_impl_.retry_count_)
-      - PROTOBUF_FIELD_OFFSET(JudgeTaskMessage, _impl_.submission_id_)>(
-          reinterpret_cast<char*>(&_impl_.submission_id_),
-          reinterpret_cast<char*>(&other->_impl_.submission_id_));
+      PROTOBUF_FIELD_OFFSET(JudgeTaskMessage, _impl_.created_at_)
+      + sizeof(JudgeTaskMessage::_impl_.created_at_)
+      - PROTOBUF_FIELD_OFFSET(JudgeTaskMessage, _impl_.user_id_)>(
+          reinterpret_cast<char*>(&_impl_.user_id_),
+          reinterpret_cast<char*>(&other->_impl_.user_id_));
+  swap(_impl_.task_id_, other->_impl_.task_id_);
+  swap(_impl_._oneof_case_[0], other->_impl_._oneof_case_[0]);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata JudgeTaskMessage::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_mq_5fmessage_2eproto_getter, &descriptor_table_mq_5fmessage_2eproto_once,
       file_level_metadata_mq_5fmessage_2eproto[1]);
-}
-
-// ===================================================================
-
-class JudgeResultCallback::_Internal {
- public:
-};
-
-JudgeResultCallback::JudgeResultCallback(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
-  // @@protoc_insertion_point(arena_constructor:oj.mq.JudgeResultCallback)
-}
-JudgeResultCallback::JudgeResultCallback(const JudgeResultCallback& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  JudgeResultCallback* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_.status_){}
-    , decltype(_impl_.compile_error_){}
-    , decltype(_impl_.test_cases_json_){}
-    , decltype(_impl_.submission_id_){}
-    , decltype(_impl_.time_used_ms_){}
-    , decltype(_impl_.memory_used_bytes_){}
-    , decltype(_impl_.completed_at_){}
-    , /*decltype(_impl_._cached_size_)*/{}};
-
-  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.status_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.status_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_status().empty()) {
-    _this->_impl_.status_.Set(from._internal_status(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.compile_error_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.compile_error_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_compile_error().empty()) {
-    _this->_impl_.compile_error_.Set(from._internal_compile_error(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.test_cases_json_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.test_cases_json_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_test_cases_json().empty()) {
-    _this->_impl_.test_cases_json_.Set(from._internal_test_cases_json(), 
-      _this->GetArenaForAllocation());
-  }
-  ::memcpy(&_impl_.submission_id_, &from._impl_.submission_id_,
-    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.completed_at_) -
-    reinterpret_cast<char*>(&_impl_.submission_id_)) + sizeof(_impl_.completed_at_));
-  // @@protoc_insertion_point(copy_constructor:oj.mq.JudgeResultCallback)
-}
-
-inline void JudgeResultCallback::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_.status_){}
-    , decltype(_impl_.compile_error_){}
-    , decltype(_impl_.test_cases_json_){}
-    , decltype(_impl_.submission_id_){0u}
-    , decltype(_impl_.time_used_ms_){0}
-    , decltype(_impl_.memory_used_bytes_){int64_t{0}}
-    , decltype(_impl_.completed_at_){int64_t{0}}
-    , /*decltype(_impl_._cached_size_)*/{}
-  };
-  _impl_.status_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.status_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.compile_error_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.compile_error_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.test_cases_json_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.test_cases_json_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-}
-
-JudgeResultCallback::~JudgeResultCallback() {
-  // @@protoc_insertion_point(destructor:oj.mq.JudgeResultCallback)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
-  SharedDtor();
-}
-
-inline void JudgeResultCallback::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.status_.Destroy();
-  _impl_.compile_error_.Destroy();
-  _impl_.test_cases_json_.Destroy();
-}
-
-void JudgeResultCallback::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
-}
-
-void JudgeResultCallback::Clear() {
-// @@protoc_insertion_point(message_clear_start:oj.mq.JudgeResultCallback)
-  uint32_t cached_has_bits = 0;
-  // Prevent compiler warnings about cached_has_bits being unused
-  (void) cached_has_bits;
-
-  _impl_.status_.ClearToEmpty();
-  _impl_.compile_error_.ClearToEmpty();
-  _impl_.test_cases_json_.ClearToEmpty();
-  ::memset(&_impl_.submission_id_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&_impl_.completed_at_) -
-      reinterpret_cast<char*>(&_impl_.submission_id_)) + sizeof(_impl_.completed_at_));
-  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
-}
-
-const char* JudgeResultCallback::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
-#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
-  while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
-    switch (tag >> 3) {
-      // uint32 submission_id = 1;
-      case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
-          _impl_.submission_id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
-          CHK_(ptr);
-        } else
-          goto handle_unusual;
-        continue;
-      // string status = 2;
-      case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
-          auto str = _internal_mutable_status();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "oj.mq.JudgeResultCallback.status"));
-        } else
-          goto handle_unusual;
-        continue;
-      // int32 time_used_ms = 3;
-      case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
-          _impl_.time_used_ms_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
-          CHK_(ptr);
-        } else
-          goto handle_unusual;
-        continue;
-      // int64 memory_used_bytes = 4;
-      case 4:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
-          _impl_.memory_used_bytes_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
-          CHK_(ptr);
-        } else
-          goto handle_unusual;
-        continue;
-      // string compile_error = 5;
-      case 5:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
-          auto str = _internal_mutable_compile_error();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "oj.mq.JudgeResultCallback.compile_error"));
-        } else
-          goto handle_unusual;
-        continue;
-      // string test_cases_json = 6;
-      case 6:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
-          auto str = _internal_mutable_test_cases_json();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "oj.mq.JudgeResultCallback.test_cases_json"));
-        } else
-          goto handle_unusual;
-        continue;
-      // int64 completed_at = 7;
-      case 7:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 56)) {
-          _impl_.completed_at_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
-          CHK_(ptr);
-        } else
-          goto handle_unusual;
-        continue;
-      default:
-        goto handle_unusual;
-    }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
-  }  // while
-message_done:
-  return ptr;
-failure:
-  ptr = nullptr;
-  goto message_done;
-#undef CHK_
-}
-
-uint8_t* JudgeResultCallback::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:oj.mq.JudgeResultCallback)
-  uint32_t cached_has_bits = 0;
-  (void) cached_has_bits;
-
-  // uint32 submission_id = 1;
-  if (this->_internal_submission_id() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_submission_id(), target);
-  }
-
-  // string status = 2;
-  if (!this->_internal_status().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_status().data(), static_cast<int>(this->_internal_status().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "oj.mq.JudgeResultCallback.status");
-    target = stream->WriteStringMaybeAliased(
-        2, this->_internal_status(), target);
-  }
-
-  // int32 time_used_ms = 3;
-  if (this->_internal_time_used_ms() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteInt32ToArray(3, this->_internal_time_used_ms(), target);
-  }
-
-  // int64 memory_used_bytes = 4;
-  if (this->_internal_memory_used_bytes() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteInt64ToArray(4, this->_internal_memory_used_bytes(), target);
-  }
-
-  // string compile_error = 5;
-  if (!this->_internal_compile_error().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_compile_error().data(), static_cast<int>(this->_internal_compile_error().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "oj.mq.JudgeResultCallback.compile_error");
-    target = stream->WriteStringMaybeAliased(
-        5, this->_internal_compile_error(), target);
-  }
-
-  // string test_cases_json = 6;
-  if (!this->_internal_test_cases_json().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_test_cases_json().data(), static_cast<int>(this->_internal_test_cases_json().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "oj.mq.JudgeResultCallback.test_cases_json");
-    target = stream->WriteStringMaybeAliased(
-        6, this->_internal_test_cases_json(), target);
-  }
-
-  // int64 completed_at = 7;
-  if (this->_internal_completed_at() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteInt64ToArray(7, this->_internal_completed_at(), target);
-  }
-
-  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
-        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
-  }
-  // @@protoc_insertion_point(serialize_to_array_end:oj.mq.JudgeResultCallback)
-  return target;
-}
-
-size_t JudgeResultCallback::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:oj.mq.JudgeResultCallback)
-  size_t total_size = 0;
-
-  uint32_t cached_has_bits = 0;
-  // Prevent compiler warnings about cached_has_bits being unused
-  (void) cached_has_bits;
-
-  // string status = 2;
-  if (!this->_internal_status().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_status());
-  }
-
-  // string compile_error = 5;
-  if (!this->_internal_compile_error().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_compile_error());
-  }
-
-  // string test_cases_json = 6;
-  if (!this->_internal_test_cases_json().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_test_cases_json());
-  }
-
-  // uint32 submission_id = 1;
-  if (this->_internal_submission_id() != 0) {
-    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_submission_id());
-  }
-
-  // int32 time_used_ms = 3;
-  if (this->_internal_time_used_ms() != 0) {
-    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_time_used_ms());
-  }
-
-  // int64 memory_used_bytes = 4;
-  if (this->_internal_memory_used_bytes() != 0) {
-    total_size += ::_pbi::WireFormatLite::Int64SizePlusOne(this->_internal_memory_used_bytes());
-  }
-
-  // int64 completed_at = 7;
-  if (this->_internal_completed_at() != 0) {
-    total_size += ::_pbi::WireFormatLite::Int64SizePlusOne(this->_internal_completed_at());
-  }
-
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
-}
-
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData JudgeResultCallback::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    JudgeResultCallback::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*JudgeResultCallback::GetClassData() const { return &_class_data_; }
-
-
-void JudgeResultCallback::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<JudgeResultCallback*>(&to_msg);
-  auto& from = static_cast<const JudgeResultCallback&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:oj.mq.JudgeResultCallback)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
-  (void) cached_has_bits;
-
-  if (!from._internal_status().empty()) {
-    _this->_internal_set_status(from._internal_status());
-  }
-  if (!from._internal_compile_error().empty()) {
-    _this->_internal_set_compile_error(from._internal_compile_error());
-  }
-  if (!from._internal_test_cases_json().empty()) {
-    _this->_internal_set_test_cases_json(from._internal_test_cases_json());
-  }
-  if (from._internal_submission_id() != 0) {
-    _this->_internal_set_submission_id(from._internal_submission_id());
-  }
-  if (from._internal_time_used_ms() != 0) {
-    _this->_internal_set_time_used_ms(from._internal_time_used_ms());
-  }
-  if (from._internal_memory_used_bytes() != 0) {
-    _this->_internal_set_memory_used_bytes(from._internal_memory_used_bytes());
-  }
-  if (from._internal_completed_at() != 0) {
-    _this->_internal_set_completed_at(from._internal_completed_at());
-  }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-}
-
-void JudgeResultCallback::CopyFrom(const JudgeResultCallback& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:oj.mq.JudgeResultCallback)
-  if (&from == this) return;
-  Clear();
-  MergeFrom(from);
-}
-
-bool JudgeResultCallback::IsInitialized() const {
-  return true;
-}
-
-void JudgeResultCallback::InternalSwap(JudgeResultCallback* other) {
-  using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.status_, lhs_arena,
-      &other->_impl_.status_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.compile_error_, lhs_arena,
-      &other->_impl_.compile_error_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.test_cases_json_, lhs_arena,
-      &other->_impl_.test_cases_json_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(JudgeResultCallback, _impl_.completed_at_)
-      + sizeof(JudgeResultCallback::_impl_.completed_at_)
-      - PROTOBUF_FIELD_OFFSET(JudgeResultCallback, _impl_.submission_id_)>(
-          reinterpret_cast<char*>(&_impl_.submission_id_),
-          reinterpret_cast<char*>(&other->_impl_.submission_id_));
-}
-
-::PROTOBUF_NAMESPACE_ID::Metadata JudgeResultCallback::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_mq_5fmessage_2eproto_getter, &descriptor_table_mq_5fmessage_2eproto_once,
-      file_level_metadata_mq_5fmessage_2eproto[2]);
 }
 
 // @@protoc_insertion_point(namespace_scope)
@@ -1415,10 +1144,6 @@ Arena::CreateMaybeMessage< ::oj::mq::TestCaseInput >(Arena* arena) {
 template<> PROTOBUF_NOINLINE ::oj::mq::JudgeTaskMessage*
 Arena::CreateMaybeMessage< ::oj::mq::JudgeTaskMessage >(Arena* arena) {
   return Arena::CreateMessageInternal< ::oj::mq::JudgeTaskMessage >(arena);
-}
-template<> PROTOBUF_NOINLINE ::oj::mq::JudgeResultCallback*
-Arena::CreateMaybeMessage< ::oj::mq::JudgeResultCallback >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::oj::mq::JudgeResultCallback >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

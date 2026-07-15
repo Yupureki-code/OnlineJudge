@@ -2,23 +2,24 @@ syntax = "proto3";
 package oj_judge;
 option cc_generic_services = true;
 
-// ==================== 判题请求/响应 ====================
-
+// Transitional Phase 2 messages. New MQ producers must publish
+// oj.mq.JudgeTaskMessage and new result callbacks must use
+// oj.biz.UpdateJudgeResultRequest. These remain only so the completed Judge
+// implementation keeps building until its Phase 7 migration.
 message SubmitRequest {
-    uint32 submission_id = 1;   // Business Service 生成的提交记录 ID
+    uint32 submission_id = 1;
     string question_id = 2;
     uint32 user_id = 3;
     string code = 4;
     uint64 timestamp = 5;
-    string language = 6;        // cpp/python/java
-    int32 time_limit = 7;        // ms
-    int32 memory_limit = 8;      // MB
+    string language = 6;
+    int32 time_limit = 7;
+    int32 memory_limit = 8;
     bool is_custom_test = 9;
     string custom_input = 10;
 }
 
-enum SubmitResult
-{
+enum SubmitResult {
     AC = 0;
     WA = 1;
     COMPILE_ERROR = 2;
@@ -30,7 +31,7 @@ enum SubmitResult
     UNKNOWN = 8;
 }
 
-message SubmitStatus{
+message SubmitStatus {
     int32 time_cost = 1;
     int32 memory_cost = 2;
     SubmitResult result = 3;
@@ -43,40 +44,16 @@ message JudgeFinishedRequest {
     repeated SubmitStatus status_list = 4;
 }
 
-// ==================== 判题结果 ====================
-
-message DockerWorkDoneRequest{
-    string id = 1;       // task_id → 找到存储的协程句柄
-    string status = 2;   // OK / COMPILE_ERROR / MEMORY_LIMIT / SEGV / FPE / TIME_LIMIT
-    int32  exit_code = 3; // 进程退出码
+// This callback is part of the existing Docker sandbox protocol and remains
+// available while Judge migrates to the canonical MQ and result contracts.
+message DockerWorkDoneRequest {
+    string id = 1;
+    string status = 2;
+    int32 exit_code = 3;
 }
 
-message NullRsp{}
-
-message TestCaseResult {
-    int32 index = 1;
-    string status = 2;       // AC/WA/TLE/MLE/RTE
-    int32 time_ms = 3;
-    int64 memory_bytes = 4;
-    string diff_info = 5;
-}
-
-message JudgeResult {
-    uint32 submission_id = 1;
-    string status = 2;           // AC/WA/TLE/MLE/CE/RTE/PENDING/JUDGING
-    int32 time_used_ms = 3;
-    int64 memory_used_bytes = 4;
-    string compile_error = 5;
-    repeated TestCaseResult test_cases = 6;
-}
-
-message GetStatusRequest {
-    uint32 submission_id = 1;
-}
-
-// ==================== JudgeService ====================
+message NullRsp {}
 
 service JudgeService {
-    // 容器内脚本完成时回调（编译容器/运行容器都会调用）
     rpc DockerWorkDone(DockerWorkDoneRequest) returns (NullRsp);
 }

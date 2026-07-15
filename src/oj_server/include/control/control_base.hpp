@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Logger/logstrategy.h>
 #include <cstdio>
 #include <assert.h>
 #include <string>
@@ -31,7 +30,6 @@
 namespace ns_control
 {
     using namespace ns_model;
-    using namespace ns_log;
     using namespace oj_util;
     using namespace ns_view;
     using namespace ns_session;
@@ -95,12 +93,12 @@ namespace ns_control
         CentralConsole()
         {
             assert(LoadConf(machine_conf));
-            logger(ns_log::INFO)<<"加载 "<<machine_conf<<" 成功";
+            LOG_INFO("{}{}{}", "加载 ", machine_conf, " 成功");
         }
         //加载配置文件:配置编译服务器
         bool LoadConf(const std::string& conf)
         {
-            logger(ns_log::DEBUG)<<"conf : "<<conf;
+            LOG_DEBUG("{}{}", "conf : ", conf);
             std::ifstream in(conf);
             if(!in.is_open())
                 return false;
@@ -112,13 +110,13 @@ namespace ns_control
                 StringUtil::SplitString(line, space, &v);
                 if(v.size() != 2)
                 {
-                    logger(ns_log::WARNING) <<"配置服务器 "<<line<<" 失败";
+                    LOG_WARNING("{}{}{}", "配置服务器 ", line, " 失败");
                     continue;
                 }
                 Machine machine(v[0],std::stoi(v[1]));
                 _online.push_back(_machines.size());
                 _machines.push_back(machine);
-                logger(ns_log::INFO)<<"配置服务器 "<<v[0]<<":"<<v[1]<<" 成功";
+                LOG_INFO("{}{}{}{}{}", "配置服务器 ", v[0], ":", v[1], " 成功");
             }
             in.close();
             return true;
@@ -129,7 +127,7 @@ namespace ns_control
             _mtx.lock();
             if(_online.size() == 0)
             {
-                logger(ns_log::FATAL)<<"服务器全挂!";
+                LOG_CRITICAL("{}", "服务器全挂!");
                 _mtx.unlock();
                 return false;
             }
@@ -172,7 +170,7 @@ namespace ns_control
             _online.insert(_online.end(), _offline.begin(), _offline.end());
             _offline.erase(_offline.begin(), _offline.end());
             _mtx.unlock();
-            logger(INFO) << "所有的主机都上线啦!" << "\n";
+            LOG_INFO("{}", "所有的主机都上线啦!");
         }
         //DEBUG::显示目前的主机情况
         void ShowMachines()
@@ -241,21 +239,21 @@ namespace ns_control
                 }
                 httplib::Client cli(m->Ip(), m->Port());
                 m->Inload();
-                logger(INFO) << " 选择主机成功, 主机id: " << id << " 详情: " << m->Ip() << ":" << m->Port() << " 当前主机的负载是: " << m->Load() << "\n";
+                LOG_INFO("{}{}{}{}{}{}{}{}", " 选择主机成功, 主机id: ", id, " 详情: ", m->Ip(), ":", m->Port(), " 当前主机的负载是: ", m->Load());
                 if(auto res = cli.Post("/compile_and_run", compile_string, "application/json;charset=utf-8"))
                 {
                     if(res->status == 200)
                     {
                         *out_json = res->body;
                         m->Deload();
-                        logger(INFO) << "请求编译和运行服务成功..." << "\n";
+                        LOG_INFO("{}", "请求编译和运行服务成功...");
                         break;
                     }
                     m->Deload();
                 }
                 else
                 {
-                    logger(ERROR) << " 当前请求的主机id: " << id << " 详情: " << m->Ip()<< ":" << m->Port() << " 可能已经离线"<< "\n";
+                    LOG_ERROR("{}{}{}{}{}{}{}", " 当前请求的主机id: ", id, " 详情: ", m->Ip(), ":", m->Port(), " 可能已经离线");
                     _console.OfflineMachine(id);
                     _console.ShowMachines();
                 }
@@ -273,11 +271,11 @@ namespace ns_control
                 bool ok = _view.GetStaticHtml(path, html, &view_cache_hit, true);
                 if (ok)
                 {
-                    logger(INFO) << "[html_cache][static] bypass=1 page=" << path << " source=disk";
+                    LOG_INFO("{}{}{}", "[html_cache][static] bypass=1 page=", path, " source=disk");
                 }
                 else 
                 {
-                    logger(FATAL) << "[html_cache][static] bypass=0 page=" << path << " source=disk";
+                    LOG_CRITICAL("{}{}{}", "[html_cache][static] bypass=0 page=", path, " source=disk");
                 }
                 return ok;
             }
@@ -286,7 +284,7 @@ namespace ns_control
             if (_model.GetHtmlPage(html, html_key))
             {
                 _model.RecordCacheMetrics(ModelBase::RecordActionType::Question, true, false, 0);
-                logger(INFO) << "[html_cache][static] hit=1 page=" << path << " source=redis";
+                LOG_INFO("{}{}{}", "[html_cache][static] hit=1 page=", path, " source=redis");
                 return true;
             }
 
@@ -296,8 +294,7 @@ namespace ns_control
             if (ok)
             {
                 _model.SetHtmlPage(html, html_key);
-                logger(INFO) << "[html_cache][static] hit=0 page=" << path
-                             << " source=" << (view_cache_hit ? "view_mem" : "disk");
+                LOG_INFO("{}{}{}{}", "[html_cache][static] hit=0 page=", path, " source=", (view_cache_hit ? "view_mem" : "disk"));
             }
             return ok;
         }
@@ -310,7 +307,7 @@ namespace ns_control
             }
             auto html_key = _model.Question().BuildHtmlCacheKey(path, Cache::CacheKey::PageType::kHtml);
             _model.InvalidatePage(html_key);
-            logger(INFO) << "[cache] static html invalidated page=" << path;
+            LOG_INFO("{}{}", "[cache] static html invalidated page=", path);
             return true;
         }
 

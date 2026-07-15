@@ -12,7 +12,6 @@
 
 namespace oj_judge 
 {
-    using namespace ns_logger;
 /// 判题结果回传器：通过 brpc RPC 调用 Business Service 更新判题结果
 ///
 /// 判题完成后，Judge Service 需要将结果通知 Business Service
@@ -44,18 +43,17 @@ public:
     bool ReportResult(const JudgeFinishedRequest& request) 
     {
         if (!_stub) return false;
-        std::string out;
-        request.SerializeToString(&out);
-        LOG_DEBUG("JudgeFinishedRequest : {}",out);
+        LOG_DEBUG("Reporting judge result submission_id={} status_count={}",
+                  request.submission_id(), request.status_list_size());
         oj_judge::NullRsp resp;
         brpc::Controller cntl;
         cntl.set_timeout_ms(5000);
 
         // 调用 Business Service 的 UpdateJudgeResult RPC
-        _stub->UpdateJudgeResult(&cntl, &request, &resp, nullptr);
+        _stub->LegacyUpdateJudgeResult(&cntl, &request, &resp, nullptr);
 
         if (cntl.Failed()) {
-            LOG(ERROR) << "ReportResult failed: " << cntl.ErrorText();
+            LOG_ERROR("ReportResult failed: {}", cntl.ErrorText());
             return false;
         }
 
@@ -73,8 +71,8 @@ public:
             // 指数退避：100ms, 200ms, 400ms
             std::this_thread::sleep_for(std::chrono::milliseconds(100 * (1 << i)));
         }
-        LOG(ERROR) << "ReportResult failed after " << max_retries << " retries"
-                   << ", submission_id=" << request.submission_id();
+        LOG_ERROR("ReportResult failed after {} retries, submission_id={}",
+                  max_retries, request.submission_id());
         return false;
     }
 

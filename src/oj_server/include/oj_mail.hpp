@@ -5,7 +5,6 @@
 #include <cstring>
 #include <cstdlib>
 #include <curl/curl.h>
-#include <Logger/logstrategy.h>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -14,7 +13,6 @@
 
 namespace ns_mail
 {
-    using namespace ns_log;
     using namespace oj_util;
     struct MailSendResult
     {
@@ -63,7 +61,7 @@ namespace ns_mail
             }
             if (from_email != user_email)
             {
-                logger(WARNING) << "smtp_from differs from smtp_user, fallback to smtp_user";
+                LOG_WARNING("{}", "smtp_from differs from smtp_user, fallback to smtp_user");
                 return user_email;
             }
             return from_email;
@@ -226,12 +224,10 @@ namespace ns_mail
                 long smtp_response_code = 0;
                 curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &smtp_response_code);
                 result.error = error_buffer[0] != '\0' ? std::string(error_buffer) : std::string(curl_easy_strerror(res));
-                logger(ERROR) << "Send mail failed by libcurl, code=" << static_cast<int>(res)
-                              << " smtp_reply=" << smtp_response_code
-                              << " detail=" << result.error;
+                LOG_ERROR("{}{}{}{}{}{}", "Send mail failed by libcurl, code=", static_cast<int>(res), " smtp_reply=", smtp_response_code, " detail=", result.error);
                 if (!dbg.server_lines.empty())
                 {
-                    logger(ERROR) << "SMTP transcript: " << dbg.server_lines;
+                    LOG_ERROR("SMTP server returned diagnostic transcript");
                 }
             }
             else

@@ -11,14 +11,12 @@
 #include <chrono>
 #include <atomic>
 #include <map>
-#include <Logger/logstrategy.h>
 #include "../../../comm/comm.hpp"
 #include "../oj_cache.hpp"
 #include <mysql/mysql.h>
 
 namespace ns_model
 {
-    using namespace ns_log;
     using namespace ns_cache;
 
     class ModelBase
@@ -69,7 +67,7 @@ namespace ns_model
                 if (mysql_real_connect(conn, host.c_str(), user.c_str(), passwd.c_str(),
                                        db.c_str(), port, nullptr, 0) == nullptr)
                 {
-                    logger(ns_log::FATAL) << "MySql连接失败!";
+                    LOG_CRITICAL("{}", "MySql连接失败!");
                     mysql_close(conn);
                     conn = nullptr;
                 }
@@ -83,13 +81,13 @@ namespace ns_model
             MYSQL* my = mysql_init(nullptr);
             if (my == nullptr)
             {
-                logger(ns_log::FATAL) << "MySql初始化失败!";
+                LOG_CRITICAL("{}", "MySql初始化失败!");
                 return MySqlConn(nullptr, mysql_close);
             }
 
             if (mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0) == nullptr)
             {
-                logger(ns_log::FATAL) << "MySql连接失败!";
+                LOG_CRITICAL("{}", "MySql连接失败!");
                 mysql_close(my);
                 return MySqlConn(nullptr, mysql_close);
             }
@@ -112,13 +110,13 @@ namespace ns_model
         {
             if (mysql_query(my, sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL) << error_msg << ": " << mysql_error(my);
+                LOG_CRITICAL("{}{}{}", error_msg, ": ", mysql_error(my));
                 return nullptr;
             }
             MYSQL_RES* res = mysql_store_result(my);
             if (res == nullptr)
             {
-                logger(ns_log::FATAL) << error_msg << " (结果集为空)";
+                LOG_CRITICAL("{}{}", error_msg, " (结果集为空)");
                 return nullptr;
             }
             return res;
@@ -188,8 +186,7 @@ namespace ns_model
                 return false;
             if(mysql_query(my.get(), sql.c_str()) != 0)
             {
-                logger(ns_log::FATAL) << "MySql执行错误! errno=" << mysql_errno(my.get())
-                                      << " error=" << mysql_error(my.get());
+                LOG_CRITICAL("{}{}{}{}", "MySql执行错误! errno=", mysql_errno(my.get()), " error=", mysql_error(my.get()));
                 return false;
             }
             return true;

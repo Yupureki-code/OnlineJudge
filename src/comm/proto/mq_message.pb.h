@@ -46,9 +46,6 @@ struct TableStruct_mq_5fmessage_2eproto {
 extern const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_mq_5fmessage_2eproto;
 namespace oj {
 namespace mq {
-class JudgeResultCallback;
-struct JudgeResultCallbackDefaultTypeInternal;
-extern JudgeResultCallbackDefaultTypeInternal _JudgeResultCallback_default_instance_;
 class JudgeTaskMessage;
 struct JudgeTaskMessageDefaultTypeInternal;
 extern JudgeTaskMessageDefaultTypeInternal _JudgeTaskMessage_default_instance_;
@@ -58,7 +55,6 @@ extern TestCaseInputDefaultTypeInternal _TestCaseInput_default_instance_;
 }  // namespace mq
 }  // namespace oj
 PROTOBUF_NAMESPACE_OPEN
-template<> ::oj::mq::JudgeResultCallback* Arena::CreateMaybeMessage<::oj::mq::JudgeResultCallback>(Arena*);
 template<> ::oj::mq::JudgeTaskMessage* Arena::CreateMaybeMessage<::oj::mq::JudgeTaskMessage>(Arena*);
 template<> ::oj::mq::TestCaseInput* Arena::CreateMaybeMessage<::oj::mq::TestCaseInput>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
@@ -188,10 +184,12 @@ class TestCaseInput final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kInputFieldNumber = 1,
-    kExpectedOutputFieldNumber = 2,
+    kInputFieldNumber = 3,
+    kExpectedOutputFieldNumber = 4,
+    kTestCaseIdFieldNumber = 1,
+    kIndexFieldNumber = 2,
   };
-  // string input = 1;
+  // string input = 3;
   void clear_input();
   const std::string& input() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -205,7 +203,7 @@ class TestCaseInput final :
   std::string* _internal_mutable_input();
   public:
 
-  // string expected_output = 2;
+  // string expected_output = 4;
   void clear_expected_output();
   const std::string& expected_output() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -219,6 +217,24 @@ class TestCaseInput final :
   std::string* _internal_mutable_expected_output();
   public:
 
+  // uint64 test_case_id = 1;
+  void clear_test_case_id();
+  uint64_t test_case_id() const;
+  void set_test_case_id(uint64_t value);
+  private:
+  uint64_t _internal_test_case_id() const;
+  void _internal_set_test_case_id(uint64_t value);
+  public:
+
+  // uint32 index = 2;
+  void clear_index();
+  uint32_t index() const;
+  void set_index(uint32_t value);
+  private:
+  uint32_t _internal_index() const;
+  void _internal_set_index(uint32_t value);
+  public:
+
   // @@protoc_insertion_point(class_scope:oj.mq.TestCaseInput)
  private:
   class _Internal;
@@ -229,6 +245,8 @@ class TestCaseInput final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr input_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr expected_output_;
+    uint64_t test_case_id_;
+    uint32_t index_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -279,6 +297,12 @@ class JudgeTaskMessage final :
   static const JudgeTaskMessage& default_instance() {
     return *internal_default_instance();
   }
+  enum TaskIdCase {
+    kSubmissionId = 3,
+    kCustomTaskId = 4,
+    TASK_ID_NOT_SET = 0,
+  };
+
   static inline const JudgeTaskMessage* internal_default_instance() {
     return reinterpret_cast<const JudgeTaskMessage*>(
                &_JudgeTaskMessage_default_instance_);
@@ -358,17 +382,18 @@ class JudgeTaskMessage final :
 
   enum : int {
     kTestCasesFieldNumber = 12,
-    kQuestionIdFieldNumber = 2,
-    kCodeFieldNumber = 4,
-    kLanguageFieldNumber = 5,
-    kCustomInputFieldNumber = 7,
-    kSubmissionIdFieldNumber = 1,
-    kUserIdFieldNumber = 3,
-    kIsCustomTestFieldNumber = 6,
-    kTimeLimitFieldNumber = 8,
-    kTimestampFieldNumber = 10,
-    kMemoryLimitFieldNumber = 9,
-    kRetryCountFieldNumber = 11,
+    kMessageIdFieldNumber = 1,
+    kQuestionIdFieldNumber = 6,
+    kCodeFieldNumber = 7,
+    kLanguageFieldNumber = 8,
+    kCustomInputFieldNumber = 11,
+    kUserIdFieldNumber = 5,
+    kTimeLimitMsFieldNumber = 9,
+    kMemoryLimitMbFieldNumber = 10,
+    kDeliveryAttemptFieldNumber = 14,
+    kCreatedAtFieldNumber = 13,
+    kSubmissionIdFieldNumber = 3,
+    kCustomTaskIdFieldNumber = 4,
   };
   // repeated .oj.mq.TestCaseInput test_cases = 12;
   int test_cases_size() const;
@@ -388,7 +413,21 @@ class JudgeTaskMessage final :
   const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::oj::mq::TestCaseInput >&
       test_cases() const;
 
-  // string question_id = 2;
+  // string message_id = 1;
+  void clear_message_id();
+  const std::string& message_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_message_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_message_id();
+  PROTOBUF_NODISCARD std::string* release_message_id();
+  void set_allocated_message_id(std::string* message_id);
+  private:
+  const std::string& _internal_message_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_message_id(const std::string& value);
+  std::string* _internal_mutable_message_id();
+  public:
+
+  // string question_id = 6;
   void clear_question_id();
   const std::string& question_id() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -402,7 +441,7 @@ class JudgeTaskMessage final :
   std::string* _internal_mutable_question_id();
   public:
 
-  // string code = 4;
+  // string code = 7;
   void clear_code();
   const std::string& code() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -416,7 +455,7 @@ class JudgeTaskMessage final :
   std::string* _internal_mutable_code();
   public:
 
-  // string language = 5;
+  // string language = 8;
   void clear_language();
   const std::string& language() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -430,7 +469,7 @@ class JudgeTaskMessage final :
   std::string* _internal_mutable_language();
   public:
 
-  // string custom_input = 7;
+  // string custom_input = 11;
   void clear_custom_input();
   const std::string& custom_input() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -444,16 +483,7 @@ class JudgeTaskMessage final :
   std::string* _internal_mutable_custom_input();
   public:
 
-  // uint32 submission_id = 1;
-  void clear_submission_id();
-  uint32_t submission_id() const;
-  void set_submission_id(uint32_t value);
-  private:
-  uint32_t _internal_submission_id() const;
-  void _internal_set_submission_id(uint32_t value);
-  public:
-
-  // uint32 user_id = 3;
+  // uint32 user_id = 5;
   void clear_user_id();
   uint32_t user_id() const;
   void set_user_id(uint32_t value);
@@ -462,301 +492,108 @@ class JudgeTaskMessage final :
   void _internal_set_user_id(uint32_t value);
   public:
 
-  // bool is_custom_test = 6;
-  void clear_is_custom_test();
-  bool is_custom_test() const;
-  void set_is_custom_test(bool value);
+  // uint32 time_limit_ms = 9;
+  void clear_time_limit_ms();
+  uint32_t time_limit_ms() const;
+  void set_time_limit_ms(uint32_t value);
   private:
-  bool _internal_is_custom_test() const;
-  void _internal_set_is_custom_test(bool value);
+  uint32_t _internal_time_limit_ms() const;
+  void _internal_set_time_limit_ms(uint32_t value);
   public:
 
-  // int32 time_limit = 8;
-  void clear_time_limit();
-  int32_t time_limit() const;
-  void set_time_limit(int32_t value);
+  // uint32 memory_limit_mb = 10;
+  void clear_memory_limit_mb();
+  uint32_t memory_limit_mb() const;
+  void set_memory_limit_mb(uint32_t value);
   private:
-  int32_t _internal_time_limit() const;
-  void _internal_set_time_limit(int32_t value);
+  uint32_t _internal_memory_limit_mb() const;
+  void _internal_set_memory_limit_mb(uint32_t value);
   public:
 
-  // int64 timestamp = 10;
-  void clear_timestamp();
-  int64_t timestamp() const;
-  void set_timestamp(int64_t value);
+  // uint32 delivery_attempt = 14;
+  void clear_delivery_attempt();
+  uint32_t delivery_attempt() const;
+  void set_delivery_attempt(uint32_t value);
   private:
-  int64_t _internal_timestamp() const;
-  void _internal_set_timestamp(int64_t value);
+  uint32_t _internal_delivery_attempt() const;
+  void _internal_set_delivery_attempt(uint32_t value);
   public:
 
-  // int32 memory_limit = 9;
-  void clear_memory_limit();
-  int32_t memory_limit() const;
-  void set_memory_limit(int32_t value);
+  // int64 created_at = 13;
+  void clear_created_at();
+  int64_t created_at() const;
+  void set_created_at(int64_t value);
   private:
-  int32_t _internal_memory_limit() const;
-  void _internal_set_memory_limit(int32_t value);
+  int64_t _internal_created_at() const;
+  void _internal_set_created_at(int64_t value);
   public:
 
-  // uint32 retry_count = 11;
-  void clear_retry_count();
-  uint32_t retry_count() const;
-  void set_retry_count(uint32_t value);
+  // uint64 submission_id = 3;
+  bool has_submission_id() const;
   private:
-  uint32_t _internal_retry_count() const;
-  void _internal_set_retry_count(uint32_t value);
+  bool _internal_has_submission_id() const;
+  public:
+  void clear_submission_id();
+  uint64_t submission_id() const;
+  void set_submission_id(uint64_t value);
+  private:
+  uint64_t _internal_submission_id() const;
+  void _internal_set_submission_id(uint64_t value);
   public:
 
+  // string custom_task_id = 4;
+  bool has_custom_task_id() const;
+  private:
+  bool _internal_has_custom_task_id() const;
+  public:
+  void clear_custom_task_id();
+  const std::string& custom_task_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_custom_task_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_custom_task_id();
+  PROTOBUF_NODISCARD std::string* release_custom_task_id();
+  void set_allocated_custom_task_id(std::string* custom_task_id);
+  private:
+  const std::string& _internal_custom_task_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_custom_task_id(const std::string& value);
+  std::string* _internal_mutable_custom_task_id();
+  public:
+
+  void clear_task_id();
+  TaskIdCase task_id_case() const;
   // @@protoc_insertion_point(class_scope:oj.mq.JudgeTaskMessage)
  private:
   class _Internal;
+  void set_has_submission_id();
+  void set_has_custom_task_id();
+
+  inline bool has_task_id() const;
+  inline void clear_has_task_id();
 
   template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::oj::mq::TestCaseInput > test_cases_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr message_id_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr question_id_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr code_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr language_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr custom_input_;
-    uint32_t submission_id_;
     uint32_t user_id_;
-    bool is_custom_test_;
-    int32_t time_limit_;
-    int64_t timestamp_;
-    int32_t memory_limit_;
-    uint32_t retry_count_;
+    uint32_t time_limit_ms_;
+    uint32_t memory_limit_mb_;
+    uint32_t delivery_attempt_;
+    int64_t created_at_;
+    union TaskIdUnion {
+      constexpr TaskIdUnion() : _constinit_{} {}
+        ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized _constinit_;
+      uint64_t submission_id_;
+      ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr custom_task_id_;
+    } task_id_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-  };
-  union { Impl_ _impl_; };
-  friend struct ::TableStruct_mq_5fmessage_2eproto;
-};
-// -------------------------------------------------------------------
+    uint32_t _oneof_case_[1];
 
-class JudgeResultCallback final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:oj.mq.JudgeResultCallback) */ {
- public:
-  inline JudgeResultCallback() : JudgeResultCallback(nullptr) {}
-  ~JudgeResultCallback() override;
-  explicit PROTOBUF_CONSTEXPR JudgeResultCallback(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
-
-  JudgeResultCallback(const JudgeResultCallback& from);
-  JudgeResultCallback(JudgeResultCallback&& from) noexcept
-    : JudgeResultCallback() {
-    *this = ::std::move(from);
-  }
-
-  inline JudgeResultCallback& operator=(const JudgeResultCallback& from) {
-    CopyFrom(from);
-    return *this;
-  }
-  inline JudgeResultCallback& operator=(JudgeResultCallback&& from) noexcept {
-    if (this == &from) return *this;
-    if (GetOwningArena() == from.GetOwningArena()
-  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
-        && GetOwningArena() != nullptr
-  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
-    ) {
-      InternalSwap(&from);
-    } else {
-      CopyFrom(from);
-    }
-    return *this;
-  }
-
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
-    return GetDescriptor();
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
-    return default_instance().GetMetadata().descriptor;
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
-    return default_instance().GetMetadata().reflection;
-  }
-  static const JudgeResultCallback& default_instance() {
-    return *internal_default_instance();
-  }
-  static inline const JudgeResultCallback* internal_default_instance() {
-    return reinterpret_cast<const JudgeResultCallback*>(
-               &_JudgeResultCallback_default_instance_);
-  }
-  static constexpr int kIndexInFileMessages =
-    2;
-
-  friend void swap(JudgeResultCallback& a, JudgeResultCallback& b) {
-    a.Swap(&b);
-  }
-  inline void Swap(JudgeResultCallback* other) {
-    if (other == this) return;
-  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() != nullptr &&
-        GetOwningArena() == other->GetOwningArena()) {
-   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() == other->GetOwningArena()) {
-  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
-      InternalSwap(other);
-    } else {
-      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
-    }
-  }
-  void UnsafeArenaSwap(JudgeResultCallback* other) {
-    if (other == this) return;
-    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
-    InternalSwap(other);
-  }
-
-  // implements Message ----------------------------------------------
-
-  JudgeResultCallback* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<JudgeResultCallback>(arena);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const JudgeResultCallback& from);
-  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const JudgeResultCallback& from) {
-    JudgeResultCallback::MergeImpl(*this, from);
-  }
-  private:
-  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
-  public:
-  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
-  bool IsInitialized() const final;
-
-  size_t ByteSizeLong() const final;
-  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
-  uint8_t* _InternalSerialize(
-      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
-  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
-
-  private:
-  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
-  void SharedDtor();
-  void SetCachedSize(int size) const final;
-  void InternalSwap(JudgeResultCallback* other);
-
-  private:
-  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
-  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "oj.mq.JudgeResultCallback";
-  }
-  protected:
-  explicit JudgeResultCallback(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                       bool is_message_owned = false);
-  public:
-
-  static const ClassData _class_data_;
-  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
-
-  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  enum : int {
-    kStatusFieldNumber = 2,
-    kCompileErrorFieldNumber = 5,
-    kTestCasesJsonFieldNumber = 6,
-    kSubmissionIdFieldNumber = 1,
-    kTimeUsedMsFieldNumber = 3,
-    kMemoryUsedBytesFieldNumber = 4,
-    kCompletedAtFieldNumber = 7,
-  };
-  // string status = 2;
-  void clear_status();
-  const std::string& status() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_status(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_status();
-  PROTOBUF_NODISCARD std::string* release_status();
-  void set_allocated_status(std::string* status);
-  private:
-  const std::string& _internal_status() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_status(const std::string& value);
-  std::string* _internal_mutable_status();
-  public:
-
-  // string compile_error = 5;
-  void clear_compile_error();
-  const std::string& compile_error() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_compile_error(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_compile_error();
-  PROTOBUF_NODISCARD std::string* release_compile_error();
-  void set_allocated_compile_error(std::string* compile_error);
-  private:
-  const std::string& _internal_compile_error() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_compile_error(const std::string& value);
-  std::string* _internal_mutable_compile_error();
-  public:
-
-  // string test_cases_json = 6;
-  void clear_test_cases_json();
-  const std::string& test_cases_json() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_test_cases_json(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_test_cases_json();
-  PROTOBUF_NODISCARD std::string* release_test_cases_json();
-  void set_allocated_test_cases_json(std::string* test_cases_json);
-  private:
-  const std::string& _internal_test_cases_json() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_test_cases_json(const std::string& value);
-  std::string* _internal_mutable_test_cases_json();
-  public:
-
-  // uint32 submission_id = 1;
-  void clear_submission_id();
-  uint32_t submission_id() const;
-  void set_submission_id(uint32_t value);
-  private:
-  uint32_t _internal_submission_id() const;
-  void _internal_set_submission_id(uint32_t value);
-  public:
-
-  // int32 time_used_ms = 3;
-  void clear_time_used_ms();
-  int32_t time_used_ms() const;
-  void set_time_used_ms(int32_t value);
-  private:
-  int32_t _internal_time_used_ms() const;
-  void _internal_set_time_used_ms(int32_t value);
-  public:
-
-  // int64 memory_used_bytes = 4;
-  void clear_memory_used_bytes();
-  int64_t memory_used_bytes() const;
-  void set_memory_used_bytes(int64_t value);
-  private:
-  int64_t _internal_memory_used_bytes() const;
-  void _internal_set_memory_used_bytes(int64_t value);
-  public:
-
-  // int64 completed_at = 7;
-  void clear_completed_at();
-  int64_t completed_at() const;
-  void set_completed_at(int64_t value);
-  private:
-  int64_t _internal_completed_at() const;
-  void _internal_set_completed_at(int64_t value);
-  public:
-
-  // @@protoc_insertion_point(class_scope:oj.mq.JudgeResultCallback)
- private:
-  class _Internal;
-
-  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
-  typedef void InternalArenaConstructable_;
-  typedef void DestructorSkippable_;
-  struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr status_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr compile_error_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr test_cases_json_;
-    uint32_t submission_id_;
-    int32_t time_used_ms_;
-    int64_t memory_used_bytes_;
-    int64_t completed_at_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_mq_5fmessage_2eproto;
@@ -772,7 +609,47 @@ class JudgeResultCallback final :
 #endif  // __GNUC__
 // TestCaseInput
 
-// string input = 1;
+// uint64 test_case_id = 1;
+inline void TestCaseInput::clear_test_case_id() {
+  _impl_.test_case_id_ = uint64_t{0u};
+}
+inline uint64_t TestCaseInput::_internal_test_case_id() const {
+  return _impl_.test_case_id_;
+}
+inline uint64_t TestCaseInput::test_case_id() const {
+  // @@protoc_insertion_point(field_get:oj.mq.TestCaseInput.test_case_id)
+  return _internal_test_case_id();
+}
+inline void TestCaseInput::_internal_set_test_case_id(uint64_t value) {
+
+  _impl_.test_case_id_ = value;
+}
+inline void TestCaseInput::set_test_case_id(uint64_t value) {
+  _internal_set_test_case_id(value);
+  // @@protoc_insertion_point(field_set:oj.mq.TestCaseInput.test_case_id)
+}
+
+// uint32 index = 2;
+inline void TestCaseInput::clear_index() {
+  _impl_.index_ = 0u;
+}
+inline uint32_t TestCaseInput::_internal_index() const {
+  return _impl_.index_;
+}
+inline uint32_t TestCaseInput::index() const {
+  // @@protoc_insertion_point(field_get:oj.mq.TestCaseInput.index)
+  return _internal_index();
+}
+inline void TestCaseInput::_internal_set_index(uint32_t value) {
+
+  _impl_.index_ = value;
+}
+inline void TestCaseInput::set_index(uint32_t value) {
+  _internal_set_index(value);
+  // @@protoc_insertion_point(field_set:oj.mq.TestCaseInput.index)
+}
+
+// string input = 3;
 inline void TestCaseInput::clear_input() {
   _impl_.input_.ClearToEmpty();
 }
@@ -783,7 +660,7 @@ inline const std::string& TestCaseInput::input() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void TestCaseInput::set_input(ArgT0&& arg0, ArgT... args) {
- 
+
  _impl_.input_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:oj.mq.TestCaseInput.input)
 }
@@ -796,11 +673,11 @@ inline const std::string& TestCaseInput::_internal_input() const {
   return _impl_.input_.Get();
 }
 inline void TestCaseInput::_internal_set_input(const std::string& value) {
-  
+
   _impl_.input_.Set(value, GetArenaForAllocation());
 }
 inline std::string* TestCaseInput::_internal_mutable_input() {
-  
+
   return _impl_.input_.Mutable(GetArenaForAllocation());
 }
 inline std::string* TestCaseInput::release_input() {
@@ -809,9 +686,9 @@ inline std::string* TestCaseInput::release_input() {
 }
 inline void TestCaseInput::set_allocated_input(std::string* input) {
   if (input != nullptr) {
-    
+
   } else {
-    
+
   }
   _impl_.input_.SetAllocated(input, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -822,7 +699,7 @@ inline void TestCaseInput::set_allocated_input(std::string* input) {
   // @@protoc_insertion_point(field_set_allocated:oj.mq.TestCaseInput.input)
 }
 
-// string expected_output = 2;
+// string expected_output = 4;
 inline void TestCaseInput::clear_expected_output() {
   _impl_.expected_output_.ClearToEmpty();
 }
@@ -833,7 +710,7 @@ inline const std::string& TestCaseInput::expected_output() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void TestCaseInput::set_expected_output(ArgT0&& arg0, ArgT... args) {
- 
+
  _impl_.expected_output_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:oj.mq.TestCaseInput.expected_output)
 }
@@ -846,11 +723,11 @@ inline const std::string& TestCaseInput::_internal_expected_output() const {
   return _impl_.expected_output_.Get();
 }
 inline void TestCaseInput::_internal_set_expected_output(const std::string& value) {
-  
+
   _impl_.expected_output_.Set(value, GetArenaForAllocation());
 }
 inline std::string* TestCaseInput::_internal_mutable_expected_output() {
-  
+
   return _impl_.expected_output_.Mutable(GetArenaForAllocation());
 }
 inline std::string* TestCaseInput::release_expected_output() {
@@ -859,9 +736,9 @@ inline std::string* TestCaseInput::release_expected_output() {
 }
 inline void TestCaseInput::set_allocated_expected_output(std::string* expected_output) {
   if (expected_output != nullptr) {
-    
+
   } else {
-    
+
   }
   _impl_.expected_output_.SetAllocated(expected_output, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -876,27 +753,192 @@ inline void TestCaseInput::set_allocated_expected_output(std::string* expected_o
 
 // JudgeTaskMessage
 
-// uint32 submission_id = 1;
+// string message_id = 1;
+inline void JudgeTaskMessage::clear_message_id() {
+  _impl_.message_id_.ClearToEmpty();
+}
+inline const std::string& JudgeTaskMessage::message_id() const {
+  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.message_id)
+  return _internal_message_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void JudgeTaskMessage::set_message_id(ArgT0&& arg0, ArgT... args) {
+
+ _impl_.message_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.message_id)
+}
+inline std::string* JudgeTaskMessage::mutable_message_id() {
+  std::string* _s = _internal_mutable_message_id();
+  // @@protoc_insertion_point(field_mutable:oj.mq.JudgeTaskMessage.message_id)
+  return _s;
+}
+inline const std::string& JudgeTaskMessage::_internal_message_id() const {
+  return _impl_.message_id_.Get();
+}
+inline void JudgeTaskMessage::_internal_set_message_id(const std::string& value) {
+
+  _impl_.message_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* JudgeTaskMessage::_internal_mutable_message_id() {
+
+  return _impl_.message_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* JudgeTaskMessage::release_message_id() {
+  // @@protoc_insertion_point(field_release:oj.mq.JudgeTaskMessage.message_id)
+  return _impl_.message_id_.Release();
+}
+inline void JudgeTaskMessage::set_allocated_message_id(std::string* message_id) {
+  if (message_id != nullptr) {
+
+  } else {
+
+  }
+  _impl_.message_id_.SetAllocated(message_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.message_id_.IsDefault()) {
+    _impl_.message_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:oj.mq.JudgeTaskMessage.message_id)
+}
+
+// uint64 submission_id = 3;
+inline bool JudgeTaskMessage::_internal_has_submission_id() const {
+  return task_id_case() == kSubmissionId;
+}
+inline bool JudgeTaskMessage::has_submission_id() const {
+  return _internal_has_submission_id();
+}
+inline void JudgeTaskMessage::set_has_submission_id() {
+  _impl_._oneof_case_[0] = kSubmissionId;
+}
 inline void JudgeTaskMessage::clear_submission_id() {
-  _impl_.submission_id_ = 0u;
+  if (_internal_has_submission_id()) {
+    _impl_.task_id_.submission_id_ = uint64_t{0u};
+    clear_has_task_id();
+  }
 }
-inline uint32_t JudgeTaskMessage::_internal_submission_id() const {
-  return _impl_.submission_id_;
+inline uint64_t JudgeTaskMessage::_internal_submission_id() const {
+  if (_internal_has_submission_id()) {
+    return _impl_.task_id_.submission_id_;
+  }
+  return uint64_t{0u};
 }
-inline uint32_t JudgeTaskMessage::submission_id() const {
+inline void JudgeTaskMessage::_internal_set_submission_id(uint64_t value) {
+  if (!_internal_has_submission_id()) {
+    clear_task_id();
+    set_has_submission_id();
+  }
+  _impl_.task_id_.submission_id_ = value;
+}
+inline uint64_t JudgeTaskMessage::submission_id() const {
   // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.submission_id)
   return _internal_submission_id();
 }
-inline void JudgeTaskMessage::_internal_set_submission_id(uint32_t value) {
-  
-  _impl_.submission_id_ = value;
-}
-inline void JudgeTaskMessage::set_submission_id(uint32_t value) {
+inline void JudgeTaskMessage::set_submission_id(uint64_t value) {
   _internal_set_submission_id(value);
   // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.submission_id)
 }
 
-// string question_id = 2;
+// string custom_task_id = 4;
+inline bool JudgeTaskMessage::_internal_has_custom_task_id() const {
+  return task_id_case() == kCustomTaskId;
+}
+inline bool JudgeTaskMessage::has_custom_task_id() const {
+  return _internal_has_custom_task_id();
+}
+inline void JudgeTaskMessage::set_has_custom_task_id() {
+  _impl_._oneof_case_[0] = kCustomTaskId;
+}
+inline void JudgeTaskMessage::clear_custom_task_id() {
+  if (_internal_has_custom_task_id()) {
+    _impl_.task_id_.custom_task_id_.Destroy();
+    clear_has_task_id();
+  }
+}
+inline const std::string& JudgeTaskMessage::custom_task_id() const {
+  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.custom_task_id)
+  return _internal_custom_task_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline void JudgeTaskMessage::set_custom_task_id(ArgT0&& arg0, ArgT... args) {
+  if (!_internal_has_custom_task_id()) {
+    clear_task_id();
+    set_has_custom_task_id();
+    _impl_.task_id_.custom_task_id_.InitDefault();
+  }
+  _impl_.task_id_.custom_task_id_.Set( static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.custom_task_id)
+}
+inline std::string* JudgeTaskMessage::mutable_custom_task_id() {
+  std::string* _s = _internal_mutable_custom_task_id();
+  // @@protoc_insertion_point(field_mutable:oj.mq.JudgeTaskMessage.custom_task_id)
+  return _s;
+}
+inline const std::string& JudgeTaskMessage::_internal_custom_task_id() const {
+  if (_internal_has_custom_task_id()) {
+    return _impl_.task_id_.custom_task_id_.Get();
+  }
+  return ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited();
+}
+inline void JudgeTaskMessage::_internal_set_custom_task_id(const std::string& value) {
+  if (!_internal_has_custom_task_id()) {
+    clear_task_id();
+    set_has_custom_task_id();
+    _impl_.task_id_.custom_task_id_.InitDefault();
+  }
+  _impl_.task_id_.custom_task_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* JudgeTaskMessage::_internal_mutable_custom_task_id() {
+  if (!_internal_has_custom_task_id()) {
+    clear_task_id();
+    set_has_custom_task_id();
+    _impl_.task_id_.custom_task_id_.InitDefault();
+  }
+  return _impl_.task_id_.custom_task_id_.Mutable(      GetArenaForAllocation());
+}
+inline std::string* JudgeTaskMessage::release_custom_task_id() {
+  // @@protoc_insertion_point(field_release:oj.mq.JudgeTaskMessage.custom_task_id)
+  if (_internal_has_custom_task_id()) {
+    clear_has_task_id();
+    return _impl_.task_id_.custom_task_id_.Release();
+  } else {
+    return nullptr;
+  }
+}
+inline void JudgeTaskMessage::set_allocated_custom_task_id(std::string* custom_task_id) {
+  if (has_task_id()) {
+    clear_task_id();
+  }
+  if (custom_task_id != nullptr) {
+    set_has_custom_task_id();
+    _impl_.task_id_.custom_task_id_.InitAllocated(custom_task_id, GetArenaForAllocation());
+  }
+  // @@protoc_insertion_point(field_set_allocated:oj.mq.JudgeTaskMessage.custom_task_id)
+}
+
+// uint32 user_id = 5;
+inline void JudgeTaskMessage::clear_user_id() {
+  _impl_.user_id_ = 0u;
+}
+inline uint32_t JudgeTaskMessage::_internal_user_id() const {
+  return _impl_.user_id_;
+}
+inline uint32_t JudgeTaskMessage::user_id() const {
+  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.user_id)
+  return _internal_user_id();
+}
+inline void JudgeTaskMessage::_internal_set_user_id(uint32_t value) {
+
+  _impl_.user_id_ = value;
+}
+inline void JudgeTaskMessage::set_user_id(uint32_t value) {
+  _internal_set_user_id(value);
+  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.user_id)
+}
+
+// string question_id = 6;
 inline void JudgeTaskMessage::clear_question_id() {
   _impl_.question_id_.ClearToEmpty();
 }
@@ -907,7 +949,7 @@ inline const std::string& JudgeTaskMessage::question_id() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void JudgeTaskMessage::set_question_id(ArgT0&& arg0, ArgT... args) {
- 
+
  _impl_.question_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.question_id)
 }
@@ -920,11 +962,11 @@ inline const std::string& JudgeTaskMessage::_internal_question_id() const {
   return _impl_.question_id_.Get();
 }
 inline void JudgeTaskMessage::_internal_set_question_id(const std::string& value) {
-  
+
   _impl_.question_id_.Set(value, GetArenaForAllocation());
 }
 inline std::string* JudgeTaskMessage::_internal_mutable_question_id() {
-  
+
   return _impl_.question_id_.Mutable(GetArenaForAllocation());
 }
 inline std::string* JudgeTaskMessage::release_question_id() {
@@ -933,9 +975,9 @@ inline std::string* JudgeTaskMessage::release_question_id() {
 }
 inline void JudgeTaskMessage::set_allocated_question_id(std::string* question_id) {
   if (question_id != nullptr) {
-    
+
   } else {
-    
+
   }
   _impl_.question_id_.SetAllocated(question_id, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -946,27 +988,7 @@ inline void JudgeTaskMessage::set_allocated_question_id(std::string* question_id
   // @@protoc_insertion_point(field_set_allocated:oj.mq.JudgeTaskMessage.question_id)
 }
 
-// uint32 user_id = 3;
-inline void JudgeTaskMessage::clear_user_id() {
-  _impl_.user_id_ = 0u;
-}
-inline uint32_t JudgeTaskMessage::_internal_user_id() const {
-  return _impl_.user_id_;
-}
-inline uint32_t JudgeTaskMessage::user_id() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.user_id)
-  return _internal_user_id();
-}
-inline void JudgeTaskMessage::_internal_set_user_id(uint32_t value) {
-  
-  _impl_.user_id_ = value;
-}
-inline void JudgeTaskMessage::set_user_id(uint32_t value) {
-  _internal_set_user_id(value);
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.user_id)
-}
-
-// string code = 4;
+// string code = 7;
 inline void JudgeTaskMessage::clear_code() {
   _impl_.code_.ClearToEmpty();
 }
@@ -977,7 +999,7 @@ inline const std::string& JudgeTaskMessage::code() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void JudgeTaskMessage::set_code(ArgT0&& arg0, ArgT... args) {
- 
+
  _impl_.code_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.code)
 }
@@ -990,11 +1012,11 @@ inline const std::string& JudgeTaskMessage::_internal_code() const {
   return _impl_.code_.Get();
 }
 inline void JudgeTaskMessage::_internal_set_code(const std::string& value) {
-  
+
   _impl_.code_.Set(value, GetArenaForAllocation());
 }
 inline std::string* JudgeTaskMessage::_internal_mutable_code() {
-  
+
   return _impl_.code_.Mutable(GetArenaForAllocation());
 }
 inline std::string* JudgeTaskMessage::release_code() {
@@ -1003,9 +1025,9 @@ inline std::string* JudgeTaskMessage::release_code() {
 }
 inline void JudgeTaskMessage::set_allocated_code(std::string* code) {
   if (code != nullptr) {
-    
+
   } else {
-    
+
   }
   _impl_.code_.SetAllocated(code, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -1016,7 +1038,7 @@ inline void JudgeTaskMessage::set_allocated_code(std::string* code) {
   // @@protoc_insertion_point(field_set_allocated:oj.mq.JudgeTaskMessage.code)
 }
 
-// string language = 5;
+// string language = 8;
 inline void JudgeTaskMessage::clear_language() {
   _impl_.language_.ClearToEmpty();
 }
@@ -1027,7 +1049,7 @@ inline const std::string& JudgeTaskMessage::language() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void JudgeTaskMessage::set_language(ArgT0&& arg0, ArgT... args) {
- 
+
  _impl_.language_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.language)
 }
@@ -1040,11 +1062,11 @@ inline const std::string& JudgeTaskMessage::_internal_language() const {
   return _impl_.language_.Get();
 }
 inline void JudgeTaskMessage::_internal_set_language(const std::string& value) {
-  
+
   _impl_.language_.Set(value, GetArenaForAllocation());
 }
 inline std::string* JudgeTaskMessage::_internal_mutable_language() {
-  
+
   return _impl_.language_.Mutable(GetArenaForAllocation());
 }
 inline std::string* JudgeTaskMessage::release_language() {
@@ -1053,9 +1075,9 @@ inline std::string* JudgeTaskMessage::release_language() {
 }
 inline void JudgeTaskMessage::set_allocated_language(std::string* language) {
   if (language != nullptr) {
-    
+
   } else {
-    
+
   }
   _impl_.language_.SetAllocated(language, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -1066,27 +1088,47 @@ inline void JudgeTaskMessage::set_allocated_language(std::string* language) {
   // @@protoc_insertion_point(field_set_allocated:oj.mq.JudgeTaskMessage.language)
 }
 
-// bool is_custom_test = 6;
-inline void JudgeTaskMessage::clear_is_custom_test() {
-  _impl_.is_custom_test_ = false;
+// uint32 time_limit_ms = 9;
+inline void JudgeTaskMessage::clear_time_limit_ms() {
+  _impl_.time_limit_ms_ = 0u;
 }
-inline bool JudgeTaskMessage::_internal_is_custom_test() const {
-  return _impl_.is_custom_test_;
+inline uint32_t JudgeTaskMessage::_internal_time_limit_ms() const {
+  return _impl_.time_limit_ms_;
 }
-inline bool JudgeTaskMessage::is_custom_test() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.is_custom_test)
-  return _internal_is_custom_test();
+inline uint32_t JudgeTaskMessage::time_limit_ms() const {
+  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.time_limit_ms)
+  return _internal_time_limit_ms();
 }
-inline void JudgeTaskMessage::_internal_set_is_custom_test(bool value) {
-  
-  _impl_.is_custom_test_ = value;
+inline void JudgeTaskMessage::_internal_set_time_limit_ms(uint32_t value) {
+
+  _impl_.time_limit_ms_ = value;
 }
-inline void JudgeTaskMessage::set_is_custom_test(bool value) {
-  _internal_set_is_custom_test(value);
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.is_custom_test)
+inline void JudgeTaskMessage::set_time_limit_ms(uint32_t value) {
+  _internal_set_time_limit_ms(value);
+  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.time_limit_ms)
 }
 
-// string custom_input = 7;
+// uint32 memory_limit_mb = 10;
+inline void JudgeTaskMessage::clear_memory_limit_mb() {
+  _impl_.memory_limit_mb_ = 0u;
+}
+inline uint32_t JudgeTaskMessage::_internal_memory_limit_mb() const {
+  return _impl_.memory_limit_mb_;
+}
+inline uint32_t JudgeTaskMessage::memory_limit_mb() const {
+  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.memory_limit_mb)
+  return _internal_memory_limit_mb();
+}
+inline void JudgeTaskMessage::_internal_set_memory_limit_mb(uint32_t value) {
+
+  _impl_.memory_limit_mb_ = value;
+}
+inline void JudgeTaskMessage::set_memory_limit_mb(uint32_t value) {
+  _internal_set_memory_limit_mb(value);
+  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.memory_limit_mb)
+}
+
+// string custom_input = 11;
 inline void JudgeTaskMessage::clear_custom_input() {
   _impl_.custom_input_.ClearToEmpty();
 }
@@ -1097,7 +1139,7 @@ inline const std::string& JudgeTaskMessage::custom_input() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void JudgeTaskMessage::set_custom_input(ArgT0&& arg0, ArgT... args) {
- 
+
  _impl_.custom_input_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.custom_input)
 }
@@ -1110,11 +1152,11 @@ inline const std::string& JudgeTaskMessage::_internal_custom_input() const {
   return _impl_.custom_input_.Get();
 }
 inline void JudgeTaskMessage::_internal_set_custom_input(const std::string& value) {
-  
+
   _impl_.custom_input_.Set(value, GetArenaForAllocation());
 }
 inline std::string* JudgeTaskMessage::_internal_mutable_custom_input() {
-  
+
   return _impl_.custom_input_.Mutable(GetArenaForAllocation());
 }
 inline std::string* JudgeTaskMessage::release_custom_input() {
@@ -1123,9 +1165,9 @@ inline std::string* JudgeTaskMessage::release_custom_input() {
 }
 inline void JudgeTaskMessage::set_allocated_custom_input(std::string* custom_input) {
   if (custom_input != nullptr) {
-    
+
   } else {
-    
+
   }
   _impl_.custom_input_.SetAllocated(custom_input, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -1134,86 +1176,6 @@ inline void JudgeTaskMessage::set_allocated_custom_input(std::string* custom_inp
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:oj.mq.JudgeTaskMessage.custom_input)
-}
-
-// int32 time_limit = 8;
-inline void JudgeTaskMessage::clear_time_limit() {
-  _impl_.time_limit_ = 0;
-}
-inline int32_t JudgeTaskMessage::_internal_time_limit() const {
-  return _impl_.time_limit_;
-}
-inline int32_t JudgeTaskMessage::time_limit() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.time_limit)
-  return _internal_time_limit();
-}
-inline void JudgeTaskMessage::_internal_set_time_limit(int32_t value) {
-  
-  _impl_.time_limit_ = value;
-}
-inline void JudgeTaskMessage::set_time_limit(int32_t value) {
-  _internal_set_time_limit(value);
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.time_limit)
-}
-
-// int32 memory_limit = 9;
-inline void JudgeTaskMessage::clear_memory_limit() {
-  _impl_.memory_limit_ = 0;
-}
-inline int32_t JudgeTaskMessage::_internal_memory_limit() const {
-  return _impl_.memory_limit_;
-}
-inline int32_t JudgeTaskMessage::memory_limit() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.memory_limit)
-  return _internal_memory_limit();
-}
-inline void JudgeTaskMessage::_internal_set_memory_limit(int32_t value) {
-  
-  _impl_.memory_limit_ = value;
-}
-inline void JudgeTaskMessage::set_memory_limit(int32_t value) {
-  _internal_set_memory_limit(value);
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.memory_limit)
-}
-
-// int64 timestamp = 10;
-inline void JudgeTaskMessage::clear_timestamp() {
-  _impl_.timestamp_ = int64_t{0};
-}
-inline int64_t JudgeTaskMessage::_internal_timestamp() const {
-  return _impl_.timestamp_;
-}
-inline int64_t JudgeTaskMessage::timestamp() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.timestamp)
-  return _internal_timestamp();
-}
-inline void JudgeTaskMessage::_internal_set_timestamp(int64_t value) {
-  
-  _impl_.timestamp_ = value;
-}
-inline void JudgeTaskMessage::set_timestamp(int64_t value) {
-  _internal_set_timestamp(value);
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.timestamp)
-}
-
-// uint32 retry_count = 11;
-inline void JudgeTaskMessage::clear_retry_count() {
-  _impl_.retry_count_ = 0u;
-}
-inline uint32_t JudgeTaskMessage::_internal_retry_count() const {
-  return _impl_.retry_count_;
-}
-inline uint32_t JudgeTaskMessage::retry_count() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.retry_count)
-  return _internal_retry_count();
-}
-inline void JudgeTaskMessage::_internal_set_retry_count(uint32_t value) {
-  
-  _impl_.retry_count_ = value;
-}
-inline void JudgeTaskMessage::set_retry_count(uint32_t value) {
-  _internal_set_retry_count(value);
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.retry_count)
 }
 
 // repeated .oj.mq.TestCaseInput test_cases = 12;
@@ -1256,245 +1218,58 @@ JudgeTaskMessage::test_cases() const {
   return _impl_.test_cases_;
 }
 
-// -------------------------------------------------------------------
+// int64 created_at = 13;
+inline void JudgeTaskMessage::clear_created_at() {
+  _impl_.created_at_ = int64_t{0};
+}
+inline int64_t JudgeTaskMessage::_internal_created_at() const {
+  return _impl_.created_at_;
+}
+inline int64_t JudgeTaskMessage::created_at() const {
+  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.created_at)
+  return _internal_created_at();
+}
+inline void JudgeTaskMessage::_internal_set_created_at(int64_t value) {
 
-// JudgeResultCallback
-
-// uint32 submission_id = 1;
-inline void JudgeResultCallback::clear_submission_id() {
-  _impl_.submission_id_ = 0u;
+  _impl_.created_at_ = value;
 }
-inline uint32_t JudgeResultCallback::_internal_submission_id() const {
-  return _impl_.submission_id_;
-}
-inline uint32_t JudgeResultCallback::submission_id() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeResultCallback.submission_id)
-  return _internal_submission_id();
-}
-inline void JudgeResultCallback::_internal_set_submission_id(uint32_t value) {
-  
-  _impl_.submission_id_ = value;
-}
-inline void JudgeResultCallback::set_submission_id(uint32_t value) {
-  _internal_set_submission_id(value);
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeResultCallback.submission_id)
+inline void JudgeTaskMessage::set_created_at(int64_t value) {
+  _internal_set_created_at(value);
+  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.created_at)
 }
 
-// string status = 2;
-inline void JudgeResultCallback::clear_status() {
-  _impl_.status_.ClearToEmpty();
+// uint32 delivery_attempt = 14;
+inline void JudgeTaskMessage::clear_delivery_attempt() {
+  _impl_.delivery_attempt_ = 0u;
 }
-inline const std::string& JudgeResultCallback::status() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeResultCallback.status)
-  return _internal_status();
+inline uint32_t JudgeTaskMessage::_internal_delivery_attempt() const {
+  return _impl_.delivery_attempt_;
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void JudgeResultCallback::set_status(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.status_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeResultCallback.status)
+inline uint32_t JudgeTaskMessage::delivery_attempt() const {
+  // @@protoc_insertion_point(field_get:oj.mq.JudgeTaskMessage.delivery_attempt)
+  return _internal_delivery_attempt();
 }
-inline std::string* JudgeResultCallback::mutable_status() {
-  std::string* _s = _internal_mutable_status();
-  // @@protoc_insertion_point(field_mutable:oj.mq.JudgeResultCallback.status)
-  return _s;
+inline void JudgeTaskMessage::_internal_set_delivery_attempt(uint32_t value) {
+
+  _impl_.delivery_attempt_ = value;
 }
-inline const std::string& JudgeResultCallback::_internal_status() const {
-  return _impl_.status_.Get();
-}
-inline void JudgeResultCallback::_internal_set_status(const std::string& value) {
-  
-  _impl_.status_.Set(value, GetArenaForAllocation());
-}
-inline std::string* JudgeResultCallback::_internal_mutable_status() {
-  
-  return _impl_.status_.Mutable(GetArenaForAllocation());
-}
-inline std::string* JudgeResultCallback::release_status() {
-  // @@protoc_insertion_point(field_release:oj.mq.JudgeResultCallback.status)
-  return _impl_.status_.Release();
-}
-inline void JudgeResultCallback::set_allocated_status(std::string* status) {
-  if (status != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.status_.SetAllocated(status, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.status_.IsDefault()) {
-    _impl_.status_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:oj.mq.JudgeResultCallback.status)
+inline void JudgeTaskMessage::set_delivery_attempt(uint32_t value) {
+  _internal_set_delivery_attempt(value);
+  // @@protoc_insertion_point(field_set:oj.mq.JudgeTaskMessage.delivery_attempt)
 }
 
-// int32 time_used_ms = 3;
-inline void JudgeResultCallback::clear_time_used_ms() {
-  _impl_.time_used_ms_ = 0;
+inline bool JudgeTaskMessage::has_task_id() const {
+  return task_id_case() != TASK_ID_NOT_SET;
 }
-inline int32_t JudgeResultCallback::_internal_time_used_ms() const {
-  return _impl_.time_used_ms_;
+inline void JudgeTaskMessage::clear_has_task_id() {
+  _impl_._oneof_case_[0] = TASK_ID_NOT_SET;
 }
-inline int32_t JudgeResultCallback::time_used_ms() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeResultCallback.time_used_ms)
-  return _internal_time_used_ms();
+inline JudgeTaskMessage::TaskIdCase JudgeTaskMessage::task_id_case() const {
+  return JudgeTaskMessage::TaskIdCase(_impl_._oneof_case_[0]);
 }
-inline void JudgeResultCallback::_internal_set_time_used_ms(int32_t value) {
-  
-  _impl_.time_used_ms_ = value;
-}
-inline void JudgeResultCallback::set_time_used_ms(int32_t value) {
-  _internal_set_time_used_ms(value);
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeResultCallback.time_used_ms)
-}
-
-// int64 memory_used_bytes = 4;
-inline void JudgeResultCallback::clear_memory_used_bytes() {
-  _impl_.memory_used_bytes_ = int64_t{0};
-}
-inline int64_t JudgeResultCallback::_internal_memory_used_bytes() const {
-  return _impl_.memory_used_bytes_;
-}
-inline int64_t JudgeResultCallback::memory_used_bytes() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeResultCallback.memory_used_bytes)
-  return _internal_memory_used_bytes();
-}
-inline void JudgeResultCallback::_internal_set_memory_used_bytes(int64_t value) {
-  
-  _impl_.memory_used_bytes_ = value;
-}
-inline void JudgeResultCallback::set_memory_used_bytes(int64_t value) {
-  _internal_set_memory_used_bytes(value);
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeResultCallback.memory_used_bytes)
-}
-
-// string compile_error = 5;
-inline void JudgeResultCallback::clear_compile_error() {
-  _impl_.compile_error_.ClearToEmpty();
-}
-inline const std::string& JudgeResultCallback::compile_error() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeResultCallback.compile_error)
-  return _internal_compile_error();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void JudgeResultCallback::set_compile_error(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.compile_error_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeResultCallback.compile_error)
-}
-inline std::string* JudgeResultCallback::mutable_compile_error() {
-  std::string* _s = _internal_mutable_compile_error();
-  // @@protoc_insertion_point(field_mutable:oj.mq.JudgeResultCallback.compile_error)
-  return _s;
-}
-inline const std::string& JudgeResultCallback::_internal_compile_error() const {
-  return _impl_.compile_error_.Get();
-}
-inline void JudgeResultCallback::_internal_set_compile_error(const std::string& value) {
-  
-  _impl_.compile_error_.Set(value, GetArenaForAllocation());
-}
-inline std::string* JudgeResultCallback::_internal_mutable_compile_error() {
-  
-  return _impl_.compile_error_.Mutable(GetArenaForAllocation());
-}
-inline std::string* JudgeResultCallback::release_compile_error() {
-  // @@protoc_insertion_point(field_release:oj.mq.JudgeResultCallback.compile_error)
-  return _impl_.compile_error_.Release();
-}
-inline void JudgeResultCallback::set_allocated_compile_error(std::string* compile_error) {
-  if (compile_error != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.compile_error_.SetAllocated(compile_error, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.compile_error_.IsDefault()) {
-    _impl_.compile_error_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:oj.mq.JudgeResultCallback.compile_error)
-}
-
-// string test_cases_json = 6;
-inline void JudgeResultCallback::clear_test_cases_json() {
-  _impl_.test_cases_json_.ClearToEmpty();
-}
-inline const std::string& JudgeResultCallback::test_cases_json() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeResultCallback.test_cases_json)
-  return _internal_test_cases_json();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void JudgeResultCallback::set_test_cases_json(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.test_cases_json_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeResultCallback.test_cases_json)
-}
-inline std::string* JudgeResultCallback::mutable_test_cases_json() {
-  std::string* _s = _internal_mutable_test_cases_json();
-  // @@protoc_insertion_point(field_mutable:oj.mq.JudgeResultCallback.test_cases_json)
-  return _s;
-}
-inline const std::string& JudgeResultCallback::_internal_test_cases_json() const {
-  return _impl_.test_cases_json_.Get();
-}
-inline void JudgeResultCallback::_internal_set_test_cases_json(const std::string& value) {
-  
-  _impl_.test_cases_json_.Set(value, GetArenaForAllocation());
-}
-inline std::string* JudgeResultCallback::_internal_mutable_test_cases_json() {
-  
-  return _impl_.test_cases_json_.Mutable(GetArenaForAllocation());
-}
-inline std::string* JudgeResultCallback::release_test_cases_json() {
-  // @@protoc_insertion_point(field_release:oj.mq.JudgeResultCallback.test_cases_json)
-  return _impl_.test_cases_json_.Release();
-}
-inline void JudgeResultCallback::set_allocated_test_cases_json(std::string* test_cases_json) {
-  if (test_cases_json != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.test_cases_json_.SetAllocated(test_cases_json, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.test_cases_json_.IsDefault()) {
-    _impl_.test_cases_json_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:oj.mq.JudgeResultCallback.test_cases_json)
-}
-
-// int64 completed_at = 7;
-inline void JudgeResultCallback::clear_completed_at() {
-  _impl_.completed_at_ = int64_t{0};
-}
-inline int64_t JudgeResultCallback::_internal_completed_at() const {
-  return _impl_.completed_at_;
-}
-inline int64_t JudgeResultCallback::completed_at() const {
-  // @@protoc_insertion_point(field_get:oj.mq.JudgeResultCallback.completed_at)
-  return _internal_completed_at();
-}
-inline void JudgeResultCallback::_internal_set_completed_at(int64_t value) {
-  
-  _impl_.completed_at_ = value;
-}
-inline void JudgeResultCallback::set_completed_at(int64_t value) {
-  _internal_set_completed_at(value);
-  // @@protoc_insertion_point(field_set:oj.mq.JudgeResultCallback.completed_at)
-}
-
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
-// -------------------------------------------------------------------
-
 // -------------------------------------------------------------------
 
 

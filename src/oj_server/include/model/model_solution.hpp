@@ -72,8 +72,7 @@ namespace ns_model
 
             if (mysql_query(my.get(), sql.str().c_str()) != 0)
             {
-                logger(ns_log::FATAL) << "MySql执行错误! errno=" << mysql_errno(my.get())
-                                      << " error=" << mysql_error(my.get());
+                LOG_CRITICAL("{}{}{}{}", "MySql执行错误! errno=", mysql_errno(my.get()), " error=", mysql_error(my.get()));
                 return false;
             }
 
@@ -97,7 +96,7 @@ namespace ns_model
                 }
             }
 
-            logger(ns_log::INFO) << "Invalidated solution list cache for question " << input.question_id;
+            LOG_INFO("{}{}", "Invalidated solution list cache for question ", input.question_id);
 
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
@@ -169,7 +168,7 @@ namespace ns_model
                             solutions->push_back(s);
                         }
                     }
-                    logger(ns_log::INFO) << "Cache hit for solution list " << cache_key->GetCacheKeyString(&_cache);
+                    LOG_INFO("{}{}", "Cache hit for solution list ", cache_key->GetCacheKeyString(&_cache));
                     long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - _metrics_begin).count();
                     RecordCacheMetrics(RecordActionType::Solution, true, false, cost_ms);
@@ -283,7 +282,7 @@ namespace ns_model
             std::string json_str = writer.write(root);
             _cache.SetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), json_str,
                                      _cache.BuildJitteredTtl(600, 120));
-            logger(ns_log::INFO) << "Cache miss for solution list, written to cache " << cache_key->GetCacheKeyString(&_cache);
+            LOG_INFO("{}{}", "Cache miss for solution list, written to cache ", cache_key->GetCacheKeyString(&_cache));
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - _metrics_begin).count();
             RecordCacheMetrics(RecordActionType::Solution, false, true, cost_ms);
@@ -322,7 +321,7 @@ namespace ns_model
                     solution->status = DbStringToSolutionStatus(json_value["status"].asString());
                     solution->created_at = json_value["created_at"].asString();
                     solution->updated_at = json_value["updated_at"].asString();
-                    logger(ns_log::INFO) << "Cache hit for solution detail " << cache_key->GetCacheKeyString(&_cache);
+                    LOG_INFO("{}{}", "Cache hit for solution detail ", cache_key->GetCacheKeyString(&_cache));
                     long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - _metrics_begin).count();
                     RecordCacheMetrics(RecordActionType::Solution, true, false, cost_ms);
@@ -393,7 +392,7 @@ namespace ns_model
             std::string json_str = writer.write(json_value);
             _cache.SetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), json_str,
                                      _cache.BuildJitteredTtl(600, 120));
-            logger(ns_log::INFO) << "Cache miss for solution detail, written to cache " << cache_key->GetCacheKeyString(&_cache);
+            LOG_INFO("{}{}", "Cache miss for solution detail, written to cache ", cache_key->GetCacheKeyString(&_cache));
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - _metrics_begin).count();
             RecordCacheMetrics(RecordActionType::Solution, false, true, cost_ms);
@@ -454,7 +453,7 @@ namespace ns_model
 
                 if (mysql_query(my.get(), del_sql.str().c_str()) != 0)
                 {
-                    logger(ns_log::FATAL) << "MySql删除交互记录错误!";
+                    LOG_CRITICAL("{}", "MySql删除交互记录错误!");
                     return false;
                 }
 
@@ -465,7 +464,7 @@ namespace ns_model
 
                 if (mysql_query(my.get(), dec_sql.str().c_str()) != 0)
                 {
-                    logger(ns_log::FATAL) << "MySql更新计数错误!";
+                    LOG_CRITICAL("{}", "MySql更新计数错误!");
                     return false;
                 }
 
@@ -480,7 +479,7 @@ namespace ns_model
 
                 if (mysql_query(my.get(), ins_sql.str().c_str()) != 0)
                 {
-                    logger(ns_log::FATAL) << "MySql插入交互记录错误!";
+                    LOG_CRITICAL("{}", "MySql插入交互记录错误!");
                     return false;
                 }
 
@@ -491,7 +490,7 @@ namespace ns_model
 
                 if (mysql_query(my.get(), inc_sql.str().c_str()) != 0)
                 {
-                    logger(ns_log::FATAL) << "MySql更新计数错误!";
+                    LOG_CRITICAL("{}", "MySql更新计数错误!");
                     return false;
                 }
 
@@ -530,7 +529,7 @@ namespace ns_model
                         val["favorite_count"] = *new_count;
                     Json::FastWriter writer;
                     _cache.SetStringByAnyKey(detail_key_str, writer.write(val), _cache.BuildJitteredTtl(600, 120));
-                    logger(ns_log::INFO) << "Updated solution detail cache after action toggle for solution " << solution_id;
+                    LOG_INFO("{}{}", "Updated solution detail cache after action toggle for solution ", solution_id);
                 }
             }
 

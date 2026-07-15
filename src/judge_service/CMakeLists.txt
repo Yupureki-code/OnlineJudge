@@ -9,6 +9,7 @@ pkg_check_modules(LIBEVENT REQUIRED libevent)
 pkg_check_modules(PROTOBUF REQUIRED protobuf)
 pkg_check_modules(JSONCPP REQUIRED jsoncpp)
 pkg_check_modules(CURL REQUIRED libcurl)
+find_package(spdlog REQUIRED)
 
 # brpc 使用手动查找（无 CMake 配置文件）
 find_path(BRPC_INCLUDE_DIR NAMES brpc/server.h PATHS /usr/include)
@@ -63,6 +64,7 @@ target_link_libraries(judge_service PRIVATE
     z
     event_pthreads
     fmt
+    spdlog::spdlog
 )
 
 # 输出到 output/ 目录
@@ -106,6 +108,7 @@ target_link_libraries(judge_integration_test PRIVATE
     dl
     z
     event_pthreads
+    spdlog::spdlog
 )
 
 set_target_properties(judge_integration_test PROPERTIES
@@ -149,6 +152,7 @@ target_link_libraries(direct_e2e_test PRIVATE
     z
     event_pthreads
     fmt
+    spdlog::spdlog
 )
 
 set_target_properties(direct_e2e_test PROPERTIES
@@ -173,6 +177,7 @@ target_link_libraries(verify_log_output PRIVATE
     ${PROTOBUF_LIBRARIES}
     pthread
     fmt
+    spdlog::spdlog
 )
 
 set_target_properties(verify_log_output PROPERTIES
@@ -200,6 +205,7 @@ target_link_libraries(concurrency_bench PRIVATE
     fmt
     ${LIBEVENT_LIBRARIES}
     event_pthreads
+    spdlog::spdlog
 )
 
 set_target_properties(concurrency_bench PROPERTIES

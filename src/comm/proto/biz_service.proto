@@ -5,392 +5,453 @@ option cc_generic_services = true;
 import "common.proto";
 import "judge_service.proto";
 
-// ==================== UserService ====================
+// Authenticated requests intentionally omit actor user IDs. Implementations
+// derive identity from oj_session_id or oj_admin_session_id Redis sessions.
 
-message GetUserRequest {
-    uint32 uid = 1;
-}
-
-message GetUserResponse {
+message SendVerificationCodeRequest { string email = 1; }
+message SendVerificationCodeResponse {
     oj.common.StatusResponse status = 1;
-    oj.common.User user = 2;
+    uint32 retry_after_seconds = 2;
 }
-
-message UpdateUserRequest {
-    uint32 uid = 1;
-    string name = 2;
-    string avatar = 3;
-}
-
-message UpdateUserResponse {
-    oj.common.StatusResponse status = 1;
-    oj.common.User user = 2;
-}
-
-message DashboardRequest {
-    uint32 uid = 1;
-}
-
-message DashboardResponse {
-    oj.common.StatusResponse status = 1;
-    uint32 total_submissions = 2;
-    uint32 passed_submissions = 3;
-    uint32 total_solutions = 4;
-    uint32 total_likes_received = 5;
-    repeated oj.common.Submission recent_submissions = 6;
-}
-
 message RegisterRequest {
     string email = 1;
-    string code = 2;
+    string verification_code = 2;
     string name = 3;
     string password = 4;
 }
-
-message RegisterResponse {
+message AuthResponse {
     oj.common.StatusResponse status = 1;
     oj.common.User user = 2;
-    string jwt_token = 3;
 }
-
-message LoginRequest {
+message VerificationCodeLoginRequest {
     string email = 1;
+    string verification_code = 2;
+}
+message PasswordLoginRequest {
+    string email_or_name = 1;
     string password = 2;
 }
-
-message LoginResponse {
+message SetPasswordRequest { string password = 1; }
+message ChangePasswordRequest {
+    string verification_code = 1;
+    string new_password = 2;
+}
+message ChangeEmailRequest {
+    string new_email = 1;
+    string verification_code = 2;
+}
+message DeleteAccountRequest { string verification_code = 1; }
+message GetUserProfileRequest { uint32 uid = 1; }
+message GetUserProfileResponse {
     oj.common.StatusResponse status = 1;
     oj.common.User user = 2;
-    string jwt_token = 3;
+    oj.common.UserStatistics statistics = 3;
 }
-
-message SendCodeRequest {
-    string email = 1;
-}
-
-message SendCodeResponse {
+message UpdateProfileRequest { string name = 1; }
+message UpdateProfileResponse {
     oj.common.StatusResponse status = 1;
-    int32 retry_after_seconds = 2;
+    oj.common.User user = 2;
+}
+message UpdateAvatarRequest {
+    bytes content = 1;
+    string content_type = 2;
+}
+message UpdateAvatarResponse {
+    oj.common.StatusResponse status = 1;
+    oj.common.AvatarMetadata avatar = 2;
+}
+message GetUserStatisticsResponse {
+    oj.common.StatusResponse status = 1;
+    oj.common.UserStatistics statistics = 2;
+    repeated oj.common.Submission recent_submissions = 3;
 }
 
 service UserService {
-    rpc GetUser (GetUserRequest) returns (GetUserResponse);
-    rpc UpdateUser (UpdateUserRequest) returns (UpdateUserResponse);
-    rpc GetDashboard (DashboardRequest) returns (DashboardResponse);
-    rpc Register (RegisterRequest) returns (RegisterResponse);
-    rpc Login (LoginRequest) returns (LoginResponse);
-    rpc SendCode (SendCodeRequest) returns (SendCodeResponse);
+    rpc SendRegistrationCode(SendVerificationCodeRequest) returns (SendVerificationCodeResponse);
+    rpc Register(RegisterRequest) returns (AuthResponse);
+    rpc LoginWithVerificationCode(VerificationCodeLoginRequest) returns (AuthResponse);
+    rpc LoginWithPassword(PasswordLoginRequest) returns (AuthResponse);
+    rpc Logout(oj.common.EmptyRequest) returns (oj.common.EmptyResponse);
+    rpc SetPassword(SetPasswordRequest) returns (oj.common.EmptyResponse);
+    rpc SendSecurityCode(oj.common.EmptyRequest) returns (SendVerificationCodeResponse);
+    rpc ChangePassword(ChangePasswordRequest) returns (oj.common.EmptyResponse);
+    rpc ChangeEmail(ChangeEmailRequest) returns (oj.common.EmptyResponse);
+    rpc DeleteAccount(DeleteAccountRequest) returns (oj.common.EmptyResponse);
+    rpc GetCurrentUser(oj.common.EmptyRequest) returns (GetUserProfileResponse);
+    rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
+    rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+    rpc UpdateAvatar(UpdateAvatarRequest) returns (UpdateAvatarResponse);
+    rpc DeleteAvatar(oj.common.EmptyRequest) returns (oj.common.EmptyResponse);
+    rpc GetStatistics(oj.common.EmptyRequest) returns (GetUserStatisticsResponse);
 }
-
-// ==================== QuestionService ====================
 
 message GetQuestionListRequest {
     oj.common.PageRequest page = 1;
     string search = 2;
-    string star = 3;  // 难度筛选
+    string difficulty = 3;
+    bool include_hidden = 4;
 }
-
 message GetQuestionListResponse {
     oj.common.StatusResponse status = 1;
-    oj.common.PageResponse page_info = 2;
+    oj.common.PageResponse page = 2;
     repeated oj.common.Question questions = 3;
 }
-
-message GetQuestionDetailRequest {
-    string question_id = 1;
-}
-
+message QuestionIdRequest { string question_id = 1; }
 message GetQuestionDetailResponse {
     oj.common.StatusResponse status = 1;
     oj.common.Question question = 2;
     repeated oj.common.TestCase sample_tests = 3;
+    bool passed_by_current_user = 4;
 }
-
-message CreateQuestionRequest {
-    string id = 1;
-    string title = 2;
-    string desc = 3;
-    string star = 4;
-    int32 cpu_limit = 5;
-    int32 memory_limit = 6;
+message GetQuestionPassStatusResponse {
+    oj.common.StatusResponse status = 1;
+    bool passed = 2;
 }
-
-message CreateQuestionResponse {
+message SaveQuestionRequest { oj.common.Question question = 1; }
+message QuestionResponse {
     oj.common.StatusResponse status = 1;
     oj.common.Question question = 2;
 }
-
-message UpdateQuestionRequest {
-    string id = 1;
-    string title = 2;
-    string desc = 3;
-    string star = 4;
-    int32 cpu_limit = 5;
-    int32 memory_limit = 6;
-}
-
-message UpdateQuestionResponse {
-    oj.common.StatusResponse status = 1;
-    oj.common.Question question = 2;
-}
-
-message UploadTestCaseRequest {
-    string question_id = 1;
-    string input = 2;
-    string output = 3;
-    bool is_sample = 4;
-}
-
-message UploadTestCaseResponse {
-    oj.common.StatusResponse status = 1;
-    oj.common.TestCase test_case = 2;
-}
-
-message GetTestCasesRequest {
+message ListTestCasesRequest {
     string question_id = 1;
     bool sample_only = 2;
 }
-
-message GetTestCasesResponse {
+message ListTestCasesResponse {
     oj.common.StatusResponse status = 1;
     repeated oj.common.TestCase test_cases = 2;
 }
+message CreateTestCaseRequest {
+    string question_id = 1;
+    uint32 ordinal = 2;
+    string input = 3;
+    string expected_output = 4;
+    bool is_sample = 5;
+}
+message UpdateTestCaseRequest { oj.common.TestCase test_case = 1; }
+message TestCaseIdRequest { uint64 test_case_id = 1; }
+message TestCaseResponse {
+    oj.common.StatusResponse status = 1;
+    oj.common.TestCase test_case = 2;
+}
+message InvalidateQuestionCacheRequest { string question_id = 1; }
 
 service QuestionService {
-    rpc GetQuestionList (GetQuestionListRequest) returns (GetQuestionListResponse);
-    rpc GetQuestionDetail (GetQuestionDetailRequest) returns (GetQuestionDetailResponse);
-    rpc CreateQuestion (CreateQuestionRequest) returns (CreateQuestionResponse);
-    rpc UpdateQuestion (UpdateQuestionRequest) returns (UpdateQuestionResponse);
-    rpc UploadTestCase (UploadTestCaseRequest) returns (UploadTestCaseResponse);
-    rpc GetTestCases (GetTestCasesRequest) returns (GetTestCasesResponse);
+    rpc ListQuestions(GetQuestionListRequest) returns (GetQuestionListResponse);
+    rpc GetQuestion(QuestionIdRequest) returns (GetQuestionDetailResponse);
+    rpc GetPassStatus(QuestionIdRequest) returns (GetQuestionPassStatusResponse);
+    rpc CreateQuestion(SaveQuestionRequest) returns (QuestionResponse);
+    rpc UpdateQuestion(SaveQuestionRequest) returns (QuestionResponse);
+    rpc DeleteQuestion(QuestionIdRequest) returns (oj.common.EmptyResponse);
+    rpc ListTestCases(ListTestCasesRequest) returns (ListTestCasesResponse);
+    rpc CreateTestCase(CreateTestCaseRequest) returns (TestCaseResponse);
+    rpc UpdateTestCase(UpdateTestCaseRequest) returns (TestCaseResponse);
+    rpc DeleteTestCase(TestCaseIdRequest) returns (oj.common.EmptyResponse);
+    rpc InvalidateCache(InvalidateQuestionCacheRequest) returns (oj.common.EmptyResponse);
 }
 
-// ==================== SolutionService ====================
-
-message GetSolutionListRequest {
+message ListSolutionsRequest {
     oj.common.PageRequest page = 1;
     string question_id = 2;
-    string sort_by = 3;  // hot/new
+    string sort_by = 3;
+    uint32 author_uid = 4;
 }
-
-message GetSolutionListResponse {
+message ListSolutionsResponse {
     oj.common.StatusResponse status = 1;
-    oj.common.PageResponse page_info = 2;
+    oj.common.PageResponse page = 2;
     repeated oj.common.Solution solutions = 3;
 }
-
-message GetSolutionDetailRequest {
-    uint32 solution_id = 1;
-}
-
-message GetSolutionDetailResponse {
+message SolutionIdRequest { uint64 solution_id = 1; }
+message GetSolutionResponse {
     oj.common.StatusResponse status = 1;
     oj.common.Solution solution = 2;
     oj.common.User author = 3;
-    bool user_liked = 4;
-    bool user_favorited = 5;
+    oj.common.SolutionActionState current_user_actions = 4;
 }
-
 message CreateSolutionRequest {
     string question_id = 1;
-    uint32 user_id = 2;
-    string title = 3;
-    string content_md = 4;
+    string title = 2;
+    string content_md = 3;
 }
-
-message CreateSolutionResponse {
+message UpdateSolutionRequest {
+    uint64 solution_id = 1;
+    string title = 2;
+    string content_md = 3;
+}
+message SolutionResponse {
     oj.common.StatusResponse status = 1;
     oj.common.Solution solution = 2;
 }
-
-message ToggleLikeRequest {
-    uint32 solution_id = 1;
-    uint32 user_id = 2;
-}
-
-message ToggleLikeResponse {
+message SolutionActionResponse {
     oj.common.StatusResponse status = 1;
-    bool liked = 2;
-    uint32 like_count = 3;
-}
-
-message ToggleFavoriteRequest {
-    uint32 solution_id = 1;
-    uint32 user_id = 2;
-}
-
-message ToggleFavoriteResponse {
-    oj.common.StatusResponse status = 1;
-    bool favorited = 2;
-    uint32 favorite_count = 3;
+    oj.common.SolutionActionState actions = 2;
+    uint64 like_count = 3;
+    uint64 favorite_count = 4;
 }
 
 service SolutionService {
-    rpc GetSolutionList (GetSolutionListRequest) returns (GetSolutionListResponse);
-    rpc GetSolutionDetail (GetSolutionDetailRequest) returns (GetSolutionDetailResponse);
-    rpc CreateSolution (CreateSolutionRequest) returns (CreateSolutionResponse);
-    rpc ToggleLike (ToggleLikeRequest) returns (ToggleLikeResponse);
-    rpc ToggleFavorite (ToggleFavoriteRequest) returns (ToggleFavoriteResponse);
+    rpc ListSolutions(ListSolutionsRequest) returns (ListSolutionsResponse);
+    rpc GetSolution(SolutionIdRequest) returns (GetSolutionResponse);
+    rpc CreateSolution(CreateSolutionRequest) returns (SolutionResponse);
+    rpc UpdateSolution(UpdateSolutionRequest) returns (SolutionResponse);
+    rpc DeleteSolution(SolutionIdRequest) returns (oj.common.EmptyResponse);
+    rpc ToggleLike(SolutionIdRequest) returns (SolutionActionResponse);
+    rpc ToggleFavorite(SolutionIdRequest) returns (SolutionActionResponse);
+    rpc GetActionState(SolutionIdRequest) returns (SolutionActionResponse);
 }
 
-// ==================== CommentService ====================
-
-message GetCommentsRequest {
-    uint32 solution_id = 1;
+message ListCommentsRequest {
+    uint64 solution_id = 1;
     oj.common.PageRequest page = 2;
 }
-
-message GetCommentsResponse {
+message ListRepliesRequest {
+    uint64 parent_comment_id = 1;
+    oj.common.PageRequest page = 2;
+}
+message ListCommentsResponse {
     oj.common.StatusResponse status = 1;
-    oj.common.PageResponse page_info = 2;
+    oj.common.PageResponse page = 2;
     repeated oj.common.Comment comments = 3;
+    repeated oj.common.CommentActionState current_user_actions = 4;
 }
-
-message GetRepliesRequest {
-    uint32 comment_id = 1;
-}
-
-message GetRepliesResponse {
-    oj.common.StatusResponse status = 1;
-    repeated oj.common.Comment replies = 2;
-}
-
 message CreateCommentRequest {
-    uint32 solution_id = 1;
-    uint32 user_id = 2;
-    uint32 parent_id = 3;         // 0 = 顶级评论
-    uint32 reply_to_user_id = 4;  // 0 = 无回复目标
-    string content = 5;
+    uint64 solution_id = 1;
+    uint64 parent_comment_id = 2;
+    string content = 3;
 }
-
-message CreateCommentResponse {
+message UpdateCommentRequest {
+    uint64 comment_id = 1;
+    string content = 2;
+}
+message CommentIdRequest { uint64 comment_id = 1; }
+message CommentResponse {
     oj.common.StatusResponse status = 1;
     oj.common.Comment comment = 2;
 }
-
-message DeleteCommentRequest {
-    uint32 comment_id = 1;
-    uint32 user_id = 2;
-}
-
-message DeleteCommentResponse {
+message CommentActionResponse {
     oj.common.StatusResponse status = 1;
+    oj.common.CommentActionState actions = 2;
+    uint64 like_count = 3;
+    uint64 favorite_count = 4;
 }
-
-message ToggleCommentLikeRequest {
-    uint32 comment_id = 1;
-    uint32 user_id = 2;
-}
-
-message ToggleCommentLikeResponse {
+message GetCommentActionsRequest { repeated uint64 comment_ids = 1; }
+message GetCommentActionsResponse {
     oj.common.StatusResponse status = 1;
-    bool liked = 2;
-    uint32 like_count = 3;
+    repeated oj.common.CommentActionState actions = 2;
 }
 
 service CommentService {
-    rpc GetComments (GetCommentsRequest) returns (GetCommentsResponse);
-    rpc GetReplies (GetRepliesRequest) returns (GetRepliesResponse);
-    rpc CreateComment (CreateCommentRequest) returns (CreateCommentResponse);
-    rpc DeleteComment (DeleteCommentRequest) returns (DeleteCommentResponse);
-    rpc ToggleCommentLike (ToggleCommentLikeRequest) returns (ToggleCommentLikeResponse);
+    rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
+    rpc ListReplies(ListRepliesRequest) returns (ListCommentsResponse);
+    rpc CreateComment(CreateCommentRequest) returns (CommentResponse);
+    rpc UpdateComment(UpdateCommentRequest) returns (CommentResponse);
+    rpc DeleteComment(CommentIdRequest) returns (oj.common.EmptyResponse);
+    rpc ToggleLike(CommentIdRequest) returns (CommentActionResponse);
+    rpc ToggleFavorite(CommentIdRequest) returns (CommentActionResponse);
+    rpc GetActionStates(GetCommentActionsRequest) returns (GetCommentActionsResponse);
 }
-
-// ==================== AdminService ====================
 
 message AdminLoginRequest {
-    uint32 uid = 1;
+    uint32 admin_id = 1;
     string password = 2;
 }
-
 message AdminLoginResponse {
     oj.common.StatusResponse status = 1;
     oj.common.AdminAccount admin = 2;
-    string jwt_token = 3;
 }
-
-message AdminDashboardRequest {}
-
-message AdminDashboardResponse {
+message GetVersionResponse {
     oj.common.StatusResponse status = 1;
-    uint32 total_users = 2;
-    uint32 total_questions = 3;
-    uint32 total_solutions = 4;
-    uint32 total_submissions = 5;
-    uint32 today_submissions = 6;
+    string service = 2;
+    string version = 3;
+    string build_date = 4;
+    string build_time = 5;
+}
+message AdminOverviewResponse {
+    oj.common.StatusResponse status = 1;
+    uint64 total_users = 2;
+    uint64 total_questions = 3;
+    uint64 total_solutions = 4;
+    uint64 total_submissions = 5;
+    uint64 today_submissions = 6;
     uint32 judge_server_count = 7;
 }
-
-message ManageQuestionRequest {
-    string question_id = 1;
-    string action = 2;  // create/update/delete/hide/show
-    oj.common.Question question = 3;
+message AdminListUsersRequest {
+    oj.common.PageRequest page = 1;
+    string search = 2;
 }
-
-message ManageQuestionResponse {
+message AdminListUsersResponse {
     oj.common.StatusResponse status = 1;
+    oj.common.PageResponse page = 2;
+    repeated oj.common.User users = 3;
 }
-
-message ManageUserRequest {
-    uint32 uid = 1;
-    string action = 2;  // delete/disable/enable
+message AdminCreateUserRequest {
+    oj.common.User user = 1;
+    string password = 2;
 }
-
-message ManageUserResponse {
+message AdminUpdateUserRequest { oj.common.User user = 1; }
+message AdminUserIdRequest { uint32 uid = 1; }
+message AdminUserResponse {
     oj.common.StatusResponse status = 1;
+    oj.common.User user = 2;
 }
-
+message ListAdminAccountsRequest {
+    oj.common.PageRequest page = 1;
+    string search = 2;
+}
+message ListAdminAccountsResponse {
+    oj.common.StatusResponse status = 1;
+    oj.common.PageResponse page = 2;
+    repeated oj.common.AdminAccount accounts = 3;
+}
+message SaveAdminAccountRequest {
+    oj.common.AdminAccount account = 1;
+    string password = 2;
+}
+message AdminAccountIdRequest { uint32 admin_id = 1; }
+message AdminAccountResponse {
+    oj.common.StatusResponse status = 1;
+    oj.common.AdminAccount account = 2;
+}
+message GetCacheMetricsResponse {
+    oj.common.StatusResponse status = 1;
+    oj.common.CacheMetrics metrics = 2;
+}
 message GetAuditLogsRequest {
     oj.common.PageRequest page = 1;
     string action = 2;
     int64 start_time = 3;
     int64 end_time = 4;
 }
-
 message GetAuditLogsResponse {
     oj.common.StatusResponse status = 1;
-    oj.common.PageResponse page_info = 2;
+    oj.common.PageResponse page = 2;
     repeated oj.common.AdminAuditLog logs = 3;
 }
 
 service AdminService {
-    rpc AdminLogin (AdminLoginRequest) returns (AdminLoginResponse);
-    rpc GetDashboard (AdminDashboardRequest) returns (AdminDashboardResponse);
-    rpc ManageQuestion (ManageQuestionRequest) returns (ManageQuestionResponse);
-    rpc ManageUser (ManageUserRequest) returns (ManageUserResponse);
-    rpc GetAuditLogs (GetAuditLogsRequest) returns (GetAuditLogsResponse);
+    rpc GetVersion(oj.common.EmptyRequest) returns (GetVersionResponse);
+    rpc Login(AdminLoginRequest) returns (AdminLoginResponse);
+    rpc Logout(oj.common.EmptyRequest) returns (oj.common.EmptyResponse);
+    rpc GetOverview(oj.common.EmptyRequest) returns (AdminOverviewResponse);
+    rpc ListUsers(AdminListUsersRequest) returns (AdminListUsersResponse);
+    rpc GetUser(AdminUserIdRequest) returns (AdminUserResponse);
+    rpc CreateUser(AdminCreateUserRequest) returns (AdminUserResponse);
+    rpc UpdateUser(AdminUpdateUserRequest) returns (AdminUserResponse);
+    rpc DeleteUser(AdminUserIdRequest) returns (oj.common.EmptyResponse);
+    rpc ListQuestions(GetQuestionListRequest) returns (GetQuestionListResponse);
+    rpc GetQuestion(QuestionIdRequest) returns (GetQuestionDetailResponse);
+    rpc CreateQuestion(SaveQuestionRequest) returns (QuestionResponse);
+    rpc UpdateQuestion(SaveQuestionRequest) returns (QuestionResponse);
+    rpc DeleteQuestion(QuestionIdRequest) returns (oj.common.EmptyResponse);
+    rpc ListTestCases(ListTestCasesRequest) returns (ListTestCasesResponse);
+    rpc CreateTestCase(CreateTestCaseRequest) returns (TestCaseResponse);
+    rpc UpdateTestCase(UpdateTestCaseRequest) returns (TestCaseResponse);
+    rpc DeleteTestCase(TestCaseIdRequest) returns (oj.common.EmptyResponse);
+    rpc InvalidateQuestionCache(InvalidateQuestionCacheRequest) returns (oj.common.EmptyResponse);
+    rpc ListAdminAccounts(ListAdminAccountsRequest) returns (ListAdminAccountsResponse);
+    rpc GetAdminAccount(AdminAccountIdRequest) returns (AdminAccountResponse);
+    rpc CreateAdminAccount(SaveAdminAccountRequest) returns (AdminAccountResponse);
+    rpc UpdateAdminAccount(SaveAdminAccountRequest) returns (AdminAccountResponse);
+    rpc DeleteAdminAccount(AdminAccountIdRequest) returns (oj.common.EmptyResponse);
+    rpc GetCacheMetrics(oj.common.EmptyRequest) returns (GetCacheMetricsResponse);
+    rpc GetAuditLogs(GetAuditLogsRequest) returns (GetAuditLogsResponse);
 }
 
-// ==================== SubmissionService（判题结果回传） ====================
-
-message UpdateSubmissionResultRequest {
-    uint32 user_id = 1;
-    string question_id = 2;
-    string result_json = 3;
-    bool is_pass = 4;
-    int64 action_time = 5;
+message CreateSubmissionRequest {
+    string question_id = 1;
+    string code = 2;
+    string language = 3;
 }
-
-message UpdateSubmissionResultResponse {
+message CreateSubmissionResponse {
     oj.common.StatusResponse status = 1;
+    oj.common.Submission submission = 2;
 }
-
-message GetSubmissionStatusRequest {
-    uint32 user_id = 1;
-    string question_id = 2;
-    int64 action_time = 3;
+message CreateCustomTestRequest {
+    string question_id = 1;
+    string code = 2;
+    string language = 3;
+    string custom_input = 4;
 }
-
-message GetSubmissionStatusResponse {
+message CreateCustomTestResponse {
     oj.common.StatusResponse status = 1;
-    string result_json = 2;
-    bool is_pass = 3;
-    bool is_judging = 4;
+    string task_id = 2;
+    oj.common.SubmissionStatus submission_status = 3;
+}
+message GetSubmissionRequest { uint64 submission_id = 1; }
+message GetSubmissionResponse {
+    oj.common.StatusResponse status = 1;
+    oj.common.Submission submission = 2;
+}
+message GetCustomTestRequest { string task_id = 1; }
+message GetCustomTestResponse {
+    oj.common.StatusResponse status = 1;
+    string task_id = 2;
+    oj.common.SubmissionStatus submission_status = 3;
+    oj.common.JudgeResult result = 4;
+}
+message ListSubmissionsRequest {
+    oj.common.PageRequest page = 1;
+    string question_id = 2;
+    reserved 3;
+    oj.common.SubmissionStatus submission_status = 4;
+}
+message ListSubmissionsResponse {
+    oj.common.StatusResponse status = 1;
+    oj.common.PageResponse page = 2;
+    repeated oj.common.Submission submissions = 3;
+}
+message UpdateJudgeResultRequest {
+    string message_id = 1;
+    reserved 2;
+    oneof task_id {
+        uint64 submission_id = 3;
+        string custom_task_id = 4;
+    }
+    // Serialized oj.common.JudgeResult bytes. The receiver verifies the HMAC
+    // over these exact bytes before parsing the result.
+    bytes result_payload = 5;
+    ServiceAuthentication service_auth = 6;
+}
+message ServiceAuthentication {
+    string key_id = 1;
+    int64 timestamp = 2;
+    string nonce = 3;
+    // HMAC-SHA256 over the UTF-8 bytes of:
+    //   oj-judge-result-v1\n
+    //   <message_id>\n
+    //   submission:<uint64-decimal>\n  OR  custom:<task-id-utf8>\n
+    //   <timestamp-decimal>\n
+    //   <nonce>\n
+    // followed by the raw result_payload bytes. Phase 7 validates the key ID,
+    // timestamp window, and nonce replay before parsing or persisting a result.
+    bytes hmac_sha256 = 4;
+}
+enum JudgeResultPersistenceOutcome {
+    JUDGE_RESULT_PERSISTENCE_OUTCOME_UNSPECIFIED = 0;
+    JUDGE_RESULT_PERSISTENCE_OUTCOME_PERSISTED = 1;
+    JUDGE_RESULT_PERSISTENCE_OUTCOME_IDEMPOTENT = 2;
+    JUDGE_RESULT_PERSISTENCE_OUTCOME_RETRYABLE_FAILURE = 3;
+    JUDGE_RESULT_PERSISTENCE_OUTCOME_REJECTED = 4;
+}
+message UpdateJudgeResultResponse {
+    oj.common.StatusResponse status = 1;
+    JudgeResultPersistenceOutcome outcome = 2;
+    uint32 retry_after_ms = 3;
 }
 
 service SubmissionService {
-    rpc UpdateSubmissionResult (UpdateSubmissionResultRequest) returns (UpdateSubmissionResultResponse);
-    rpc GetSubmissionStatus (GetSubmissionStatusRequest) returns (GetSubmissionStatusResponse);
-    // Judge Service 判题完成后调用此 RPC 回传结果
-    rpc UpdateJudgeResult (oj_judge.JudgeFinishedRequest) returns (oj_judge.NullRsp);
+    rpc CreateSubmission(CreateSubmissionRequest) returns (CreateSubmissionResponse);
+    rpc CreateCustomTest(CreateCustomTestRequest) returns (CreateCustomTestResponse);
+    rpc GetSubmission(GetSubmissionRequest) returns (GetSubmissionResponse);
+    rpc GetCustomTest(GetCustomTestRequest) returns (GetCustomTestResponse);
+    rpc ListSubmissions(ListSubmissionsRequest) returns (ListSubmissionsResponse);
+    rpc UpdateJudgeResult(UpdateJudgeResultRequest) returns (UpdateJudgeResultResponse);
+    // Transitional callback used by the completed Phase 2 Judge. Phase 7
+    // migrates Judge to UpdateJudgeResult and then removes this method.
+    rpc LegacyUpdateJudgeResult(oj_judge.JudgeFinishedRequest) returns (oj_judge.NullRsp);
+}
+
+message InvalidateStaticCacheRequest { string path = 1; }
+
+service StaticFileService {
+    rpc InvalidateCache(InvalidateStaticCacheRequest) returns (oj.common.EmptyResponse);
 }
