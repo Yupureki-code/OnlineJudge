@@ -135,39 +135,6 @@ PROTOBUF_NAMESPACE_CLOSE
 namespace oj {
 namespace common {
 
-enum ErrorCode : int {
-  ERROR_CODE_UNSPECIFIED = 0,
-  ERROR_CODE_OK = 1,
-  ERROR_CODE_INVALID_ARGUMENT = 2,
-  ERROR_CODE_UNAUTHENTICATED = 3,
-  ERROR_CODE_PERMISSION_DENIED = 4,
-  ERROR_CODE_NOT_FOUND = 5,
-  ERROR_CODE_CONFLICT = 6,
-  ERROR_CODE_RATE_LIMITED = 7,
-  ERROR_CODE_UNAVAILABLE = 8,
-  ERROR_CODE_INTERNAL = 9,
-  ErrorCode_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
-  ErrorCode_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
-};
-bool ErrorCode_IsValid(int value);
-constexpr ErrorCode ErrorCode_MIN = ERROR_CODE_UNSPECIFIED;
-constexpr ErrorCode ErrorCode_MAX = ERROR_CODE_INTERNAL;
-constexpr int ErrorCode_ARRAYSIZE = ErrorCode_MAX + 1;
-
-const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ErrorCode_descriptor();
-template<typename T>
-inline const std::string& ErrorCode_Name(T enum_t_value) {
-  static_assert(::std::is_same<T, ErrorCode>::value ||
-    ::std::is_integral<T>::value,
-    "Incorrect type passed to function ErrorCode_Name.");
-  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
-    ErrorCode_descriptor(), enum_t_value);
-}
-inline bool ErrorCode_Parse(
-    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, ErrorCode* value) {
-  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<ErrorCode>(
-    ErrorCode_descriptor(), name, value);
-}
 enum SubmissionStatus : int {
   SUBMISSION_STATUS_UNSPECIFIED = 0,
   SUBMISSION_STATUS_PENDING = 1,
@@ -326,11 +293,12 @@ class StatusResponse final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kMessageFieldNumber = 2,
-    kCodeFieldNumber = 1,
-    kRetryableFieldNumber = 3,
+    kMessageFieldNumber = 3,
+    kCodeFieldNumber = 2,
+    kSuccessFieldNumber = 1,
+    kRetryableFieldNumber = 4,
   };
-  // string message = 2;
+  // string message = 3;
   void clear_message();
   const std::string& message() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -344,16 +312,25 @@ class StatusResponse final :
   std::string* _internal_mutable_message();
   public:
 
-  // .oj.common.ErrorCode code = 1;
+  // int32 code = 2;
   void clear_code();
-  ::oj::common::ErrorCode code() const;
-  void set_code(::oj::common::ErrorCode value);
+  int32_t code() const;
+  void set_code(int32_t value);
   private:
-  ::oj::common::ErrorCode _internal_code() const;
-  void _internal_set_code(::oj::common::ErrorCode value);
+  int32_t _internal_code() const;
+  void _internal_set_code(int32_t value);
   public:
 
-  // bool retryable = 3;
+  // bool success = 1;
+  void clear_success();
+  bool success() const;
+  void set_success(bool value);
+  private:
+  bool _internal_success() const;
+  void _internal_set_success(bool value);
+  public:
+
+  // bool retryable = 4;
   void clear_retryable();
   bool retryable() const;
   void set_retryable(bool value);
@@ -371,7 +348,8 @@ class StatusResponse final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr message_;
-    int code_;
+    int32_t code_;
+    bool success_;
     bool retryable_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
@@ -4363,27 +4341,47 @@ class EmptyResponse final :
 #endif  // __GNUC__
 // StatusResponse
 
-// .oj.common.ErrorCode code = 1;
+// bool success = 1;
+inline void StatusResponse::clear_success() {
+  _impl_.success_ = false;
+}
+inline bool StatusResponse::_internal_success() const {
+  return _impl_.success_;
+}
+inline bool StatusResponse::success() const {
+  // @@protoc_insertion_point(field_get:oj.common.StatusResponse.success)
+  return _internal_success();
+}
+inline void StatusResponse::_internal_set_success(bool value) {
+
+  _impl_.success_ = value;
+}
+inline void StatusResponse::set_success(bool value) {
+  _internal_set_success(value);
+  // @@protoc_insertion_point(field_set:oj.common.StatusResponse.success)
+}
+
+// int32 code = 2;
 inline void StatusResponse::clear_code() {
   _impl_.code_ = 0;
 }
-inline ::oj::common::ErrorCode StatusResponse::_internal_code() const {
-  return static_cast< ::oj::common::ErrorCode >(_impl_.code_);
+inline int32_t StatusResponse::_internal_code() const {
+  return _impl_.code_;
 }
-inline ::oj::common::ErrorCode StatusResponse::code() const {
+inline int32_t StatusResponse::code() const {
   // @@protoc_insertion_point(field_get:oj.common.StatusResponse.code)
   return _internal_code();
 }
-inline void StatusResponse::_internal_set_code(::oj::common::ErrorCode value) {
+inline void StatusResponse::_internal_set_code(int32_t value) {
 
   _impl_.code_ = value;
 }
-inline void StatusResponse::set_code(::oj::common::ErrorCode value) {
+inline void StatusResponse::set_code(int32_t value) {
   _internal_set_code(value);
   // @@protoc_insertion_point(field_set:oj.common.StatusResponse.code)
 }
 
-// string message = 2;
+// string message = 3;
 inline void StatusResponse::clear_message() {
   _impl_.message_.ClearToEmpty();
 }
@@ -4433,7 +4431,7 @@ inline void StatusResponse::set_allocated_message(std::string* message) {
   // @@protoc_insertion_point(field_set_allocated:oj.common.StatusResponse.message)
 }
 
-// bool retryable = 3;
+// bool retryable = 4;
 inline void StatusResponse::clear_retryable() {
   _impl_.retryable_ = false;
 }
@@ -7918,11 +7916,6 @@ inline void EmptyResponse::set_allocated_status(::oj::common::StatusResponse* st
 
 PROTOBUF_NAMESPACE_OPEN
 
-template <> struct is_proto_enum< ::oj::common::ErrorCode> : ::std::true_type {};
-template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::oj::common::ErrorCode>() {
-  return ::oj::common::ErrorCode_descriptor();
-}
 template <> struct is_proto_enum< ::oj::common::SubmissionStatus> : ::std::true_type {};
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::oj::common::SubmissionStatus>() {

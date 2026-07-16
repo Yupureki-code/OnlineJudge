@@ -36,8 +36,8 @@ struct User {
     #pragma db type("DATETIME")
     DateTime password_update_at;
 
-    #pragma db type("VARCHAR(255)") null
-    odb::nullable<std::string> avatar;
+    #pragma db column("avatar") type("VARCHAR(255)") null
+    odb::nullable<std::string> avatar_path;
 };
 
 } // namespace oj::db

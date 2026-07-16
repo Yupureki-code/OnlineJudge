@@ -63,7 +63,7 @@ const std::string oj_users = ns_runtime_cfg::GetEnvOrDefault("OJ_USERS", "users"
 const std::string host = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_HOST", "localhost");
 const std::string user = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_USER", "oj_server");
 const std::string passwd = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_PASS", "password");
-const std::string db = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_NAME", "myoj");
+const std::string database = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_NAME", "myoj");
 const int port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_DB_PORT", ns_runtime_cfg::ParseIntOrDefault("3306", 3306));
 
 const std::string redis_addr = ns_runtime_cfg::GetEnvOrDefault("OJ_REDIS_ADDR", "tcp://127.0.0.1:6379");

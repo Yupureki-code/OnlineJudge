@@ -1,634 +1,1088 @@
 #pragma once
 
+#include "comm.hpp"
 #include "model_base.hpp"
-#include <chrono>
 
-namespace ns_model
+#include <algorithm>
+#include <chrono>
+#include <limits>
+#include <map>
+#include <set>
+#include <stdexcept>
+#include <tuple>
+#include <vector>
+#include "../../../comm/models/user.hxx"
+#include "../../../comm/models/model_counts.hxx"
+#include "../../../comm/models/gen/user-odb.hxx"
+#include "../../../comm/models/gen/model_counts-odb.hxx"
+
+namespace oj::model
 {
     class ModelUser : public ModelBase
     {
     private:
-        //查询一批用户数据
-        bool QueryUsers(const std::string& sql, std::vector<User>* users)
+        class DatabaseHandle
         {
-            if (users == nullptr)
+        public:
+            DatabaseHandle& operator=(ns_odb::ScopedDB&& database)
             {
-                return false;
+                _database = std::make_unique<ns_odb::ScopedDB>(std::move(database));
+                return *this;
             }
 
-            auto my = CreateConnection();
-            if (!my)
-                return false;
+            odb::database* operator->() { return _database->Get(); }
+            odb::database& operator*() { return **_database; }
+            odb::database* Get() { return _database ? _database->Get() : nullptr; }
 
-            MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql用户列表查询错误");
-            if (!res) return false;
+        private:
+            std::unique_ptr<ns_odb::ScopedDB> _database;
+        };
 
-            int rows = mysql_num_rows(res);
-            users->clear();
-            users->reserve(rows);
-            for (int i = 0; i < rows; ++i)
-            {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr)
-                {
-                    continue;
-                }
-                User item;
-                item.uid = row[0] == nullptr ? 0 : std::atoi(row[0]);
-                item.name = row[1] == nullptr ? "" : row[1];
-                item.email = row[2] == nullptr ? "" : row[2];
-                item.create_time = row[3] == nullptr ? "" : row[3];
-                item.last_login = row[4] == nullptr ? "" : row[4];
-                users->push_back(item);
-            }
-
-            mysql_free_result(res);
-            return true;
+        static long long ElapsedMs(const std::chrono::steady_clock::time_point& begin)
+        {
+            return std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
         }
 
-        std::string BuildUserWhereClause(const std::shared_ptr<QueryStruct>& query_hash, MYSQL* my)
+        static bool DateTimeLess(const oj::db::DateTime& lhs, const oj::db::DateTime& rhs)
         {
-            if (!query_hash)
-            {
-                return "";
-            }
-            auto uq = std::dynamic_pointer_cast<UserQuery>(query_hash);
-            if (!uq)
-            {
-                return "";
-            }
+            return std::tie(lhs.year, lhs.month, lhs.day, lhs.hour, lhs.minute, lhs.second) <
+                   std::tie(rhs.year, rhs.month, rhs.day, rhs.hour, rhs.minute, rhs.second);
+        }
 
-            std::vector<std::string> clauses;
-            if (uq->id > 0)
-            {
-                clauses.push_back("uid=" + std::to_string(uq->id));
-            }
-            if (!uq->name.empty())
-            {
-                std::string safe_name = EscapeSqlString(uq->name, my);
-                clauses.push_back("name like '%" + safe_name + "%'");
-            }
-            if (!uq->email.empty())
-            {
-                std::string safe_email = EscapeSqlString(uq->email, my);
-                clauses.push_back("email like '%" + safe_email + "%'");
-            }
+        static odb::query<oj::db::User> BuildUserQuery(
+            const std::shared_ptr<QueryStruct>& query_hash, bool* filtered)
+        {
+            using Query = odb::query<oj::db::User>;
+            Query query;
+            *filtered = false;
+            const auto user_query = std::dynamic_pointer_cast<UserQuery>(query_hash);
+            if (!user_query)
+                return query;
 
-            if (clauses.empty())
-            {
-                return "";
-            }
-
-            std::ostringstream where;
-            where << " where ";
-            for (size_t i = 0; i < clauses.size(); ++i)
-            {
-                if (i != 0)
-                {
-                    where << " or ";
-                }
-                where << clauses[i];
-            }
-            return where.str();
+            const auto add_clause = [&](const odb::mysql::query_base& clause) {
+                query = *filtered ? Query(query || clause) : Query(clause);
+                *filtered = true;
+            };
+            if (user_query->id > 0)
+                add_clause(Query::uid == static_cast<uint32_t>(user_query->id));
+            if (!user_query->name.empty())
+                add_clause(Query::name.like("%" + user_query->name + "%"));
+            if (!user_query->email.empty())
+                add_clause(Query::email.like("%" + user_query->email + "%"));
+            return query;
         }
 
     public:
         //用户:检查用户是否存在
         bool CheckUser(const std::string& email)
         {
-            auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if(!my)
-                return false;
-
-            std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "select * from " + oj_users + " where email='" + safe_email + "'";
-
-            MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql查询错误");
-            if (!res)
-            {
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - begin).count();
-                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.CheckUser.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                bool found = false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.CheckUser.ODBQuery");
+                    found = database->query_one<oj::db::User>(
+                        odb::query<oj::db::User>::email == email) != nullptr;
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.CheckUser.ODBCommit");
+                    transaction.commit();
+                }
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return found;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.CheckUser.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::CheckUser rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::CheckUser ODB failure: {}", e.what());
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
                 return false;
             }
-            int rows = mysql_num_rows(res);
-            mysql_free_result(res);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return rows > 0;
         }
 
         //用户:创建新用户
         bool CreateUser(const std::string& name, const std::string& email)
         {
-            auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if(!my)
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.CreateUser.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                const auto now = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                oj::db::User user{};
+                user.name = name;
+                user.password_hash = "";
+                user.email = email;
+                user.create_time = now;
+                user.last_login = now;
+                user.password_algo = "none";
+                user.password_update_at = now;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.CreateUser.ODBPersist");
+                    database->persist(user);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.CreateUser.ODBCommit");
+                    transaction.commit();
+                }
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.CreateUser.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::CreateUser rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::CreateUser ODB failure: {}", e.what());
                 return false;
-
-            std::string safe_name = EscapeSqlString(name, my.get());
-            std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "insert into " + oj_users +
-                              " (name, password_hash, email, password_algo) values ('" +
-                              safe_name + "', '', '" + safe_email + "', 'none')";
-            auto ok = ExecuteSql(sql);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - begin).count();
-            if (ok)
-                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return ok;
+            }
         }
 
         //用户:获取用户信息
         bool GetUser(const std::string& email, User* user)
         {
-            auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if(!my)
+            if (user == nullptr) return false;
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUser.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                std::unique_ptr<oj::db::User> found;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUser.ODBQuery");
+                    found.reset(database->query_one<oj::db::User>(
+                        odb::query<oj::db::User>::email == email));
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUser.ODBCommit");
+                    transaction.commit();
+                }
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                if (!found) return false;
+                *user = *found;
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUser.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::GetUser rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::GetUser ODB failure: {}", e.what());
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
                 return false;
-
-            std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where email='" + safe_email + "'";
-            auto ok = QueryUser(sql, user);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return ok;
+            }
         }
 
         //用户:更新最后登录时间
         bool UpdateLastLogin(const std::string& email)
         {
-            auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if(!my)
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateLastLogin.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                std::unique_ptr<oj::db::User> found;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateLastLogin.ODBQuery");
+                    found.reset(database->query_one<oj::db::User>(
+                        odb::query<oj::db::User>::email == email));
+                }
+                if (found) 
+                {
+                    found->last_login = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateLastLogin.ODBUpdate");
+                        database->update(*found);
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateLastLogin.ODBCommit");
+                    transaction.commit();
+                }
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateLastLogin.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::UpdateLastLogin rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::UpdateLastLogin ODB failure: {}", e.what());
                 return false;
-
-            std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "update " + oj_users + " set last_login=NOW() where email='" + safe_email + "'";
-            auto ok = ExecuteSql(sql);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - begin).count();
-            if (ok)
-                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return ok;
+            }
         }
 
         //用户:通过ID获取用户信息 (with Redis read cache)
         bool GetUserById(int uid, User* user)
         {
-            if (user == nullptr) return false;
-            auto _metrics_begin = std::chrono::steady_clock::now();
-
-            // Try cache first
-            std::string cache_key = "user:id:" + std::to_string(uid);
+            if (user == nullptr || uid <= 0) return false;
+            const auto begin = std::chrono::steady_clock::now();
+            const std::string cache_key = "user:id:" + std::to_string(uid);
             std::string cached;
-            if (_cache.GetStringByAnyKey(cache_key, &cached))
-            {
+            if (_cache.GetStringByAnyKey(cache_key, &cached)) {
                 Json::CharReaderBuilder builder;
-                Json::Value val;
-                std::istringstream ss(cached);
-                if (Json::parseFromStream(builder, ss, &val, nullptr) && val.isMember("uid"))
-                {
-                    user->uid = val["uid"].asInt();
-                    user->name = val["name"].asString();
-                    user->email = val["email"].asString();
-                    user->create_time = val["create_time"].asString();
-                    user->last_login = val["last_login"].asString();
-                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - _metrics_begin).count();
-                    RecordCacheMetrics(RecordActionType::User, true, false, cost_ms);
+                Json::Value value;
+                std::istringstream stream(cached);
+                if (Json::parseFromStream(builder, stream, &value, nullptr) && value.isMember("uid")) {
+                    user->uid = value["uid"].asInt();
+                    user->name = value["name"].asString();
+                    user->email = value["email"].asString();
+                    user->create_time = oj::util::TimeUtil::IntToDateTime(value["create_time"].asInt64());
+                    user->last_login = oj::util::TimeUtil::IntToDateTime(value["last_login"].asInt64());
+                    RecordCacheMetrics(RecordActionType::User, true, false, ElapsedMs(begin));
                     return true;
                 }
             }
 
-            // Cache miss — query MySQL
-            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where uid=" + std::to_string(uid);
-            bool ok = QueryUser(sql, user);
-            if (ok) {
-                // Write to cache
-                Json::Value val;
-                val["uid"] = user->uid;
-                val["name"] = user->name;
-                val["email"] = user->email;
-                val["create_time"] = user->create_time;
-                val["last_login"] = user->last_login;
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserById.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                std::unique_ptr<oj::db::User> found;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserById.ODBLoad");
+                    found.reset(database->find<oj::db::User>(static_cast<uint32_t>(uid)));
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserById.ODBCommit");
+                    transaction.commit();
+                }
+                if (!found) return false;
+                *user = *found;
+                Json::Value value;
+                value["uid"] = user->uid;
+                value["name"] = user->name;
+                value["email"] = user->email;
+                value["create_time"] = oj::util::TimeUtil::DateTimeToInt(user->create_time);
+                value["last_login"] = oj::util::TimeUtil::DateTimeToInt(user->last_login);
                 Json::FastWriter writer;
-                _cache.SetStringByAnyKey(cache_key, writer.write(val), _cache.BuildJitteredTtl(3600, 600));
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - _metrics_begin).count();
-                RecordCacheMetrics(RecordActionType::User, false, true, cost_ms);
+                _cache.SetStringByAnyKey(cache_key, writer.write(value),
+                                         _cache.BuildJitteredTtl(3600, 600));
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserById.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::GetUserById rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::GetUserById ODB failure: {}", e.what());
+                return false;
             }
-            return ok;
         }
 
         bool UpdateUserName(int uid, const std::string& new_name)
         {
-            auto my = CreateConnection();
-            if (!my) return false;
-            auto begin = std::chrono::steady_clock::now();
-            std::string safe_name = EscapeSqlString(new_name, my.get());
-            std::ostringstream sql;
-            sql << "update " << oj_users << " set name='" << safe_name
-                << "' where uid=" << uid;
-            bool ok = ExecuteSql(sql.str());
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-            if (ok) {
+            if (uid <= 0) return false;
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateUserName.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                std::unique_ptr<oj::db::User> found;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateUserName.ODBLoad");
+                    found.reset(database->find<oj::db::User>(static_cast<uint32_t>(uid)));
+                }
+                if (found) {
+                    found->name = new_name;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateUserName.ODBUpdate");
+                        database->update(*found);
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateUserName.ODBCommit");
+                    transaction.commit();
+                }
                 _cache.DeleteStringByAnyKey("user:id:" + std::to_string(uid));
-                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateUserName.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::UpdateUserName rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::UpdateUserName ODB failure: {}", e.what());
+                return false;
             }
-            return ok;
         }
-
 
         bool GetUserByName(const std::string& name, User* user)
         {
-            auto my = CreateConnection();
-            if(!my)
+            if (user == nullptr) return false;
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserByName.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                std::unique_ptr<oj::db::User> found;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserByName.ODBQuery");
+                    found.reset(database->query_one<oj::db::User>(
+                        odb::query<oj::db::User>::name == name));
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserByName.ODBCommit");
+                    transaction.commit();
+                }
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                if (!found) return false;
+                *user = *found;
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserByName.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::GetUserByName rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::GetUserByName ODB failure: {}", e.what());
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
                 return false;
-            auto begin = std::chrono::steady_clock::now();
-            std::string safe_name = EscapeSqlString(name, my.get());
-            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where name='" + safe_name + "'";
-            bool ok = QueryUser(sql, user);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return ok;
+            }
         }
 
         bool GetUserCount(int* count)
         {
             if (count == nullptr) return false;
-            auto begin = std::chrono::steady_clock::now();
-            std::string sql = "select count(*) from " + oj_users;
-            auto ok = QueryCount(sql, count);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return ok;
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserCount.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                oj::db::UserCount result{};
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserCount.ODBQuery");
+                    const odb::query<oj::db::User> query;
+                    result = database->query_value<oj::db::UserCount>(query);
+                }
+                if (result.value > static_cast<uint64_t>(std::numeric_limits<int>::max()))
+                    throw std::overflow_error("user count exceeds legacy int range");
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserCount.ODBCommit");
+                    transaction.commit();
+                }
+                *count = static_cast<int>(result.value);
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserCount.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::GetUserCount rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::GetUserCount ODB failure: {}", e.what());
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return false;
+            }
         }
 
-        bool GetUsersPaged(std::shared_ptr<ns_cache::Cache::CacheListKey> key, std::vector<User>* users, int* total_count, int* total_pages)
+        bool GetUsersPaged(std::shared_ptr<oj::cache::Cache::CacheListKey> key,
+                           std::vector<User>* users, int* total_count, int* total_pages)
         {
-            if (!users || !total_count || !total_pages) return false;
-            auto my = CreateConnection(); if (!my) return false;
-            std::ostringstream count_sql;
-            count_sql << "select count(*) from " << oj_users;
-            auto begin = std::chrono::steady_clock::now();
-            if (!QueryCount(count_sql.str(), total_count)) return false;
-            *total_pages = (*total_count + key->GetSize() - 1) / key->GetSize();
-            if (*total_count <= 0) { users->clear(); return true; }
-            int offset = (key->GetPage() - 1) * key->GetSize();
-            std::ostringstream sql;
-            sql << "select uid,name,email,create_time,last_login from " << oj_users
-                << " order by uid desc limit " << key->GetSize() << " offset " << offset;
-            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "分页用户查询错误");
-            if (!res)
-            {
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+            if (!key || !users || !total_count || !total_pages || key->GetSize() <= 0)
+                return false;
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUsersPaged.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                bool filtered = false;
+                const auto query = BuildUserQuery(key->GetQueryHash(), &filtered);
+                oj::db::UserCount count_result{};
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUsersPaged.ODBQueryCount");
+                    count_result = database->query_value<oj::db::UserCount>(query);
+                }
+                if (count_result.value > static_cast<uint64_t>(std::numeric_limits<int>::max()))
+                    throw std::overflow_error("user count exceeds legacy int range");
+
+                const int result_count = static_cast<int>(count_result.value);
+                const int page_size = key->GetSize();
+                const int page = std::max(1, key->GetPage());
+                const int result_pages = result_count > 0
+                    ? (result_count - 1) / page_size + 1
+                    : 0;
+                std::vector<User> matched;
+                if (page <= result_pages) {
+                    const uint64_t offset = static_cast<uint64_t>(page - 1) *
+                                            static_cast<uint64_t>(page_size);
+                    odb::query<oj::db::User> page_query(query);
+                    page_query += " ORDER BY `uid` DESC LIMIT " + std::to_string(page_size) +
+                                  " OFFSET " + std::to_string(offset);
+                    odb::result<oj::db::User> result;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUsersPaged.ODBQuery");
+                        result = database->query<oj::db::User>(page_query, false);
+                    }
+                    {
+                        for (const auto& item : result)
+                            matched.push_back(item);
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUsersPaged.ODBCommit");
+                    transaction.commit();
+                }
+
+                *total_count = result_count;
+                *total_pages = result_pages;
+                users->clear();
+                users->swap(matched);
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUsersPaged.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::GetUsersPaged rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::GetUsersPaged ODB failure: {}", e.what());
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
                 return false;
             }
-            users->clear();
-            for (int r = 0; r < mysql_num_rows(res); ++r) {
-                MYSQL_ROW row = mysql_fetch_row(res); if (!row) continue;
-                User u; u.uid = atoi(row[0]); u.name = row[1] ? row[1] : "";
-                u.email = row[2] ? row[2] : "";
-                u.create_time = row[3] ? row[3] : ""; u.last_login = row[4] ? row[4] : "";
-                users->push_back(u);
-            }
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            mysql_free_result(res); return true;
         }
 
-        bool RecordUserSubmit(int user_id, const std::string& question_id, const std::string& result_json, bool is_pass)
+        bool RecordUserSubmit(int user_id, const std::string& question_id,
+                              const std::string& result_json, bool is_pass)
         {
-            auto my = CreateConnection();
-            if (!my)
-                return false;
-            auto begin = std::chrono::steady_clock::now();
-            std::string safe_qid = EscapeSqlString(question_id, my.get());
-            std::string safe_json = EscapeSqlString(result_json, my.get());
-
-            std::ostringstream sql;
-            sql << "insert into user_submits (user_id, question_id, result_json, is_pass, action_time) values ("
-                << user_id << ", '" << safe_qid << "', '" << safe_json << "', " << (is_pass ? 1 : 0) << ", NOW())";
-            if (!ExecuteSql(sql.str()))
+            if (user_id <= 0) return false;
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try 
             {
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.RecordUserSubmit.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                oj::db::LegacySubmission submission{};
+                submission.user_id = static_cast<uint32_t>(user_id);
+                submission.question_id = question_id;
+                submission.result_json = result_json;
+                submission.is_pass = is_pass;
+                submission.action_time = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.RecordUserSubmit.ODBPersist");
+                    database->persist(submission);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.RecordUserSubmit.ODBCommit");
+                    transaction.commit();
+                }
+                _cache.DeleteStringByAnyKey("submit:user:" + std::to_string(user_id) + ":q:" + question_id);
+                _cache.DeleteStringByAnyKey("stats:user:" + std::to_string(user_id));
+                _cache.DeleteStringByAnyKey("pass:user:" + std::to_string(user_id) + ":q:" + question_id);
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } 
+            catch (const std::exception& e) 
+            {
+                if (!transaction.finalized()) 
+                {
+                    try 
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.RecordUserSubmit.ODBRollback");
+                        transaction.rollback();
+                    } 
+                    catch (const std::exception& rollback_error) 
+                    {
+                        LOG_ERROR("ModelUser::RecordUserSubmit rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::RecordUserSubmit ODB failure: {}", e.what());
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
                 return false;
             }
-
-            _cache.DeleteStringByAnyKey("submit:user:" + std::to_string(user_id) + ":q:" + question_id);
-            _cache.DeleteStringByAnyKey("stats:user:" + std::to_string(user_id));
-            _cache.DeleteStringByAnyKey("pass:user:" + std::to_string(user_id) + ":q:" + question_id);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return true;
         }
-        //检查该用户是否通过该题目
+
         //检查该用户是否通过该题目（带Redis缓存）
         bool HasUserPassedQuestion(int user_id, const std::string& question_id)
         {
-            std::string cache_key = "pass:user:" + std::to_string(user_id) + ":q:" + question_id;
+            if (user_id <= 0) return false;
+            const std::string cache_key = "pass:user:" + std::to_string(user_id) + ":q:" + question_id;
             std::string cached;
-            auto begin = std::chrono::steady_clock::now();
-            if (_cache.GetStringByAnyKey(cache_key, &cached))
-            {
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-                RecordCacheMetrics(ModelBase::RecordActionType::User, true, false, cost_ms);
+            const auto begin = std::chrono::steady_clock::now();
+            if (_cache.GetStringByAnyKey(cache_key, &cached)) {
+                RecordCacheMetrics(RecordActionType::User, true, false, ElapsedMs(begin));
                 return cached == "1";
             }
 
-            auto my = CreateConnection();
-            if (!my)
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.HasUserPassedQuestion.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                odb::result<oj::db::LegacySubmission> result;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.HasUserPassedQuestion.ODBQuery");
+                    result = database->query<oj::db::LegacySubmission>(
+                        odb::query<oj::db::LegacySubmission>::user_id == static_cast<uint32_t>(user_id) &&
+                        odb::query<oj::db::LegacySubmission>::question_id == question_id &&
+                        odb::query<oj::db::LegacySubmission>::is_pass == true, false);
+                }
+                bool passed = false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.HasUserPassedQuestion.ODBLazyIteration");
+                    for (const auto& ignored : result) {
+                        (void)ignored;
+                        passed = true;
+                        break;
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.HasUserPassedQuestion.ODBCommit");
+                    transaction.commit();
+                }
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                _cache.SetStringByAnyKey(cache_key, passed ? "1" : "0",
+                                         _cache.BuildJitteredTtl(1800, 300));
+                return passed;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.HasUserPassedQuestion.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::HasUserPassedQuestion rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::HasUserPassedQuestion ODB failure: {}", e.what());
                 return false;
-
-            std::string safe_qid = EscapeSqlString(question_id, my.get());
-            std::ostringstream sql;
-            sql << "select count(*) from user_submits where user_id=" << user_id
-                << " and question_id='" << safe_qid << "' and is_pass=1";
-
-            int count = 0;
-            if (!QueryCount(sql.str(), &count))
-                return false;
-            bool passed = count > 0;
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            // 缓存结果，长期有效（通过的记录不会改变）
-            _cache.SetStringByAnyKey(cache_key, passed ? "1" : "0", 
-                                     _cache.BuildJitteredTtl(1800, 300));
-            return passed;
+            }
         }
 
-        // Feature 2.4: Get user submissions for a specific question
-        bool GetUserSubmitsByQuestion(int user_id, const std::string& question_id, Json::Value* submits)
+        bool GetUserSubmitsByQuestion(int user_id, const std::string& question_id,
+                                      Json::Value* submits)
         {
-            if (submits == nullptr)
-                return false;
-            auto begin = std::chrono::steady_clock::now();
-            // 先查缓存
-            std::string cache_key = "submit:user:" + std::to_string(user_id) + ":q:" + question_id;
+            if (submits == nullptr || user_id <= 0) return false;
+            const auto begin = std::chrono::steady_clock::now();
+            const std::string cache_key = "submit:user:" + std::to_string(user_id) + ":q:" + question_id;
             std::string cached;
-            if (_cache.GetStringByAnyKey(cache_key, &cached))
-            {
+            if (_cache.GetStringByAnyKey(cache_key, &cached)) {
                 Json::CharReaderBuilder builder;
-                Json::Value cached_val;
-                std::istringstream ss(cached);
-                if (Json::parseFromStream(builder, ss, &cached_val, nullptr) && cached_val.isArray())
-                {
-                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-                    RecordCacheMetrics(ModelBase::RecordActionType::User, true, false, cost_ms);
-                    *submits = cached_val;
-                    LOG_INFO("{}{}{}{}", "Cache hit for user submits user=", user_id, " q=", question_id);
+                Json::Value cached_value;
+                std::istringstream stream(cached);
+                if (Json::parseFromStream(builder, stream, &cached_value, nullptr) && cached_value.isArray()) {
+                    *submits = cached_value;
+                    RecordCacheMetrics(RecordActionType::User, true, false, ElapsedMs(begin));
+                    LOG_INFO("Cache hit for user submits user={} q={}", user_id, question_id);
                     return true;
                 }
             }
 
-            auto my = CreateConnection();
-            if (!my)
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserSubmitsByQuestion.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                std::vector<oj::db::LegacySubmission> records;
+                odb::result<oj::db::LegacySubmission> result;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserSubmitsByQuestion.ODBQuery");
+                    result = database->query<oj::db::LegacySubmission>(
+                        odb::query<oj::db::LegacySubmission>::user_id == static_cast<uint32_t>(user_id) &&
+                        odb::query<oj::db::LegacySubmission>::question_id == question_id, false);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserSubmitsByQuestion.ODBLazyIteration");
+                    for (const auto& item : result)
+                        records.push_back(item);
+                }
+                std::stable_sort(records.begin(), records.end(), [](const auto& lhs, const auto& rhs) {
+                    return DateTimeLess(rhs.action_time, lhs.action_time);
+                });
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserSubmitsByQuestion.ODBCommit");
+                    transaction.commit();
+                }
+                submits->clear();
+                for (const auto& record : records) {
+                    Json::Value item;
+                    item["result_json"] = record.result_json;
+                    item["is_pass"] = record.is_pass;
+                    item["action_time"] = oj::util::TimeUtil::DateTimeToInt(record.action_time);
+                    submits->append(item);
+                }
+                Json::FastWriter writer;
+                _cache.SetStringByAnyKey(cache_key, writer.write(*submits),
+                                         _cache.BuildJitteredTtl(600, 120));
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserSubmitsByQuestion.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::GetUserSubmitsByQuestion rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::GetUserSubmitsByQuestion ODB failure: {}", e.what());
                 return false;
-
-            std::string safe_qid = EscapeSqlString(question_id, my.get());
-            std::ostringstream sql;
-            sql << "select result_json, is_pass, action_time from user_submits"
-                << " where user_id=" << user_id
-                << " and question_id='" << safe_qid << "'"
-                << " order by action_time desc";
-
-            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql查询提交记录错误");
-            if (!res) return false;
-
-            submits->clear();
-            for (int i = 0; i < mysql_num_rows(res); ++i)
-            {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr) continue;
-                Json::Value item;
-                item["result_json"] = row[0] ? row[0] : "";
-                item["is_pass"] = (row[1] != nullptr && row[1][0] != 0);
-                item["action_time"] = row[2] ? row[2] : "";
-                submits->append(item);
             }
-            mysql_free_result(res);
-
-            // 回写缓存
-            Json::FastWriter writer;
-            std::string json_str = writer.write(*submits);
-            _cache.SetStringByAnyKey(cache_key, json_str, _cache.BuildJitteredTtl(600, 120));
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return true;
         }
-
-        // Feature 2.6: Get user statistics
+        //获取用户历史统计数据
         bool GetUserStats(int user_id, Json::Value* stats)
         {
-            if (stats == nullptr)
-                return false;
-            auto begin = std::chrono::steady_clock::now();
-            std::string cache_key = "stats:user:" + std::to_string(user_id);
+            if (stats == nullptr || user_id <= 0) return false;
+            const auto begin = std::chrono::steady_clock::now();
+            const std::string cache_key = "stats:user:" + std::to_string(user_id);
             std::string cached;
-            if (_cache.GetStringByAnyKey(cache_key, &cached))
-            {
+            if (_cache.GetStringByAnyKey(cache_key, &cached)) {
                 Json::CharReaderBuilder builder;
-                std::istringstream ss(cached);
-                if (Json::parseFromStream(builder, ss, stats, nullptr))
-                {
-                    LOG_INFO("{}{}", "Cache hit for user stats user=", user_id);
-                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-                    RecordCacheMetrics(ModelBase::RecordActionType::User, true, false, cost_ms);
+                std::istringstream stream(cached);
+                if (Json::parseFromStream(builder, stream, stats, nullptr)) {
+                    LOG_INFO("Cache hit for user stats user={}", user_id);
+                    RecordCacheMetrics(RecordActionType::User, true, false, ElapsedMs(begin));
                     return true;
                 }
             }
 
-            auto my = CreateConnection();
-            if (!my)
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserStats.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                using SubmissionQuery = odb::query<oj::db::LegacySubmission>;
+                const SubmissionQuery submission_query =
+                    SubmissionQuery::user_id == static_cast<uint32_t>(user_id);
+                oj::db::LegacySubmissionStats aggregate{};
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserStats.ODBQuerySubmissions");
+                    aggregate = database->query_value<oj::db::LegacySubmissionStats>(submission_query);
+                }
+
+                std::vector<oj::db::LegacySubmission> records;
+                odb::result<oj::db::LegacySubmission> submission_result;
+                SubmissionQuery recent_query(submission_query);
+                recent_query += " ORDER BY `action_time` DESC, `id` DESC LIMIT 20";
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserStats.ODBQueryRecentSubmissions");
+                    submission_result = database->query<oj::db::LegacySubmission>(recent_query, false);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserStats.ODBLazyIterationSubmissions");
+                    for (const auto& item : submission_result)
+                        records.push_back(item);
+                }
+
+                std::set<std::string> recent_question_ids;
+                for (const auto& record : records)
+                    recent_question_ids.insert(record.question_id);
+                std::map<std::string, oj::db::Question> questions;
+                if (!recent_question_ids.empty()) {
+                    using Query = odb::query<oj::db::Question>;
+                    Query question_query;
+                    bool first = true;
+                    for (const auto& id : recent_question_ids) {
+                        const Query clause = Query::id == id;
+                        question_query = first ? Query(clause) : Query(question_query || clause);
+                        first = false;
+                    }
+                    odb::result<oj::db::Question> question_result;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserStats.ODBQueryQuestions");
+                        question_result = database->query<oj::db::Question>(question_query, false);
+                    }
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserStats.ODBLazyIterationQuestions");
+                        for (const auto& question : question_result)
+                            questions.emplace(question.id, question);
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserStats.ODBCommit");
+                    transaction.commit();
+                }
+
+                if (aggregate.total_submits > static_cast<uint64_t>(std::numeric_limits<int>::max()) ||
+                    aggregate.passed_submits > static_cast<uint64_t>(std::numeric_limits<int>::max()) ||
+                    aggregate.passed_questions > static_cast<uint64_t>(std::numeric_limits<int>::max()))
+                    throw std::overflow_error("user submission statistics exceed legacy int range");
+                const int total_submits = static_cast<int>(aggregate.total_submits);
+                const int passed_submit_count = static_cast<int>(aggregate.passed_submits);
+                (*stats)["total_submits"] = total_submits;
+                (*stats)["passed_questions"] = static_cast<int>(aggregate.passed_questions);
+                (*stats)["passed_submits"] = passed_submit_count;
+                (*stats)["accuracy"] = total_submits > 0
+                    ? static_cast<double>(passed_submit_count) / static_cast<double>(total_submits)
+                    : 0.0;
+
+                Json::Value recent(Json::arrayValue);
+                for (const auto& record : records) {
+                    Json::Value item;
+                    item["question_id"] = record.question_id;
+                    item["is_pass"] = record.is_pass;
+                    item["action_time"] = oj::util::TimeUtil::DateTimeToInt(record.action_time);
+                    item["result_json"] = record.result_json;
+                    const auto question = questions.find(record.question_id);
+                    item["title"] = question == questions.end() ? "" : question->second.title;
+                    item["star"] = question == questions.end() ? "" : question->second.star;
+                    recent.append(item);
+                }
+                (*stats)["recent_submits"] = recent;
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                if (total_submits > 0) {
+                    Json::FastWriter writer;
+                    _cache.SetStringByAnyKey(cache_key, writer.write(*stats),
+                                             _cache.BuildJitteredTtl(180, 60));
+                }
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserStats.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::GetUserStats rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::GetUserStats ODB failure: {}", e.what());
                 return false;
-
-            // 合并3次 COUNT 为1次查询
-            std::ostringstream stats_sql;
-            stats_sql << "select count(*) as total_submits, "
-                      << "count(distinct case when is_pass=1 then question_id end) as passed_questions, "
-                      << "sum(case when is_pass=1 then 1 else 0 end) as passed_submits "
-                      << "from user_submits where user_id=" << user_id;
-            MYSQL_RES* stats_res = QueryMySql(my.get(), stats_sql.str(), "MySql统计查询错误");
-            if (!stats_res) return false;
-
-            MYSQL_ROW stats_row = mysql_fetch_row(stats_res);
-            int total_submits = (stats_row && stats_row[0]) ? std::atoi(stats_row[0]) : 0;
-            int passed_questions = (stats_row && stats_row[1]) ? std::atoi(stats_row[1]) : 0;
-            int passed_submits = (stats_row && stats_row[2]) ? std::atoi(stats_row[2]) : 0;
-            mysql_free_result(stats_res);
-
-            double accuracy = total_submits > 0 ? static_cast<double>(passed_submits) / static_cast<double>(total_submits) : 0.0;
-
-            (*stats)["total_submits"] = total_submits;
-            (*stats)["passed_questions"] = passed_questions;
-            (*stats)["passed_submits"] = passed_submits;
-
-            Json::Value accuracy_val(accuracy);
-            (*stats)["accuracy"] = accuracy_val;
-
-            std::ostringstream recent_sql;
-            recent_sql << "select us.question_id, us.is_pass, us.action_time, us.result_json, q.title, q.star"
-                       << " from user_submits us"
-                       << " left join " << oj_questions << " q on us.question_id = q.id"
-                       << " where us.user_id=" << user_id
-                       << " order by us.action_time desc limit 20";
-
-            MYSQL_RES* res = QueryMySql(my.get(), recent_sql.str(), "MySql查询最近提交错误");
-            if (!res)
-            {
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-                RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-                return false;
             }
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            Json::Value recent_arr(Json::arrayValue);
-            for (int i = 0; i < mysql_num_rows(res); ++i)
-            {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr) continue;
-                Json::Value item;
-                item["question_id"] = row[0] ? row[0] : "";
-                item["is_pass"] = (row[1] != nullptr && row[1][0] != 0);
-                item["action_time"] = row[2] ? row[2] : "";
-                item["result_json"] = row[3] ? row[3] : "";
-                item["title"] = row[4] ? row[4] : "";
-                item["star"] = row[5] ? row[5] : "";
-                recent_arr.append(item);
-            }
-            mysql_free_result(res);
-            (*stats)["recent_submits"] = recent_arr;
-
-            Json::FastWriter writer;
-            if (total_submits > 0)
-            {
-                _cache.SetStringByAnyKey(cache_key, writer.write(*stats), _cache.BuildJitteredTtl(180, 60));
-            }
-            
-            return true;
         }
 
-        bool SetUserPassword(const std::string& email, const std::string& password_hash, const std::string& password_algo)
+        bool SetUserPassword(const std::string& email, const std::string& password_hash,
+                             const std::string& password_algo)
         {
-            auto my = CreateConnection();
-            if (!my) return false;
-            auto begin = std::chrono::steady_clock::now();
-            std::string safe_email = EscapeSqlString(email, my.get());
-            std::string safe_hash = EscapeSqlString(password_hash, my.get());
-            std::string safe_algo = EscapeSqlString(password_algo, my.get());
-            std::string sql = "update " + oj_users + " set password_hash='" + safe_hash +
-                              "', password_algo='" + safe_algo +
-                              "', password_update_at=NOW() where email='" + safe_email + "'";
-            auto ok = ExecuteSql(sql);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return ok;
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.SetUserPassword.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                std::unique_ptr<oj::db::User> found;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.SetUserPassword.ODBQuery");
+                    found.reset(database->query_one<oj::db::User>(
+                        odb::query<oj::db::User>::email == email));
+                }
+                if (found) {
+                    found->password_hash = password_hash;
+                    found->password_algo = password_algo;
+                    found->password_update_at = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.SetUserPassword.ODBUpdate");
+                        database->update(*found);
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.SetUserPassword.ODBCommit");
+                    transaction.commit();
+                }
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.SetUserPassword.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::SetUserPassword rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::SetUserPassword ODB failure: {}", e.what());
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return false;
+            }
         }
 
-        bool GetUserPasswordAuth(const std::string& email, std::string* password_hash, std::string* password_algo)
+        bool GetUserPasswordAuth(const std::string& email, std::string* password_hash,
+                                 std::string* password_algo)
         {
-            auto my = CreateConnection();
-            if (!my) return false;
-            auto begin = std::chrono::steady_clock::now();
-            std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "select password_hash,password_algo from " + oj_users + " where email='" + safe_email + "'";
-            auto ok = QueryUserPasswordAuth(sql, password_hash, password_algo);
-             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return ok;
+            if (password_hash == nullptr || password_algo == nullptr) return false;
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserPasswordAuth.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                std::unique_ptr<oj::db::User> found;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserPasswordAuth.ODBQuery");
+                    found.reset(database->query_one<oj::db::User>(
+                        odb::query<oj::db::User>::email == email));
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserPasswordAuth.ODBCommit");
+                    transaction.commit();
+                }
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                if (!found) return false;
+                *password_hash = found->password_hash;
+                *password_algo = found->password_algo;
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUserPasswordAuth.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::GetUserPasswordAuth rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::GetUserPasswordAuth ODB failure: {}", e.what());
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return false;
+            }
         }
 
         bool UpdateUserEmail(const std::string& old_email, const std::string& new_email)
         {
-            auto my = CreateConnection();
-            if (!my) return false;
-            auto begin = std::chrono::steady_clock::now();
-            std::string safe_old = EscapeSqlString(old_email, my.get());
-            std::string safe_new = EscapeSqlString(new_email, my.get());
-            std::string sql = "update " + oj_users + " set email='" + safe_new +
-                              "' where email='" + safe_old + "'";
-                              
-            bool ok = ExecuteSql(sql);
-            if (ok) {
-                User user;
-                if (GetUser(new_email, &user))
-                    _cache.DeleteStringByAnyKey("user:id:" + std::to_string(user.uid));
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateUserEmail.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                std::unique_ptr<oj::db::User> found;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateUserEmail.ODBQuery");
+                    found.reset(database->query_one<oj::db::User>(
+                        odb::query<oj::db::User>::email == old_email));
+                }
+                uint32_t updated_uid = 0;
+                if (found) {
+                    updated_uid = found->uid;
+                    found->email = new_email;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateUserEmail.ODBUpdate");
+                        database->update(*found);
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateUserEmail.ODBCommit");
+                    transaction.commit();
+                }
+                if (updated_uid != 0)
+                    _cache.DeleteStringByAnyKey("user:id:" + std::to_string(updated_uid));
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.UpdateUserEmail.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::UpdateUserEmail rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::UpdateUserEmail ODB failure: {}", e.what());
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return false;
             }
-             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return ok;
         }
 
         bool DeleteUserByEmail(const std::string& email)
         {
-            auto my = CreateConnection();
-            if (!my) return false;
-            auto begin = std::chrono::steady_clock::now();
-            std::string safe_email = EscapeSqlString(email, my.get());
-            std::string sql = "delete from " + oj_users + " where email='" + safe_email + "'";
-            auto ok = ExecuteSql(sql);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            return ok;
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.DeleteUserByEmail.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                std::unique_ptr<oj::db::User> found;
+                uint32_t deleted_uid = 0;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.DeleteUserByEmail.ODBQuery");
+                    found.reset(database->query_one<oj::db::User>(
+                        odb::query<oj::db::User>::email == email));
+                }
+                if (found) {
+                    deleted_uid = found->uid;
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.DeleteUserByEmail.ODBErase");
+                    database->erase<oj::db::User>(found->uid);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.DeleteUserByEmail.ODBCommit");
+                    transaction.commit();
+                }
+                if (deleted_uid != 0)
+                    _cache.DeleteStringByAnyKey("user:id:" + std::to_string(deleted_uid));
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.DeleteUserByEmail.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::DeleteUserByEmail rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::DeleteUserByEmail ODB failure: {}", e.what());
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return false;
+            }
         }
 
         bool GetUsersByIds(const std::set<int>& user_ids, std::map<int, User>* users)
         {
             if (users == nullptr || user_ids.empty()) return false;
             users->clear();
-            std::ostringstream idlist;
-            int i = 0;
-            for (int uid : user_ids) {
-                if (i++ > 0) idlist << ",";
-                idlist << uid;
+            const auto begin = std::chrono::steady_clock::now();
+            DatabaseHandle database;
+            odb::transaction transaction;
+            try {
+                database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUsersByIds.ODBBegin");
+                    transaction.reset(database->begin());
+                }
+                using Query = odb::query<oj::db::User>;
+                Query query;
+                bool filtered = false;
+                for (const int uid : user_ids) {
+                    if (uid <= 0) continue;
+                    const Query clause = Query::uid == static_cast<uint32_t>(uid);
+                    query = filtered ? Query(query || clause) : clause;
+                    filtered = true;
+                }
+                if (!filtered) {
+                    transaction.commit();
+                    return true;
+                }
+                odb::result<oj::db::User> result;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUsersByIds.ODBQuery");
+                    result = database->query<oj::db::User>(query, false);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUsersByIds.ODBLazyIteration");
+                    for (const auto& item : result) {
+                        (*users)[static_cast<int>(item.uid)] = item;
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUsersByIds.ODBCommit");
+                    transaction.commit();
+                }
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return true;
+            } catch (const std::exception& e) {
+                if (!transaction.finalized()) {
+                    try {
+                        latecyMonitor::Timer timer(Monitor(), "ModelUser.GetUsersByIds.ODBRollback");
+                        transaction.rollback();
+                    } catch (const std::exception& rollback_error) {
+                        LOG_ERROR("ModelUser::GetUsersByIds rollback failure: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("ModelUser::GetUsersByIds ODB failure: {}", e.what());
+                RecordCacheMetrics(RecordActionType::User, false, true, ElapsedMs(begin));
+                return false;
             }
-            auto my = CreateConnection();
-            if (!my) return false;
-            auto begin = std::chrono::steady_clock::now();
-            std::string sql = "select uid,name,email,create_time,last_login,password_algo from " + oj_users + " where uid in (" + idlist.str() + ")";
-            MYSQL_RES* res = QueryMySql(my.get(), sql, "MySql批量用户查询错误");
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(ModelBase::RecordActionType::User, false, true, cost_ms);
-            if (!res) return false;
-            for (int r = 0; r < mysql_num_rows(res); ++r) {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (!row) continue;
-                User user;
-                user.uid = atoi(row[0]);
-                user.name = row[1] ? row[1] : "";
-                user.email = row[2] ? row[2] : "";
-                user.create_time = row[3] ? row[3] : "";
-                user.last_login = row[4] ? row[4] : "";
-                (*users)[user.uid] = user;
-            }
-            mysql_free_result(res);
-            return true;
         }
     };
-
 }

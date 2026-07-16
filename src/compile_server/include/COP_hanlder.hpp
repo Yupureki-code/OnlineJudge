@@ -23,7 +23,7 @@ namespace ns_runner {
 namespace ns_hanlder
 {
     using namespace ns_log;
-    using namespace oj_util;
+    using namespace oj::util;
 
     //题目状态码
     enum Status

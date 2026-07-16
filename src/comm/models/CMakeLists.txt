@@ -1,8 +1,7 @@
 find_program(ODB_COMPILER odb)
 
 if(NOT ODB_COMPILER)
-    message(WARNING "ODB compiler not found; oj_odb_models is unavailable")
-    return()
+    message(FATAL_ERROR "ODB compiler not found; Phase 5 production targets require generated ODB models")
 endif()
 
 find_package(PkgConfig REQUIRED)
@@ -26,6 +25,9 @@ set(ODB_MODELS
     cache_metrics_snapshot
     judge_outbox
     judge_result_receipt
+    legacy_submission
+    judge_task
+    model_counts
 )
 
 set(ODB_GEN_SRCS)

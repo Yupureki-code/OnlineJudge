@@ -16,7 +16,7 @@
 
 namespace ns_preprocesser
 {
-    using namespace oj_util;
+    using namespace oj::util;
     using namespace ns_log;
     using namespace ns_hanlder;
 

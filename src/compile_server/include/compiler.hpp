@@ -16,7 +16,7 @@
 namespace ns_compile
 {
     using namespace ns_hanlder;
-    using namespace oj_util;
+    using namespace oj::util;
     using namespace ns_log;
 
     class HandlerCompiler : public HandlerProgram

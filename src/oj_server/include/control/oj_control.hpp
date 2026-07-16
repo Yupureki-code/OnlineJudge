@@ -8,7 +8,7 @@
 
 // OnlineJudge Controller — 路由注册在 oj_server.cpp 中完成
 
-namespace ns_control
+namespace oj::control
 {
 
     // 主Controller：组合各个业务模块

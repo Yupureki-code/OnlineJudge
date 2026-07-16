@@ -229,7 +229,7 @@ namespace oj_judge
                 {
                     auto& pending = it.second;
                     // Only erase timed-out tasks — Finished tasks are cleaned up by Work()
-                    if(pending.status == Blocking && oj_util::TimeUtil::GetTimeStamp() - pending.start_time > pending.timeout_ms)
+                    if(pending.status == Blocking && oj::util::TimeUtil::GetTimeStamp() - pending.start_time > pending.timeout_ms)
                     {
                         to_erase.push_back(it.first);
                     }
@@ -254,12 +254,12 @@ namespace oj_judge
         std::string PushNewTask(CoTask&& task)
         {
             std::unique_lock<std::mutex> lock(_mutex);
-            std::string task_id = oj_util::StringUtil::GetUniqueName();
+            std::string task_id = oj::util::StringUtil::GetUniqueName();
             _task_queue.push(task_id);
             _cv.notify_one();
             PendingEntry pending;
             pending.task_id = task_id;
-            pending.start_time = oj_util::TimeUtil::GetTimeStamp();
+            pending.start_time = oj::util::TimeUtil::GetTimeStamp();
             pending.timeout_ms = 1000;
             pending.task = std::move(task);
             pending.status = Done; 

@@ -1,6 +1,8 @@
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <set>
 #include <string>
 
 #include <google/protobuf/descriptor.h>
@@ -44,6 +46,27 @@ const google::protobuf::MethodDescriptor* Method(
     const auto* method = service->FindMethodByName(name);
     Check(method != nullptr, std::string("method exists: ") + name);
     return method;
+}
+
+template <std::size_t N>
+void CheckMethods(const google::protobuf::ServiceDescriptor* service,
+                  const std::array<const char*, N>& expected) {
+    Check(service != nullptr, "service descriptor exists");
+    Check(service->method_count() == static_cast<int>(N),
+          service->full_name() + " method count");
+
+    std::set<std::string> expected_names;
+    for (const char* name : expected) {
+        Check(expected_names.insert(name).second,
+              service->full_name() + " expected method is unique: " + name);
+        Method(service, name);
+    }
+
+    std::set<std::string> actual_names;
+    for (int i = 0; i < service->method_count(); ++i) {
+        actual_names.insert(service->method(i)->name());
+    }
+    Check(actual_names == expected_names, service->full_name() + " exact method set");
 }
 
 void TestLargeSubmissionId() {
@@ -186,17 +209,61 @@ void TestServiceContracts() {
     Check(oj::common::CommentActionState::descriptor()->FindFieldByName("comment_id") != nullptr,
           "batched comment actions remain correlated by comment ID");
 
-    const auto* list_admins = Method(oj::biz::AdminService::descriptor(), "ListAdminAccounts");
-    Check(list_admins->input_type()->full_name() == "oj.biz.ListAdminAccountsRequest",
-          "admin account listing carries paging input");
+    const auto* biz_file = oj::biz::OJService::descriptor()->file();
+    Check(biz_file->service_count() == 2, "business proto defines exactly two services");
+    Check(biz_file->FindServiceByName("OJService") == oj::biz::OJService::descriptor(),
+          "OJService is the main-site service");
+    Check(biz_file->FindServiceByName("OJAdminService") ==
+              oj::biz::OJAdminService::descriptor(),
+          "OJAdminService is the admin service");
 
-    const auto* update = Method(oj::biz::SubmissionService::descriptor(), "UpdateJudgeResult");
+    constexpr std::array<const char*, 51> kOJMethods{{
+        "SendRegistrationCode", "Register", "LoginWithVerificationCode",
+        "LoginWithPassword", "Logout", "SetPassword", "SendSecurityCode",
+        "ChangePassword", "ChangeEmail", "DeleteAccount", "GetCurrentUser",
+        "GetUserProfile", "UpdateProfile", "UpdateAvatar", "DeleteAvatar",
+        "GetStatistics", "ListQuestions", "GetQuestion", "GetPassStatus",
+        "CreateQuestion", "UpdateQuestion", "DeleteQuestion", "ListTestCases",
+        "CreateTestCase", "UpdateTestCase", "DeleteTestCase", "InvalidateCache",
+        "ListSolutions", "GetSolution", "CreateSolution", "UpdateSolution",
+        "DeleteSolution", "ToggleSolutionLike", "ToggleSolutionFavorite",
+        "GetActionState", "ListComments", "ListReplies", "CreateComment",
+        "UpdateComment", "DeleteComment", "ToggleCommentLike",
+        "ToggleCommentFavorite", "GetActionStates", "CreateSubmission",
+        "CreateCustomTest", "GetSubmission", "GetCustomTest", "ListSubmissions",
+        "UpdateJudgeResult", "LegacyUpdateJudgeResult", "InvalidateStaticCache",
+    }};
+    CheckMethods(oj::biz::OJService::descriptor(), kOJMethods);
+
+    constexpr std::array<const char*, 26> kOJAdminMethods{{
+        "AdminGetVersion", "AdminLogin", "AdminLogout", "AdminGetOverview",
+        "AdminListUsers", "AdminGetUser", "AdminCreateUser", "AdminUpdateUser",
+        "AdminDeleteUser", "AdminListQuestions", "AdminGetQuestion",
+        "AdminCreateQuestion", "AdminUpdateQuestion", "AdminDeleteQuestion",
+        "AdminListTestCases", "AdminCreateTestCase", "AdminUpdateTestCase",
+        "AdminDeleteTestCase", "AdminInvalidateQuestionCache",
+        "AdminListAdminAccounts", "AdminGetAdminAccount", "AdminCreateAdminAccount",
+        "AdminUpdateAdminAccount", "AdminDeleteAdminAccount", "AdminGetCacheMetrics",
+        "AdminGetAuditLogs",
+    }};
+    CheckMethods(oj::biz::OJAdminService::descriptor(), kOJAdminMethods);
+    for (int i = 0; i < oj::biz::OJAdminService::descriptor()->method_count(); ++i) {
+        Check(oj::biz::OJAdminService::descriptor()->method(i)->name().rfind("Admin", 0) == 0,
+              "every admin RPC has the Admin prefix");
+    }
+
+    const auto* list_admins =
+        Method(oj::biz::OJAdminService::descriptor(), "AdminListAdminAccounts");
+    Check(list_admins->input_type()->full_name() == "oj.biz.ListAdminAccountsRequest",
+           "admin account listing carries paging input");
+
+    const auto* update = Method(oj::biz::OJService::descriptor(), "UpdateJudgeResult");
     Check(update->input_type()->full_name() == "oj.biz.UpdateJudgeResultRequest",
           "Judge callback uses canonical request");
     Check(update->output_type()->full_name() == "oj.biz.UpdateJudgeResultResponse",
           "Judge callback has explicit persistence response");
     const auto* legacy_update =
-        Method(oj::biz::SubmissionService::descriptor(), "LegacyUpdateJudgeResult");
+        Method(oj::biz::OJService::descriptor(), "LegacyUpdateJudgeResult");
     Check(legacy_update->input_type()->full_name() == "oj_judge.JudgeFinishedRequest",
           "completed Phase 2 Judge retains an explicit transitional callback");
 

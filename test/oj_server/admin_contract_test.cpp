@@ -13,9 +13,9 @@ int main() {
                               "admin-test", "admin-account", "admin-audit"}) {
         checks.Expect(HasDomain(kAdminRpcs, domain), "every admin legacy domain has an RPC mapping");
     }
-    checks.Expect(HasMethod(kAdminRpcs, "AdminService", "Login"), "admin login is represented");
-    checks.Expect(HasMethod(kAdminRpcs, "AdminService", "GetOverview"), "admin overview is represented");
-    checks.Expect(HasMethod(kAdminRpcs, "AdminService", "GetAuditLogs"), "audit paging is represented");
+    checks.Expect(HasMethod(kAdminRpcs, "OJAdminService", "AdminLogin"), "admin login is represented");
+    checks.Expect(HasMethod(kAdminRpcs, "OJAdminService", "AdminGetOverview"), "admin overview is represented");
+    checks.Expect(HasMethod(kAdminRpcs, "OJAdminService", "AdminGetAuditLogs"), "audit paging is represented");
 
     int super_admin_methods = 0;
     for (const auto& rpc : kAdminRpcs) {

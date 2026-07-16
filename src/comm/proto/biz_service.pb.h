@@ -14839,16 +14839,16 @@ class InvalidateStaticCacheRequest final :
 };
 // ===================================================================
 
-class UserService_Stub;
+class OJService_Stub;
 
-class UserService : public ::PROTOBUF_NAMESPACE_ID::Service {
+class OJService : public ::PROTOBUF_NAMESPACE_ID::Service {
  protected:
   // This class should be treated as an abstract interface.
-  inline UserService() {};
+  inline OJService() {};
  public:
-  virtual ~UserService();
+  virtual ~OJService();
 
-  typedef UserService_Stub Stub;
+  typedef OJService_Stub Stub;
 
   static const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* descriptor();
 
@@ -14916,6 +14916,146 @@ class UserService : public ::PROTOBUF_NAMESPACE_ID::Service {
                        const ::oj::common::EmptyRequest* request,
                        ::oj::biz::GetUserStatisticsResponse* response,
                        ::google::protobuf::Closure* done);
+  virtual void ListQuestions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::GetQuestionListRequest* request,
+                       ::oj::biz::GetQuestionListResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void GetQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::QuestionIdRequest* request,
+                       ::oj::biz::GetQuestionDetailResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void GetPassStatus(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::QuestionIdRequest* request,
+                       ::oj::biz::GetQuestionPassStatusResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void CreateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SaveQuestionRequest* request,
+                       ::oj::biz::QuestionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void UpdateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SaveQuestionRequest* request,
+                       ::oj::biz::QuestionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void DeleteQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::QuestionIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void ListTestCases(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::ListTestCasesRequest* request,
+                       ::oj::biz::ListTestCasesResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void CreateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::CreateTestCaseRequest* request,
+                       ::oj::biz::TestCaseResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void UpdateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::UpdateTestCaseRequest* request,
+                       ::oj::biz::TestCaseResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void DeleteTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::TestCaseIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void InvalidateCache(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::InvalidateQuestionCacheRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void ListSolutions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::ListSolutionsRequest* request,
+                       ::oj::biz::ListSolutionsResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void GetSolution(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SolutionIdRequest* request,
+                       ::oj::biz::GetSolutionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void CreateSolution(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::CreateSolutionRequest* request,
+                       ::oj::biz::SolutionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void UpdateSolution(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::UpdateSolutionRequest* request,
+                       ::oj::biz::SolutionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void DeleteSolution(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SolutionIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void ToggleSolutionLike(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SolutionIdRequest* request,
+                       ::oj::biz::SolutionActionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void ToggleSolutionFavorite(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SolutionIdRequest* request,
+                       ::oj::biz::SolutionActionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void GetActionState(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SolutionIdRequest* request,
+                       ::oj::biz::SolutionActionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void ListComments(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::ListCommentsRequest* request,
+                       ::oj::biz::ListCommentsResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void ListReplies(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::ListRepliesRequest* request,
+                       ::oj::biz::ListCommentsResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void CreateComment(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::CreateCommentRequest* request,
+                       ::oj::biz::CommentResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void UpdateComment(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::UpdateCommentRequest* request,
+                       ::oj::biz::CommentResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void DeleteComment(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::CommentIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void ToggleCommentLike(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::CommentIdRequest* request,
+                       ::oj::biz::CommentActionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void ToggleCommentFavorite(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::CommentIdRequest* request,
+                       ::oj::biz::CommentActionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void GetActionStates(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::GetCommentActionsRequest* request,
+                       ::oj::biz::GetCommentActionsResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void CreateSubmission(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::CreateSubmissionRequest* request,
+                       ::oj::biz::CreateSubmissionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void CreateCustomTest(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::CreateCustomTestRequest* request,
+                       ::oj::biz::CreateCustomTestResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void GetSubmission(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::GetSubmissionRequest* request,
+                       ::oj::biz::GetSubmissionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void GetCustomTest(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::GetCustomTestRequest* request,
+                       ::oj::biz::GetCustomTestResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void ListSubmissions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::ListSubmissionsRequest* request,
+                       ::oj::biz::ListSubmissionsResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void UpdateJudgeResult(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::UpdateJudgeResultRequest* request,
+                       ::oj::biz::UpdateJudgeResultResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void LegacyUpdateJudgeResult(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj_judge::JudgeFinishedRequest* request,
+                       ::oj_judge::NullRsp* response,
+                       ::google::protobuf::Closure* done);
+  virtual void InvalidateStaticCache(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::InvalidateStaticCacheRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
 
   // implements Service ----------------------------------------------
 
@@ -14931,19 +15071,19 @@ class UserService : public ::PROTOBUF_NAMESPACE_ID::Service {
     const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
 
  private:
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(UserService);
+  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(OJService);
 };
 
-class UserService_Stub : public UserService {
+class OJService_Stub : public OJService {
  public:
-  UserService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel);
-  UserService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel,
+  OJService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel);
+  OJService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel,
                    ::PROTOBUF_NAMESPACE_ID::Service::ChannelOwnership ownership);
-  ~UserService_Stub();
+  ~OJService_Stub();
 
   inline ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel() { return channel_; }
 
-  // implements UserService ------------------------------------------
+  // implements OJService ------------------------------------------
 
   void SendRegistrationCode(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::oj::biz::SendVerificationCodeRequest* request,
@@ -15009,101 +15149,6 @@ class UserService_Stub : public UserService {
                        const ::oj::common::EmptyRequest* request,
                        ::oj::biz::GetUserStatisticsResponse* response,
                        ::google::protobuf::Closure* done);
- private:
-  ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel_;
-  bool owns_channel_;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(UserService_Stub);
-};
-
-
-// -------------------------------------------------------------------
-
-class QuestionService_Stub;
-
-class QuestionService : public ::PROTOBUF_NAMESPACE_ID::Service {
- protected:
-  // This class should be treated as an abstract interface.
-  inline QuestionService() {};
- public:
-  virtual ~QuestionService();
-
-  typedef QuestionService_Stub Stub;
-
-  static const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* descriptor();
-
-  virtual void ListQuestions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::GetQuestionListRequest* request,
-                       ::oj::biz::GetQuestionListResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::QuestionIdRequest* request,
-                       ::oj::biz::GetQuestionDetailResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetPassStatus(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::QuestionIdRequest* request,
-                       ::oj::biz::GetQuestionPassStatusResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void CreateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SaveQuestionRequest* request,
-                       ::oj::biz::QuestionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void UpdateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SaveQuestionRequest* request,
-                       ::oj::biz::QuestionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void DeleteQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::QuestionIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void ListTestCases(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::ListTestCasesRequest* request,
-                       ::oj::biz::ListTestCasesResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void CreateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::CreateTestCaseRequest* request,
-                       ::oj::biz::TestCaseResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void UpdateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::UpdateTestCaseRequest* request,
-                       ::oj::biz::TestCaseResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void DeleteTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::TestCaseIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void InvalidateCache(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::InvalidateQuestionCacheRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-
-  // implements Service ----------------------------------------------
-
-  const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* GetDescriptor();
-  void CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method,
-                  ::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                  const ::PROTOBUF_NAMESPACE_ID::Message* request,
-                  ::PROTOBUF_NAMESPACE_ID::Message* response,
-                  ::google::protobuf::Closure* done);
-  const ::PROTOBUF_NAMESPACE_ID::Message& GetRequestPrototype(
-    const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
-  const ::PROTOBUF_NAMESPACE_ID::Message& GetResponsePrototype(
-    const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
-
- private:
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(QuestionService);
-};
-
-class QuestionService_Stub : public QuestionService {
- public:
-  QuestionService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel);
-  QuestionService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel,
-                   ::PROTOBUF_NAMESPACE_ID::Service::ChannelOwnership ownership);
-  ~QuestionService_Stub();
-
-  inline ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel() { return channel_; }
-
-  // implements QuestionService ------------------------------------------
-
   void ListQuestions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::oj::biz::GetQuestionListRequest* request,
                        ::oj::biz::GetQuestionListResponse* response,
@@ -15148,89 +15193,6 @@ class QuestionService_Stub : public QuestionService {
                        const ::oj::biz::InvalidateQuestionCacheRequest* request,
                        ::oj::common::EmptyResponse* response,
                        ::google::protobuf::Closure* done);
- private:
-  ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel_;
-  bool owns_channel_;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(QuestionService_Stub);
-};
-
-
-// -------------------------------------------------------------------
-
-class SolutionService_Stub;
-
-class SolutionService : public ::PROTOBUF_NAMESPACE_ID::Service {
- protected:
-  // This class should be treated as an abstract interface.
-  inline SolutionService() {};
- public:
-  virtual ~SolutionService();
-
-  typedef SolutionService_Stub Stub;
-
-  static const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* descriptor();
-
-  virtual void ListSolutions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::ListSolutionsRequest* request,
-                       ::oj::biz::ListSolutionsResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetSolution(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SolutionIdRequest* request,
-                       ::oj::biz::GetSolutionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void CreateSolution(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::CreateSolutionRequest* request,
-                       ::oj::biz::SolutionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void UpdateSolution(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::UpdateSolutionRequest* request,
-                       ::oj::biz::SolutionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void DeleteSolution(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SolutionIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void ToggleLike(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SolutionIdRequest* request,
-                       ::oj::biz::SolutionActionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void ToggleFavorite(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SolutionIdRequest* request,
-                       ::oj::biz::SolutionActionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetActionState(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SolutionIdRequest* request,
-                       ::oj::biz::SolutionActionResponse* response,
-                       ::google::protobuf::Closure* done);
-
-  // implements Service ----------------------------------------------
-
-  const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* GetDescriptor();
-  void CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method,
-                  ::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                  const ::PROTOBUF_NAMESPACE_ID::Message* request,
-                  ::PROTOBUF_NAMESPACE_ID::Message* response,
-                  ::google::protobuf::Closure* done);
-  const ::PROTOBUF_NAMESPACE_ID::Message& GetRequestPrototype(
-    const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
-  const ::PROTOBUF_NAMESPACE_ID::Message& GetResponsePrototype(
-    const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
-
- private:
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(SolutionService);
-};
-
-class SolutionService_Stub : public SolutionService {
- public:
-  SolutionService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel);
-  SolutionService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel,
-                   ::PROTOBUF_NAMESPACE_ID::Service::ChannelOwnership ownership);
-  ~SolutionService_Stub();
-
-  inline ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel() { return channel_; }
-
-  // implements SolutionService ------------------------------------------
-
   void ListSolutions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::oj::biz::ListSolutionsRequest* request,
                        ::oj::biz::ListSolutionsResponse* response,
@@ -15251,11 +15213,11 @@ class SolutionService_Stub : public SolutionService {
                        const ::oj::biz::SolutionIdRequest* request,
                        ::oj::common::EmptyResponse* response,
                        ::google::protobuf::Closure* done);
-  void ToggleLike(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+  void ToggleSolutionLike(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::oj::biz::SolutionIdRequest* request,
                        ::oj::biz::SolutionActionResponse* response,
                        ::google::protobuf::Closure* done);
-  void ToggleFavorite(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+  void ToggleSolutionFavorite(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::oj::biz::SolutionIdRequest* request,
                        ::oj::biz::SolutionActionResponse* response,
                        ::google::protobuf::Closure* done);
@@ -15263,89 +15225,6 @@ class SolutionService_Stub : public SolutionService {
                        const ::oj::biz::SolutionIdRequest* request,
                        ::oj::biz::SolutionActionResponse* response,
                        ::google::protobuf::Closure* done);
- private:
-  ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel_;
-  bool owns_channel_;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(SolutionService_Stub);
-};
-
-
-// -------------------------------------------------------------------
-
-class CommentService_Stub;
-
-class CommentService : public ::PROTOBUF_NAMESPACE_ID::Service {
- protected:
-  // This class should be treated as an abstract interface.
-  inline CommentService() {};
- public:
-  virtual ~CommentService();
-
-  typedef CommentService_Stub Stub;
-
-  static const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* descriptor();
-
-  virtual void ListComments(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::ListCommentsRequest* request,
-                       ::oj::biz::ListCommentsResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void ListReplies(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::ListRepliesRequest* request,
-                       ::oj::biz::ListCommentsResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void CreateComment(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::CreateCommentRequest* request,
-                       ::oj::biz::CommentResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void UpdateComment(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::UpdateCommentRequest* request,
-                       ::oj::biz::CommentResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void DeleteComment(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::CommentIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void ToggleLike(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::CommentIdRequest* request,
-                       ::oj::biz::CommentActionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void ToggleFavorite(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::CommentIdRequest* request,
-                       ::oj::biz::CommentActionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetActionStates(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::GetCommentActionsRequest* request,
-                       ::oj::biz::GetCommentActionsResponse* response,
-                       ::google::protobuf::Closure* done);
-
-  // implements Service ----------------------------------------------
-
-  const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* GetDescriptor();
-  void CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method,
-                  ::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                  const ::PROTOBUF_NAMESPACE_ID::Message* request,
-                  ::PROTOBUF_NAMESPACE_ID::Message* response,
-                  ::google::protobuf::Closure* done);
-  const ::PROTOBUF_NAMESPACE_ID::Message& GetRequestPrototype(
-    const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
-  const ::PROTOBUF_NAMESPACE_ID::Message& GetResponsePrototype(
-    const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
-
- private:
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(CommentService);
-};
-
-class CommentService_Stub : public CommentService {
- public:
-  CommentService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel);
-  CommentService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel,
-                   ::PROTOBUF_NAMESPACE_ID::Service::ChannelOwnership ownership);
-  ~CommentService_Stub();
-
-  inline ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel() { return channel_; }
-
-  // implements CommentService ------------------------------------------
-
   void ListComments(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::oj::biz::ListCommentsRequest* request,
                        ::oj::biz::ListCommentsResponse* response,
@@ -15366,11 +15245,11 @@ class CommentService_Stub : public CommentService {
                        const ::oj::biz::CommentIdRequest* request,
                        ::oj::common::EmptyResponse* response,
                        ::google::protobuf::Closure* done);
-  void ToggleLike(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+  void ToggleCommentLike(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::oj::biz::CommentIdRequest* request,
                        ::oj::biz::CommentActionResponse* response,
                        ::google::protobuf::Closure* done);
-  void ToggleFavorite(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+  void ToggleCommentFavorite(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::oj::biz::CommentIdRequest* request,
                        ::oj::biz::CommentActionResponse* response,
                        ::google::protobuf::Closure* done);
@@ -15378,344 +15257,6 @@ class CommentService_Stub : public CommentService {
                        const ::oj::biz::GetCommentActionsRequest* request,
                        ::oj::biz::GetCommentActionsResponse* response,
                        ::google::protobuf::Closure* done);
- private:
-  ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel_;
-  bool owns_channel_;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(CommentService_Stub);
-};
-
-
-// -------------------------------------------------------------------
-
-class AdminService_Stub;
-
-class AdminService : public ::PROTOBUF_NAMESPACE_ID::Service {
- protected:
-  // This class should be treated as an abstract interface.
-  inline AdminService() {};
- public:
-  virtual ~AdminService();
-
-  typedef AdminService_Stub Stub;
-
-  static const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* descriptor();
-
-  virtual void GetVersion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::common::EmptyRequest* request,
-                       ::oj::biz::GetVersionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void Login(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminLoginRequest* request,
-                       ::oj::biz::AdminLoginResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void Logout(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::common::EmptyRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetOverview(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::common::EmptyRequest* request,
-                       ::oj::biz::AdminOverviewResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void ListUsers(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminListUsersRequest* request,
-                       ::oj::biz::AdminListUsersResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminUserIdRequest* request,
-                       ::oj::biz::AdminUserResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void CreateUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminCreateUserRequest* request,
-                       ::oj::biz::AdminUserResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void UpdateUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminUpdateUserRequest* request,
-                       ::oj::biz::AdminUserResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void DeleteUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminUserIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void ListQuestions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::GetQuestionListRequest* request,
-                       ::oj::biz::GetQuestionListResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::QuestionIdRequest* request,
-                       ::oj::biz::GetQuestionDetailResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void CreateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SaveQuestionRequest* request,
-                       ::oj::biz::QuestionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void UpdateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SaveQuestionRequest* request,
-                       ::oj::biz::QuestionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void DeleteQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::QuestionIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void ListTestCases(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::ListTestCasesRequest* request,
-                       ::oj::biz::ListTestCasesResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void CreateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::CreateTestCaseRequest* request,
-                       ::oj::biz::TestCaseResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void UpdateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::UpdateTestCaseRequest* request,
-                       ::oj::biz::TestCaseResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void DeleteTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::TestCaseIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void InvalidateQuestionCache(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::InvalidateQuestionCacheRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void ListAdminAccounts(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::ListAdminAccountsRequest* request,
-                       ::oj::biz::ListAdminAccountsResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminAccountIdRequest* request,
-                       ::oj::biz::AdminAccountResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void CreateAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SaveAdminAccountRequest* request,
-                       ::oj::biz::AdminAccountResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void UpdateAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SaveAdminAccountRequest* request,
-                       ::oj::biz::AdminAccountResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void DeleteAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminAccountIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetCacheMetrics(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::common::EmptyRequest* request,
-                       ::oj::biz::GetCacheMetricsResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetAuditLogs(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::GetAuditLogsRequest* request,
-                       ::oj::biz::GetAuditLogsResponse* response,
-                       ::google::protobuf::Closure* done);
-
-  // implements Service ----------------------------------------------
-
-  const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* GetDescriptor();
-  void CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method,
-                  ::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                  const ::PROTOBUF_NAMESPACE_ID::Message* request,
-                  ::PROTOBUF_NAMESPACE_ID::Message* response,
-                  ::google::protobuf::Closure* done);
-  const ::PROTOBUF_NAMESPACE_ID::Message& GetRequestPrototype(
-    const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
-  const ::PROTOBUF_NAMESPACE_ID::Message& GetResponsePrototype(
-    const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
-
- private:
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(AdminService);
-};
-
-class AdminService_Stub : public AdminService {
- public:
-  AdminService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel);
-  AdminService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel,
-                   ::PROTOBUF_NAMESPACE_ID::Service::ChannelOwnership ownership);
-  ~AdminService_Stub();
-
-  inline ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel() { return channel_; }
-
-  // implements AdminService ------------------------------------------
-
-  void GetVersion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::common::EmptyRequest* request,
-                       ::oj::biz::GetVersionResponse* response,
-                       ::google::protobuf::Closure* done);
-  void Login(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminLoginRequest* request,
-                       ::oj::biz::AdminLoginResponse* response,
-                       ::google::protobuf::Closure* done);
-  void Logout(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::common::EmptyRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  void GetOverview(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::common::EmptyRequest* request,
-                       ::oj::biz::AdminOverviewResponse* response,
-                       ::google::protobuf::Closure* done);
-  void ListUsers(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminListUsersRequest* request,
-                       ::oj::biz::AdminListUsersResponse* response,
-                       ::google::protobuf::Closure* done);
-  void GetUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminUserIdRequest* request,
-                       ::oj::biz::AdminUserResponse* response,
-                       ::google::protobuf::Closure* done);
-  void CreateUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminCreateUserRequest* request,
-                       ::oj::biz::AdminUserResponse* response,
-                       ::google::protobuf::Closure* done);
-  void UpdateUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminUpdateUserRequest* request,
-                       ::oj::biz::AdminUserResponse* response,
-                       ::google::protobuf::Closure* done);
-  void DeleteUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminUserIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  void ListQuestions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::GetQuestionListRequest* request,
-                       ::oj::biz::GetQuestionListResponse* response,
-                       ::google::protobuf::Closure* done);
-  void GetQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::QuestionIdRequest* request,
-                       ::oj::biz::GetQuestionDetailResponse* response,
-                       ::google::protobuf::Closure* done);
-  void CreateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SaveQuestionRequest* request,
-                       ::oj::biz::QuestionResponse* response,
-                       ::google::protobuf::Closure* done);
-  void UpdateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SaveQuestionRequest* request,
-                       ::oj::biz::QuestionResponse* response,
-                       ::google::protobuf::Closure* done);
-  void DeleteQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::QuestionIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  void ListTestCases(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::ListTestCasesRequest* request,
-                       ::oj::biz::ListTestCasesResponse* response,
-                       ::google::protobuf::Closure* done);
-  void CreateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::CreateTestCaseRequest* request,
-                       ::oj::biz::TestCaseResponse* response,
-                       ::google::protobuf::Closure* done);
-  void UpdateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::UpdateTestCaseRequest* request,
-                       ::oj::biz::TestCaseResponse* response,
-                       ::google::protobuf::Closure* done);
-  void DeleteTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::TestCaseIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  void InvalidateQuestionCache(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::InvalidateQuestionCacheRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  void ListAdminAccounts(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::ListAdminAccountsRequest* request,
-                       ::oj::biz::ListAdminAccountsResponse* response,
-                       ::google::protobuf::Closure* done);
-  void GetAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminAccountIdRequest* request,
-                       ::oj::biz::AdminAccountResponse* response,
-                       ::google::protobuf::Closure* done);
-  void CreateAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SaveAdminAccountRequest* request,
-                       ::oj::biz::AdminAccountResponse* response,
-                       ::google::protobuf::Closure* done);
-  void UpdateAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::SaveAdminAccountRequest* request,
-                       ::oj::biz::AdminAccountResponse* response,
-                       ::google::protobuf::Closure* done);
-  void DeleteAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::AdminAccountIdRequest* request,
-                       ::oj::common::EmptyResponse* response,
-                       ::google::protobuf::Closure* done);
-  void GetCacheMetrics(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::common::EmptyRequest* request,
-                       ::oj::biz::GetCacheMetricsResponse* response,
-                       ::google::protobuf::Closure* done);
-  void GetAuditLogs(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::GetAuditLogsRequest* request,
-                       ::oj::biz::GetAuditLogsResponse* response,
-                       ::google::protobuf::Closure* done);
- private:
-  ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel_;
-  bool owns_channel_;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(AdminService_Stub);
-};
-
-
-// -------------------------------------------------------------------
-
-class SubmissionService_Stub;
-
-class SubmissionService : public ::PROTOBUF_NAMESPACE_ID::Service {
- protected:
-  // This class should be treated as an abstract interface.
-  inline SubmissionService() {};
- public:
-  virtual ~SubmissionService();
-
-  typedef SubmissionService_Stub Stub;
-
-  static const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* descriptor();
-
-  virtual void CreateSubmission(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::CreateSubmissionRequest* request,
-                       ::oj::biz::CreateSubmissionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void CreateCustomTest(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::CreateCustomTestRequest* request,
-                       ::oj::biz::CreateCustomTestResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetSubmission(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::GetSubmissionRequest* request,
-                       ::oj::biz::GetSubmissionResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void GetCustomTest(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::GetCustomTestRequest* request,
-                       ::oj::biz::GetCustomTestResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void ListSubmissions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::ListSubmissionsRequest* request,
-                       ::oj::biz::ListSubmissionsResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void UpdateJudgeResult(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::UpdateJudgeResultRequest* request,
-                       ::oj::biz::UpdateJudgeResultResponse* response,
-                       ::google::protobuf::Closure* done);
-  virtual void LegacyUpdateJudgeResult(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj_judge::JudgeFinishedRequest* request,
-                       ::oj_judge::NullRsp* response,
-                       ::google::protobuf::Closure* done);
-
-  // implements Service ----------------------------------------------
-
-  const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* GetDescriptor();
-  void CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method,
-                  ::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                  const ::PROTOBUF_NAMESPACE_ID::Message* request,
-                  ::PROTOBUF_NAMESPACE_ID::Message* response,
-                  ::google::protobuf::Closure* done);
-  const ::PROTOBUF_NAMESPACE_ID::Message& GetRequestPrototype(
-    const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
-  const ::PROTOBUF_NAMESPACE_ID::Message& GetResponsePrototype(
-    const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
-
- private:
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(SubmissionService);
-};
-
-class SubmissionService_Stub : public SubmissionService {
- public:
-  SubmissionService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel);
-  SubmissionService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel,
-                   ::PROTOBUF_NAMESPACE_ID::Service::ChannelOwnership ownership);
-  ~SubmissionService_Stub();
-
-  inline ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel() { return channel_; }
-
-  // implements SubmissionService ------------------------------------------
-
   void CreateSubmission(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::oj::biz::CreateSubmissionRequest* request,
                        ::oj::biz::CreateSubmissionResponse* response,
@@ -15744,31 +15285,135 @@ class SubmissionService_Stub : public SubmissionService {
                        const ::oj_judge::JudgeFinishedRequest* request,
                        ::oj_judge::NullRsp* response,
                        ::google::protobuf::Closure* done);
+  void InvalidateStaticCache(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::InvalidateStaticCacheRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
  private:
   ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel_;
   bool owns_channel_;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(SubmissionService_Stub);
+  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(OJService_Stub);
 };
 
 
 // -------------------------------------------------------------------
 
-class StaticFileService_Stub;
+class OJAdminService_Stub;
 
-class StaticFileService : public ::PROTOBUF_NAMESPACE_ID::Service {
+class OJAdminService : public ::PROTOBUF_NAMESPACE_ID::Service {
  protected:
   // This class should be treated as an abstract interface.
-  inline StaticFileService() {};
+  inline OJAdminService() {};
  public:
-  virtual ~StaticFileService();
+  virtual ~OJAdminService();
 
-  typedef StaticFileService_Stub Stub;
+  typedef OJAdminService_Stub Stub;
 
   static const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* descriptor();
 
-  virtual void InvalidateCache(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::InvalidateStaticCacheRequest* request,
+  virtual void AdminGetVersion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::common::EmptyRequest* request,
+                       ::oj::biz::GetVersionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminLogin(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminLoginRequest* request,
+                       ::oj::biz::AdminLoginResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminLogout(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::common::EmptyRequest* request,
                        ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminGetOverview(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::common::EmptyRequest* request,
+                       ::oj::biz::AdminOverviewResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminListUsers(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminListUsersRequest* request,
+                       ::oj::biz::AdminListUsersResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminGetUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminUserIdRequest* request,
+                       ::oj::biz::AdminUserResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminCreateUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminCreateUserRequest* request,
+                       ::oj::biz::AdminUserResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminUpdateUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminUpdateUserRequest* request,
+                       ::oj::biz::AdminUserResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminDeleteUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminUserIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminListQuestions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::GetQuestionListRequest* request,
+                       ::oj::biz::GetQuestionListResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminGetQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::QuestionIdRequest* request,
+                       ::oj::biz::GetQuestionDetailResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminCreateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SaveQuestionRequest* request,
+                       ::oj::biz::QuestionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminUpdateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SaveQuestionRequest* request,
+                       ::oj::biz::QuestionResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminDeleteQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::QuestionIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminListTestCases(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::ListTestCasesRequest* request,
+                       ::oj::biz::ListTestCasesResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminCreateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::CreateTestCaseRequest* request,
+                       ::oj::biz::TestCaseResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminUpdateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::UpdateTestCaseRequest* request,
+                       ::oj::biz::TestCaseResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminDeleteTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::TestCaseIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminInvalidateQuestionCache(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::InvalidateQuestionCacheRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminListAdminAccounts(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::ListAdminAccountsRequest* request,
+                       ::oj::biz::ListAdminAccountsResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminGetAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminAccountIdRequest* request,
+                       ::oj::biz::AdminAccountResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminCreateAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SaveAdminAccountRequest* request,
+                       ::oj::biz::AdminAccountResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminUpdateAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SaveAdminAccountRequest* request,
+                       ::oj::biz::AdminAccountResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminDeleteAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminAccountIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminGetCacheMetrics(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::common::EmptyRequest* request,
+                       ::oj::biz::GetCacheMetricsResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void AdminGetAuditLogs(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::GetAuditLogsRequest* request,
+                       ::oj::biz::GetAuditLogsResponse* response,
                        ::google::protobuf::Closure* done);
 
   // implements Service ----------------------------------------------
@@ -15785,28 +15430,128 @@ class StaticFileService : public ::PROTOBUF_NAMESPACE_ID::Service {
     const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method) const;
 
  private:
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(StaticFileService);
+  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(OJAdminService);
 };
 
-class StaticFileService_Stub : public StaticFileService {
+class OJAdminService_Stub : public OJAdminService {
  public:
-  StaticFileService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel);
-  StaticFileService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel,
+  OJAdminService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel);
+  OJAdminService_Stub(::PROTOBUF_NAMESPACE_ID::RpcChannel* channel,
                    ::PROTOBUF_NAMESPACE_ID::Service::ChannelOwnership ownership);
-  ~StaticFileService_Stub();
+  ~OJAdminService_Stub();
 
   inline ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel() { return channel_; }
 
-  // implements StaticFileService ------------------------------------------
+  // implements OJAdminService ------------------------------------------
 
-  void InvalidateCache(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::biz::InvalidateStaticCacheRequest* request,
+  void AdminGetVersion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::common::EmptyRequest* request,
+                       ::oj::biz::GetVersionResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminLogin(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminLoginRequest* request,
+                       ::oj::biz::AdminLoginResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminLogout(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::common::EmptyRequest* request,
                        ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminGetOverview(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::common::EmptyRequest* request,
+                       ::oj::biz::AdminOverviewResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminListUsers(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminListUsersRequest* request,
+                       ::oj::biz::AdminListUsersResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminGetUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminUserIdRequest* request,
+                       ::oj::biz::AdminUserResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminCreateUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminCreateUserRequest* request,
+                       ::oj::biz::AdminUserResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminUpdateUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminUpdateUserRequest* request,
+                       ::oj::biz::AdminUserResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminDeleteUser(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminUserIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminListQuestions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::GetQuestionListRequest* request,
+                       ::oj::biz::GetQuestionListResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminGetQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::QuestionIdRequest* request,
+                       ::oj::biz::GetQuestionDetailResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminCreateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SaveQuestionRequest* request,
+                       ::oj::biz::QuestionResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminUpdateQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SaveQuestionRequest* request,
+                       ::oj::biz::QuestionResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminDeleteQuestion(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::QuestionIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminListTestCases(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::ListTestCasesRequest* request,
+                       ::oj::biz::ListTestCasesResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminCreateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::CreateTestCaseRequest* request,
+                       ::oj::biz::TestCaseResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminUpdateTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::UpdateTestCaseRequest* request,
+                       ::oj::biz::TestCaseResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminDeleteTestCase(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::TestCaseIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminInvalidateQuestionCache(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::InvalidateQuestionCacheRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminListAdminAccounts(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::ListAdminAccountsRequest* request,
+                       ::oj::biz::ListAdminAccountsResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminGetAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminAccountIdRequest* request,
+                       ::oj::biz::AdminAccountResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminCreateAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SaveAdminAccountRequest* request,
+                       ::oj::biz::AdminAccountResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminUpdateAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::SaveAdminAccountRequest* request,
+                       ::oj::biz::AdminAccountResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminDeleteAdminAccount(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::AdminAccountIdRequest* request,
+                       ::oj::common::EmptyResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminGetCacheMetrics(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::common::EmptyRequest* request,
+                       ::oj::biz::GetCacheMetricsResponse* response,
+                       ::google::protobuf::Closure* done);
+  void AdminGetAuditLogs(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::oj::biz::GetAuditLogsRequest* request,
+                       ::oj::biz::GetAuditLogsResponse* response,
                        ::google::protobuf::Closure* done);
  private:
   ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel_;
   bool owns_channel_;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(StaticFileService_Stub);
+  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(OJAdminService_Stub);
 };
 
 

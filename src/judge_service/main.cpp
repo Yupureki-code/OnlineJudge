@@ -60,7 +60,7 @@ private:
 
 int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
-    if (!ns_logger::InitLogger("judge_service", LOG_PATH + "judge_service.log", spdlog::level::info))
+    if (!oj::logger::InitLogger("judge_service", LOG_PATH + "judge_service.log", spdlog::level::info))
         LOG_ERROR("Failed to initialize judge_service file logger");
 
     auto event_loop = std::make_shared<oj_judge::JudgeEventLoop>();
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
     LOG_INFO("Shutting down Judge Service");
     consumer->Stop();
     runner_pool->Shutdown();
-    ns_logger::ShutdownLogger();
+    oj::logger::ShutdownLogger();
 
     return 0;
 }

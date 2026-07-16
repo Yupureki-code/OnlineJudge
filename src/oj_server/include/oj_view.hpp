@@ -11,9 +11,9 @@
 
 // view: 主要用来渲染和返回html
 
-namespace ns_view
+namespace oj::view
 {
-    using namespace ns_model;
+    using namespace oj::model;
 
     // HTML转义函数
     inline std::string HtmlEscape(const std::string& input)
@@ -49,7 +49,7 @@ namespace ns_view
             for (const auto& q : questions)
             {
                 ctemplate::TemplateDictionary *sub = root.AddSectionDictionary("question_list");
-                sub->SetValue("number", q.number);
+                sub->SetValue("id", q.id);
                 sub->SetValue("title", q.title);
                 sub->SetValue("star", q.star);
             }
@@ -66,7 +66,7 @@ namespace ns_view
             std::string src_html = HTML_PATH + std::string("one_question.html");
             //形成数字典
             ctemplate::TemplateDictionary root("one_question");
-            root.SetValue("number", q.number);
+            root.SetValue("id", q.id);
             root.SetValue("title", q.title);
             root.SetValue("star", q.star);
             root.SetValue("desc", HtmlEscape(q.desc));

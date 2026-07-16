@@ -119,7 +119,7 @@ public:
         latecyMonitor::LatencyMonitorConfig monitor;
         ns_odb::ODBPoolConfig odb;
         BusinessExecutor::Config executor;
-        BusinessExecutor::ExceptionHandler executor_exception_handler;
+        BusinessExecutor::ExceptionHandler _executorexception_handler;
         bool enable_monitor = true;
     };
 
@@ -140,7 +140,7 @@ public:
     LifecycleStage FailedStage() const;
 
     latecyMonitor::LatencyMonitor& Monitor() noexcept { return monitor_; }
-    BusinessExecutor& Executor() noexcept { return executor_; }
+    BusinessExecutor& Executor() noexcept { return _executor; }
     OdbPoolService& Odb() noexcept { return odb_; }
     MqService& Mq() noexcept { return mq_; }
     const ns_odb::ODBPoolConfig& OdbConfig() const noexcept { return config_.odb; }
@@ -156,7 +156,7 @@ private:
     LifecycleCallbacks redis_;
     LifecycleObserver observer_;
     latecyMonitor::LatencyMonitor monitor_;
-    BusinessExecutor executor_;
+    BusinessExecutor _executor;
     mutable std::mutex lifecycle_mutex_;
     std::exception_ptr last_start_error_;
     LifecycleStage failed_stage_ = LifecycleStage::None;
@@ -165,7 +165,7 @@ private:
     bool odb_started_ = false;
     bool redis_started_ = false;
     bool mq_started_ = false;
-    bool executor_started_ = false;
+    bool _executorstarted_ = false;
     bool running_ = false;
     bool terminal_ = false;
 };

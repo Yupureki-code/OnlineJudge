@@ -12,11 +12,11 @@ int main() {
     for (const auto domain : {"user", "question", "solution", "comment", "submission", "static"}) {
         checks.Expect(HasDomain(kUserRpcs, domain), "every user-facing legacy domain has an RPC mapping");
     }
-    checks.Expect(HasMethod(kUserRpcs, "UserService", "LoginWithPassword"), "password login is represented");
-    checks.Expect(HasMethod(kUserRpcs, "UserService", "Register"), "code registration is represented");
-    checks.Expect(HasMethod(kUserRpcs, "SubmissionService", "CreateSubmission"), "formal submission is asynchronous");
-    checks.Expect(HasMethod(kUserRpcs, "SubmissionService", "CreateCustomTest"), "custom test is asynchronous");
-    checks.Expect(HasMethod(kUserRpcs, "SubmissionService", "GetSubmission"), "submission polling is represented");
+    checks.Expect(HasMethod(kUserRpcs, "OJService", "LoginWithPassword"), "password login is represented");
+    checks.Expect(HasMethod(kUserRpcs, "OJService", "Register"), "code registration is represented");
+    checks.Expect(HasMethod(kUserRpcs, "OJService", "CreateSubmission"), "formal submission is asynchronous");
+    checks.Expect(HasMethod(kUserRpcs, "OJService", "CreateCustomTest"), "custom test is asynchronous");
+    checks.Expect(HasMethod(kUserRpcs, "OJService", "GetSubmission"), "submission polling is represented");
 
     int authenticated = 0;
     for (const auto& rpc : kUserRpcs) {

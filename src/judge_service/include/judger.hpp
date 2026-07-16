@@ -31,10 +31,10 @@ public:
     {
         LOG_INFO("Judger started submission_id={}", request.submission_id());
         // ① 生成唯一文件名，写入源代码到宿主机临时目录
-        std::string file_name = oj_util::StringUtil::GetUniqueName();
-        std::string src_path = oj_util::PathUtil::Src(file_name);
-        std::string exe_path = oj_util::PathUtil::Exe(file_name);
-        std::string err_path = oj_util::PathUtil::Compile_err(file_name);
+        std::string file_name = oj::util::StringUtil::GetUniqueName();
+        std::string src_path = oj::util::PathUtil::Src(file_name);
+        std::string exe_path = oj::util::PathUtil::Exe(file_name);
+        std::string err_path = oj::util::PathUtil::Compile_err(file_name);
         _file_system.write(src_path, request.code());
         LOG_DEBUG("Submission source staged");
 

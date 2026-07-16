@@ -12,6 +12,10 @@ find_package(spdlog REQUIRED)
 pkg_check_modules(ODB_TEST REQUIRED IMPORTED_TARGET libodb)
 pkg_check_modules(ODB_MYSQL_TEST REQUIRED IMPORTED_TARGET libodb-mysql)
 
+if(TARGET oj_odb_models)
+    add_subdirectory(model)
+endif()
+
 add_executable(latency_monitor_test latency_monitor_test.cpp)
 target_compile_features(latency_monitor_test PRIVATE cxx_std_17)
 target_include_directories(latency_monitor_test PRIVATE ${CMAKE_SOURCE_DIR}/src)

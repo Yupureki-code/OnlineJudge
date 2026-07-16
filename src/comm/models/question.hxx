@@ -32,6 +32,7 @@ struct Question {
     #pragma db type("TINYINT")
     int8_t cpu_limit;
 
+    #pragma db type("INT")
     int32_t memory_limit;
 };
 

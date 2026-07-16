@@ -2,7 +2,7 @@
 
 #include "control_base.hpp"
 
-namespace ns_control
+namespace oj::control
 {
 
     class ControlQuestion : public ControlBase
@@ -18,9 +18,9 @@ namespace ns_control
             return _model.User().HasUserPassedQuestion(user_id, question_id);
         }
 
-        bool DeleteQuestion(const std::string& number)
+        bool DeleteQuestion(const std::string& id)
         {
-            return _model.Question().DeleteQuestion(number);
+            return _model.Question().DeleteQuestion(id);
         }
 
         // 题目写路径统一调用：递增列表版本，触发列表缓存失效。
@@ -76,17 +76,17 @@ namespace ns_control
             return ret;
         }
         //获取单个题目
-        bool OneQuestion(const std::string &number, std::string *html)
+        bool OneQuestion(const std::string &id, std::string *html)
         {
             bool ret = true;
             Question q;
-            if (_model.Question().GetOneQuestion(number, q))
+            if (_model.Question().GetOneQuestion(id, q))
             {
                 _view.OneExpandHtml(q, html);
             }
             else
             {
-                *html = "指定题目: " + number + " 不存在!";
+                *html = "指定题目: " + id + " 不存在!";
                 ret = false;
             }
             return ret;
@@ -187,6 +187,33 @@ namespace ns_control
             (*result)["input"] = test_input;
             (*result)["expected_output"] = test_output;
             return true;
+        }
+
+        std::string GetQuestionsListVersion()
+        {
+            return _model.Question().GetQuestionsListVersion();
+        }
+
+        std::shared_ptr<Cache::CacheListKey> BuildListCacheKey(
+            std::shared_ptr<QueryStruct>& query_hash,
+            int page, int size,
+            const std::string& list_version,
+            Cache::CacheKey::PageType page_type)
+        {
+            return _model.Question().BuildListCacheKey(query_hash, page, size, list_version, page_type);
+        }
+
+        bool GetQuestionsByPage(std::shared_ptr<Cache::CacheListKey> key,
+                                std::vector<Question>& questions,
+                                int* total_count,
+                                int* total_pages)
+        {
+            return _model.Question().GetQuestionsByPage(key, questions, total_count, total_pages);
+        }
+
+        bool GetOneQuestion(const std::string& id, Question& q)
+        {
+            return _model.Question().GetOneQuestion(id, q);
         }
     };
 

@@ -1,8 +1,9 @@
 #pragma once
 
+#include "comm.hpp"
 #include "control_base.hpp"
 
-namespace ns_control
+namespace oj::control
 {
 
     class ControlComment : public ControlBase
@@ -27,7 +28,7 @@ namespace ns_control
                 return false;
             }
 
-            std::string trimmed = TrimSpace(content);
+            std::string trimmed = oj::util::StringUtil::TrimSpace(content);
             if (trimmed.empty())
             {
                 *err_code = "CONTENT_REQUIRED";
@@ -59,19 +60,21 @@ namespace ns_control
             {
                 Comment parent;
                 //获取父级评论
-                if (_model.Comment().GetCommentById(parent_id, &parent))
+                if (!_model.Comment().GetCommentById(parent_id, &parent))
                 {
-                    reply_to_user_id = parent.user_id;
-                    if (parent.solution_id != solution_id)
-                    {
-                        *err_code = "INVALID_PARENT_SOLUTION";
-                        return false;
-                    }
-                    // If replying to a reply, elevate to top-level parent
-                    if (parent.parent_id > 0)
-                    {
-                        c.parent_id = parent.parent_id;
-                    }
+                    *err_code = "PARENT_NOT_FOUND";
+                    return false;
+                }
+                reply_to_user_id = parent.user_id;
+                if (parent.solution_id != solution_id)
+                {
+                    *err_code = "INVALID_PARENT_SOLUTION";
+                    return false;
+                }
+                // If replying to a reply, elevate to top-level parent
+                if (parent.parent_id.get() > 0)
+                {
+                    c.parent_id = parent.parent_id;
                 }
             }
             c.reply_to_user_id = static_cast<int>(reply_to_user_id);
@@ -119,7 +122,10 @@ namespace ns_control
                 return false;
             }
 
-            SetPaginationResult(result, total_count, page, size);
+            const int safe_page = std::max(1, page);
+            const int safe_size = std::max(1, size);
+            result->clear();
+            SetPaginationResult(result, total_count, safe_page, safe_size);
 
             Json::Value list(Json::arrayValue);
             for (const auto& c : comments)
@@ -148,36 +154,25 @@ namespace ns_control
                 return false;
             }
 
-            SetPaginationResult(result, total_count, page, size);
+            const int safe_page = std::max(1, page);
+            const int safe_size = std::max(1, size);
+            result->clear();
+            SetPaginationResult(result, total_count, safe_page, safe_size);
 
             // Batch fetch reply counts for all top-level comments
             std::map<unsigned long long, int> reply_counts;
             if (!comments.empty())
             {
-                auto rep_my = _model.CreateConnection();
-                if (rep_my)
+                std::vector<unsigned long long> comment_ids;
+                comment_ids.reserve(comments.size());
+                for (const auto& comment : comments)
                 {
-                    std::ostringstream idlist;
-                    for (size_t i = 0; i < comments.size(); ++i)
-                    {
-                        if (i > 0) idlist << ",";
-                        idlist << comments[i].id;
-                    }
-                    std::string batch_sql = "select parent_id, count(*) as cnt from solution_comments where parent_id in (" + idlist.str() + ") group by parent_id";
-                    if (mysql_query(rep_my.get(), batch_sql.c_str()) == 0)
-                    {
-                        MYSQL_RES* rep_res = mysql_store_result(rep_my.get());
-                        if (rep_res)
-                        {
-                            for (int ri = 0; ri < mysql_num_rows(rep_res); ++ri)
-                            {
-                                MYSQL_ROW rep_row = mysql_fetch_row(rep_res);
-                                if (rep_row && rep_row[0] && rep_row[1])
-                                    reply_counts[std::stoull(rep_row[0])] = std::atoi(rep_row[1]);
-                            }
-                            mysql_free_result(rep_res);
-                        }
-                    }
+                    comment_ids.push_back(comment.id);
+                }
+                if (!_model.Comment().GetDirectChildReplyCounts(comment_ids, &reply_counts))
+                {
+                    *err_code = "DB_ERROR";
+                    return false;
                 }
             }
             //写入JSON
@@ -209,36 +204,25 @@ namespace ns_control
                 return false;
             }
 
-            SetPaginationResult(result, total_count, page, size);
+            const int safe_page = std::max(1, page);
+            const int safe_size = std::max(1, size);
+            result->clear();
+            SetPaginationResult(result, total_count, safe_page, safe_size);
 
             // Batch fetch nested reply counts for all replies
             std::map<unsigned long long, int> reply_counts;
             if (!replies.empty())
             {
-                auto rep_my = _model.CreateConnection();
-                if (rep_my)
+                std::vector<unsigned long long> reply_ids;
+                reply_ids.reserve(replies.size());
+                for (const auto& reply : replies)
                 {
-                    std::ostringstream idlist;
-                    for (size_t i = 0; i < replies.size(); ++i)
-                    {
-                        if (i > 0) idlist << ",";
-                        idlist << replies[i].id;
-                    }
-                    std::string batch_sql = "select parent_id, count(*) as cnt from solution_comments where parent_id in (" + idlist.str() + ") group by parent_id";
-                    if (mysql_query(rep_my.get(), batch_sql.c_str()) == 0)
-                    {
-                        MYSQL_RES* rep_res = mysql_store_result(rep_my.get());
-                        if (rep_res)
-                        {
-                            for (int ri = 0; ri < mysql_num_rows(rep_res); ++ri)
-                            {
-                                MYSQL_ROW rep_row = mysql_fetch_row(rep_res);
-                                if (rep_row && rep_row[0] && rep_row[1])
-                                    reply_counts[std::stoull(rep_row[0])] = std::atoi(rep_row[1]);
-                            }
-                            mysql_free_result(rep_res);
-                        }
-                    }
+                    reply_ids.push_back(reply.id);
+                }
+                if (!_model.Comment().GetDirectChildReplyCounts(reply_ids, &reply_counts))
+                {
+                    *err_code = "DB_ERROR";
+                    return false;
                 }
             }
 
@@ -262,7 +246,12 @@ namespace ns_control
             {
                 return false;
             }
-            std::string trimmed = TrimSpace(content);
+            if (current_user.uid <= 0)
+            {
+                *err_code = "UNAUTHORIZED";
+                return false;
+            }
+            std::string trimmed = oj::util::StringUtil::TrimSpace(content);
             if (trimmed.empty())
             {
                 *err_code = "CONTENT_REQUIRED";
@@ -299,8 +288,8 @@ namespace ns_control
                 (*result)["success"] = true;
                 (*result)["id"] = Json::UInt64(updated.id);
                 (*result)["content"] = updated.content;
-                (*result)["is_edited"] = updated.is_edited;
-                (*result)["updated_at"] = updated.updated_at;
+                (*result)["is_edited"] = updated.is_edited.get();
+                (*result)["updated_at"] = oj::util::TimeUtil::DateTimeToInt(updated.updated_at.get());;
             }
             else
             {
@@ -316,6 +305,11 @@ namespace ns_control
         {
             if (result == nullptr || err_code == nullptr)
             {
+                return false;
+            }
+            if (current_user.uid <= 0)
+            {
+                *err_code = "UNAUTHORIZED";
                 return false;
             }
             Comment c;

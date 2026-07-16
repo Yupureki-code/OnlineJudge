@@ -13,6 +13,7 @@ message SendVerificationCodeResponse {
     oj.common.StatusResponse status = 1;
     uint32 retry_after_seconds = 2;
 }
+
 message RegisterRequest {
     string email = 1;
     string verification_code = 2;
@@ -66,25 +67,6 @@ message GetUserStatisticsResponse {
     repeated oj.common.Submission recent_submissions = 3;
 }
 
-service UserService {
-    rpc SendRegistrationCode(SendVerificationCodeRequest) returns (SendVerificationCodeResponse);
-    rpc Register(RegisterRequest) returns (AuthResponse);
-    rpc LoginWithVerificationCode(VerificationCodeLoginRequest) returns (AuthResponse);
-    rpc LoginWithPassword(PasswordLoginRequest) returns (AuthResponse);
-    rpc Logout(oj.common.EmptyRequest) returns (oj.common.EmptyResponse);
-    rpc SetPassword(SetPasswordRequest) returns (oj.common.EmptyResponse);
-    rpc SendSecurityCode(oj.common.EmptyRequest) returns (SendVerificationCodeResponse);
-    rpc ChangePassword(ChangePasswordRequest) returns (oj.common.EmptyResponse);
-    rpc ChangeEmail(ChangeEmailRequest) returns (oj.common.EmptyResponse);
-    rpc DeleteAccount(DeleteAccountRequest) returns (oj.common.EmptyResponse);
-    rpc GetCurrentUser(oj.common.EmptyRequest) returns (GetUserProfileResponse);
-    rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
-    rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
-    rpc UpdateAvatar(UpdateAvatarRequest) returns (UpdateAvatarResponse);
-    rpc DeleteAvatar(oj.common.EmptyRequest) returns (oj.common.EmptyResponse);
-    rpc GetStatistics(oj.common.EmptyRequest) returns (GetUserStatisticsResponse);
-}
-
 message GetQuestionListRequest {
     oj.common.PageRequest page = 1;
     string search = 2;
@@ -135,20 +117,6 @@ message TestCaseResponse {
 }
 message InvalidateQuestionCacheRequest { string question_id = 1; }
 
-service QuestionService {
-    rpc ListQuestions(GetQuestionListRequest) returns (GetQuestionListResponse);
-    rpc GetQuestion(QuestionIdRequest) returns (GetQuestionDetailResponse);
-    rpc GetPassStatus(QuestionIdRequest) returns (GetQuestionPassStatusResponse);
-    rpc CreateQuestion(SaveQuestionRequest) returns (QuestionResponse);
-    rpc UpdateQuestion(SaveQuestionRequest) returns (QuestionResponse);
-    rpc DeleteQuestion(QuestionIdRequest) returns (oj.common.EmptyResponse);
-    rpc ListTestCases(ListTestCasesRequest) returns (ListTestCasesResponse);
-    rpc CreateTestCase(CreateTestCaseRequest) returns (TestCaseResponse);
-    rpc UpdateTestCase(UpdateTestCaseRequest) returns (TestCaseResponse);
-    rpc DeleteTestCase(TestCaseIdRequest) returns (oj.common.EmptyResponse);
-    rpc InvalidateCache(InvalidateQuestionCacheRequest) returns (oj.common.EmptyResponse);
-}
-
 message ListSolutionsRequest {
     oj.common.PageRequest page = 1;
     string question_id = 2;
@@ -186,17 +154,6 @@ message SolutionActionResponse {
     oj.common.SolutionActionState actions = 2;
     uint64 like_count = 3;
     uint64 favorite_count = 4;
-}
-
-service SolutionService {
-    rpc ListSolutions(ListSolutionsRequest) returns (ListSolutionsResponse);
-    rpc GetSolution(SolutionIdRequest) returns (GetSolutionResponse);
-    rpc CreateSolution(CreateSolutionRequest) returns (SolutionResponse);
-    rpc UpdateSolution(UpdateSolutionRequest) returns (SolutionResponse);
-    rpc DeleteSolution(SolutionIdRequest) returns (oj.common.EmptyResponse);
-    rpc ToggleLike(SolutionIdRequest) returns (SolutionActionResponse);
-    rpc ToggleFavorite(SolutionIdRequest) returns (SolutionActionResponse);
-    rpc GetActionState(SolutionIdRequest) returns (SolutionActionResponse);
 }
 
 message ListCommentsRequest {
@@ -237,17 +194,6 @@ message GetCommentActionsRequest { repeated uint64 comment_ids = 1; }
 message GetCommentActionsResponse {
     oj.common.StatusResponse status = 1;
     repeated oj.common.CommentActionState actions = 2;
-}
-
-service CommentService {
-    rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
-    rpc ListReplies(ListRepliesRequest) returns (ListCommentsResponse);
-    rpc CreateComment(CreateCommentRequest) returns (CommentResponse);
-    rpc UpdateComment(UpdateCommentRequest) returns (CommentResponse);
-    rpc DeleteComment(CommentIdRequest) returns (oj.common.EmptyResponse);
-    rpc ToggleLike(CommentIdRequest) returns (CommentActionResponse);
-    rpc ToggleFavorite(CommentIdRequest) returns (CommentActionResponse);
-    rpc GetActionStates(GetCommentActionsRequest) returns (GetCommentActionsResponse);
 }
 
 message AdminLoginRequest {
@@ -325,35 +271,6 @@ message GetAuditLogsResponse {
     oj.common.StatusResponse status = 1;
     oj.common.PageResponse page = 2;
     repeated oj.common.AdminAuditLog logs = 3;
-}
-
-service AdminService {
-    rpc GetVersion(oj.common.EmptyRequest) returns (GetVersionResponse);
-    rpc Login(AdminLoginRequest) returns (AdminLoginResponse);
-    rpc Logout(oj.common.EmptyRequest) returns (oj.common.EmptyResponse);
-    rpc GetOverview(oj.common.EmptyRequest) returns (AdminOverviewResponse);
-    rpc ListUsers(AdminListUsersRequest) returns (AdminListUsersResponse);
-    rpc GetUser(AdminUserIdRequest) returns (AdminUserResponse);
-    rpc CreateUser(AdminCreateUserRequest) returns (AdminUserResponse);
-    rpc UpdateUser(AdminUpdateUserRequest) returns (AdminUserResponse);
-    rpc DeleteUser(AdminUserIdRequest) returns (oj.common.EmptyResponse);
-    rpc ListQuestions(GetQuestionListRequest) returns (GetQuestionListResponse);
-    rpc GetQuestion(QuestionIdRequest) returns (GetQuestionDetailResponse);
-    rpc CreateQuestion(SaveQuestionRequest) returns (QuestionResponse);
-    rpc UpdateQuestion(SaveQuestionRequest) returns (QuestionResponse);
-    rpc DeleteQuestion(QuestionIdRequest) returns (oj.common.EmptyResponse);
-    rpc ListTestCases(ListTestCasesRequest) returns (ListTestCasesResponse);
-    rpc CreateTestCase(CreateTestCaseRequest) returns (TestCaseResponse);
-    rpc UpdateTestCase(UpdateTestCaseRequest) returns (TestCaseResponse);
-    rpc DeleteTestCase(TestCaseIdRequest) returns (oj.common.EmptyResponse);
-    rpc InvalidateQuestionCache(InvalidateQuestionCacheRequest) returns (oj.common.EmptyResponse);
-    rpc ListAdminAccounts(ListAdminAccountsRequest) returns (ListAdminAccountsResponse);
-    rpc GetAdminAccount(AdminAccountIdRequest) returns (AdminAccountResponse);
-    rpc CreateAdminAccount(SaveAdminAccountRequest) returns (AdminAccountResponse);
-    rpc UpdateAdminAccount(SaveAdminAccountRequest) returns (AdminAccountResponse);
-    rpc DeleteAdminAccount(AdminAccountIdRequest) returns (oj.common.EmptyResponse);
-    rpc GetCacheMetrics(oj.common.EmptyRequest) returns (GetCacheMetricsResponse);
-    rpc GetAuditLogs(GetAuditLogsRequest) returns (GetAuditLogsResponse);
 }
 
 message CreateSubmissionRequest {
@@ -438,7 +355,56 @@ message UpdateJudgeResultResponse {
     uint32 retry_after_ms = 3;
 }
 
-service SubmissionService {
+message InvalidateStaticCacheRequest { string path = 1; }
+
+service OJService {
+    rpc SendRegistrationCode(SendVerificationCodeRequest) returns (SendVerificationCodeResponse);
+    rpc Register(RegisterRequest) returns (AuthResponse);
+    rpc LoginWithVerificationCode(VerificationCodeLoginRequest) returns (AuthResponse);
+    rpc LoginWithPassword(PasswordLoginRequest) returns (AuthResponse);
+    rpc Logout(oj.common.EmptyRequest) returns (oj.common.EmptyResponse);
+    rpc SetPassword(SetPasswordRequest) returns (oj.common.EmptyResponse);
+    rpc SendSecurityCode(oj.common.EmptyRequest) returns (SendVerificationCodeResponse);
+    rpc ChangePassword(ChangePasswordRequest) returns (oj.common.EmptyResponse);
+    rpc ChangeEmail(ChangeEmailRequest) returns (oj.common.EmptyResponse);
+    rpc DeleteAccount(DeleteAccountRequest) returns (oj.common.EmptyResponse);
+    rpc GetCurrentUser(oj.common.EmptyRequest) returns (GetUserProfileResponse);
+    rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
+    rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+    rpc UpdateAvatar(UpdateAvatarRequest) returns (UpdateAvatarResponse);
+    rpc DeleteAvatar(oj.common.EmptyRequest) returns (oj.common.EmptyResponse);
+    rpc GetStatistics(oj.common.EmptyRequest) returns (GetUserStatisticsResponse);
+
+    rpc ListQuestions(GetQuestionListRequest) returns (GetQuestionListResponse);
+    rpc GetQuestion(QuestionIdRequest) returns (GetQuestionDetailResponse);
+    rpc GetPassStatus(QuestionIdRequest) returns (GetQuestionPassStatusResponse);
+    rpc CreateQuestion(SaveQuestionRequest) returns (QuestionResponse);
+    rpc UpdateQuestion(SaveQuestionRequest) returns (QuestionResponse);
+    rpc DeleteQuestion(QuestionIdRequest) returns (oj.common.EmptyResponse);
+    rpc ListTestCases(ListTestCasesRequest) returns (ListTestCasesResponse);
+    rpc CreateTestCase(CreateTestCaseRequest) returns (TestCaseResponse);
+    rpc UpdateTestCase(UpdateTestCaseRequest) returns (TestCaseResponse);
+    rpc DeleteTestCase(TestCaseIdRequest) returns (oj.common.EmptyResponse);
+    rpc InvalidateCache(InvalidateQuestionCacheRequest) returns (oj.common.EmptyResponse);
+
+    rpc ListSolutions(ListSolutionsRequest) returns (ListSolutionsResponse);
+    rpc GetSolution(SolutionIdRequest) returns (GetSolutionResponse);
+    rpc CreateSolution(CreateSolutionRequest) returns (SolutionResponse);
+    rpc UpdateSolution(UpdateSolutionRequest) returns (SolutionResponse);
+    rpc DeleteSolution(SolutionIdRequest) returns (oj.common.EmptyResponse);
+    rpc ToggleSolutionLike(SolutionIdRequest) returns (SolutionActionResponse);
+    rpc ToggleSolutionFavorite(SolutionIdRequest) returns (SolutionActionResponse);
+    rpc GetActionState(SolutionIdRequest) returns (SolutionActionResponse);
+
+    rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
+    rpc ListReplies(ListRepliesRequest) returns (ListCommentsResponse);
+    rpc CreateComment(CreateCommentRequest) returns (CommentResponse);
+    rpc UpdateComment(UpdateCommentRequest) returns (CommentResponse);
+    rpc DeleteComment(CommentIdRequest) returns (oj.common.EmptyResponse);
+    rpc ToggleCommentLike(CommentIdRequest) returns (CommentActionResponse);
+    rpc ToggleCommentFavorite(CommentIdRequest) returns (CommentActionResponse);
+    rpc GetActionStates(GetCommentActionsRequest) returns (GetCommentActionsResponse);
+
     rpc CreateSubmission(CreateSubmissionRequest) returns (CreateSubmissionResponse);
     rpc CreateCustomTest(CreateCustomTestRequest) returns (CreateCustomTestResponse);
     rpc GetSubmission(GetSubmissionRequest) returns (GetSubmissionResponse);
@@ -448,10 +414,35 @@ service SubmissionService {
     // Transitional callback used by the completed Phase 2 Judge. Phase 7
     // migrates Judge to UpdateJudgeResult and then removes this method.
     rpc LegacyUpdateJudgeResult(oj_judge.JudgeFinishedRequest) returns (oj_judge.NullRsp);
+
+    rpc InvalidateStaticCache(InvalidateStaticCacheRequest) returns (oj.common.EmptyResponse);
 }
 
-message InvalidateStaticCacheRequest { string path = 1; }
-
-service StaticFileService {
-    rpc InvalidateCache(InvalidateStaticCacheRequest) returns (oj.common.EmptyResponse);
+service OJAdminService {
+    rpc AdminGetVersion(oj.common.EmptyRequest) returns (GetVersionResponse);
+    rpc AdminLogin(AdminLoginRequest) returns (AdminLoginResponse);
+    rpc AdminLogout(oj.common.EmptyRequest) returns (oj.common.EmptyResponse);
+    rpc AdminGetOverview(oj.common.EmptyRequest) returns (AdminOverviewResponse);
+    rpc AdminListUsers(AdminListUsersRequest) returns (AdminListUsersResponse);
+    rpc AdminGetUser(AdminUserIdRequest) returns (AdminUserResponse);
+    rpc AdminCreateUser(AdminCreateUserRequest) returns (AdminUserResponse);
+    rpc AdminUpdateUser(AdminUpdateUserRequest) returns (AdminUserResponse);
+    rpc AdminDeleteUser(AdminUserIdRequest) returns (oj.common.EmptyResponse);
+    rpc AdminListQuestions(GetQuestionListRequest) returns (GetQuestionListResponse);
+    rpc AdminGetQuestion(QuestionIdRequest) returns (GetQuestionDetailResponse);
+    rpc AdminCreateQuestion(SaveQuestionRequest) returns (QuestionResponse);
+    rpc AdminUpdateQuestion(SaveQuestionRequest) returns (QuestionResponse);
+    rpc AdminDeleteQuestion(QuestionIdRequest) returns (oj.common.EmptyResponse);
+    rpc AdminListTestCases(ListTestCasesRequest) returns (ListTestCasesResponse);
+    rpc AdminCreateTestCase(CreateTestCaseRequest) returns (TestCaseResponse);
+    rpc AdminUpdateTestCase(UpdateTestCaseRequest) returns (TestCaseResponse);
+    rpc AdminDeleteTestCase(TestCaseIdRequest) returns (oj.common.EmptyResponse);
+    rpc AdminInvalidateQuestionCache(InvalidateQuestionCacheRequest) returns (oj.common.EmptyResponse);
+    rpc AdminListAdminAccounts(ListAdminAccountsRequest) returns (ListAdminAccountsResponse);
+    rpc AdminGetAdminAccount(AdminAccountIdRequest) returns (AdminAccountResponse);
+    rpc AdminCreateAdminAccount(SaveAdminAccountRequest) returns (AdminAccountResponse);
+    rpc AdminUpdateAdminAccount(SaveAdminAccountRequest) returns (AdminAccountResponse);
+    rpc AdminDeleteAdminAccount(AdminAccountIdRequest) returns (oj.common.EmptyResponse);
+    rpc AdminGetCacheMetrics(oj.common.EmptyRequest) returns (GetCacheMetricsResponse);
+    rpc AdminGetAuditLogs(GetAuditLogsRequest) returns (GetAuditLogsResponse);
 }

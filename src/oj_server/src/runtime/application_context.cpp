@@ -34,7 +34,7 @@ ApplicationContext::ApplicationContext(Config config, OdbPoolService& odb, MqSer
                                        LifecycleObserver observer)
     : config_(std::move(config)), odb_(odb), mq_(mq), logger_(std::move(logger)),
       redis_(std::move(redis)), observer_(std::move(observer)),
-      executor_(config_.executor, config_.executor_exception_handler)
+      _executor(config_.executor, config_._executorexception_handler)
 {
 }
 
@@ -86,9 +86,9 @@ bool ApplicationContext::Start()
         Notify(LifecycleStage::Mq, LifecycleEvent::Started);
 
         failed_stage_ = LifecycleStage::Executor;
-        if (!executor_.Start())
+        if (!_executor.Start())
             throw std::runtime_error("business executor start failed");
-        executor_started_ = true;
+        _executorstarted_ = true;
         Notify(LifecycleStage::Executor, LifecycleEvent::Started);
 
         failed_stage_ = LifecycleStage::None;
@@ -140,9 +140,8 @@ void ApplicationContext::Notify(LifecycleStage stage, LifecycleEvent event) noex
 
 void ApplicationContext::StopStartedComponents() noexcept
 {
-    if (executor_started_) {
-        executor_.Stop();
-        executor_started_ = false;
+    if (_executorstarted_) {
+        _executorstarted_ = false;
         Notify(LifecycleStage::Executor, LifecycleEvent::Stopped);
     }
     if (mq_started_) {

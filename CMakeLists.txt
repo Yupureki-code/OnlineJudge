@@ -12,7 +12,6 @@ set(HTML_PATH ${CMAKE_SOURCE_DIR}/src/wwwroot CACHE STRING "default html file pa
 set(LOG_PATH ${CMAKE_SOURCE_DIR}/log CACHE STRING "default log file path")
 set(ADMIN_HOST "0.0.0.0" CACHE STRING "admin server bind host")
 set(ADMIN_PORT "8090" CACHE STRING "admin server bind port")
-
 configure_file(${CMAKE_SOURCE_DIR}/config.in.h ${CMAKE_SOURCE_DIR}/src/comm/config.h)
 
 # ==================== 微服务改造新增 ====================
@@ -24,12 +23,14 @@ set(OJ_PROTO_FILES
     ${PROTO_GEN_DIR}/biz_service.proto
     ${PROTO_GEN_DIR}/judge_service.proto
     ${PROTO_GEN_DIR}/mq_message.proto
+    ${PROTO_GEN_DIR}/static_http.proto
 )
 set(OJ_PROTO_OUTPUTS
     ${PROTO_GEN_DIR}/common.pb.h ${PROTO_GEN_DIR}/common.pb.cc
     ${PROTO_GEN_DIR}/biz_service.pb.h ${PROTO_GEN_DIR}/biz_service.pb.cc
     ${PROTO_GEN_DIR}/judge_service.pb.h ${PROTO_GEN_DIR}/judge_service.pb.cc
     ${PROTO_GEN_DIR}/mq_message.pb.h ${PROTO_GEN_DIR}/mq_message.pb.cc
+    ${PROTO_GEN_DIR}/static_http.pb.h ${PROTO_GEN_DIR}/static_http.pb.cc
 )
 add_custom_command(
     OUTPUT ${OJ_PROTO_OUTPUTS}
@@ -70,6 +71,7 @@ add_library(phase3_proto_contract STATIC
     ${PROTO_GEN_DIR}/biz_service.pb.cc
     ${PROTO_GEN_DIR}/judge_service.pb.cc
     ${PROTO_GEN_DIR}/mq_message.pb.cc
+    ${PROTO_GEN_DIR}/static_http.pb.cc
 )
 add_dependencies(phase3_proto_contract generate_phase3_proto)
 target_include_directories(phase3_proto_contract PUBLIC ${PROTO_GEN_DIR})

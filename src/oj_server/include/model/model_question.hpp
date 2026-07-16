@@ -1,12 +1,50 @@
 #pragma once
 
+#include "comm.hpp"
 #include "model_base.hpp"
 
-namespace ns_model
+#include <cstdint>
+#include <cstdlib>
+#include <limits>
+#include <mutex>
+#include <stdexcept>
+#include "../../../comm/models/question.hxx"
+#include "../../../comm/models/gen/question-odb.hxx"
+#include "../../../comm/models/test_case.hxx"
+#include "../../../comm/models/model_counts.hxx"
+#include "../../../comm/models/gen/test_case-odb.hxx"
+#include "../../../comm/models/gen//model_counts-odb.hxx"
+
+namespace oj::model
 {
+    using namespace oj::db;
     class ModelQuestion : public ModelBase
     {
     private:
+        using ODBQuestion = oj::db::Question;
+        using ODBQuestionQuery = odb::query<ODBQuestion>;
+        using ODBTestCase = oj::db::TestCase;
+        using ODBTestCaseQuery = odb::query<ODBTestCase>;
+
+        class DatabaseHandle
+        {
+        public:
+            DatabaseHandle& operator=(ns_odb::ScopedDB&& database)
+            {
+                _database = std::make_unique<ns_odb::ScopedDB>(std::move(database));
+                return *this;
+            }
+
+            odb::database* operator->() { return _database->Get(); }
+            odb::database& operator*() { return **_database; }
+            odb::database* Get() { return _database ? _database->Get() : nullptr; }
+
+        private:
+            std::unique_ptr<ns_odb::ScopedDB> _database;
+        };
+
+        inline static std::mutex _question_mutation_mutex;
+
         std::shared_ptr<QuestionQuery> NormalizeQuestionQuery(const std::shared_ptr<QueryStruct>& raw_query)
         {
             auto raw = std::dynamic_pointer_cast<QuestionQuery>(raw_query);
@@ -23,87 +61,27 @@ namespace ns_model
             return normalized;
         }
 
-        //查询Mysql
-        bool QueryMySql(const std::string& sql,std::vector<Question>& questions)
-        {
-            auto my = CreateConnection();
-            if(!my)
-                return false;
-            if(mysql_query(my.get(), sql.c_str()) != 0)
-            {
-                LOG_CRITICAL("{}{}", "MySql查询错误: ", mysql_error(my.get()));
-                return false;
-            }
-            MYSQL_RES* res = mysql_store_result(my.get());
-            if (res == nullptr)
-            {
-                LOG_CRITICAL("{}", "MySql结果集为空!");
-                return false;
-            }
-            int rows = mysql_num_rows(res);
-            //获取题目属性
-            for(int i = 0;i<rows;i++)
-            {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                Question q;
-                q.number = row[0];
-                q.title = row[1];
-                q.desc = row[2];
-                q.star = row[3];
-                q.create_time = row[4];
-                q.update_time = row[5];
-                q.cpu_limit = atoi(row[6]);
-                q.memory_limit = atoi(row[7]);
-                questions.push_back(q);
-            }
-            mysql_free_result(res);
-            return true;
-        }
-
-        //构建题目列表查询的WHERE子句
-        std::string BuildQuestionWhereClause(const std::shared_ptr<QueryStruct>& query_hash, MYSQL* my)
+        template <typename Query>
+        Query BuildQuestionQuery(const std::shared_ptr<QueryStruct>& query_hash)
         {
             auto q = std::dynamic_pointer_cast<QuestionQuery>(query_hash);
-            if (!q) return "";
-            //条件列表
-            std::vector<std::string> clauses;
+            if (!q)
+                return Query(true);
 
-            // both 模式映射后会产生 id/title 同值，且 id 为纯数字，此时保持 OR 语义。
-            if (!q->id.empty() &&
-                !q->title.empty() &&
-                q->id == q->title &&
-                IsAllDigits(q->id))
+            Query condition(true);
+            if (!q->id.empty() && !q->title.empty() && q->id == q->title && IsAllDigits(q->id))
             {
-                //id title内容相同，并且还都是纯数字，说明用户可能在同时搜索id和title，这时保持OR关系
-                std::string safe_title = EscapeSqlString(q->title, my);
-                clauses.push_back("(id=" + q->id + " or title like '%" + safe_title + "%')");
+                condition = condition &&
+                    (Query::id == q->id || Query::title.like("%" + q->title + "%"));
             }
             else
             {
-                //id和title不同时存在，或者虽然同时存在但内容不同，或者虽然同时存在且内容相同但不是纯数字，这三种情况都保持AND关系
                 if (!q->id.empty())
-                {
-                    if (IsAllDigits(q->id))
-                    {
-                        //纯数字才允许进入SQL
-                        clauses.push_back("id=" + q->id);
-                    }
-                    else
-                    {
-                        //否则给一个永远不可能成立的条件，让SQL返回空结果
-                        clauses.push_back("1=0");
-                    }
-                }
-
+                    condition = condition && (Query::id == q->id);
                 if (!q->title.empty())
-                {
-                    // title使用模糊匹配
-                    std::string safe_title = EscapeSqlString(q->title, my);
-                    clauses.push_back("title like '%" + safe_title + "%'");
-                }
+                    condition = condition && Query::title.like("%" + q->title + "%");
             }
 
-            //如果difficulty不为空,会把英文难度映射成中文：
             if (!q->star.empty())
             {
                 std::string difficulty = q->star;
@@ -112,175 +90,222 @@ namespace ns_model
                 else if (difficulty == "hard") difficulty = "困难";
 
                 if (difficulty != "all" && difficulty != "ALL" && difficulty != "全部")
-                {
-                    std::string safe_star = EscapeSqlString(difficulty, my);
-                    clauses.push_back("star='" + safe_star + "'");
-                }
+                    condition = condition && (Query::star == difficulty);
             }
+            return condition;
+        }
 
-            if (clauses.empty())
-            {
-                return "";
-            }
+        static Json::Value SampleTestJson(const ODBTestCase& test)
+        {
+            Json::Value item;
+            item["id"] = static_cast<int>(test.id);
+            item["question_id"] = test.question_id;
+            item["input"] = test.input;
+            item["output"] = test.output;
+            item["is_sample"] = test.is_sample;
+            return item;
+        }
 
-            std::ostringstream where;
-            where << " where ";
-            for (size_t i = 0; i < clauses.size(); ++i)
-            {
-                if (i != 0)
-                {
-                    where << " and ";
-                }
-                where << clauses[i];
-            }
-
-            return where.str();
+        static Json::Value TestJson(const ODBTestCase& test)
+        {
+            Json::Value item;
+            item["id"] = static_cast<int>(test.id);
+            item["question_id"] = test.question_id;
+            item["in"] = test.input;
+            item["out"] = test.output;
+            item["is_sample"] = test.is_sample;
+            return item;
         }
 
     public:
         //题库:得到一页内全部的题目
         bool GetQuestionsByPage(std::shared_ptr<Cache::CacheListKey> key,
-                             std::vector<Question>& questions,
-                             int* total_count,
-                             int* total_pages)
+                                std::vector<Question>& questions,
+                                int* total_count,
+                                int* total_pages)
         {
             auto begin = std::chrono::steady_clock::now();
-            // 参数校验，这一步顺便记录一次列表查询指标，表示这次请求没有成功完成
-            if (total_count == nullptr || total_pages == nullptr)
-            {
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+            if (!key || key->GetSize() <= 0 || total_count == nullptr || total_pages == nullptr)
                 return false;
-            }
-            // 先查缓存:
-            //  调用 _cache.GetAllQuestions(...) 尝试从 Redis 读取这一页的数据。
-            //  缓存命中时，函数直接返回 true。
-            //  这时 questions、total_count、total_pages 都会被缓存结果填好。
-            //  同时记录一次"缓存命中"的指标。
-            if(_cache.GetQuestionsByPage(key,  questions,total_count, total_pages))
+
+            if (_cache.GetQuestionsByPage(key, questions, total_count, total_pages))
             {
                 LOG_INFO("{}{}", "Cache hit for question list page ", key->GetCacheKeyString(&_cache));
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count();
                 RecordCacheMetrics(RecordActionType::Question, true, false, cost_ms);
                 return true;
             }
-            // 缓存没命中就查数据库
-            // 先创建 MySQL 连接。
-            auto my = CreateConnection();
-            if (!my)
-            {
-                // 如果连接失败，直接返回 false，并记录这次是回源失败。
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-                return false;
-            }
-            // 然后根据查询条件生成 where_clause，拼出统计总数的 SQL。
-            std::string where_clause = BuildQuestionWhereClause(key->GetQueryHash(), my.get());
-            //先执行 select count(*) ... 得到满足条件的题目总数，写入 total_count。
-            std::string count_sql = "select count(*) from " + oj_questions + where_clause;
-            if (!QueryCount(count_sql, total_count))
-            {
-                //如果统计失败，直接返回 false。
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-                return false;
-            }
-            // 如果 total_count <= 0，说明没有任何结果：
-            // total_pages 设为 0
-            // questions.clear()
-            // 仍然把这个空结果写入缓存
-            // 返回 true
-            if (*total_count <= 0)
-            {
-                *total_pages = 0;
-                questions.clear();
-                _cache.SetQuestionsByPage(key, questions,*total_count, *total_pages);
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-                return true;
-            }
-            //计算分页并查当前页数据
-            int size = key->GetSize();
-            int page = key->GetPage();
-            *total_pages = (*total_count + size - 1) / size;
-            int safe_page = std::min(page, *total_pages);
-            int offset = (safe_page - 1) * size;
 
-            std::ostringstream page_sql;
-            page_sql << "select * from " << oj_questions
-                     << where_clause
-                     << " order by cast(id as unsigned) asc limit " << size << " offset " << offset;
-
-            if (!QueryMySql(page_sql.str(), questions))
+            DatabaseHandle database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionsByPage.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionsByPage.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+
+                using CountQuery = odb::query<oj::db::QuestionCount>;
+                std::unique_ptr<oj::db::QuestionCount> count;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionsByPage.ODBCount");
+                    count.reset(database->query_one<oj::db::QuestionCount>(
+                        BuildQuestionQuery<CountQuery>(key->GetQueryHash())));
+                }
+                if (!count || count->value > static_cast<uint64_t>(std::numeric_limits<int>::max()))
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionsByPage.ODBRollback");
+                    transaction->Rollback();
+                    return false;
+                }
+                *total_count = static_cast<int>(count->value);
+                if (*total_count <= 0)
+                {
+                    *total_pages = 0;
+                    questions.clear();
+                }
+                else
+                {
+                    const int size = key->GetSize();
+                    *total_pages = (*total_count - 1) / size + 1;
+                    const int safe_page = std::max(1, std::min(key->GetPage(), *total_pages));
+                    const uint64_t offset = static_cast<uint64_t>(safe_page - 1) *
+                                            static_cast<uint64_t>(size);
+                    ODBQuestionQuery page_query =
+                        BuildQuestionQuery<ODBQuestionQuery>(key->GetQueryHash());
+                    page_query += " ORDER BY CAST(id AS UNSIGNED) ASC, id ASC LIMIT " +
+                                  std::to_string(size) + " OFFSET " + std::to_string(offset);
+                    odb::result<ODBQuestion> result;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionsByPage.ODBQuery");
+                        result = database->query<ODBQuestion>(page_query, false);
+                    }
+                    questions.clear();
+                    questions.reserve(static_cast<size_t>(size));
+                    {
+                        for (const auto& item : result)
+                            questions.push_back(item);
+                    }
+                }
+
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionsByPage.ODBCommit");
+                    transaction->Commit();
+                }
+
+                if (*total_count <= 0)
+                {
+                    _cache.SetQuestionsByPage(key, questions, *total_count, *total_pages);
+                }
+                else
+                {
+                    const int safe_page = std::max(1, std::min(key->GetPage(), *total_pages));
+                    auto write_key = _cache.BuildListCacheKey(
+                        key->GetQueryHash(), safe_page, key->GetSize(), key->GetListVersion(),
+                        Cache::CacheKey::PageType::kData, key->GetListType());
+                    _cache.SetQuestionsByPage(write_key, questions, *total_count, *total_pages);
+                }
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionsByPage.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ODB question list rollback failed: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("{}{}", "ODB question list query failed: ", e.what());
                 return false;
             }
-            // 回填缓存
-            // 数据查出来后，会调用 _cache.SetQuestionsByPage(...) 写回 Redis。
-            // 缓存键里包含：
-            // 查询条件
-            // 页码
-            // 每页大小
-            // 列表版本号
-            // 这样下次同样条件的请求就可以直接命中缓存。
-            auto write_key = _cache.BuildListCacheKey(key->GetQueryHash(), safe_page, size, key->GetListVersion(), Cache::CacheKey::PageType::kData, key->GetListType());
-            _cache.SetQuestionsByPage(write_key, questions, *total_count, *total_pages);
-            auto end = std::chrono::steady_clock::now();
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+
+            const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
+
         //题目:获得单个题目
-        bool GetOneQuestion(const std::string& number,Question& q)
+        bool GetOneQuestion(const std::string& id, Question& q)
         {
             auto begin = std::chrono::steady_clock::now();
-            if (!IsAllDigits(number))
-            {
-                // number参数不合法，直接返回 false，并记录这次请求没有成功完成。
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+            if (!IsAllDigits(id))
                 return false;
-            }
-            auto detail_key = _cache.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kData);
-            // 先查缓存，缓存命中直接返回
-            if(_cache.GetDetailedQuestion(detail_key, q))
+
+            auto detail_key = _cache.BuildDetailCacheKey(id, Cache::CacheKey::PageType::kData);
+            if (_cache.GetDetailedQuestion(detail_key, q))
             {
-                LOG_INFO("{}{}", "Cache hit for question ", number);
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                LOG_INFO("{}{}", "Cache hit for question ", id);
+                const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count();
                 RecordCacheMetrics(RecordActionType::Question, true, false, cost_ms);
                 return true;
             }
-            // 缓存没命中就查数据库，先创建 MySQL 连接
-            std::string sql = "select * from ";
-            sql += oj_questions;
-            sql += " where id=" + number;
-            std::vector<Question> v;
-            if (!QueryMySql(sql, v))
+
+            DatabaseHandle database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
-                //查询数据库失败，直接返回 false，并记录这次是回源失败。
-                _cache.SetQuestionNotFound(detail_key, number);
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetOneQuestion.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetOneQuestion.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+
+                ODBQuestion item;
+                bool found = false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetOneQuestion.ODBFind");
+                    found = database->find<ODBQuestion>(id, item);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetOneQuestion.ODBCommit");
+                    transaction->Commit();
+                }
+                if (!found)
+                {
+                    _cache.SetQuestionNotFound(detail_key, id);
+                    return false;
+                }
+                _cache.SetDetailedQuestion(detail_key, item);
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetOneQuestion.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ODB question lookup rollback failed: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("{}{}", "ODB question lookup failed: ", e.what());
                 return false;
             }
-            // 数据库查询成功但没有找到这个题目，说明这个题目确实不存在。
-            // 为了避免缓存穿透攻击，应该把这个"空结果"也写入缓存（比如写一个特殊的值表示这个题目不存在
-            // 这样下次同样的请求就可以直接命中缓存，避免每次都打到数据库上来。
-            if(v.size() != 1)
-            {
-                _cache.SetQuestionNotFound(detail_key, number);
-                auto end = std::chrono::steady_clock::now();
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-                return false;
-            }
-            q = v[0];
-            _cache.SetDetailedQuestion(detail_key, q);
-            auto end = std::chrono::steady_clock::now();
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+
+            const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
@@ -288,130 +313,268 @@ namespace ns_model
         //题目写接口:新增或修改题目
         bool SaveQuestion(const Question& input)
         {
-            if (!IsAllDigits(input.number))
-            {
+            if ( input.cpu_limit < std::numeric_limits<int8_t>::min() ||
+                input.cpu_limit > std::numeric_limits<int8_t>::max())
                 return false;
-            }
 
+            std::lock_guard<std::mutex> mutation_lock(_question_mutation_mutex);
             auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if (!my)
-                return false;
-
-            std::string safe_id = input.number;
-            std::string safe_title = EscapeSqlString(input.title, my.get());
-            std::string safe_desc = EscapeSqlString(input.desc, my.get());
-            std::string safe_star = EscapeSqlString(input.star, my.get());
-
-            std::ostringstream sql;
-            sql << "insert into " << oj_questions
-                << " (id, title, `desc`, star, cpu_limit, memory_limit, create_time, update_time) values ("
-                << safe_id << ", '" << safe_title << "', '" << safe_desc << "', '" << safe_star << "', "
-                << input.cpu_limit << ", " << input.memory_limit << ", NOW(), NOW()) "
-                << "on duplicate key update "
-                << "title=values(title), `desc`=values(`desc`), star=values(star), "
-                << "cpu_limit=values(cpu_limit), memory_limit=values(memory_limit), update_time=NOW()";
-
-            if (!ExecuteSql(sql.str()))
+            DatabaseHandle database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            ODBQuestion stored;
+            try
             {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.SaveQuestion.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.SaveQuestion.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+
+                bool exists = false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.SaveQuestion.ODBFind");
+                    exists = database->find<ODBQuestion>(input.id, stored);
+                }
+
+                const auto now = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                if (exists)
+                {
+                    stored.title = input.title;
+                    stored.desc = input.desc;
+                    stored.star = input.star;
+                    stored.cpu_limit = static_cast<int8_t>(input.cpu_limit);
+                    stored.memory_limit = input.memory_limit;
+                    stored.update_time = now;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.SaveQuestion.ODBUpdate");
+                        database->update(stored);
+                    }
+                }
+                else
+                {
+                    stored.id = input.id;
+                    stored.title = input.title;
+                    stored.desc = input.desc;
+                    stored.star = input.star;
+                    stored.cpu_limit = static_cast<int8_t>(input.cpu_limit);
+                    stored.memory_limit = input.memory_limit;
+                    stored.create_time = now;
+                    stored.update_time = now;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.SaveQuestion.ODBPersist");
+                        database->persist(stored);
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.SaveQuestion.ODBCommit");
+                    transaction->Commit();
+                }
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.SaveQuestion.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ODB question save rollback failed: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("{}{}", "ODB question save failed: ", e.what());
                 return false;
             }
-
-            Question cached = input;
-            auto detail_key = _cache.BuildDetailCacheKey(input.number, Cache::CacheKey::PageType::kData);
-            //更新题目缓存
-            _cache.SetDetailedQuestion(detail_key, cached);
-            auto detail_html_key = _cache.BuildDetailCacheKey(input.number, Cache::CacheKey::PageType::kHtml);
-            //使旧题目列表的html缓存失效
+            auto detail_key = _cache.BuildDetailCacheKey(input.id, Cache::CacheKey::PageType::kData);
+            _cache.SetDetailedQuestion(detail_key, stored);
+            auto detail_html_key = _cache.BuildDetailCacheKey(input.id, Cache::CacheKey::PageType::kHtml);
             _cache.InvalidatePage(detail_html_key);
-            //更新题目列表版本
+            _cache.DeleteStringByAnyKey("question_counts");
             TouchQuestionListVersion();
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
+
         //删除题目
-        bool DeleteQuestion(const std::string& number)
+        bool DeleteQuestion(const std::string& id)
         {
-            if (!IsAllDigits(number))
-            {
+            if (!IsAllDigits(id))
                 return false;
-            }
 
+            std::lock_guard<std::mutex> mutation_lock(_question_mutation_mutex);
             auto begin = std::chrono::steady_clock::now();
-            std::string sql = "delete from " + oj_questions + " where id=" + number;
-            if (!ExecuteSql(sql))
+            DatabaseHandle database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteQuestion.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteQuestion.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+
+                ODBQuestion item;
+                bool found = false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteQuestion.ODBFind");
+                    found = database->find<ODBQuestion>(id, item);
+                }
+                if (found)
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteQuestion.ODBErase");
+                    database->erase(item);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteQuestion.ODBCommit");
+                    transaction->Commit();
+                }
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteQuestion.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ODB question delete rollback failed: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("{}{}", "ODB question delete failed: ", e.what());
                 return false;
             }
 
-            auto detail_key = _cache.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kData);
-            //设置无效缓存，防止缓存穿透
-            _cache.SetQuestionNotFound(detail_key, number);
-            auto detail_html_key = _cache.BuildDetailCacheKey(number, Cache::CacheKey::PageType::kHtml);
-            //使旧题目列表的html缓存失效
+            auto detail_key = _cache.BuildDetailCacheKey(id, Cache::CacheKey::PageType::kData);
+            _cache.SetQuestionNotFound(detail_key, id);
+            auto detail_html_key = _cache.BuildDetailCacheKey(id, Cache::CacheKey::PageType::kHtml);
             _cache.InvalidatePage(detail_html_key);
-            //更新题目列表版本
+            _cache.DeleteStringByAnyKey("question_counts");
             TouchQuestionListVersion();
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
+
         //得到题目数量
         bool GetQuestionCount(int* count)
         {
-            if(count == nullptr)
-            {
+            if (count == nullptr)
                 return false;
-            }
             auto begin = std::chrono::steady_clock::now();
-            std::string key = "question_counts";
             std::string value;
-            if(_cache.GetStringByAnyKey(key, &value))
+            if (_cache.GetStringByAnyKey("question_counts", &value))
             {
                 *count = std::atoi(value.c_str());
                 LOG_INFO("{}", "Cache hit for question count");
-                long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - begin).count();
                 RecordCacheMetrics(RecordActionType::Question, true, false, cost_ms);
                 return true;
             }
-            std::string sql = "select count(*) from " + oj_questions;
-            if(!QueryCount(sql, count))
+
+            DatabaseHandle database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionCount.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionCount.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                std::unique_ptr<oj::db::QuestionCount> result;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionCount.ODBQuery");
+                    result.reset(database->query_one<oj::db::QuestionCount>());
+                }
+                if (!result || result->value > static_cast<uint64_t>(std::numeric_limits<int>::max()))
+                    throw std::overflow_error("question count exceeds legacy int range");
+                *count = static_cast<int>(result->value);
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionCount.ODBCommit");
+                    transaction->Commit();
+                }
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionCount.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ODB question count rollback failed: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("{}{}", "ODB question count failed: ", e.what());
                 return false;
-             }
-             _cache.SetStringByAnyKey(key, std::to_string(*count), _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
-             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                 std::chrono::steady_clock::now() - begin).count();
-             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
-             return true;
+            }
+
+            _cache.SetStringByAnyKey("question_counts", std::to_string(*count),
+                                     _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
+            const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - begin).count();
+            RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
+            return true;
         }
 
         // 题目写路径完成后调用该接口，统一触发列表版本递增。
         std::string TouchQuestionListVersion()
-        {   
+        {
             std::string version = _cache.BumpListVersion(ListType::Questions);
             LOG_INFO("{}{}", "Question list version bumped to ", version);
             return version;
         }
+
         // 获得题目列表版本
         std::string GetQuestionsListVersion()
         {
             return _cache.GetListVersion(ListType::Questions);
         }
-        std::shared_ptr<Cache::CacheListKey> BuildListCacheKey(std::shared_ptr<QueryStruct>& query_hash, int page, int size, const std::string& list_version, Cache::CacheKey::PageType page_type)
+
+        std::shared_ptr<Cache::CacheListKey> BuildListCacheKey(std::shared_ptr<QueryStruct>& query_hash,
+                                                               int page, int size,
+                                                               const std::string& list_version,
+                                                               Cache::CacheKey::PageType page_type)
         {
             auto normalized_query = NormalizeQuestionQuery(query_hash);
-            return _cache.BuildListCacheKey(normalized_query, page, size, list_version, page_type, ListType::Questions);
+            return _cache.BuildListCacheKey(normalized_query, page, size, list_version,
+                                            page_type, ListType::Questions);
         }
-        std::shared_ptr<Cache::CacheDetailKey> BuildDetailCacheKey(const std::string& number, Cache::CacheKey::PageType page_type)
+
+        std::shared_ptr<Cache::CacheDetailKey> BuildDetailCacheKey(
+            const std::string& id, Cache::CacheKey::PageType page_type)
         {
-            return _cache.BuildDetailCacheKey(number, page_type);
+            return _cache.BuildDetailCacheKey(id, page_type);
         }
-        std::shared_ptr<Cache::CacheStaticKey> BuildHtmlCacheKey(const std::string& page_name, Cache::CacheKey::PageType page_type)
+
+        std::shared_ptr<Cache::CacheStaticKey> BuildHtmlCacheKey(
+            const std::string& page_name, Cache::CacheKey::PageType page_type)
         {
             return _cache.BuildStaticCacheKey(page_name, page_type);
         }
@@ -421,33 +584,63 @@ namespace ns_model
         {
             if (tests == nullptr)
                 return false;
-
             auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if (!my)
-                return false;
-
-            std::string safe_qid = EscapeSqlString(question_id, my.get());
-            std::string sql = "select id, question_id, `in`, `out`, is_sample from " + oj_tests +
-                              " where question_id='" + safe_qid + "' and is_sample=1 order by id asc";
-
-            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql, "MySql查询测试用例错误");
-            if (!res) return false;
-            tests->clear();
-            for (int i = 0; i < mysql_num_rows(res); ++i)
+            DatabaseHandle database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr) continue;
-                Json::Value item;
-                item["id"] = row[0] ? std::atoi(row[0]) : 0;
-                item["question_id"] = row[1] ? row[1] : "";
-                item["input"] = row[2] ? row[2] : "";
-                item["output"] = row[3] ? row[3] : "";
-                item["is_sample"] = (row[4] && std::atoi(row[4]) != 0) ? true : false;
-                tests->append(item);
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetSampleTestsByQuestionId.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetSampleTestsByQuestionId.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+
+                std::vector<ODBTestCase> matched;
+                odb::result<ODBTestCase> result;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetSampleTestsByQuestionId.ODBQuery");
+                    result = database->query<ODBTestCase>(
+                        ODBTestCaseQuery::question_id == question_id && ODBTestCaseQuery::is_sample == true);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetSampleTestsByQuestionId.ODBLazyIteration");
+                    for (const auto& item : result)
+                        matched.push_back(item);
+                }
+                std::sort(matched.begin(), matched.end(), [](const ODBTestCase& lhs, const ODBTestCase& rhs) {
+                    return lhs.id < rhs.id;
+                });
+                tests->clear();
+                for (const auto& item : matched)
+                    tests->append(SampleTestJson(item));
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetSampleTestsByQuestionId.ODBCommit");
+                    transaction->Commit();
+                }
             }
-            mysql_free_result(res);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetSampleTestsByQuestionId.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ODB sample test rollback failed: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("{}{}", "ODB sample test query failed: ", e.what());
+                return false;
+            }
+            const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
@@ -458,74 +651,369 @@ namespace ns_model
         {
             if (result == nullptr)
                 return false;
-
             auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if (!my)
-                return false;
-
-            std::string safe_qid = EscapeSqlString(question_id, my.get());
-            std::string sql = "select id, question_id, `in`, `out`, is_sample from " + oj_tests +
-                              " where question_id='" + safe_qid + "' order by id asc";
-
-            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql, "MySql查询测试用例错误");
-            if (!res) return false;
-
-            Json::Value test_array(Json::arrayValue);
-            for (int i = 0; i < mysql_num_rows(res); ++i)
+            DatabaseHandle database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr) continue;
-                Json::Value item;
-                item["id"] = row[0] ? std::atoi(row[0]) : 0;
-                item["question_id"] = row[1] ? row[1] : "";
-                item["in"] = row[2] ? row[2] : "";
-                item["out"] = row[3] ? row[3] : "";
-                item["is_sample"] = (row[4] && std::atoi(row[4]) != 0) ? true : false;
-                test_array.append(item);
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestsByQuestionId.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestsByQuestionId.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+
+                std::vector<ODBTestCase> matched;
+                odb::result<ODBTestCase> tests;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestsByQuestionId.ODBQuery");
+                    tests = database->query<ODBTestCase>(ODBTestCaseQuery::question_id == question_id);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestsByQuestionId.ODBLazyIteration");
+                    for (const auto& item : tests)
+                        matched.push_back(item);
+                }
+                std::sort(matched.begin(), matched.end(), [](const ODBTestCase& lhs, const ODBTestCase& rhs) {
+                    return lhs.id < rhs.id;
+                });
+                Json::Value test_array(Json::arrayValue);
+                for (const auto& item : matched)
+                    test_array.append(TestJson(item));
+                (*result)["tests"] = test_array;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestsByQuestionId.ODBCommit");
+                    transaction->Commit();
+                }
             }
-            mysql_free_result(res);
-            (*result)["tests"] = test_array;
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestsByQuestionId.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ODB test list rollback failed: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("{}{}", "ODB test list query failed: ", e.what());
+                return false;
+            }
+            const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
         }
 
-        // Feature 2.5: Get a single test case by ID (for custom test execution)
-        bool GetTestById(int test_id, const std::string& question_id, std::string* test_input, std::string* test_output)
+        // Feature 2.5: Get a single test case by business ordinal.
+        bool GetTestById(int test_id, const std::string& question_id,
+                         std::string* test_input, std::string* test_output)
         {
-            if (test_input == nullptr || test_output == nullptr)
+            if (test_input == nullptr || test_output == nullptr ||
+                !IsAllDigits(question_id) || test_id <= 0 ||
+                test_id > std::numeric_limits<int8_t>::max())
                 return false;
-
             auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if (!my)
-                return false;
-
-            std::string safe_qid = EscapeSqlString(question_id, my.get());
-            std::ostringstream sql;
-            sql << "select `in`, `out` from " << oj_tests
-                << " where id=" << test_id
-                << " and question_id='" << safe_qid << "'";
-
-            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql.str(), "MySql查询测试用例错误");
-            if (!res) return false;
-            MYSQL_ROW row = mysql_fetch_row(res);
-            if (row == nullptr || row[0] == nullptr || row[1] == nullptr)
+            DatabaseHandle database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
-                mysql_free_result(res);
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestById.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestById.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+
+                bool found = false;
+                ODBTestCase matched{};
+                odb::result<ODBTestCase> tests;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestById.ODBQuery");
+                    tests = database->query<ODBTestCase>(
+                        ODBTestCaseQuery::question_id == question_id &&
+                        ODBTestCaseQuery::id == static_cast<int8_t>(test_id));
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestById.ODBLazyIteration");
+                    for (const auto& item : tests)
+                    {
+                        matched = item;
+                        found = true;
+                        break;
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestById.ODBCommit");
+                    transaction->Commit();
+                }
+                if (!found)
+                    return false;
+                *test_input = matched.input;
+                *test_output = matched.output;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetTestById.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ODB test lookup rollback failed: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("{}{}", "ODB test lookup failed: ", e.what());
                 return false;
             }
-
-            *test_input = row[0];
-            *test_output = row[1];
-            mysql_free_result(res);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
             return true;
+        }
+
+        bool CreateTestCase(const std::string& question_id,
+                            const std::string& input,
+                            const std::string& output,
+                            bool is_sample,
+                            int* test_id = nullptr)
+        {
+            if (!IsAllDigits(question_id))
+                return false;
+            std::lock_guard<std::mutex> mutation_lock(_question_mutation_mutex);
+            DatabaseHandle database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
+            {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.CreateTestCase.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.CreateTestCase.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+
+                int next_id = 1;
+                odb::result<ODBTestCase> tests;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.CreateTestCase.ODBQuery");
+                    tests = database->query<ODBTestCase>(ODBTestCaseQuery::question_id == question_id);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.CreateTestCase.ODBLazyIteration");
+                    for (const auto& item : tests)
+                        next_id = std::max(next_id, static_cast<int>(item.id) + 1);
+                }
+                if (next_id > std::numeric_limits<int8_t>::max())
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.CreateTestCase.ODBCommit");
+                    transaction->Commit();
+                    return false;
+                }
+
+                ODBTestCase item{};
+                item.id = static_cast<int8_t>(next_id);
+                item.question_id = question_id;
+                item.input = input;
+                item.output = output;
+                item.is_sample = is_sample;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.CreateTestCase.ODBPersist");
+                    database->persist(item);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.CreateTestCase.ODBCommit");
+                    transaction->Commit();
+                }
+                if (test_id != nullptr)
+                    *test_id = next_id;
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.CreateTestCase.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ODB test create rollback failed: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("{}{}", "ODB test create failed: ", e.what());
+                return false;
+            }
+        }
+
+        bool UpdateTestCase(int test_id,
+                            const std::string& question_id,
+                            const std::string& input,
+                            const std::string& output,
+                            bool is_sample)
+        {
+            if (!IsAllDigits(question_id) || test_id <= 0 ||
+                test_id > std::numeric_limits<int8_t>::max())
+                return false;
+            std::lock_guard<std::mutex> mutation_lock(_question_mutation_mutex);
+            DatabaseHandle database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
+            {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.UpdateTestCase.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.UpdateTestCase.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+
+                bool found = false;
+                ODBTestCase item{};
+                odb::result<ODBTestCase> tests;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.UpdateTestCase.ODBQuery");
+                    tests = database->query<ODBTestCase>(
+                        ODBTestCaseQuery::question_id == question_id &&
+                        ODBTestCaseQuery::id == static_cast<int8_t>(test_id));
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.UpdateTestCase.ODBLazyIteration");
+                    for (const auto& current : tests)
+                    {
+                        item = current;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.UpdateTestCase.ODBCommit");
+                    transaction->Commit();
+                    return false;
+                }
+                item.input = input;
+                item.output = output;
+                item.is_sample = is_sample;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.UpdateTestCase.ODBUpdate");
+                    database->update(item);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.UpdateTestCase.ODBCommit");
+                    transaction->Commit();
+                }
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.UpdateTestCase.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ODB test update rollback failed: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("{}{}", "ODB test update failed: ", e.what());
+                return false;
+            }
+        }
+
+        bool DeleteTestCase(int test_id, const std::string& question_id)
+        {
+            if (!IsAllDigits(question_id) || test_id <= 0 ||
+                test_id > std::numeric_limits<int8_t>::max())
+                return false;
+            std::lock_guard<std::mutex> mutation_lock(_question_mutation_mutex);
+            DatabaseHandle database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
+            {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteTestCase.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteTestCase.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+
+                bool found = false;
+                ODBTestCase item{};
+                odb::result<ODBTestCase> tests;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteTestCase.ODBQuery");
+                    tests = database->query<ODBTestCase>(
+                        ODBTestCaseQuery::question_id == question_id &&
+                        ODBTestCaseQuery::id == static_cast<int8_t>(test_id));
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteTestCase.ODBLazyIteration");
+                    for (const auto& current : tests)
+                    {
+                        item = current;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteTestCase.ODBErase");
+                    database->erase(item);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteTestCase.ODBCommit");
+                    transaction->Commit();
+                }
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelQuestion.DeleteTestCase.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ODB test delete rollback failed: {}", rollback_error.what());
+                    }
+                }
+                LOG_ERROR("{}{}", "ODB test delete failed: ", e.what());
+                return false;
+            }
         }
     };
-
 }

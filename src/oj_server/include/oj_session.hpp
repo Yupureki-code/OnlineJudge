@@ -8,12 +8,13 @@
 #include <unordered_map>
 #include <sw/redis++/redis++.h>
 #include "../../comm/comm.hpp"
+#include "../../comm/logger.hpp"
 
-namespace ns_session
+namespace oj::session
 {
     using namespace sw::redis;
-    using namespace oj_util;
-
+    using namespace oj::util;
+    using namespace oj::logger;
     const std::string SESSION_COOKIE_NAME = "oj_session_id";
     const int SESSION_EXPIRE_SECONDS = 7 * 24 * 60 * 60;
 

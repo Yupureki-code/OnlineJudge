@@ -1,1199 +1,836 @@
 #pragma once
 
 #include "model_base.hpp"
+#include "../../../comm/models/odb_models.hpp"
+#include "../../../comm/comm.hpp"
+#include <odb/query.hxx>
+#include <limits>
+#include <set>
 
-namespace ns_model
+namespace oj::model
 {
 
     class ModelComment : public ModelBase
     {
+    private:
+        class TimedTransaction
+        {
+        public:
+            TimedTransaction(odb::database& database, latecyMonitor::LatencyMonitor& monitor,
+                             const char* begin_metric, const char* rollback_metric)
+                : monitor_(monitor), rollback_metric_(rollback_metric)
+            {
+                latecyMonitor::Timer timer(monitor_, begin_metric);
+                transaction_ = std::make_unique<odb::transaction>(database.begin());
+            }
+
+            ~TimedTransaction()
+            {
+                if (transaction_->finalized()) return;
+                try
+                {
+                    latecyMonitor::Timer timer(monitor_, rollback_metric_);
+                    transaction_->rollback();
+                }
+                catch (const std::exception& error)
+                {
+                    LOG_ERROR("Timed ODB rollback failed: {}", error.what());
+                }
+                catch (...)
+                {
+                    LOG_ERROR("{}", "Timed ODB rollback failed");
+                }
+            }
+
+            void commit() { transaction_->commit(); }
+
+        private:
+            std::unique_ptr<odb::transaction> transaction_;
+            latecyMonitor::LatencyMonitor& monitor_;
+            const char* rollback_metric_;
+        };
+
+        static bool FitsOdbId(uint64_t id)
+        {
+            return id <= std::numeric_limits<uint32_t>::max();
+        }
+
+        static bool FitsOdbId(odb::nullable<uint64_t> id)
+        {
+            return id.null() || id.get() <= std::numeric_limits<uint32_t>::max();
+        }
+
+        static Json::Value CommentJson(const Comment& comment)
+        {
+            Json::Value item;
+            item["id"] = static_cast<Json::UInt64>(comment.id);
+            item["solution_id"] = static_cast<Json::UInt64>(comment.solution_id);
+            item["user_id"] = comment.user_id;
+            item["content"] = comment.content;
+            item["is_edited"] = comment.is_edited.get();
+            item["parent_id"] = static_cast<Json::UInt64>(comment.parent_id.get());
+            item["reply_to_user_id"] = comment.reply_to_user_id.get();
+            item["like_count"] = comment.like_count;
+            item["favorite_count"] = comment.favorite_count;
+            item["created_at"] = oj::util::TimeUtil::DateTimeToInt(comment.created_at.get());
+            item["updated_at"] = oj::util::TimeUtil::DateTimeToInt(comment.updated_at.get());
+            return item;
+        }
+
+        static void CommentFromJson(const Json::Value& item, Comment* comment)
+        {
+            comment->id = item["id"].asUInt64();
+            comment->solution_id = item["solution_id"].asUInt64();
+            comment->user_id = item["user_id"].asInt();
+            comment->content = item["content"].asString();
+            comment->is_edited = item["is_edited"].asBool();
+            comment->parent_id = item["parent_id"].asUInt64();
+            comment->reply_to_user_id = item["reply_to_user_id"].asInt();
+            comment->like_count = item["like_count"].asUInt();
+            comment->favorite_count = item["favorite_count"].asUInt();
+            comment->created_at = oj::util::TimeUtil::IntToDateTime(item["created_at"].asInt64());
+            comment->updated_at = oj::util::TimeUtil::IntToDateTime(item["updated_at"].asInt64());
+        }
+
+        static odb::query<oj::db::User> UserIdsQuery(const std::set<uint32_t>& ids)
+        {
+            using Query = odb::query<oj::db::User>;
+            Query query(false);
+            for (uint32_t id : ids)
+                query = query || Query::uid == id;
+            return query;
+        }
+
+        static int CountAsInt(uint64_t count)
+        {
+            return static_cast<int>(std::min<uint64_t>(count, std::numeric_limits<int>::max()));
+        }
+
+        static constexpr size_t MaxBatchIds = 200;
+        static constexpr int MaxPageSize = 100;
+
     public:
-        //获取顶级评论(带分页)
         bool GetCommentsBySolutionId(unsigned long long solution_id, int page, int size,
                                      std::vector<Comment>* comments, int* total_count)
         {
-            if (comments == nullptr || total_count == nullptr)
-            {
+            if (comments == nullptr || total_count == nullptr || !FitsOdbId(solution_id))
                 return false;
-            }
-            auto _metrics_begin = std::chrono::steady_clock::now();
-            //构建cache_key
-            std::string cache_key = "comment:list:sid:" + std::to_string(solution_id)
-                                  + ":page:" + std::to_string(page)
-                                  + ":size:" + std::to_string(size);
-            //访问缓存
-            std::string cached_json;
-            if (_cache.GetStringByAnyKey(cache_key, &cached_json))
-            {
-                //缓存命中:解析JSON
-                Json::CharReaderBuilder builder;
-                Json::Value json_value;
-                std::istringstream ss(cached_json);
-                if (Json::parseFromStream(builder, ss, &json_value, nullptr))
-                {
-                    if (json_value.isMember("total"))
-                        *total_count = json_value["total"].asInt();
 
-                    if (json_value.isMember("comments") && json_value["comments"].isArray())
+            auto metrics_begin = std::chrono::steady_clock::now();
+            comments->clear();
+            *total_count = 0;
+
+            try
+            {
+                auto database = AcquireDatabase();
+                if (!database.Get()) return false;
+                const int safe_page = std::max(1, page);
+                const int safe_size = std::max(1, std::min(size, MaxPageSize));
+                const uint64_t offset = static_cast<uint64_t>(safe_page - 1) *
+                    static_cast<uint64_t>(safe_size);
+                std::vector<oj::db::Comment> rows;
+                std::map<uint32_t, std::string> names;
+                {
+                    TimedTransaction transaction(*database, Monitor(),
+                        "ModelComment.GetCommentsBySolutionId.ODBBegin",
+                        "ModelComment.GetCommentsBySolutionId.ODBRollback");
+                    using Query = odb::query<oj::db::Comment>;
+                    using CountQuery = odb::query<oj::db::CommentCount>;
+                    const Query filter = Query::solution_id == static_cast<uint32_t>(solution_id) &&
+                        (Query::parent_id.is_null() || Query::parent_id == static_cast<uint64_t>(0));
+                    const CountQuery count_filter =
+                        CountQuery::solution_id == static_cast<uint32_t>(solution_id) &&
+                        (CountQuery::parent_id.is_null() ||
+                         CountQuery::parent_id == static_cast<uint64_t>(0));
                     {
-                        for (const auto& item : json_value["comments"])
+                        latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetCommentsBySolutionId.ODBQueryCount");
+                        *total_count = CountAsInt(
+                            database->query_value<oj::db::CommentCount>(count_filter).value);
+                    }
+                    Query page_filter(filter);
+                    page_filter += " ORDER BY `created_at` ASC, `id` ASC LIMIT " +
+                        std::to_string(safe_size) + " OFFSET " + std::to_string(offset);
+                    odb::result<oj::db::Comment> result;
+                    {
+                        latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetCommentsBySolutionId.ODBQueryComments");
+                        result = database->query<oj::db::Comment>(page_filter);
+                    }
+                    {
+                        latecyMonitor::Timer iterate_timer(Monitor(), "ModelComment.GetCommentsBySolutionId.ODBIterateComments");
+                        for (const auto& row : result) rows.push_back(row);
+                    }
+                    std::set<uint32_t> user_ids;
+                    for (const auto& row : rows)
+                    {
+                        user_ids.insert(row.user_id);
+                        if (!row.reply_to_user_id.null()) user_ids.insert(row.reply_to_user_id.get());
+                    }
+                    if (!user_ids.empty())
+                    {
+                        odb::result<oj::db::User> users;
                         {
-                            Comment c;
-                            c.id = item["id"].asUInt64();
-                            c.solution_id = item["solution_id"].asUInt64();
-                            c.user_id = item["user_id"].asInt();
-                            c.content = item["content"].asString();
-                            c.is_edited = item["is_edited"].asBool();
-                            c.parent_id = item["parent_id"].asUInt64();
-                            c.reply_to_user_id = item["reply_to_user_id"].asInt();
-                            c.like_count = item["like_count"].asUInt();
-                            c.favorite_count = item["favorite_count"].asUInt();
-                            c.created_at = item["created_at"].asString();
-                            c.updated_at = item["updated_at"].asString();
-                            c.reply_to_user_name = item["reply_to_user_name"].asString();
-                            c.author_name = item.get("author_name", "").asString();
-                            comments->push_back(c);
+                            latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetCommentsBySolutionId.ODBQueryUsers");
+                            users = database->query<oj::db::User>(UserIdsQuery(user_ids));
+                        }
+                        {
+                            latecyMonitor::Timer iterate_timer(Monitor(), "ModelComment.GetCommentsBySolutionId.ODBIterateUsers");
+                            for (const auto& user : users) names[user.uid] = user.name;
                         }
                     }
-                    LOG_INFO("{}{}", "Cache hit for comment list ", cache_key);
-                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - _metrics_begin).count();
-                    RecordCacheMetrics(RecordActionType::Comment, true, false, cost_ms);
-                    return true;
+                    {
+                        latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.GetCommentsBySolutionId.ODBCommit");
+                        transaction.commit();
+                    }
+                }
+
+                for (const auto& row : rows)
+                {
+                    Comment comment = row;
+                    comments->push_back(std::move(comment));
                 }
             }
-            //缓存未命中->回源MySQL
-            auto my = CreateConnection();
-            if (!my)
+            catch (const odb::exception& error)
             {
+                LOG_ERROR("ModelComment.GetCommentsBySolutionId failed: {}", error.what());
                 return false;
             }
-            //检查page和size
-            int safe_page = std::max(1, page);
-            int safe_size = std::max(1, size);
-            int offset = (safe_page - 1) * safe_size;
-            //检查MySQL表
-            std::string count_sql = "select count(*) from solution_comments where solution_id=" + std::to_string(solution_id) + " and (parent_id IS NULL OR parent_id = 0)";
-            if (!QueryCount(count_sql, total_count))
+            catch (const std::exception& error)
             {
+                LOG_ERROR("ModelComment.GetCommentsBySolutionId failed: {}", error.what());
                 return false;
             }
-            if (*total_count <= 0)
-            {
-                comments->clear();
-                return true;
-            }
 
-            std::ostringstream sql;
-            //查询MySQL
-            sql << "select c.id, c.solution_id, c.user_id, c.content, c.is_edited, c.parent_id, c.reply_to_user_id, c.like_count, c.favorite_count, c.created_at, c.updated_at, u.name AS author_name, ru.name AS reply_to_user_name "
-                << "from solution_comments c LEFT JOIN users u ON c.user_id = u.uid LEFT JOIN users ru ON c.reply_to_user_id = ru.uid "
-                << "where c.solution_id=" << solution_id
-                << " and (c.parent_id IS NULL OR c.parent_id = 0)"
-                << " ORDER BY c.created_at ASC LIMIT " << safe_size << " OFFSET " << offset;
-
-            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql查询题解评论错误");
-            if (!res) return false;
-            //逐行解析
-            int rows = mysql_num_rows(res);
-            comments->clear();
-            comments->reserve(rows);
-            for (int i = 0; i < rows; ++i)
-            {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr)
-                {
-                    continue;
-                }
-                Comment c;
-                try
-                {
-                    c.id = (row[0] != nullptr) ? std::stoull(row[0]) : 0;
-                    c.solution_id = (row[1] != nullptr) ? std::stoull(row[1]) : 0;
-                }
-                catch (const std::exception&) { c.id = 0; c.solution_id = 0; }
-                c.user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
-                c.content = (row[3] != nullptr) ? row[3] : "";
-                c.is_edited = (row[4] != nullptr) ? (std::atoi(row[4]) != 0) : false;
-                c.parent_id = (row[5] != nullptr) ? static_cast<unsigned long long>(std::stoull(row[5])) : 0;
-                c.reply_to_user_id = (row[6] != nullptr) ? std::atoi(row[6]) : 0;
-                c.like_count = (row[7] != nullptr) ? static_cast<unsigned int>(std::atoi(row[7])) : 0;
-                c.favorite_count = (row[8] != nullptr) ? static_cast<unsigned int>(std::atoi(row[8])) : 0;
-                c.created_at = (row[9] != nullptr) ? row[9] : "";
-                c.updated_at = (row[10] != nullptr) ? row[10] : "";
-                c.reply_to_user_name = (row[12] != nullptr) ? row[12] : "";
-                c.author_name = (row[11] != nullptr) ? row[11] : "";
-                comments->push_back(c);
-            }
-            //获取顶级评论的回复数量（嵌套 <= 2 级）
-            std::vector<unsigned long long> top_level_ids;
-            top_level_ids.reserve(comments->size());
-            for (const auto& cc : *comments) {
-                if (cc.parent_id == 0) top_level_ids.push_back(cc.id);
-            }
-            if (!top_level_ids.empty()) {
-                std::ostringstream idlist;
-                for (size_t i = 0; i < top_level_ids.size(); ++i) {
-                    if (i) idlist << ",";
-                    idlist << top_level_ids[i];
-                }
-            }
-            mysql_free_result(res);
-
-            //写回Redis
-            Json::Value root(Json::objectValue);
-            root["total"] = *total_count;
-            Json::Value array_value(Json::arrayValue);
-            for (const auto& c : *comments)
-            {
-                Json::Value item;
-                item["id"] = static_cast<Json::UInt64>(c.id);
-                item["solution_id"] = static_cast<Json::UInt64>(c.solution_id);
-                item["user_id"] = c.user_id;
-                item["content"] = c.content;
-                item["is_edited"] = c.is_edited;
-                item["parent_id"] = static_cast<Json::UInt64>(c.parent_id);
-                item["reply_to_user_id"] = c.reply_to_user_id;
-                item["like_count"] = c.like_count;
-                item["favorite_count"] = c.favorite_count;
-                item["created_at"] = c.created_at;
-                item["updated_at"] = c.updated_at;
-                item["reply_to_user_name"] = c.reply_to_user_name;
-                item["author_name"] = c.author_name;
-                array_value.append(item);
-            }
-            root["comments"] = array_value;
-            Json::FastWriter writer;
-            std::string json_str = writer.write(root);
-            _cache.SetStringByAnyKey(cache_key, json_str, _cache.BuildJitteredTtl(300, 60));
-            LOG_INFO("{}{}", "Cache miss for comment list, written to cache ", cache_key);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - _metrics_begin).count();
-            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
-
+            RecordCacheMetrics(RecordActionType::Comment, false, true,
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - metrics_begin).count());
             return true;
         }
 
-        // Comments: create a new comment
         bool CreateComment(const Comment& comment, unsigned long long* comment_id = nullptr)
         {
-            if (comment.solution_id == 0 || comment.user_id <= 0)
-            {
+            if (comment.solution_id == 0 || comment.user_id <= 0 ||
+                !FitsOdbId(comment.solution_id) || !FitsOdbId(comment.parent_id) ||
+                !FitsOdbId(static_cast<unsigned long long>(comment.user_id)) ||
+                comment.reply_to_user_id.get() < 0 ||
+                !FitsOdbId(static_cast<unsigned long long>(comment.reply_to_user_id.get())))
                 return false;
-            }
 
             auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if (!my)
-            {
-                return false;
-            }
-
-            std::string safe_content = EscapeSqlString(comment.content, my.get());
-            // if replying to a comment, ensure parent exists and is part of the same solution
-            if (comment.parent_id > 0)
-            {
-                unsigned long long parent_solution_id = 0;
-                std::string get_sql = "select solution_id from solution_comments where id=" + std::to_string(comment.parent_id);
-                MYSQL_RES* res_parent = QueryMySql(my.get(), get_sql, "MySql查询父评论所属题解错误");
-                if (!res_parent) return false;
-                MYSQL_ROW row_parent = mysql_fetch_row(res_parent);
-                if (row_parent == nullptr || row_parent[0] == nullptr)
-                {
-                    mysql_free_result(res_parent);
-                    return false;
-                }
-                try
-                {
-                    parent_solution_id = std::stoull(row_parent[0]);
-                }
-                catch (const std::exception&){
-                    mysql_free_result(res_parent);
-                    return false;
-                }
-                mysql_free_result(res_parent);
-                if (parent_solution_id != comment.solution_id)
-                {
-                    // parent belongs to different solution
-                    return false;
-                }
-            }
-            std::ostringstream sql;
-            // Insert with optional parent and reply_to fields
-            sql << "insert into solution_comments (solution_id, user_id, content, is_edited, parent_id, reply_to_user_id, like_count, favorite_count, created_at, updated_at) values (" 
-                << comment.solution_id << ", " << comment.user_id << ", '" << safe_content << "', 0, "
-                << comment.parent_id << ", " << comment.reply_to_user_id << ", " << comment.like_count << ", " << comment.favorite_count << ", NOW(), NOW())";
-
-            if (mysql_query(my.get(), sql.str().c_str()) != 0)
-            {
-                LOG_CRITICAL("{}{}{}{}", "MySql执行错误! errno=", mysql_errno(my.get()), " error=", mysql_error(my.get()));
-                return false;
-            }
-
-            if (comment_id != nullptr)
-            {
-                *comment_id = static_cast<unsigned long long>(mysql_insert_id(my.get()));
-            }
-
-            // Get the question_id for cache invalidation
+            uint32_t new_id = 0;
             std::string question_id;
+            try
             {
-                std::string q_sql = "select question_id from " + SolutionsTable() + " where id=" + std::to_string(comment.solution_id);
-                if (mysql_query(my.get(), q_sql.c_str()) == 0)
+                auto database = AcquireDatabase();
+                if (!database.Get()) return false;
                 {
-                    MYSQL_RES* q_res = mysql_store_result(my.get());
-                    if (q_res != nullptr)
+                    TimedTransaction transaction(*database, Monitor(),
+                        "ModelComment.CreateComment.ODBBegin",
+                        "ModelComment.CreateComment.ODBRollback");
+                    if (comment.parent_id.get() > 0)
                     {
-                        MYSQL_ROW q_row = mysql_fetch_row(q_res);
-                        if (q_row != nullptr && q_row[0] != nullptr)
+                        using Query = odb::query<oj::db::Comment>;
+                        Query query(Query::id == static_cast<uint32_t>(comment.parent_id.get()));
+                        query += " FOR UPDATE";
+                        std::unique_ptr<oj::db::Comment> parent;
                         {
-                            question_id = q_row[0];
+                            latecyMonitor::Timer load_timer(Monitor(), "ModelComment.CreateComment.ODBLoadParentForUpdate");
+                            parent.reset(database->query_one<oj::db::Comment>(query));
                         }
-                        mysql_free_result(q_res);
+                        if (!parent || parent->solution_id != comment.solution_id) return false;
+                    }
+
+                    using SolutionQuery = odb::query<oj::db::Solution>;
+                    SolutionQuery solution_query(SolutionQuery::id == static_cast<uint32_t>(comment.solution_id));
+                    solution_query += " FOR UPDATE";
+                    std::unique_ptr<oj::db::Solution> solution;
+                    {
+                        latecyMonitor::Timer load_timer(Monitor(), "ModelComment.CreateComment.ODBLoadSolutionForUpdate");
+                        solution.reset(database->query_one<oj::db::Solution>(solution_query));
+                    }
+                    if (!solution) return false;
+                    question_id = solution->question_id;
+                    oj::db::Comment row{};
+                    row.parent_id = comment.parent_id == 0
+                        ? odb::nullable<uint64_t>() : odb::nullable<uint64_t>(comment.parent_id);
+                    row.reply_to_user_id = comment.reply_to_user_id == 0
+                        ? odb::nullable<uint32_t>()
+                        : odb::nullable<uint32_t>(static_cast<uint32_t>(comment.reply_to_user_id.get()));
+                    row.like_count = 0;
+                    row.favorite_count = 0;
+                    row.solution_id = static_cast<uint32_t>(comment.solution_id);
+                    row.user_id = static_cast<uint32_t>(comment.user_id);
+                    row.content = comment.content;
+                    row.is_edited = false;
+                    const auto now = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                    row.created_at = now;
+                    row.updated_at = now;
+                    {
+                        latecyMonitor::Timer persist_timer(Monitor(), "ModelComment.CreateComment.ODBPersistComment");
+                        new_id = database->persist(row);
+                    }
+                    if (comment.parent_id == 0)
+                    {
+                        if (solution->comment_count == std::numeric_limits<uint32_t>::max())
+                            return false;
+                        ++solution->comment_count;
+                        {
+                            latecyMonitor::Timer update_timer(Monitor(), "ModelComment.CreateComment.ODBUpdateSolution");
+                            database->update(*solution);
+                        }
+                    }
+                    {
+                        latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.CreateComment.ODBCommit");
+                        transaction.commit();
                     }
                 }
             }
+            catch (const odb::exception& error)
+            {
+                LOG_ERROR("ModelComment.CreateComment failed: {}", error.what());
+                return false;
+            }
+            catch (const std::exception& error)
+            {
+                LOG_ERROR("ModelComment.CreateComment failed: {}", error.what());
+                return false;
+            }
 
-            // update comment count on the related solution
+            if (comment_id != nullptr) *comment_id = new_id;
             if (comment.parent_id == 0)
             {
-                std::ostringstream upd;
-                upd << "update " << SolutionsTable() << " set comment_count = comment_count + 1 where id = "
-                    << comment.solution_id;
-                if (!ExecuteSql(upd.str()))
-                {
-                    return false;
-                }
-
-                // Invalidate solution list cache since comment_count changed
-                if (!question_id.empty())
-                {
-                    auto list_key = _cache.BuildSolutionCacheKey(
-                        question_id, 1, 10, "1",
-                        Cache::CacheKey::PageType::kList,
-                        SolutionStatus::approved, SolutionSort::latest);
-                    _cache.DeleteStringByAnyKey(list_key->GetCacheKeyString(&_cache));
-                    LOG_INFO("{}{}", "Invalidated solution list cache after comment creation for question ", question_id);
-                }
+                auto key = _cache.BuildSolutionDetailCacheKey(comment.solution_id);
+                _cache.DeleteStringByAnyKey(key->GetCacheKeyString(&_cache));
+                InvalidateSolutionListCaches(question_id);
             }
-
-            if (comment.parent_id > 0)
-            {
-                unsigned long long new_id = (comment_id != nullptr) ? *comment_id : comment.id;
-                int sizes[] = {20, 50, 1000000};
-                for (int sz : sizes)
-                {
-                    std::string reply_key = "reply:list:pid:" + std::to_string(comment.parent_id) + ":page:1:size:" + std::to_string(sz);
-                    std::string reply_json;
-                    if (_cache.GetStringByAnyKey(reply_key, &reply_json))
-                    {
-                        Json::CharReaderBuilder builder;
-                        Json::Value reply_val;
-                        std::istringstream ss(reply_json);
-                        if (Json::parseFromStream(builder, ss, &reply_val, nullptr) &&
-                            reply_val.isMember("comments") && reply_val["comments"].isArray())
-                        {
-                            Json::Value new_reply;
-                            new_reply["id"] = Json::UInt64(new_id);
-                            new_reply["solution_id"] = Json::UInt64(comment.solution_id);
-                            new_reply["user_id"] = comment.user_id;
-                            new_reply["content"] = comment.content;
-                            new_reply["is_edited"] = false;
-                            new_reply["parent_id"] = Json::UInt64(comment.parent_id);
-                            new_reply["reply_to_user_id"] = comment.reply_to_user_id;
-                            new_reply["like_count"] = 0;
-                            new_reply["favorite_count"] = 0;
-                            new_reply["created_at"] = "";
-                            new_reply["updated_at"] = "";
-                            new_reply["reply_to_user_name"] = "";
-                            new_reply["author_name"] = "";
-                            Json::Value updated_arr(Json::arrayValue);
-                            updated_arr.append(new_reply);
-                            for (const auto& item : reply_val["comments"])
-                                updated_arr.append(item);
-                            reply_val["comments"] = updated_arr;
-                            if (reply_val.isMember("total"))
-                                reply_val["total"] = reply_val["total"].asInt() + 1;
-                            Json::FastWriter writer;
-                            _cache.SetStringByAnyKey(reply_key, writer.write(reply_val),
-                                                     _cache.BuildJitteredTtl(120, 30));
-                            LOG_INFO("{}{}{}{}", "Prepended reply ", new_id, " to reply list cache ", reply_key);
-                        }
-                    }
-                }
-            }
-
-            // Invalidate comment list cache for this solution
-            std::string comment_list_key_prefix = "comment:list:sid:" + std::to_string(comment.solution_id);
-            _cache.DeleteStringByAnyKey(comment_list_key_prefix + ":page:1:size:10");
-            _cache.DeleteStringByAnyKey(comment_list_key_prefix + ":page:1:size:20");
-            _cache.DeleteStringByAnyKey(comment_list_key_prefix + ":page:1:size:50");
-            LOG_INFO("{}{}", "Invalidated comment list cache for solution ", comment.solution_id);
-
-            // Pre-warm: try to read and update the comment list cache with the new comment
-            if (comment.parent_id == 0)
-            {
-                std::string warm_key = "comment:list:sid:" + std::to_string(comment.solution_id) + ":page:1:size:20";
-                std::string warm_json;
-                if (_cache.GetStringByAnyKey(warm_key, &warm_json))
-                {
-                    Json::CharReaderBuilder builder;
-                    Json::Value warm_value;
-                    std::istringstream ss(warm_json);
-                    if (Json::parseFromStream(builder, ss, &warm_value, nullptr))
-                    {
-                        Json::Value new_comment;
-                        new_comment["id"] = Json::UInt64(comment.id);
-                        new_comment["solution_id"] = Json::UInt64(comment.solution_id);
-                        new_comment["user_id"] = comment.user_id;
-                        new_comment["content"] = comment.content;
-                        new_comment["is_edited"] = comment.is_edited;
-                        new_comment["parent_id"] = Json::UInt64(comment.parent_id);
-                        new_comment["reply_to_user_id"] = comment.reply_to_user_id;
-                        new_comment["like_count"] = comment.like_count;
-                        new_comment["favorite_count"] = comment.favorite_count;
-                        new_comment["created_at"] = comment.created_at;
-                        new_comment["updated_at"] = comment.updated_at;
-                        new_comment["reply_to_user_name"] = "";
-                        if (warm_value.isMember("comments") && warm_value["comments"].isArray())
-                        {
-                            Json::Value updated_arr(Json::arrayValue);
-                            updated_arr.append(new_comment);
-                            for (const auto& item : warm_value["comments"])
-                            {
-                                updated_arr.append(item);
-                            }
-                            warm_value["comments"] = updated_arr;
-                            if (warm_value.isMember("total"))
-                            {
-                                warm_value["total"] = warm_value["total"].asInt() + 1;
-                            }
-                            Json::FastWriter writer;
-                            _cache.SetStringByAnyKey(warm_key, writer.write(warm_value),
-                                                     _cache.BuildJitteredTtl(300, 60));
-                            LOG_INFO("{}{}", "Pre-warmed comment list cache for solution ", comment.solution_id);
-                        }
-                    }
-                }
-            }
-
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
+            RecordCacheMetrics(RecordActionType::Comment, false, true,
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count());
             return true;
         }
 
-        //获取评论
-        /// 根据ID获取评论详情（带Redis缓存）
         bool GetCommentById(unsigned long long comment_id, Comment* comment)
         {
-            if (comment == nullptr)
-            {
-                return false;
-            }
-
-            auto _metrics_begin = std::chrono::steady_clock::now();
-            // 先查Redis缓存
-            std::string cache_key = "comment:detail:" + std::to_string(comment_id);
+            if (comment == nullptr || comment_id == 0 || !FitsOdbId(comment_id)) return false;
+            auto metrics_begin = std::chrono::steady_clock::now();
+            const std::string cache_key = "comment:detail:" + std::to_string(comment_id);
             std::string cached;
             if (_cache.GetStringByAnyKey(cache_key, &cached))
             {
                 Json::CharReaderBuilder builder;
-                Json::Value val;
-                std::istringstream ss(cached);
-                if (Json::parseFromStream(builder, ss, &val, nullptr) && val.isMember("id"))
+                Json::Value value;
+                std::istringstream stream(cached);
+                if (Json::parseFromStream(builder, stream, &value, nullptr) && value.isMember("id"))
                 {
-                    comment->id = val["id"].asUInt64();
-                    comment->solution_id = val["solution_id"].asUInt64();
-                    comment->user_id = val["user_id"].asInt();
-                    comment->content = val["content"].asString();
-                    comment->is_edited = val["is_edited"].asBool();
-                    comment->parent_id = val["parent_id"].asUInt64();
-                    comment->reply_to_user_id = val["reply_to_user_id"].asInt();
-                    comment->like_count = val["like_count"].asUInt();
-                    comment->favorite_count = val["favorite_count"].asUInt();
-                    comment->created_at = val["created_at"].asString();
-                    comment->updated_at = val["updated_at"].asString();
-                    comment->reply_to_user_name = val["reply_to_user_name"].asString();
-                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - _metrics_begin).count();
-                    RecordCacheMetrics(RecordActionType::Comment, true, false, cost_ms);
+                    CommentFromJson(value, comment);
+                    RecordCacheMetrics(RecordActionType::Comment, true, false,
+                        std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now() - metrics_begin).count());
                     return true;
                 }
             }
 
-            auto my = CreateConnection();
-            if (!my)
-            {
-                return false;
-            }
-
-            std::ostringstream sql;
-            sql << "select c.id, c.solution_id, c.user_id, c.content, c.is_edited, c.parent_id, c.reply_to_user_id, c.like_count, c.favorite_count, c.created_at, c.updated_at, u.name AS author_name, ru.name AS reply_to_user_name from solution_comments c LEFT JOIN users u ON c.user_id = u.uid LEFT JOIN users ru ON c.reply_to_user_id = ru.uid where c.id="
-                << comment_id;
-
-            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql评论详情查询错误");
-            if (!res) return false;
-
-            int rows = mysql_num_rows(res);
-            if (rows != 1)
-            {
-                mysql_free_result(res);
-                return false;
-            }
-
-            MYSQL_ROW row = mysql_fetch_row(res);
-            if (row == nullptr)
-            {
-                mysql_free_result(res);
-                return false;
-            }
-            comment->id = 0;
-            comment->solution_id = 0;
             try
             {
-                if (row[0] != nullptr) comment->id = std::stoull(row[0]);
-                if (row[1] != nullptr) comment->solution_id = std::stoull(row[1]);
+                auto database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    TimedTransaction transaction(*database, Monitor(),
+                        "ModelComment.GetCommentById.ODBBegin",
+                        "ModelComment.GetCommentById.ODBRollback");
+                    std::unique_ptr<oj::db::Comment> row;
+                    {
+                        latecyMonitor::Timer load_timer(Monitor(), "ModelComment.GetCommentById.ODBLoadComment");
+                        row.reset(database->find<oj::db::Comment>(static_cast<uint32_t>(comment_id)));
+                    }
+                    if (!row) return false;
+                    *comment = *row;
+                    std::set<uint32_t> ids{row->user_id};
+                    if (!row->reply_to_user_id.null()) ids.insert(row->reply_to_user_id.get());
+                    odb::result<oj::db::User> users;
+                    {
+                        latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetCommentById.ODBQueryUsers");
+                        users = database->query<oj::db::User>(UserIdsQuery(ids));
+                    }
+                    {
+                        latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.GetCommentById.ODBCommit");
+                        transaction.commit();
+                    }
+                }
             }
-            catch (const std::exception&) { comment->id = 0; comment->solution_id = 0; }
-            comment->user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
-            comment->content = (row[3] != nullptr) ? row[3] : "";
-            comment->is_edited = (row[4] != nullptr) ? (std::atoi(row[4]) != 0) : false;
-            comment->parent_id = (row[5] != nullptr) ? static_cast<unsigned long long>(std::stoull(row[5])) : 0;
-            comment->reply_to_user_id = (row[6] != nullptr) ? std::atoi(row[6]) : 0;
-            comment->like_count = (row[7] != nullptr) ? static_cast<unsigned int>(std::atoi(row[7])) : 0;
-            comment->favorite_count = (row[8] != nullptr) ? static_cast<unsigned int>(std::atoi(row[8])) : 0;
-            comment->created_at = (row[9] != nullptr) ? row[9] : "";
-            comment->updated_at = (row[10] != nullptr) ? row[10] : "";
-            comment->reply_to_user_name = (row[12] != nullptr) ? row[12] : "";
-            // row[11] is author_name; not stored in Comment struct
-            mysql_free_result(res);
-
-            // 写入Redis缓存
-            Json::Value cache_val;
-            cache_val["id"] = static_cast<Json::UInt64>(comment->id);
-            cache_val["solution_id"] = static_cast<Json::UInt64>(comment->solution_id);
-            cache_val["user_id"] = comment->user_id;
-            cache_val["content"] = comment->content;
-            cache_val["is_edited"] = comment->is_edited;
-            cache_val["parent_id"] = static_cast<Json::UInt64>(comment->parent_id);
-            cache_val["reply_to_user_id"] = comment->reply_to_user_id;
-            cache_val["like_count"] = comment->like_count;
-            cache_val["favorite_count"] = comment->favorite_count;
-            cache_val["created_at"] = comment->created_at;
-            cache_val["updated_at"] = comment->updated_at;
-            cache_val["reply_to_user_name"] = comment->reply_to_user_name;
+            catch (const odb::exception& error)
+            {
+                LOG_ERROR("ModelComment.GetCommentById failed: {}", error.what());
+                return false;
+            }
+            catch (const std::exception& error)
+            {
+                LOG_ERROR("ModelComment.GetCommentById failed: {}", error.what());
+                return false;
+            }
             Json::FastWriter writer;
-            _cache.SetStringByAnyKey(cache_key, writer.write(cache_val), _cache.BuildJitteredTtl(300, 60));
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - _metrics_begin).count();
-            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
+            _cache.SetStringByAnyKey(cache_key, writer.write(CommentJson(*comment)),
+                                     _cache.BuildJitteredTtl(300, 60));
+            RecordCacheMetrics(RecordActionType::Comment, false, true,
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - metrics_begin).count());
             return true;
         }
 
-        //获取回复列表
         bool GetCommentReplies(unsigned long long parent_id, int page, int size,
                                std::vector<Comment>* replies, int* total_count)
         {
-            if (replies == nullptr || total_count == nullptr)
-            {
-                return false;
-            }
-            auto _metrics_begin = std::chrono::steady_clock::now();
+            if (replies == nullptr || total_count == nullptr || parent_id == 0 || !FitsOdbId(parent_id)) return false;
+            auto metrics_begin = std::chrono::steady_clock::now();
+            const int safe_page = std::max(1, page);
+            const int safe_size = std::max(1, std::min(size, MaxPageSize));
+            const uint64_t offset = static_cast<uint64_t>(safe_page - 1) *
+                static_cast<uint64_t>(safe_size);
+            replies->clear();
+            *total_count = 0;
 
-            int safe_page = std::max(1, page);
-            int safe_size = std::max(1, size);
-            int offset = (safe_page - 1) * safe_size;
-
-            // 尝试从缓存获取回复列表
-            std::string reply_cache_key = "reply:list:pid:" + std::to_string(parent_id)
-                + ":page:" + std::to_string(safe_page) + ":size:" + std::to_string(safe_size);
-            std::string cached_reply_json;
-            if (_cache.GetStringByAnyKey(reply_cache_key, &cached_reply_json))
+            std::vector<oj::db::Comment> rows;
+            std::map<uint32_t, std::string> names;
+            try
             {
-                Json::CharReaderBuilder builder;
-                Json::Value json_value;
-                std::istringstream ss(cached_reply_json);
-                if (Json::parseFromStream(builder, ss, &json_value, nullptr))
+                auto database = AcquireDatabase();
+                if (!database.Get()) return false;
                 {
-                    if (json_value.isMember("total"))
-                        *total_count = json_value["total"].asInt();
-                    if (json_value.isMember("comments") && json_value["comments"].isArray())
+                    TimedTransaction transaction(*database, Monitor(),
+                        "ModelComment.GetCommentReplies.ODBBegin",
+                        "ModelComment.GetCommentReplies.ODBRollback");
+                    using Query = odb::query<oj::db::Comment>;
+                    using CountQuery = odb::query<oj::db::CommentCount>;
+                    const Query filter(Query::parent_id == static_cast<uint64_t>(parent_id));
+                    const CountQuery count_filter(
+                        CountQuery::parent_id == static_cast<uint64_t>(parent_id));
                     {
-                        for (const auto& item : json_value["comments"])
+                        latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetCommentReplies.ODBQueryCount");
+                        *total_count = CountAsInt(
+                            database->query_value<oj::db::CommentCount>(count_filter).value);
+                    }
+                    Query page_filter(filter);
+                    page_filter += " ORDER BY `created_at` ASC, `id` ASC LIMIT " +
+                        std::to_string(safe_size) + " OFFSET " + std::to_string(offset);
+                    odb::result<oj::db::Comment> result;
+                    {
+                        latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetCommentReplies.ODBQueryComments");
+                        result = database->query<oj::db::Comment>(page_filter);
+                    }
+                    {
+                        latecyMonitor::Timer iterate_timer(Monitor(), "ModelComment.GetCommentReplies.ODBIterateComments");
+                        for (const auto& row : result) rows.push_back(row);
+                    }
+                    std::set<uint32_t> ids;
+                    for (const auto& row : rows)
+                    {
+                        ids.insert(row.user_id);
+                        if (!row.reply_to_user_id.null()) ids.insert(row.reply_to_user_id.get());
+                    }
+                    if (!ids.empty())
+                    {
+                        odb::result<oj::db::User> users;
                         {
-                            Comment c;
-                            c.id = item["id"].asUInt64();
-                            c.solution_id = item["solution_id"].asUInt64();
-                            c.user_id = item["user_id"].asInt();
-                            c.content = item["content"].asString();
-                            c.is_edited = item["is_edited"].asBool();
-                            c.parent_id = item["parent_id"].asUInt64();
-                            c.reply_to_user_id = item["reply_to_user_id"].asInt();
-                            c.like_count = item["like_count"].asUInt();
-                            c.favorite_count = item["favorite_count"].asUInt();
-                            c.created_at = item["created_at"].asString();
-                            c.updated_at = item["updated_at"].asString();
-                            c.reply_to_user_name = item["reply_to_user_name"].asString();
-                            c.author_name = item.get("author_name", "").asString();
-                            replies->push_back(c);
+                            latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetCommentReplies.ODBQueryUsers");
+                            users = database->query<oj::db::User>(UserIdsQuery(ids));
+                        }
+                        {
+                            latecyMonitor::Timer iterate_timer(Monitor(), "ModelComment.GetCommentReplies.ODBIterateUsers");
+                            for (const auto& user : users) names[user.uid] = user.name;
                         }
                     }
-                    LOG_INFO("{}{}", "Cache hit for reply list ", reply_cache_key);
-                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - _metrics_begin).count();
-                    RecordCacheMetrics(RecordActionType::Comment, true, false, cost_ms);
-                    return true;
+                    {
+                        latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.GetCommentReplies.ODBCommit");
+                        transaction.commit();
+                    }
                 }
             }
-
-            auto my = CreateConnection();
-            if (!my)
+            catch (const odb::exception& error)
             {
+                LOG_ERROR("ModelComment.GetCommentReplies failed: {}", error.what());
                 return false;
             }
-
-            // total count for this parent comment
-            std::string count_sql = "select count(*) from solution_comments where parent_id=" + std::to_string(parent_id);
-            if (!QueryCount(count_sql, total_count))
+            catch (const std::exception& error)
             {
+                LOG_ERROR("ModelComment.GetCommentReplies failed: {}", error.what());
                 return false;
             }
-            if (*total_count <= 0)
+            for (const auto& row : rows)
             {
-                replies->clear();
+                Comment reply = row;
+                replies->push_back(std::move(reply));
+            }
+            RecordCacheMetrics(RecordActionType::Comment, false, true,
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - metrics_begin).count());
+            return true;
+        }
+
+        bool GetDirectChildReplyCounts(const std::vector<unsigned long long>& comment_ids,
+                                       std::map<unsigned long long, int>* reply_counts)
+        {
+            if (reply_counts == nullptr) return false;
+            reply_counts->clear();
+            if (comment_ids.empty()) return true;
+            if (comment_ids.size() > MaxBatchIds) return false;
+            std::set<uint32_t> ids;
+            for (unsigned long long id : comment_ids)
+            {
+                if (id == 0 || !FitsOdbId(id)) return false;
+                ids.insert(static_cast<uint32_t>(id));
+            }
+            try
+            {
+                auto database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    TimedTransaction transaction(*database, Monitor(),
+                        "ModelComment.GetDirectChildReplyCounts.ODBBegin",
+                        "ModelComment.GetDirectChildReplyCounts.ODBRollback");
+                    using CountQuery = odb::query<oj::db::CommentCount>;
+                    {
+                        latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetDirectChildReplyCounts.ODBQueryCounts");
+                        for (uint32_t id : ids)
+                        {
+                            const uint64_t count = database->query_value<oj::db::CommentCount>(
+                                CountQuery::parent_id == static_cast<uint64_t>(id)).value;
+                            if (count != 0) (*reply_counts)[id] = CountAsInt(count);
+                        }
+                    }
+                    {
+                        latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.GetDirectChildReplyCounts.ODBCommit");
+                        transaction.commit();
+                    }
+                }
                 return true;
             }
-
-            std::ostringstream sql;
-            sql << "select c.id, c.solution_id, c.user_id, c.content, c.is_edited, c.parent_id, c.reply_to_user_id, c.like_count, c.favorite_count, c.created_at, c.updated_at, u.name AS author_name, ru.name AS reply_to_user_name "
-                << "from solution_comments c LEFT JOIN users u ON c.user_id = u.uid LEFT JOIN users ru ON c.reply_to_user_id = ru.uid "
-                << "where c.parent_id=" << parent_id
-                << " order by c.created_at ASC LIMIT " << safe_size << " OFFSET " << offset;
-
-            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql查询题解评论回复错误");
-            if (!res) return false;
-            int rows = mysql_num_rows(res);
-            replies->clear();
-            replies->reserve(rows);
-            for (int i = 0; i < rows; ++i)
+            catch (const odb::exception& error)
             {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr) continue;
-                Comment c;
-                try
-                {
-                    c.id = (row[0] != nullptr) ? std::stoull(row[0]) : 0;
-                    c.solution_id = (row[1] != nullptr) ? std::stoull(row[1]) : 0;
-                }
-                catch (const std::exception&) { c.id = 0; c.solution_id = 0; }
-                c.user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
-                c.content = (row[3] != nullptr) ? row[3] : "";
-                c.is_edited = (row[4] != nullptr) ? (std::atoi(row[4]) != 0) : false;
-                c.parent_id = (row[5] != nullptr) ? static_cast<unsigned long long>(std::stoull(row[5])) : 0;
-                c.reply_to_user_id = (row[6] != nullptr) ? std::atoi(row[6]) : 0;
-                c.like_count = (row[7] != nullptr) ? static_cast<unsigned int>(std::atoi(row[7])) : 0;
-                c.favorite_count = (row[8] != nullptr) ? static_cast<unsigned int>(std::atoi(row[8])) : 0;
-                c.created_at = (row[9] != nullptr) ? row[9] : "";
-                c.updated_at = (row[10] != nullptr) ? row[10] : "";
-                c.reply_to_user_name = (row[12] != nullptr) ? row[12] : "";
-                c.author_name = (row[11] != nullptr) ? row[11] : "";
-                replies->push_back(c);
+                LOG_ERROR("ModelComment.GetDirectChildReplyCounts failed: {}", error.what());
+                return false;
             }
-            mysql_free_result(res);
-
-            // 序列化回复列表并写入缓存
-            Json::Value cache_value;
-            cache_value["total"] = *total_count;
-            Json::Value reply_arr(Json::arrayValue);
-            for (const auto& c : *replies)
+            catch (const std::exception& error)
             {
-                Json::Value item;
-                item["id"] = Json::UInt64(c.id);
-                item["solution_id"] = Json::UInt64(c.solution_id);
-                item["user_id"] = c.user_id;
-                item["content"] = c.content;
-                item["is_edited"] = c.is_edited;
-                item["parent_id"] = Json::UInt64(c.parent_id);
-                item["reply_to_user_id"] = c.reply_to_user_id;
-                item["like_count"] = c.like_count;
-                item["favorite_count"] = c.favorite_count;
-                item["created_at"] = c.created_at;
-                item["updated_at"] = c.updated_at;
-                item["reply_to_user_name"] = c.reply_to_user_name;
-                item["author_name"] = c.author_name;
-                reply_arr.append(item);
+                LOG_ERROR("ModelComment.GetDirectChildReplyCounts failed: {}", error.what());
+                return false;
             }
-            cache_value["comments"] = reply_arr;
-            Json::FastWriter writer;
-            _cache.SetStringByAnyKey(reply_cache_key, writer.write(cache_value),
-                                     _cache.BuildJitteredTtl(120, 30));
-            LOG_INFO("{}{}", "Cache miss for reply list, written to cache ", reply_cache_key);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - _metrics_begin).count();
-            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
-
-            return true;
         }
 
-        // Comments: update a comment (ownership check included)
         bool UpdateComment(unsigned long long comment_id, int user_id, const std::string& content)
         {
+            if (comment_id == 0 || !FitsOdbId(comment_id) || user_id <= 0) return false;
             auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if (!my)
+            try
             {
+                auto database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    TimedTransaction transaction(*database, Monitor(),
+                        "ModelComment.UpdateComment.ODBBegin",
+                        "ModelComment.UpdateComment.ODBRollback");
+                    using Query = odb::query<oj::db::Comment>;
+                    Query query(Query::id == static_cast<uint32_t>(comment_id));
+                    query += " FOR UPDATE";
+                    std::unique_ptr<oj::db::Comment> row;
+                    {
+                        latecyMonitor::Timer load_timer(Monitor(), "ModelComment.UpdateComment.ODBLoadCommentForUpdate");
+                        row.reset(database->query_one<oj::db::Comment>(query));
+                    }
+                    if (!row || row->user_id != static_cast<uint32_t>(user_id)) return false;
+                    row->content = content;
+                    row->is_edited = true;
+                    row->updated_at = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                    {
+                        latecyMonitor::Timer update_timer(Monitor(), "ModelComment.UpdateComment.ODBUpdateComment");
+                        database->update(*row);
+                    }
+                    {
+                        latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.UpdateComment.ODBCommit");
+                        transaction.commit();
+                    }
+                }
+            }
+            catch (const odb::exception& error)
+            {
+                LOG_ERROR("ModelComment.UpdateComment failed: {}", error.what());
                 return false;
             }
-
-            std::string safe_content = EscapeSqlString(content, my.get());
-            std::ostringstream sql;
-            sql << "update solution_comments set content='" << safe_content
-                << "', is_edited = 1, updated_at = NOW() where id = " << comment_id
-                << " and user_id = " << user_id;
-
-            if (mysql_query(my.get(), sql.str().c_str()) != 0)
+            catch (const std::exception& error)
             {
-                LOG_CRITICAL("{}", "MySql更新评论错误!");
+                LOG_ERROR("ModelComment.UpdateComment failed: {}", error.what());
                 return false;
             }
-            if (mysql_affected_rows(my.get()) == 0)
-            {
-                return false;
-            }
-            unsigned long long s_id = 0;
-            unsigned long long p_id = 0;
-            std::string new_updated_at;
-            {
-                std::ostringstream q_sql;
-                q_sql << "select solution_id, parent_id, updated_at from solution_comments where id = " << comment_id;
-                MYSQL_RES* q_res = QueryMySql(my.get(), q_sql.str(), "MySql查询评论信息错误");
-                if (q_res)
-                {
-                    MYSQL_ROW q_row = mysql_fetch_row(q_res);
-                    if (q_row)
-                    {
-                        if (q_row[0]) try { s_id = std::stoull(q_row[0]); } catch (...) {}
-                        if (q_row[1]) try { p_id = std::stoull(q_row[1]); } catch (...) {}
-                        if (q_row[2]) new_updated_at = q_row[2];
-                    }
-                    mysql_free_result(q_res);
-                }
-            }
-
-            {
-                std::string detail_key = "comment:detail:" + std::to_string(comment_id);
-                std::string detail_json;
-                if (_cache.GetStringByAnyKey(detail_key, &detail_json))
-                {
-                    Json::CharReaderBuilder builder;
-                    Json::Value detail_val;
-                    std::istringstream ss(detail_json);
-                    if (Json::parseFromStream(builder, ss, &detail_val, nullptr))
-                    {
-                        detail_val["content"] = content;
-                        detail_val["is_edited"] = true;
-                        if (!new_updated_at.empty())
-                            detail_val["updated_at"] = new_updated_at;
-                        Json::FastWriter writer;
-                        _cache.SetStringByAnyKey(detail_key, writer.write(detail_val),
-                                                 _cache.BuildJitteredTtl(300, 60));
-                    }
-                }
-            }
-
-
-            if (s_id > 0)
-            {
-                int sizes[] = {10, 20, 50};
-                for (int sz : sizes)
-                {
-                    std::string list_key = "comment:list:sid:" + std::to_string(s_id) + ":page:1:size:" + std::to_string(sz);
-                    std::string list_json;
-                    if (_cache.GetStringByAnyKey(list_key, &list_json))
-                    {
-                        Json::CharReaderBuilder builder;
-                        Json::Value list_val;
-                        std::istringstream ss(list_json);
-                        if (Json::parseFromStream(builder, ss, &list_val, nullptr) &&
-                            list_val.isMember("comments") && list_val["comments"].isArray())
-                        {
-                            for (Json::Value& item : list_val["comments"])
-                            {
-                                if (item.isMember("id") && item["id"].asUInt64() == comment_id)
-                                {
-                                    item["content"] = content;
-                                    item["is_edited"] = true;
-                                    if (!new_updated_at.empty())
-                                        item["updated_at"] = new_updated_at;
-                                    Json::FastWriter writer;
-                                    _cache.SetStringByAnyKey(list_key, writer.write(list_val),
-                                                             _cache.BuildJitteredTtl(300, 60));
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-
-            if (p_id > 0)
-            {
-                int reply_sizes[] = {20, 50, 1000000};
-                for (int sz : reply_sizes)
-                {
-                    std::string reply_key = "reply:list:pid:" + std::to_string(p_id) + ":page:1:size:" + std::to_string(sz);
-                    std::string reply_json;
-                    if (_cache.GetStringByAnyKey(reply_key, &reply_json))
-                    {
-                        Json::CharReaderBuilder builder;
-                        Json::Value reply_val;
-                        std::istringstream ss(reply_json);
-                        if (Json::parseFromStream(builder, ss, &reply_val, nullptr) &&
-                            reply_val.isMember("comments") && reply_val["comments"].isArray())
-                        {
-                            for (Json::Value& item : reply_val["comments"])
-                            {
-                                if (item.isMember("id") && item["id"].asUInt64() == comment_id)
-                                {
-                                    item["content"] = content;
-                                    item["is_edited"] = true;
-                                    if (!new_updated_at.empty())
-                                        item["updated_at"] = new_updated_at;
-                                    Json::FastWriter writer;
-                                    _cache.SetStringByAnyKey(reply_key, writer.write(reply_val),
-                                                             _cache.BuildJitteredTtl(120, 30));
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
+            _cache.DeleteStringByAnyKey("comment:detail:" + std::to_string(comment_id));
+            RecordCacheMetrics(RecordActionType::Comment, false, true,
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count());
             return true;
         }
 
-        // Comments: delete a comment (admin override supported) with cascade delete for replies
         bool DeleteComment(unsigned long long comment_id, int user_id, bool is_admin = false)
         {
+            if (comment_id == 0 || !FitsOdbId(comment_id) || (!is_admin && user_id <= 0)) return false;
             auto begin = std::chrono::steady_clock::now();
-            // first fetch the related solution_id
-            auto my = CreateConnection();
-            if (!my)
-            {
-                return false;
-            }
-
             unsigned long long solution_id = 0;
-            unsigned long long deleted_parent_id = 0;
-            {
-                std::string get_sql = "select solution_id,parent_id from solution_comments where id=" + std::to_string(comment_id);
-                MYSQL_RES* res = QueryMySql(my.get(), get_sql, "MySql查询评论所属题解错误");
-                if (!res) return false;
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row != nullptr) {
-                    if (row[0] != nullptr) {
-                        try { solution_id = std::stoull(row[0]); }
-                        catch (const std::exception& e) {
-                            LOG_ERROR("{}{}", "stoull failed for solution_id: ", e.what());
-                            mysql_free_result(res);
-                            return false;
-                        }
-                    }
-                    if (row[1] != nullptr) {
-                        try { deleted_parent_id = std::stoull(row[1]); }
-                        catch (...) { deleted_parent_id = 0; }
-                    }
-                }
-                mysql_free_result(res);
-            }
-            if (solution_id == 0)
-            {
-                return false;
-            }
-
-            // count children for cascade delete
-            int child_count = 0;
-            {
-                std::string cnt_sql = "select count(*) from solution_comments where parent_id=" + std::to_string(comment_id);
-                if (!QueryCount(cnt_sql, &child_count))
-                {
-                    return false;
-                }
-            }
-
-            // delete children first
-            std::ostringstream del_children;
-            del_children << "delete from solution_comments where parent_id=" << comment_id;
-            if (mysql_query(my.get(), del_children.str().c_str()) != 0)
-            {
-                LOG_CRITICAL("{}{}{}{}", "MySql删除子评论错误! errno=", mysql_errno(my.get()), " error=", mysql_error(my.get()));
-                return false;
-            }
-            // delete main comment
-            std::ostringstream del_sql;
-            if (is_admin)
-            {
-                del_sql << "delete from solution_comments where id=" << comment_id;
-            }
-            else
-            {
-                del_sql << "delete from solution_comments where id=" << comment_id << " and user_id=" << user_id;
-            }
-            if (mysql_query(my.get(), del_sql.str().c_str()) != 0)
-            {
-                LOG_CRITICAL("{}{}{}{}", "MySql删除评论错误! errno=", mysql_errno(my.get()), " error=", mysql_error(my.get()));
-                return false;
-            }
-            // Properly consume the DELETE result to keep the connection clean
-            {
-                MYSQL_RES* discard = mysql_store_result(my.get());
-                if (discard != nullptr)
-                {
-                    mysql_free_result(discard);
-                }
-            }
-
-            // Get the question_id for cache invalidation
+            unsigned long long parent_id = 0;
             std::string question_id;
+            std::vector<uint32_t> child_ids;
+            try
             {
-                std::string q_sql = "select question_id from " + SolutionsTable() + " where id=" + std::to_string(solution_id);
-                if (mysql_query(my.get(), q_sql.c_str()) == 0)
+                auto database = AcquireDatabase();
+                if (!database.Get()) return false;
                 {
-                    MYSQL_RES* q_res = mysql_store_result(my.get());
-                    if (q_res != nullptr)
+                    TimedTransaction transaction(*database, Monitor(),
+                        "ModelComment.DeleteComment.ODBBegin",
+                        "ModelComment.DeleteComment.ODBRollback");
+                    using Query = odb::query<oj::db::Comment>;
+                    Query query(Query::id == static_cast<uint32_t>(comment_id));
+                    query += " FOR UPDATE";
+                    std::unique_ptr<oj::db::Comment> row;
                     {
-                        MYSQL_ROW q_row = mysql_fetch_row(q_res);
-                        if (q_row != nullptr && q_row[0] != nullptr)
+                        latecyMonitor::Timer load_timer(Monitor(), "ModelComment.DeleteComment.ODBLoadCommentForUpdate");
+                        row.reset(database->query_one<oj::db::Comment>(query));
+                    }
+                    if (!row || (!is_admin && row->user_id != static_cast<uint32_t>(user_id))) return false;
+                    solution_id = row->solution_id;
+                    parent_id = row->parent_id.null() ? 0 : row->parent_id.get();
+
+                    using SolutionQuery = odb::query<oj::db::Solution>;
+                    SolutionQuery solution_query(SolutionQuery::id == static_cast<uint32_t>(solution_id));
+                    solution_query += " FOR UPDATE";
+                    std::unique_ptr<oj::db::Solution> solution;
+                    {
+                        latecyMonitor::Timer load_timer(Monitor(), "ModelComment.DeleteComment.ODBLoadSolutionForUpdate");
+                        solution.reset(database->query_one<oj::db::Solution>(solution_query));
+                    }
+                    if (!solution) return false;
+                    question_id = solution->question_id;
+
+                    {
+                        using ActionQuery = odb::query<oj::db::CommentAction>;
+                        using ChildQuery = odb::query<oj::db::Comment>;
+                        ChildQuery child_query(
+                            ChildQuery::parent_id == static_cast<uint64_t>(comment_id));
+                        child_query += " FOR UPDATE";
+                        odb::result<oj::db::Comment> children;
                         {
-                            question_id = q_row[0];
+                            latecyMonitor::Timer query_timer(Monitor(), "ModelComment.DeleteComment.ODBQueryChildren");
+                            children = database->query<oj::db::Comment>(child_query);
                         }
-                        mysql_free_result(q_res);
+                        {
+                            latecyMonitor::Timer iterate_timer(Monitor(), "ModelComment.DeleteComment.ODBIterateChildren");
+                            for (const auto& child : children) child_ids.push_back(child.id);
+                        }
+                        for (uint32_t child_id : child_ids)
+                        {
+                            latecyMonitor::Timer child_action_timer(Monitor(), "ModelComment.DeleteComment.ODBEraseChildAction");
+                            database->erase_query<oj::db::CommentAction>(ActionQuery::comment_id == child_id);
+                        }
+                    }
+                    {
+                        latecyMonitor::Timer erase_timer(Monitor(), "ModelComment.DeleteComment.ODBEraseChildren");
+                        database->erase_query<oj::db::Comment>(Query::parent_id == static_cast<uint64_t>(comment_id));
+                    }
+                    {
+                        latecyMonitor::Timer erase_timer(Monitor(), "ModelComment.DeleteComment.ODBEraseActions");
+                        using ActionQuery = odb::query<oj::db::CommentAction>;
+                        database->erase_query<oj::db::CommentAction>(
+                            ActionQuery::comment_id == static_cast<uint32_t>(comment_id));
+                    }
+                    {
+                        latecyMonitor::Timer erase_timer(Monitor(), "ModelComment.DeleteComment.ODBEraseComment");
+                        database->erase<oj::db::Comment>(static_cast<uint32_t>(comment_id));
+                    }
+                    if (parent_id == 0)
+                    {
+                        if (solution->comment_count > 0) --solution->comment_count;
+                        {
+                            latecyMonitor::Timer update_timer(Monitor(), "ModelComment.DeleteComment.ODBUpdateSolution");
+                            database->update(*solution);
+                        }
+                    }
+                    {
+                        latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.DeleteComment.ODBCommit");
+                        transaction.commit();
                     }
                 }
             }
-
-            // Only decrement for top-level comments (replies are not counted)
-            if (deleted_parent_id == 0) {
-                std::ostringstream upd_sql;
-                upd_sql << "update " << SolutionsTable() << " set comment_count = GREATEST(comment_count - 1, 0) where id = "
-                        << solution_id;
-                if (!ExecuteSql(upd_sql.str()))
-                {
-                    return false;
-                }
-            }
-
-            // Invalidate solution list cache since comment_count changed
-            if (!question_id.empty())
+            catch (const odb::exception& error)
             {
-                auto list_key = _cache.BuildSolutionCacheKey(
-                    question_id, 1, 10, "1",
-                    Cache::CacheKey::PageType::kList,
-                    SolutionStatus::approved, SolutionSort::latest);
-                _cache.DeleteStringByAnyKey(list_key->GetCacheKeyString(&_cache));
-                LOG_INFO("{}{}", "Invalidated solution list cache after comment deletion for question ", question_id);
+                LOG_ERROR("ModelComment.DeleteComment failed: {}", error.what());
+                return false;
+            }
+            catch (const std::exception& error)
+            {
+                LOG_ERROR("ModelComment.DeleteComment failed: {}", error.what());
+                return false;
             }
 
-            // Invalidate reply cache for the deleted comment's own replies
-            _cache.DeleteStringByAnyKey("reply:list:pid:" + std::to_string(comment_id) + ":page:1:size:50");
-
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
+            _cache.DeleteStringByAnyKey("comment:detail:" + std::to_string(comment_id));
+            for (uint32_t child_id : child_ids)
+                _cache.DeleteStringByAnyKey("comment:detail:" + std::to_string(child_id));
+            if (parent_id == 0)
+            {
+                auto key = _cache.BuildSolutionDetailCacheKey(solution_id);
+                _cache.DeleteStringByAnyKey(key->GetCacheKeyString(&_cache));
+                InvalidateSolutionListCaches(question_id);
+            }
+            RecordCacheMetrics(RecordActionType::Comment, false, true,
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count());
             return true;
         }
 
-        // Comments: batch get user actions on comments
         bool GetCommentActions(const std::vector<unsigned long long>& comment_ids,
                                int user_id,
                                std::map<unsigned long long, std::map<std::string, bool>>* actions)
         {
-            if (actions == nullptr)
+            if (actions == nullptr || user_id <= 0) return false;
+            actions->clear();
+            if (comment_ids.empty()) return true;
+            if (comment_ids.size() > MaxBatchIds) return false;
+            using Query = odb::query<oj::db::CommentAction>;
+            Query ids(false);
+            for (unsigned long long id : comment_ids)
             {
-                return false;
+                if (id == 0 || !FitsOdbId(id)) return false;
+                ids = ids || Query::comment_id == static_cast<uint32_t>(id);
             }
-            if (comment_ids.empty())
+            try
             {
+                auto database = AcquireDatabase();
+                if (!database.Get()) return false;
+                {
+                    TimedTransaction transaction(*database, Monitor(),
+                        "ModelComment.GetCommentActions.ODBBegin",
+                        "ModelComment.GetCommentActions.ODBRollback");
+                    odb::result<oj::db::CommentAction> result;
+                    {
+                        latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetCommentActions.ODBQueryActions");
+                        result = database->query<oj::db::CommentAction>(
+                            Query::user_id == static_cast<uint32_t>(user_id) && ids);
+                    }
+                    {
+                        latecyMonitor::Timer iterate_timer(Monitor(), "ModelComment.GetCommentActions.ODBIterateActions");
+                        for (const auto& action : result) (*actions)[action.comment_id][action.action_type] = true;
+                    }
+                    {
+                        latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.GetCommentActions.ODBCommit");
+                        transaction.commit();
+                    }
+                }
                 return true;
             }
-            auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if (!my)
+            catch (const odb::exception& error)
             {
+                LOG_ERROR("ModelComment.GetCommentActions failed: {}", error.what());
                 return false;
             }
-            std::ostringstream ids_stream;
-            for (size_t i = 0; i < comment_ids.size(); ++i)
+            catch (const std::exception& error)
             {
-                if (i > 0) ids_stream << ",";
-                ids_stream << comment_ids[i];
+                LOG_ERROR("ModelComment.GetCommentActions failed: {}", error.what());
+                return false;
             }
-            std::ostringstream sql;
-            sql << "select comment_id, action_type from comment_actions where user_id=" << user_id
-                << " and comment_id in (" << ids_stream.str() << ")";
-            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql查询评论用户交互错误");
-            if (!res) return false;
-            for (int i = 0; i < mysql_num_rows(res); ++i)
-            {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr) continue;
-                unsigned long long cid = 0;
-                std::string atype = row[1] ? row[1] : "";
-                try {
-                    cid = std::stoull(row[0]);
-                } catch (...) {
-                    cid = 0;
-                }
-                if (cid != 0) {
-                    (*actions)[cid][atype] = true;
-                }
-            }
-            mysql_free_result(res);
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
-            return true;
         }
 
-        // Comments: toggle action on a comment (like/favorite)
-        bool ToggleCommentAction(unsigned long long comment_id, int user_id, const std::string& action_type,
-                                   bool* now_active, unsigned int* new_count)
+        bool ToggleCommentAction(unsigned long long comment_id, int user_id,
+                                 const std::string& action_type,
+                                 bool* now_active, unsigned int* new_count)
         {
-            if (now_active == nullptr || new_count == nullptr)
-            {
+            if (now_active == nullptr || new_count == nullptr || comment_id == 0 || !FitsOdbId(comment_id) ||
+                user_id <= 0 || (action_type != "like" && action_type != "favorite"))
                 return false;
-            }
 
             auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if (!my)
+            try
             {
-                return false;
-            }
-
-            std::string safe_action = EscapeSqlString(action_type, my.get());
-
-            std::string count_column;
-            if (action_type == "like")
-            {
-                count_column = "like_count";
-            }
-            else if (action_type == "favorite")
-            {
-                count_column = "favorite_count";
-            }
-            else
-            {
-                return false;
-            }
-
-            // 尝试从缓存获取用户交互状态
-            std::string action_cache_key = "action:user:" + std::to_string(user_id) + ":comment:" + std::to_string(comment_id);
-            std::string cached_action_json;
-            bool cached_exists = false;
-            bool cached_found = false;
-            if (_cache.GetStringByAnyKey(action_cache_key, &cached_action_json))
-            {
-                Json::CharReaderBuilder reader;
-                Json::Value cv;
-                std::istringstream css(cached_action_json);
-                if (Json::parseFromStream(reader, css, &cv, nullptr))
+                auto database = AcquireDatabase();
+                if (!database.Get()) return false;
                 {
-                    if (action_type == "like" && cv.isMember("like"))
+                    TimedTransaction transaction(*database, Monitor(),
+                        "ModelComment.ToggleCommentAction.ODBBegin",
+                        "ModelComment.ToggleCommentAction.ODBRollback");
+                    using CommentQuery = odb::query<oj::db::Comment>;
+                    CommentQuery comment_query(CommentQuery::id == static_cast<uint32_t>(comment_id));
+                    comment_query += " FOR UPDATE";
+                    std::unique_ptr<oj::db::Comment> comment;
                     {
-                        cached_exists = cv["like"].asBool();
-                        cached_found = true;
+                        latecyMonitor::Timer load_timer(Monitor(), "ModelComment.ToggleCommentAction.ODBLoadCommentForUpdate");
+                        comment.reset(database->query_one<oj::db::Comment>(comment_query));
                     }
-                    else if (action_type == "favorite" && cv.isMember("favorite"))
+                    if (!comment) return false;
+                    using ActionQuery = odb::query<oj::db::CommentAction>;
+                    const ActionQuery action_query =
+                        ActionQuery::comment_id == static_cast<uint32_t>(comment_id) &&
+                        ActionQuery::user_id == static_cast<uint32_t>(user_id) &&
+                        ActionQuery::action_type == action_type;
+                    std::unique_ptr<oj::db::CommentAction> action;
                     {
-                        cached_exists = cv["favorite"].asBool();
-                        cached_found = true;
+                        latecyMonitor::Timer query_timer(Monitor(), "ModelComment.ToggleCommentAction.ODBQueryAction");
+                        action.reset(database->query_one<oj::db::CommentAction>(action_query));
                     }
-                }
-            }
-
-            int exist_rows = 0;
-            if (cached_found)
-            {
-                exist_rows = cached_exists ? 1 : 0;
-            }
-            else
-            {
-                std::ostringstream check_sql;
-                check_sql << "select id from comment_actions where comment_id=" << comment_id
-                          << " and user_id=" << user_id
-                          << " and action_type='" << safe_action << "'";
-
-                MYSQL_RES* res = QueryMySql(my.get(), check_sql.str(), "MySql查询评论交互记录错误");
-                if (!res) return false;
-                exist_rows = mysql_num_rows(res);
-                mysql_free_result(res);
-            }
-
-            if (exist_rows > 0)
-            {
-                std::ostringstream del_sql;
-                del_sql << "delete from comment_actions where comment_id=" << comment_id
-                        << " and user_id=" << user_id
-                        << " and action_type='" << safe_action << "'";
-                if (mysql_query(my.get(), del_sql.str().c_str()) != 0)
-                {
-                    LOG_CRITICAL("{}", "MySql删除评论交互记录错误!");
-                    return false;
-                }
-
-                std::ostringstream dec_sql;
-                dec_sql << "update solution_comments set " << count_column << " = " << count_column << " - 1"
-                        << " where id = " << comment_id;
-                if (mysql_query(my.get(), dec_sql.str().c_str()) != 0)
-                {
-                    LOG_CRITICAL("{}", "MySql更新评论计数错误!");
-                    return false;
-                }
-
-                *now_active = false;
-            }
-            else
-            {
-                std::ostringstream ins_sql;
-                ins_sql << "insert into comment_actions (comment_id, user_id, action_type, created_at) values ("
-                        << comment_id << ", " << user_id << ", '" << safe_action << "', NOW())";
-                if (mysql_query(my.get(), ins_sql.str().c_str()) != 0)
-                {
-                    LOG_CRITICAL("{}", "MySql插入评论交互记录错误!");
-                    return false;
-                }
-
-                std::ostringstream inc_sql;
-                inc_sql << "update solution_comments set " << count_column << " = " << count_column << " + 1"
-                        << " where id = " << comment_id;
-                if (mysql_query(my.get(), inc_sql.str().c_str()) != 0)
-                {
-                    LOG_CRITICAL("{}", "MySql更新评论计数错误!");
-                    return false;
-                }
-
-                *now_active = true;
-            }
-
-            // 更新交互状态缓存
-            Json::Value action_state;
-            if (!cached_action_json.empty())
-            {
-                Json::CharReaderBuilder reader;
-                std::istringstream css(cached_action_json);
-                Json::parseFromStream(reader, css, &action_state, nullptr);
-            }
-            action_state[action_type] = !*now_active ? false : true;
-            Json::FastWriter action_writer;
-            _cache.SetStringByAnyKey(action_cache_key, action_writer.write(action_state),
-                                     _cache.BuildJitteredTtl(300, 60));
-
-            std::ostringstream cnt_sql;
-            cnt_sql << "select " << count_column << " from solution_comments where id = " << comment_id;
-            MYSQL_RES* cnt_res = QueryMySql(my.get(), cnt_sql.str(), "MySql查询评论计数错误");
-            if (!cnt_res) return false;
-            MYSQL_ROW cnt_row = mysql_fetch_row(cnt_res);
-            if (cnt_row == nullptr || cnt_row[0] == nullptr)
-            {
-                mysql_free_result(cnt_res);
-                return false;
-            }
-            *new_count = static_cast<unsigned int>(std::atoi(cnt_row[0]));
-            mysql_free_result(cnt_res);
-
-            unsigned long long solution_id = 0;
-            unsigned long long parent_id_val = 0;
-            {
-                std::ostringstream q_sql;
-                q_sql << "select solution_id, parent_id from solution_comments where id = " << comment_id;
-                MYSQL_RES* q_res = QueryMySql(my.get(), q_sql.str(), "MySql查询评论所属题解错误");
-                if (q_res)
-                {
-                    MYSQL_ROW q_row = mysql_fetch_row(q_res);
-                    if (q_row)
+                    if (action)
                     {
-                        if (q_row[0]) try { solution_id = std::stoull(q_row[0]); } catch (...) {}
-                        if (q_row[1]) try { parent_id_val = std::stoull(q_row[1]); } catch (...) {}
-                    }
-                    mysql_free_result(q_res);
-                }
-            }
-            if (solution_id > 0)
-            {
-                int sizes[] = {10, 20, 50};
-                for (int sz : sizes)
-                {
-                    std::string list_key = "comment:list:sid:" + std::to_string(solution_id) + ":page:1:size:" + std::to_string(sz);
-                    std::string list_json;
-                    if (_cache.GetStringByAnyKey(list_key, &list_json))
-                    {
-                        Json::CharReaderBuilder builder;
-                        Json::Value list_val;
-                        std::istringstream ss(list_json);
-                        if (Json::parseFromStream(builder, ss, &list_val, nullptr) &&
-                            list_val.isMember("comments") && list_val["comments"].isArray())
                         {
-                            for (Json::Value& item : list_val["comments"])
-                            {
-                                if (item.isMember("id") && item["id"].asUInt64() == comment_id)
-                                {
-                                    if (action_type == "like")
-                                        item["like_count"] = *new_count;
-                                    else if (action_type == "favorite")
-                                        item["favorite_count"] = *new_count;
-                                    Json::FastWriter writer;
-                                    _cache.SetStringByAnyKey(list_key, writer.write(list_val),
-                                                             _cache.BuildJitteredTtl(300, 60));
-                                    break;
-                                }
-                            }
+                            latecyMonitor::Timer erase_timer(Monitor(), "ModelComment.ToggleCommentAction.ODBEraseAction");
+                            database->erase(*action);
                         }
+                        if (action_type == "like")
+                        {
+                            if (comment->like_count > 0) --comment->like_count;
+                            *new_count = comment->like_count;
+                        }
+                        else
+                        {
+                            if (comment->favorite_count > 0) --comment->favorite_count;
+                            *new_count = comment->favorite_count;
+                        }
+                        *now_active = false;
+                    }
+                    else
+                    {
+                        const uint32_t count = action_type == "like"
+                            ? comment->like_count : comment->favorite_count;
+                        if (count == std::numeric_limits<uint32_t>::max()) return false;
+                        oj::db::CommentAction created{};
+                        created.comment_id = static_cast<uint32_t>(comment_id);
+                        created.user_id = static_cast<uint32_t>(user_id);
+                        created.action_type = action_type;
+                        created.created_at = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                        {
+                            latecyMonitor::Timer persist_timer(Monitor(), "ModelComment.ToggleCommentAction.ODBPersistAction");
+                            database->persist(created);
+                        }
+                        if (action_type == "like") *new_count = ++comment->like_count;
+                        else *new_count = ++comment->favorite_count;
+                        *now_active = true;
+                    }
+                    {
+                        latecyMonitor::Timer update_timer(Monitor(), "ModelComment.ToggleCommentAction.ODBUpdateComment");
+                        database->update(*comment);
+                    }
+                    {
+                        latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.ToggleCommentAction.ODBCommit");
+                        transaction.commit();
                     }
                 }
             }
-            if (parent_id_val > 0)
+            catch (const odb::exception& error)
             {
-                int reply_sizes[] = {20, 50, 1000000};
-                for (int sz : reply_sizes)
-                {
-                    std::string reply_key = "reply:list:pid:" + std::to_string(parent_id_val) + ":page:1:size:" + std::to_string(sz);
-                    std::string reply_json;
-                    if (_cache.GetStringByAnyKey(reply_key, &reply_json))
-                    {
-                        Json::CharReaderBuilder builder;
-                        Json::Value reply_val;
-                        std::istringstream ss(reply_json);
-                        if (Json::parseFromStream(builder, ss, &reply_val, nullptr) &&
-                            reply_val.isMember("comments") && reply_val["comments"].isArray())
-                        {
-                            for (Json::Value& item : reply_val["comments"])
-                            {
-                                if (item.isMember("id") && item["id"].asUInt64() == comment_id)
-                                {
-                                    if (action_type == "like")
-                                        item["like_count"] = *new_count;
-                                    else if (action_type == "favorite")
-                                        item["favorite_count"] = *new_count;
-                                    Json::FastWriter writer;
-                                    _cache.SetStringByAnyKey(reply_key, writer.write(reply_val),
-                                                             _cache.BuildJitteredTtl(120, 30));
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
+                LOG_ERROR("ModelComment.ToggleCommentAction failed: {}", error.what());
+                return false;
+            }
+            catch (const std::exception& error)
+            {
+                LOG_ERROR("ModelComment.ToggleCommentAction failed: {}", error.what());
+                return false;
             }
 
-            long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - begin).count();
-            RecordCacheMetrics(RecordActionType::Comment, false, true, cost_ms);
+            _cache.DeleteStringByAnyKey("action:user:" + std::to_string(user_id)
+                + ":comment:" + std::to_string(comment_id));
+            _cache.DeleteStringByAnyKey("comment:detail:" + std::to_string(comment_id));
+            RecordCacheMetrics(RecordActionType::Comment, false, true,
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - begin).count());
             return true;
         }
     };

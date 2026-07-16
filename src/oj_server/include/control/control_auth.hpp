@@ -1,10 +1,257 @@
 #pragma once
 
 #include "control_base.hpp"
+#include "../../../comm/models/user.hxx"
+#include "../../../comm/models/admin.hxx"
 
-namespace ns_control
+
+namespace oj::control
 {
+    using oj::db::User;
+    namespace
+    {
+        inline std::string CurrentDateTag()
+        {
+            auto now = std::chrono::system_clock::now();
+            std::time_t tt = std::chrono::system_clock::to_time_t(now);
+            std::tm tm_now;
+            localtime_r(&tt, &tm_now);
+            char buf[16] = {0};
+            std::strftime(buf, sizeof(buf), "%Y%m%d", &tm_now);
+            return std::string(buf);
+        }
 
+        inline int SecondsUntilDayEnd()
+        {
+            auto now = std::chrono::system_clock::now();
+            std::time_t tt = std::chrono::system_clock::to_time_t(now);
+            std::tm tm_now;
+            localtime_r(&tt, &tm_now);
+            int seconds = (23 - tm_now.tm_hour) * 3600 + (59 - tm_now.tm_min) * 60 + (60 - tm_now.tm_sec);
+            return std::max(60, seconds);
+        }
+
+        inline std::string GenerateAuthCode()
+        {
+            static thread_local std::mt19937 rng(std::random_device{}());
+            std::uniform_int_distribution<int> dist(0, 999999);
+            int value = dist(rng);
+            std::ostringstream oss;
+            oss.width(6);
+            oss.fill('0');
+            oss << value;
+            return oss.str();
+        }
+        inline std::string BuildDefaultUserName(const std::string& email, const std::string& optional_name)
+        {
+            std::string name = oj::util::StringUtil::TrimSpace(optional_name);
+            if (!name.empty())
+            {
+                if (name.size() > 64)
+                {
+                    name.resize(64);
+                }
+                return name;
+            }
+
+            auto pos = email.find('@');
+            std::string prefix = pos == std::string::npos ? email : email.substr(0, pos);
+            if (prefix.empty())
+            {
+                prefix = "user";
+            }
+            if (prefix.size() > 32)
+            {
+                prefix.resize(32);
+            }
+
+            auto now = std::chrono::system_clock::now().time_since_epoch();
+            long long suffix = std::chrono::duration_cast<std::chrono::seconds>(now).count() % 100000;
+            return prefix + "_" + std::to_string(suffix);
+        }
+        inline std::string BuildAuthCodeKey(const std::string& email)
+        {
+            return "oj:auth:code:" + email;
+        }
+
+        inline std::string BuildAuthAttemptsKey(const std::string& email)
+        {
+            return "oj:auth:attempts:" + email;
+        }
+        //构建验证码发送冷却的redis key，格式为oj:auth:cooldown:{email}
+        inline std::string BuildAuthCooldownKey(const std::string& email)
+        {
+            return "oj:auth:cooldown:" + email;
+        }
+
+        inline std::string BuildAuthEmailDailyLimitKey(const std::string& email)
+        {
+            return "oj:auth:limit:email:" + email + ":" + CurrentDateTag();
+        }
+
+        inline std::string BuildAuthIpDailyLimitKey(const std::string& ip)
+        {
+            return "oj:auth:limit:ip:" + ip + ":" + CurrentDateTag();
+        }
+        inline bool IsPasswordStrongEnough(const std::string& password)
+        {
+            if (password.size() < 8 || password.size() > 72)
+            {
+                return false;
+            }
+
+            bool has_letter = false;
+            bool has_digit = false;
+            for (unsigned char ch : password)
+            {
+                if (std::isalpha(ch)) has_letter = true;
+                if (std::isdigit(ch)) has_digit = true;
+            }
+            return has_letter && has_digit;
+        }
+
+        inline std::string PasswordAlgoTag()
+        {
+            return "sha256_iter_v1";
+        }
+
+        inline int PasswordIterations()
+        {
+            return 120000;
+        }
+
+        inline std::string PasswordPepper()
+        {
+            const char* pepper = std::getenv("OJ_PASSWORD_PEPPER");
+            if (pepper == nullptr)
+            {
+                return "";
+            }
+            return std::string(pepper);
+        }
+        //判断密码强度
+        std::string ToHex(const unsigned char* data, size_t len)
+        {
+            std::ostringstream oss;
+            oss << std::hex << std::setfill('0');
+            for (size_t i = 0; i < len; ++i)
+            {
+                oss << std::setw(2) << static_cast<unsigned int>(data[i]);
+            }
+            return oss.str();
+        }
+
+        std::string Sha256Hex(const std::string& input)
+        {
+            std::array<unsigned char, SHA256_DIGEST_LENGTH> digest{};
+            SHA256(reinterpret_cast<const unsigned char*>(input.data()), input.size(), digest.data());
+            return ToHex(digest.data(), digest.size());
+        }
+
+        std::string GenerateSaltHex(size_t bytes)
+        {
+            static thread_local std::mt19937 rng(std::random_device{}());
+            std::uniform_int_distribution<int> dist(0, 255);
+            std::vector<unsigned char> raw(bytes);
+            for (size_t i = 0; i < bytes; ++i)
+            {
+                raw[i] = static_cast<unsigned char>(dist(rng));
+            }
+            return ToHex(raw.data(), raw.size());
+        }
+
+        std::string DerivePasswordDigest(const std::string& password, const std::string& salt, int iterations)
+        {
+            std::string pepper = PasswordPepper();
+            std::string digest = Sha256Hex(salt + ":" + password + ":" + pepper);
+            for (int i = 1; i < iterations; ++i)
+            {
+                digest = Sha256Hex(digest + ":" + salt + ":" + pepper);
+            }
+            return digest;
+        }
+
+        std::string BuildPasswordHash(const std::string& password)
+        {
+            const int iter = PasswordIterations();
+            std::string salt = GenerateSaltHex(16);
+            std::string digest = DerivePasswordDigest(password, salt, iter);
+            if (digest.empty())
+            {
+                return "";
+            }
+
+            return salt + "$" + std::to_string(iter) + "$" + digest;
+        }
+        bool BuildSecurePasswordHash(const std::string& password,
+                                     std::string* password_hash,
+                                     std::string* err_code)
+        {
+            if (password_hash == nullptr)
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "INVALID_ARGUMENT";
+                }
+                return false;
+            }
+
+            if (!IsPasswordStrongEnough(password))
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "WEAK_PASSWORD";
+                }
+                return false;
+            }
+
+            *password_hash = BuildPasswordHash(password);
+            if (password_hash->empty())
+            {
+                if (err_code != nullptr)
+                {
+                    *err_code = "PASSWORD_HASH_FAILED";
+                }
+                return false;
+            }
+            return true;
+        }
+        bool VerifyPasswordHash(const std::string& password,
+                                const std::string& stored_hash,
+                                const std::string& algo)
+        {
+            if (algo != PasswordAlgoTag())
+            {
+                return false;
+            }
+
+            std::vector<std::string> parts;
+            StringUtil::SplitString(stored_hash, "$", &parts);
+            if (parts.size() != 3)
+            {
+                return false;
+            }
+
+            const std::string& salt = parts[0];
+            int iter = 0;
+            try
+            {
+                iter = std::stoi(parts[1]);
+            }
+            catch (...)
+            {
+                return false;
+            }
+
+            if (iter <= 0)
+            {
+                return false;
+            }
+
+            std::string expected = DerivePasswordDigest(password, salt, iter);
+            return expected == parts[2];
+        }
+    }
     class ControlAuth : public ControlBase
     {
     public:
@@ -73,7 +320,7 @@ namespace ns_control
                 _auth_redis.setex(BuildAuthCodeKey(email), kCodeTtlSeconds, code);
                 _auth_redis.del(BuildAuthAttemptsKey(email));
 
-                ns_mail::MailSendResult send_result = _mail.SendAuthCodeMail(email, code);
+                oj::mail::MailSendResult send_result = _mail.SendAuthCodeMail(email, code);
                 if (!send_result.ok)
                 {
                     _auth_redis.del(BuildAuthCodeKey(email));
@@ -102,6 +349,7 @@ namespace ns_control
                 return false;
             }
         }
+
         //验证验证码，自动登录或者创建新用户
         bool VerifyEmailAuthCodeAndLogin(const std::string& email,
                          const std::string& code,
@@ -177,7 +425,7 @@ namespace ns_control
                 if (!exists)
                 {
                     //用户不存在->创建账户
-                    std::string trimmed_name = TrimSpace(optional_name);
+                    std::string trimmed_name = oj::util::StringUtil::TrimSpace(optional_name);
                     if (trimmed_name.empty())
                     {
                         if (err_code != nullptr)
@@ -268,8 +516,8 @@ namespace ns_control
                     response["user"]["uid"] = user.uid;
                     response["user"]["name"] = user.name;
                     response["user"]["email"] = user.email;
-                    response["user"]["create_time"] = user.create_time;
-                    response["user"]["last_login"] = user.last_login;
+                    response["user"]["create_time"] = oj::util::TimeUtil::DateTimeToInt(user.create_time);
+                    response["user"]["last_login"] = oj::util::TimeUtil::DateTimeToInt(user.last_login);
                 }
             }
             return true;
@@ -290,8 +538,8 @@ namespace ns_control
                     response["user"]["uid"] = user.uid;
                     response["user"]["name"] = user.name;
                     response["user"]["email"] = user.email;
-                    response["user"]["create_time"] = user.create_time;
-                    response["user"]["last_login"] = user.last_login;
+                    response["user"]["create_time"] = oj::util::TimeUtil::DateTimeToInt(user.create_time);
+                    response["user"]["last_login"] = oj::util::TimeUtil::DateTimeToInt(user.last_login);
                 }
             }
             return created;
@@ -309,8 +557,8 @@ namespace ns_control
                 response["user"]["uid"] = user.uid;
                 response["user"]["name"] = user.name;
                 response["user"]["email"] = user.email;
-                response["user"]["create_time"] = user.create_time;
-                response["user"]["last_login"] = user.last_login;
+                response["user"]["create_time"] = oj::util::TimeUtil::DateTimeToInt(user.create_time);
+                    response["user"]["last_login"] = oj::util::TimeUtil::DateTimeToInt(user.last_login);
             }
             response["found"] = found;
             return found;
@@ -650,262 +898,6 @@ namespace ns_control
 
             _model.User().UpdateLastLogin(user->email);
             return true;
-        }
-
-        bool BuildSecurePasswordHash(const std::string& password,
-                                     std::string* password_hash,
-                                     std::string* err_code)
-        {
-            if (password_hash == nullptr)
-            {
-                if (err_code != nullptr)
-                {
-                    *err_code = "INVALID_ARGUMENT";
-                }
-                return false;
-            }
-
-            if (!IsPasswordStrongEnough(password))
-            {
-                if (err_code != nullptr)
-                {
-                    *err_code = "WEAK_PASSWORD";
-                }
-                return false;
-            }
-
-            *password_hash = BuildPasswordHash(password);
-            if (password_hash->empty())
-            {
-                if (err_code != nullptr)
-                {
-                    *err_code = "PASSWORD_HASH_FAILED";
-                }
-                return false;
-            }
-            return true;
-        }
-
-    protected:
-        std::string PasswordAlgoTag() const
-        {
-            return "sha256_iter_v1";
-        }
-
-        int PasswordIterations() const
-        {
-            return 120000;
-        }
-
-        std::string PasswordPepper() const
-        {
-            const char* pepper = std::getenv("OJ_PASSWORD_PEPPER");
-            if (pepper == nullptr)
-            {
-                return "";
-            }
-            return std::string(pepper);
-        }
-        //判断密码强度
-        bool IsPasswordStrongEnough(const std::string& password) const
-        {
-            if (password.size() < 8 || password.size() > 72)
-            {
-                return false;
-            }
-
-            bool has_letter = false;
-            bool has_digit = false;
-            for (unsigned char ch : password)
-            {
-                if (std::isalpha(ch)) has_letter = true;
-                if (std::isdigit(ch)) has_digit = true;
-            }
-            return has_letter && has_digit;
-        }
-
-        std::string ToHex(const unsigned char* data, size_t len) const
-        {
-            std::ostringstream oss;
-            oss << std::hex << std::setfill('0');
-            for (size_t i = 0; i < len; ++i)
-            {
-                oss << std::setw(2) << static_cast<unsigned int>(data[i]);
-            }
-            return oss.str();
-        }
-
-        std::string Sha256Hex(const std::string& input) const
-        {
-            std::array<unsigned char, SHA256_DIGEST_LENGTH> digest{};
-            SHA256(reinterpret_cast<const unsigned char*>(input.data()), input.size(), digest.data());
-            return ToHex(digest.data(), digest.size());
-        }
-
-        std::string GenerateSaltHex(size_t bytes) const
-        {
-            static thread_local std::mt19937 rng(std::random_device{}());
-            std::uniform_int_distribution<int> dist(0, 255);
-            std::vector<unsigned char> raw(bytes);
-            for (size_t i = 0; i < bytes; ++i)
-            {
-                raw[i] = static_cast<unsigned char>(dist(rng));
-            }
-            return ToHex(raw.data(), raw.size());
-        }
-
-        std::string DerivePasswordDigest(const std::string& password, const std::string& salt, int iterations) const
-        {
-            std::string pepper = PasswordPepper();
-            std::string digest = Sha256Hex(salt + ":" + password + ":" + pepper);
-            for (int i = 1; i < iterations; ++i)
-            {
-                digest = Sha256Hex(digest + ":" + salt + ":" + pepper);
-            }
-            return digest;
-        }
-
-        std::string BuildPasswordHash(const std::string& password) const
-        {
-            const int iter = PasswordIterations();
-            std::string salt = GenerateSaltHex(16);
-            std::string digest = DerivePasswordDigest(password, salt, iter);
-            if (digest.empty())
-            {
-                return "";
-            }
-
-            return salt + "$" + std::to_string(iter) + "$" + digest;
-        }
-
-        bool VerifyPasswordHash(const std::string& password,
-                                const std::string& stored_hash,
-                                const std::string& algo) const
-        {
-            if (algo != PasswordAlgoTag())
-            {
-                return false;
-            }
-
-            std::vector<std::string> parts;
-            StringUtil::SplitString(stored_hash, "$", &parts);
-            if (parts.size() != 3)
-            {
-                return false;
-            }
-
-            const std::string& salt = parts[0];
-            int iter = 0;
-            try
-            {
-                iter = std::stoi(parts[1]);
-            }
-            catch (...)
-            {
-                return false;
-            }
-
-            if (iter <= 0)
-            {
-                return false;
-            }
-
-            std::string expected = DerivePasswordDigest(password, salt, iter);
-            return expected == parts[2];
-        }
-
-        std::string BuildAuthCodeKey(const std::string& email) const
-        {
-            return "oj:auth:code:" + email;
-        }
-
-        std::string BuildAuthAttemptsKey(const std::string& email) const
-        {
-            return "oj:auth:attempts:" + email;
-        }
-        //构建验证码发送冷却的redis key，格式为oj:auth:cooldown:{email}
-        std::string BuildAuthCooldownKey(const std::string& email) const
-        {
-            return "oj:auth:cooldown:" + email;
-        }
-
-        std::string BuildAuthEmailDailyLimitKey(const std::string& email) const
-        {
-            return "oj:auth:limit:email:" + email + ":" + CurrentDateTag();
-        }
-
-        std::string BuildAuthIpDailyLimitKey(const std::string& ip) const
-        {
-            return "oj:auth:limit:ip:" + ip + ":" + CurrentDateTag();
-        }
-
-        std::string CurrentDateTag() const
-        {
-            auto now = std::chrono::system_clock::now();
-            std::time_t tt = std::chrono::system_clock::to_time_t(now);
-            std::tm tm_now;
-#if defined(_WIN32)
-            localtime_s(&tm_now, &tt);
-#else
-            localtime_r(&tt, &tm_now);
-#endif
-            char buf[16] = {0};
-            std::strftime(buf, sizeof(buf), "%Y%m%d", &tm_now);
-            return std::string(buf);
-        }
-
-        int SecondsUntilDayEnd() const
-        {
-            auto now = std::chrono::system_clock::now();
-            std::time_t tt = std::chrono::system_clock::to_time_t(now);
-            std::tm tm_now;
-#if defined(_WIN32)
-            localtime_s(&tm_now, &tt);
-#else
-            localtime_r(&tt, &tm_now);
-#endif
-            int seconds = (23 - tm_now.tm_hour) * 3600 + (59 - tm_now.tm_min) * 60 + (60 - tm_now.tm_sec);
-            return std::max(60, seconds);
-        }
-
-        std::string GenerateAuthCode() const
-        {
-            static thread_local std::mt19937 rng(std::random_device{}());
-            std::uniform_int_distribution<int> dist(0, 999999);
-            int value = dist(rng);
-            std::ostringstream oss;
-            oss.width(6);
-            oss.fill('0');
-            oss << value;
-            return oss.str();
-        }
-
-        std::string BuildDefaultUserName(const std::string& email, const std::string& optional_name) const
-        {
-            std::string name = TrimSpace(optional_name);
-            if (!name.empty())
-            {
-                if (name.size() > 64)
-                {
-                    name.resize(64);
-                }
-                return name;
-            }
-
-            auto pos = email.find('@');
-            std::string prefix = pos == std::string::npos ? email : email.substr(0, pos);
-            if (prefix.empty())
-            {
-                prefix = "user";
-            }
-            if (prefix.size() > 32)
-            {
-                prefix.resize(32);
-            }
-
-            auto now = std::chrono::system_clock::now().time_since_epoch();
-            long long suffix = std::chrono::duration_cast<std::chrono::seconds>(now).count() % 100000;
-            return prefix + "_" + std::to_string(suffix);
         }
     };
 

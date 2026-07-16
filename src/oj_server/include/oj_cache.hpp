@@ -1,10 +1,8 @@
 #pragma once
 #include <httplib.h>
-#include <iterator>
 #include <jsoncpp/json/reader.h>
 #include <jsoncpp/json/value.h>
 #include <memory>
-#include <mysql/mysql.h>
 #include <string>
 #include <sstream>
 #include <ctime>
@@ -13,11 +11,16 @@
 #include <sw/redis++/command_options.h>
 #include <sw/redis++/redis++.h>
 #include "../../comm/comm.hpp"
+#include "../../comm/models/user.hxx"
+#include "../../comm/models/question.hxx"
+#include "../../comm/logger.hpp"
 
 using namespace sw::redis;
 
-namespace ns_cache
+namespace oj::cache
 {
+    using namespace oj::logger;
+    using namespace oj::db;
     class Cache
     {
     public:
@@ -294,14 +297,14 @@ namespace ns_cache
                         std::istringstream ss(json_str);
                         if (Json::parseFromStream(builder, ss, &json_value, nullptr))
                         {
-                            question.number = json_value["number"].asString();
+                            question.id = json_value["id"].asString();
                             question.title = json_value["title"].asString();
                             question.star = json_value["star"].asString();
                             question.desc = json_value["desc"].asString();
                             question.cpu_limit = json_value["cpu_limit"].asInt();
                             question.memory_limit = json_value["memory_limit"].asInt();
-                            question.create_time = json_value["create_time"].asString();
-                            question.update_time = json_value["update_time"].asString();
+                            question.create_time = oj::util::TimeUtil::IntToDateTime(json_value["create_time"].asInt64());
+                            question.update_time = oj::util::TimeUtil::IntToDateTime(json_value["update_time"].asInt64());
 
                             LOG_INFO("{}{}", "Cache hit for question ", key_str);
                             return true;
@@ -328,20 +331,20 @@ namespace ns_cache
         void SetDetailedQuestion(const std::shared_ptr<CacheDetailKey>& key, Question& question)
         {
             Json::Value json_value;
-            json_value["number"] = question.number;
+            json_value["id"] = question.id;
             json_value["title"] = question.title;
             json_value["star"] = question.star;
             json_value["desc"] = question.desc;
             json_value["cpu_limit"] = question.cpu_limit;
             json_value["memory_limit"] = question.memory_limit;
-            json_value["create_time"] = question.create_time;
-            json_value["update_time"] = question.update_time;
+            json_value["create_time"] = oj::util::TimeUtil::DateTimeToInt(question.create_time);
+            json_value["update_time"] = oj::util::TimeUtil::DateTimeToInt(question.update_time);
             Json::FastWriter writer;
             std::string json_str = writer.write(json_value);
             try 
             {
                 _redis.setex(key->GetCacheKeyString(this), BuildJitteredTtl(3600, 300), json_str);
-                LOG_INFO("{}{}{}", "Question ", question.number, " cached successfully");
+                LOG_INFO("{}{}{}", "Question ", question.id, " cached successfully");
             } 
             catch (const sw::redis::Error &e) 
             {
@@ -393,7 +396,7 @@ namespace ns_cache
                                 for (const auto& item : json_value["questions"])
                                 {
                                     Question q;
-                                    q.number = item["number"].asString();
+                                    q.id = item["id"].asString();
                                     q.title = item["title"].asString();
                                     q.star = item["star"].asString();
                                     questions.push_back(q);
@@ -448,8 +451,8 @@ namespace ns_cache
                                     u.uid = item["uid"].asInt();
                                     u.name = item["name"].asString();
                                     u.email = item["email"].asString();
-                                    u.create_time = item["create_time"].asString();
-                                    u.last_login = item["last_login"].asString();
+                                    u.create_time = oj::util::TimeUtil::IntToDateTime(item["create_time"].asInt64());
+                                    u.last_login = oj::util::TimeUtil::IntToDateTime(item["last_login"].asInt64());
                                     users.push_back(u);
                                 }                            
                             }
@@ -483,8 +486,8 @@ namespace ns_cache
                 item["uid"] = u.uid;
                 item["name"] = u.name;
                 item["email"] = u.email;
-                item["create_time"] = u.create_time;
-                item["last_login"] = u.last_login;
+                item["create_time"] = oj::util::TimeUtil::DateTimeToInt(u.create_time);
+                item["last_login"] = oj::util::TimeUtil::DateTimeToInt(u.last_login);
                 array_value.append(item);
             }
             Json::Value root(Json::objectValue);
@@ -521,7 +524,7 @@ namespace ns_cache
             for (const auto& q : questions)
             {
                 Json::Value item;
-                item["number"] = q.number;
+                item["id"] = q.id;
                 item["title"] = q.title;
                 item["star"] = q.star;
                 array_value.append(item);
@@ -577,6 +580,39 @@ namespace ns_cache
                 return std::to_string(cur);
             }
             catch (const sw::redis::Error &e)
+            {
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
+                return "1";
+            }
+        }
+
+        std::string GetSolutionListVersion(const std::string& question_id)
+        {
+            const std::string key = _business + ":" + _env + ":" + _version +
+                ":solution:list:q:" + question_id + ":version";
+            try
+            {
+                OptionalString value = _redis.get(key);
+                if (value) return value.value();
+                _redis.set(key, "1");
+                return "1";
+            }
+            catch (const sw::redis::Error& e)
+            {
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
+                return "1";
+            }
+        }
+
+        std::string BumpSolutionListVersion(const std::string& question_id)
+        {
+            const std::string key = _business + ":" + _env + ":" + _version +
+                ":solution:list:q:" + question_id + ":version";
+            try
+            {
+                return std::to_string(_redis.incr(key));
+            }
+            catch (const sw::redis::Error& e)
             {
                 LOG_ERROR("{}{}", "Redis error: ", e.what());
                 return "1";

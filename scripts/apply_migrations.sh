@@ -31,7 +31,11 @@ MYSQL_ARGS=(
 )
 
 mysql_run() {
-    "$MYSQL_BIN" "${MYSQL_ARGS[@]}" "$@"
+    if [[ -n ${lock_fd:-} ]]; then
+        "$MYSQL_BIN" "${MYSQL_ARGS[@]}" "$@" {lock_fd}>&-
+    else
+        "$MYSQL_BIN" "${MYSQL_ARGS[@]}" "$@"
+    fi
 }
 
 mysql_run --execute="
@@ -41,7 +45,65 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
   applied_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (version)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS schema_migration_lock_owner (
+  lock_id TINYINT UNSIGNED NOT NULL,
+  owner_token VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  connection_id BIGINT UNSIGNED NOT NULL,
+  acquired_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (lock_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 " >/dev/null
+
+lock_holder_pid=''
+lock_token=''
+lock_dir=''
+lock_fd=''
+release_migration_lock() {
+    if [[ -n "$lock_fd" ]]; then
+        printf "DO RELEASE_LOCK('oj_schema_migration');\nDELETE FROM schema_migration_lock_owner WHERE lock_id=1 AND owner_token='%s';\n" \
+            "$lock_token" >&$lock_fd 2>/dev/null || true
+        exec {lock_fd}>&-
+    fi
+    if [[ -n "$lock_holder_pid" ]]; then
+        wait "$lock_holder_pid" >/dev/null 2>&1 || true
+        lock_holder_pid=''
+    fi
+    [[ -z "$lock_dir" ]] || rm -rf -- "$lock_dir"
+}
+
+if [[ ${OJ_MIGRATION_TEST_SKIP_LOCK:-0} != 1 ]]; then
+    lock_token="migration-$PPID-$$-$RANDOM"
+    lock_dir=$(mktemp -d)
+    mkfifo "$lock_dir/session"
+    mysql_run <"$lock_dir/session" >/dev/null 2>&1 &
+    lock_holder_pid=$!
+    exec {lock_fd}>"$lock_dir/session"
+    printf "
+SET @lock_acquired = GET_LOCK('oj_schema_migration', 300);
+INSERT INTO schema_migration_lock_owner (lock_id, owner_token, connection_id)
+SELECT 1, '%s', CONNECTION_ID() WHERE @lock_acquired = 1
+ON DUPLICATE KEY UPDATE owner_token=VALUES(owner_token), connection_id=VALUES(connection_id), acquired_at=CURRENT_TIMESTAMP(6);
+" "$lock_token" >&$lock_fd
+    trap release_migration_lock EXIT INT TERM
+
+    lock_acquired=0
+    for _ in {1..3000}; do
+        owner=$(mysql_run --batch --skip-column-names \
+            --execute="SELECT owner_token FROM schema_migration_lock_owner WHERE lock_id=1" 2>/dev/null || true)
+        if [[ "$owner" == "$lock_token" ]]; then
+            lock_acquired=1
+            break
+        fi
+        if ! kill -0 "$lock_holder_pid" >/dev/null 2>&1; then
+            break
+        fi
+        sleep 0.1
+    done
+    if [[ $lock_acquired != 1 ]]; then
+        printf 'Could not acquire migration lock\n' >&2
+        exit 1
+    fi
+fi
 
 checksum_file() {
     if command -v sha256sum >/dev/null 2>&1; then
@@ -88,6 +150,9 @@ for migration in "${migrations[@]}"; do
         printf '\nINSERT INTO schema_migrations (version, checksum) VALUES ('"'"'%s'"'"', '"'"'%s'"'"');\n' "$version" "$checksum"
         printf 'COMMIT;\n'
     } | mysql_run
+    printf 'Applied: %s\n' "$version"
 done
 
 printf 'Database migrations are current.\n'
+release_migration_lock
+trap - EXIT INT TERM

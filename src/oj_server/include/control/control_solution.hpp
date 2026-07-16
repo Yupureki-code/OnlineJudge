@@ -1,8 +1,9 @@
 #pragma once
 
+#include "comm.hpp"
 #include "control_base.hpp"
 
-namespace ns_control
+namespace oj::control
 {
 
     class ControlSolution : public ControlBase
@@ -25,7 +26,7 @@ namespace ns_control
                 return false;
             }
 
-            std::string trimmed_question_id = TrimSpace(question_id);
+            std::string trimmed_question_id = oj::util::StringUtil::TrimSpace(question_id);
             if (trimmed_question_id.empty())
             {
                 if (err_code != nullptr)
@@ -54,8 +55,8 @@ namespace ns_control
                 return false;
             }
 
-            std::string trimmed_title = TrimSpace(title);
-            std::string trimmed_content = TrimSpace(content_md);
+            std::string trimmed_title = oj::util::StringUtil::TrimSpace(title);
+            std::string trimmed_content = oj::util::StringUtil::TrimSpace(content_md);
             if (trimmed_title.empty())
             {
                 if (err_code != nullptr)
@@ -88,7 +89,7 @@ namespace ns_control
             solution.user_id = current_user.uid;
             solution.title = trimmed_title;
             solution.content_md = trimmed_content;
-            solution.status = SolutionStatus::approved;
+            solution.status = "approved";
             //保存题解
             if (!_model.Solution().CreateSolution(solution, solution_id))
             {

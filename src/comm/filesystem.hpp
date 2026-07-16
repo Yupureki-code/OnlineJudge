@@ -15,7 +15,7 @@
 namespace fileUtil
 {
     // 响应结构体
-    using namespace oj_util;
+    using namespace oj::util;
     using namespace OnlineJudge;
     // 高性能文件 I/O 类
     class FileSystem 

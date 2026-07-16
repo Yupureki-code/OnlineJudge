@@ -1,4 +1,4 @@
-#include "runtime/business_executor.hpp"
+#include "../../include/runtime/business_executor.hpp"
 
 #include <stdexcept>
 #include <utility>
@@ -17,80 +17,14 @@ BusinessExecutor::BusinessExecutor(Config config, ExceptionHandler exception_han
 
 BusinessExecutor::~BusinessExecutor()
 {
-    Stop();
-}
-
-bool BusinessExecutor::Start()
-{
     std::lock_guard lifecycle_lock(lifecycle_mutex_);
     {
         std::lock_guard lock(mutex_);
-        if (started_)
-            return true;
-        if (stopped_)
-            return false;
-        started_ = true;
-    }
-
-    try {
-        workers_.reserve(config_.worker_count);
-        for (std::size_t i = 0; i < config_.worker_count; ++i)
-            workers_.emplace_back(&BusinessExecutor::WorkerLoop, this);
-    } catch (...) {
+        active_stop_policy_ = config_.stop_policy;
+        if (config_.stop_policy == StopPolicy::CancelPending) 
         {
-            std::lock_guard lock(mutex_);
-            stopping_ = true;
-            active_stop_policy_ = StopPolicy::CancelPending;
-        }
-        work_available_.notify_all();
-        for (auto& worker : workers_) {
-            if (worker.joinable())
-                worker.join();
-        }
-        workers_.clear();
-        {
-            std::lock_guard lock(mutex_);
-            started_ = false;
-            stopped_ = true;
-        }
-        throw;
-    }
-    return true;
-}
-
-SubmitResult BusinessExecutor::Submit(Task task)
-{
-    std::lock_guard lock(mutex_);
-    if (!started_ || stopping_ || stopped_)
-        return SubmitResult::Stopped;
-    if (tasks_.size() >= config_.queue_capacity)
-        return SubmitResult::QueueFull;
-    tasks_.push(std::move(task));
-    work_available_.notify_one();
-    return SubmitResult::Accepted;
-}
-
-void BusinessExecutor::Stop()
-{
-    Stop(config_.stop_policy);
-}
-
-void BusinessExecutor::Stop(StopPolicy policy)
-{
-    std::lock_guard lifecycle_lock(lifecycle_mutex_);
-    {
-        std::lock_guard lock(mutex_);
-        if (stopped_)
-            return;
-        stopping_ = true;
-        active_stop_policy_ = policy;
-        if (policy == StopPolicy::CancelPending) {
             std::queue<Task> empty;
             tasks_.swap(empty);
-        }
-        if (!started_) {
-            stopped_ = true;
-            return;
         }
     }
 
@@ -102,14 +36,41 @@ void BusinessExecutor::Stop(StopPolicy policy)
     workers_.clear();
 
     std::lock_guard lock(mutex_);
-    started_ = false;
-    stopped_ = true;
 }
 
-bool BusinessExecutor::IsAccepting() const
+bool BusinessExecutor::Start()
+{
+    try {
+        workers_.reserve(config_.worker_count);
+        for (std::size_t i = 0; i < config_.worker_count; ++i)
+            workers_.emplace_back(&BusinessExecutor::WorkerLoop, this);
+    } catch (...) {
+        {
+            std::lock_guard lock(mutex_);
+            active_stop_policy_ = StopPolicy::CancelPending;
+        }
+        work_available_.notify_all();
+        for (auto& worker : workers_) {
+            if (worker.joinable())
+                worker.join();
+        }
+        workers_.clear();
+        {
+            std::lock_guard lock(mutex_);
+        }
+        throw;
+    }
+    return true;
+}
+
+SubmitResult BusinessExecutor::Submit(Task task)
 {
     std::lock_guard lock(mutex_);
-    return started_ && !stopping_ && !stopped_;
+    if (tasks_.size() >= config_.queue_capacity)
+        return SubmitResult::QueueFull;
+    tasks_.push(std::move(task));
+    work_available_.notify_one();
+    return SubmitResult::Accepted;
 }
 
 std::size_t BusinessExecutor::PendingTaskCount() const
@@ -120,26 +81,33 @@ std::size_t BusinessExecutor::PendingTaskCount() const
 
 void BusinessExecutor::WorkerLoop()
 {
-    for (;;) {
+    for (;;) 
+    {
         Task task;
         {
             std::unique_lock lock(mutex_);
-            work_available_.wait(lock, [this] { return stopping_ || !tasks_.empty(); });
-            if (stopping_ &&
-                (active_stop_policy_ == StopPolicy::CancelPending || tasks_.empty()))
+            work_available_.wait(lock, [this] { return !tasks_.empty(); });
+            if (active_stop_policy_ == StopPolicy::CancelPending || tasks_.empty())
                 return;
             task = std::move(tasks_.front());
             tasks_.pop();
         }
 
-        try {
+        try 
+        {
             if (task)
                 task();
-        } catch (...) {
-            if (exception_handler_) {
-                try {
+        } 
+        catch (...) 
+        {
+            if (exception_handler_) 
+            {
+                try 
+                {
                     exception_handler_(std::current_exception());
-                } catch (...) {
+                } 
+                catch (...) 
+                {
                 }
             }
         }

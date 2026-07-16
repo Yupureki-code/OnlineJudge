@@ -104,7 +104,7 @@ bool HasMethod(const std::array<RpcContract, N>& rpcs, std::string_view service,
 }
 
 inline void CheckSharedWireContract(Checks& checks) {
-    checks.Expect(oj::biz::UserService::descriptor() != nullptr,
+    checks.Expect(oj::biz::OJService::descriptor() != nullptr,
                   "generated business protobuf descriptors are linked");
     checks.Expect(kProtobufContentType == "application/x-protobuf",
                   "dynamic requests and responses use application/x-protobuf");

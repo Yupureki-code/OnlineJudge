@@ -1,11 +1,7 @@
 #pragma once
 
-#include "config.h"
-#include "logger.hpp"
 #include <jsoncpp/json/json.h>
 #include <chrono>
-#include <condition_variable>
-#include <deque>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <memory>
@@ -18,6 +14,9 @@
 #include <fcntl.h>
 #include <regex>
 #include <chrono>
+#include "config.h"
+#include "models/types.hxx"
+#include <cassert>
 
 inline constexpr const char root[] = "/";
 inline constexpr const char dev_null[] = "/dev/null";
@@ -35,26 +34,6 @@ namespace OnlineJudge
     };
 }
 
-
-struct User
-{
-    int uid; //用户ID
-    std::string name; //用户名
-    std::string email; //邮箱
-    std::string create_time; //创建时间
-    std::string last_login; //最后登录时间
-    std::string password_algo; //密码算法
-};
-
-struct AdminAccount
-{
-    int admin_id = 0;
-    std::string password_hash;
-    int uid = 0;
-    std::string role;
-    std::string created_at;
-};
-
 struct AdminAuditLog
 {
     std::string request_id;
@@ -65,18 +44,6 @@ struct AdminAuditLog
     std::string resource_type;
     std::string result;
     std::string payload_text;
-};
-
-struct Question
-{
-    std::string number; //题号
-    std::string title;  //标题
-    std::string star;   //难度
-    std::string desc;   //描述
-    int cpu_limit;      //时间限制
-    int memory_limit;   //内存限制
-    std::string create_time; //创建时间
-    std::string update_time; //更新时间
 };
 
 struct QueryStruct
@@ -159,38 +126,6 @@ enum class ListType
     Users
 };
 
-struct Solution
-{
-    unsigned long long id = 0; //题解ID
-    std::string question_id;   //题号
-    int user_id = 0;           //作者UID
-    std::string title;         //题解标题
-    std::string content_md;    //Markdown内容
-    unsigned int like_count = 0;
-    unsigned int favorite_count = 0;
-    unsigned int comment_count = 0;
-    SolutionStatus status = SolutionStatus::approved;
-    std::string created_at;
-    std::string updated_at;
-};
-
-struct Comment
-{
-    unsigned long long id = 0;
-    unsigned long long solution_id = 0;
-    int user_id = 0;
-    std::string content;
-    bool is_edited = false;
-    unsigned long long parent_id = 0;           // 0表示顶级评论，非0表示回复
-    int reply_to_user_id = 0;                   // 被回复用户ID，用于@引用
-    unsigned int like_count = 0;                // 点赞数
-    unsigned int favorite_count = 0;            // 收藏数
-    std::string reply_to_user_name = "";      // 被回复用户名（查询时填充）
-    std::string author_name = "";             // 评论作者用户名（查询时通过JOIN填充）
-    std::string created_at;
-    std::string updated_at;
-};
-
 class EnumToStringUtil
 {
 public:
@@ -261,7 +196,7 @@ inline void Daemon(bool ischdir, bool isclose)
 
 
 //工具类
-namespace oj_util
+namespace oj::util
 {
     const std::string default_path = "../tmp/";
     //时间工具
@@ -281,6 +216,35 @@ namespace oj_util
             struct timeval _time;
             gettimeofday(&_time, nullptr);
             return std::to_string(_time.tv_sec * 1000 + _time.tv_usec / 1000);
+        }
+        static inline int64_t DateTimeToInt(const MYSQL_TIME& t) noexcept 
+        {
+            assert(t.time_type == MYSQL_TIMESTAMP_DATETIME ||
+                t.time_type == MYSQL_TIMESTAMP_DATETIME_TZ);
+            using namespace std::chrono;
+            // C++20 sys_days + operator/ 一行构建时间点
+            auto tp = sys_days(year(t.year) / month(t.month) / day(t.day))
+                    + hours(t.hour) + minutes(t.minute) + seconds(t.second)
+                    + microseconds(t.second_part);
+            return duration_cast<microseconds>(tp.time_since_epoch()).count();
+        }
+        static inline MYSQL_TIME IntToDateTime(int64_t ts_us) noexcept 
+        {
+            using namespace std::chrono;
+            auto tp = sys_time<microseconds>(microseconds(ts_us));
+            auto days = floor<std::chrono::days>(tp);
+            auto ymd  = year_month_day(days);
+            auto hms  = hh_mm_ss(tp - days);
+            MYSQL_TIME t{};
+            t.year        = static_cast<int>(ymd.year());
+            t.month       = static_cast<unsigned>(ymd.month());
+            t.day         = static_cast<unsigned>(ymd.day());
+            t.hour        = hms.hours().count();
+            t.minute      = hms.minutes().count();
+            t.second      = hms.seconds().count();
+            t.second_part = hms.subseconds().count();
+            t.time_type   = MYSQL_TIMESTAMP_DATETIME;
+            return t;
         }
     };
     //路径工具
@@ -375,6 +339,14 @@ namespace oj_util
                 --end;
             return s.substr(start, end - start);
         }
+        //去除全部的空格
+        static std::string TrimSpace(const std::string& input)
+        {
+            std::string out = input;
+            out.erase(out.begin(), std::find_if(out.begin(), out.end(), [](unsigned char ch){ return !std::isspace(ch); }));
+            out.erase(std::find_if(out.rbegin(), out.rend(), [](unsigned char ch){ return !std::isspace(ch); }).base(), out.end());
+            return out;
+        }
         //判断邮箱是否合法
         static bool IsValidEmail(const std::string& email)
         {
@@ -406,6 +378,28 @@ namespace oj_util
                 return false;
             }
             return std::all_of(code.begin(), code.end(), [](unsigned char ch){ return std::isdigit(ch); });
+        }
+    };
+
+    class HttpUtil
+    {
+    public:
+        static std::string url_encode(const std::string& value)
+        {
+            std::ostringstream encoded;
+            encoded << std::uppercase << std::hex;
+            for (unsigned char ch : value)
+            {
+                if (std::isalnum(ch) || ch == '-' || ch == '_' || ch == '.' || ch == '~')
+                {
+                    encoded << static_cast<char>(ch);
+                }
+                else
+                {
+                    encoded << '%' << std::setw(2) << std::setfill('0') << static_cast<int>(ch);
+                }
+            }
+            return encoded.str();
         }
     };
 }

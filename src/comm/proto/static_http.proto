@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package oj.transport;
+
+import "common.proto";
+
+option cc_generic_services = true;
+
+service StaticHttpService {
+  rpc default_method(oj.common.EmptyRequest) returns (oj.common.EmptyResponse);
+}

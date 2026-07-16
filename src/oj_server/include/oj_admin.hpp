@@ -1,18 +1,23 @@
 #pragma once
 
 #include <string>
-#include <deque>
 #include <thread>
 #include <chrono>
 #include <condition_variable>
 #include <httplib.h>
 #include "control/oj_control.hpp"
 #include "../../comm/comm.hpp"
+#include "../../comm/logger.hpp"
+#include "../../comm/models/admin.hxx"
+#include "../../comm/models/user.hxx"
 
-
-namespace ns_admin
+namespace oj::admin
 {
-	using namespace oj_util;
+	using namespace oj::util;
+	using namespace oj::db;
+	using namespace oj::logger;
+	using httplib::Request;
+	using httplib::Response;
 	constexpr const char* kAdminVersion = "v0.2.0";
 	constexpr const char* kAdminSessionCookieName = "oj_admin_session_id";
 	constexpr const char* kAdminSessionPrefix = "oj:prod:v1:session:admin:";
@@ -194,7 +199,6 @@ namespace ns_admin
 
 			bool LoadFromRedis(const std::string& session_id, AdminSession* session)
 			{
-				_redis_enabled = true;
 				if (!_redis_enabled || session == nullptr)
 				{
 					return false;
@@ -464,14 +468,14 @@ namespace ns_admin
 	{
 		if (out == nullptr || error_message == nullptr)
 			return false;
-		std::string number;
+		std::string id;
 		if (forced_number != nullptr)
-			number = StringUtil::Trim(*forced_number);
-		else if (in.isMember("number") && in["number"].isString())
-			number = StringUtil::Trim(in["number"].asString());
-		if (number.empty() || !std::all_of(number.begin(), number.end(), [](unsigned char ch){ return std::isdigit(ch); }))
+			id = StringUtil::Trim(*forced_number);
+		else if (in.isMember("id") && in["id"].isString())
+			id = StringUtil::Trim(in["id"].asString());
+		if (id.empty() || !std::all_of(id.begin(), id.end(), [](unsigned char ch){ return std::isdigit(ch); }))
 		{
-			*error_message = "number 必须是纯数字题号";
+			*error_message = "id 必须是纯数字题号";
 			return false;
 		}
 		std::string title = in.isMember("title") && in["title"].isString() ? StringUtil::Trim(in["title"].asString()) : "";
@@ -501,7 +505,7 @@ namespace ns_admin
 			return false;
 		}
 
-		out->number = number;
+		out->id = id;
 		out->title = title;
 		out->desc = desc;
 		out->star = star;
@@ -601,7 +605,7 @@ namespace ns_admin
 		return true;
 	}
 	//概览数据聚合
-	bool BuildAdminOverview(ns_model::Model* model, int* question_count, int* user_count, int* admin_count)
+	bool BuildAdminOverview(oj::model::Model* model, int* question_count, int* user_count, int* admin_count)
 	{
 		if (model == nullptr || question_count == nullptr || user_count == nullptr || admin_count == nullptr)
 		{
@@ -671,7 +675,7 @@ namespace ns_admin
 		return true;
 	}
 	//审计日志写入
-	void TryWriteAudit(ns_model::Model* model,
+	void TryWriteAudit(oj::model::Model* model,
 				const std::string& request_id,
 				const AdminAccount& operator_admin,
 				const std::string& action,
@@ -729,7 +733,7 @@ namespace ns_admin
 
 	private:
 		AdminSessionStore _store;
-		ns_control::Control _ctl;
+		oj::control::Control _ctl;
 		std::atomic<unsigned long long> g_request_seq{0};
 		std::atomic<bool> g_admin_audit_disabled{false};
 		static constexpr std::size_t kAuditQueueMax = 10000;
@@ -740,4 +744,3 @@ namespace ns_admin
 		std::thread _audit_worker;
 	};
 }
-

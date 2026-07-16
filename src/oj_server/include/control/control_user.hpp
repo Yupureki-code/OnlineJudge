@@ -1,8 +1,9 @@
 #pragma once
 
 #include "control_base.hpp"
+#include "../../../comm/filesystem.hpp"
 
-namespace ns_control
+namespace oj::control
 {
 
     class ControlUser : public ControlBase
@@ -66,7 +67,8 @@ namespace ns_control
             }
 
             std::string absolute_path = absolute_dir + filename;
-            if (!oj_util::FileUtil::WriteFile(absolute_path, file_content))
+            fileUtil::FileSystem file_system;
+            if (!file_system.write(absolute_path, file_content).status)
             {
                 *err_code = "SAVE_FAILED";
                 return false;
@@ -128,6 +130,16 @@ namespace ns_control
             (*result)["success"] = true;
             (*result)["stats"] = stats;
             return true;
+        }
+
+        bool GetUserByName(const std::string& name, User* user)
+        {
+            return _model.User().GetUserByName(name, user);
+        }
+
+        bool UpdateUserName(int uid, const std::string& new_name)
+        {
+            return _model.User().UpdateUserName(uid, new_name);
         }
     };
 

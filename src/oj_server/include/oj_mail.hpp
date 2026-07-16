@@ -10,10 +10,13 @@
 #include <string>
 
 #include "../../comm/comm.hpp"
+#include "../../comm/logger.hpp"
 
-namespace ns_mail
+
+namespace oj::mail
 {
-    using namespace oj_util;
+    using namespace oj::util;
+    using namespace oj::logger;
     struct MailSendResult
     {
         bool ok = false;

@@ -1,11 +1,31 @@
 #pragma once
 
+#include "comm.hpp"
 #include "model_base.hpp"
+#include "../../../comm/models/solution.hxx"
+#include "../../../comm/models/model_counts.hxx"
+#include "../../../comm/models/gen/solution-odb.hxx"
+#include "../../../comm/models/gen/model_counts-odb.hxx"
+#include "../../../comm/models/solution_action.hxx"
+#include "../../../comm/models/gen/solution_action-odb.hxx"
+#include <limits>
 
-namespace ns_model
+namespace oj::model
 {
+    using namespace oj::db;
     class ModelSolution : public ModelBase
     {
+    private:
+        template <typename Query>
+        static Query BuildSolutionQuery(const std::string& question_id,
+                                        const std::string& status_filter)
+        {
+            Query filter(Query::question_id == question_id);
+            if (!status_filter.empty())
+                filter = filter && Query::status == status_filter;
+            return filter;
+        }
+
     public:
         std::string SolutionStatusToDbString(SolutionStatus status)
         {
@@ -29,11 +49,6 @@ namespace ns_model
             return SolutionStatus::approved;
         }
 
-        const std::string& SolutionActionsTable() const
-        {
-            static const std::string table = "solution_actions";
-            return table;
-        }
         //创建题解
         bool CreateSolution(const Solution& input, unsigned long long* solution_id = nullptr)
         {
@@ -50,52 +65,58 @@ namespace ns_model
             }
 
             auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if (!my)
+            std::unique_ptr<ns_odb::ScopedDB> database;
+            std::unique_ptr<odb::transaction> transaction;
+            try
             {
-                return false;
-            }
-            //SQL注入防护
-            std::string safe_question_id = EscapeSqlString(input.question_id, my.get());
-            std::string safe_title = EscapeSqlString(trimmed_title, my.get());
-            std::string safe_content = EscapeSqlString(trimmed_content, my.get());
-            std::string safe_status = EscapeSqlString(SolutionStatusToDbString(input.status), my.get());
+                database = std::make_unique<ns_odb::ScopedDB>(AcquireDatabase());
+                if (database->Get() == nullptr)
+                    return false;
 
-            std::ostringstream sql;
-            sql << "insert into " << SolutionsTable()
-                << " (question_id, user_id, title, content_md, like_count, favorite_count, comment_count, status, created_at, updated_at) values ('"
-                << safe_question_id << "', "
-                << input.user_id << ", '"
-                << safe_title << "', '"
-                << safe_content << "', 0, 0, 0, '"
-                << safe_status << "', NOW(), NOW())";
-
-            if (mysql_query(my.get(), sql.str().c_str()) != 0)
-            {
-                LOG_CRITICAL("{}{}{}{}", "MySql执行错误! errno=", mysql_errno(my.get()), " error=", mysql_error(my.get()));
-                return false;
-            }
-
-            if (solution_id != nullptr)
-            {
-                *solution_id = static_cast<unsigned long long>(mysql_insert_id(my.get()));
-            }
-            // 缓存失效
-            const int pages[] = {1, 2, 3};
-            const int sizes[] = {10, 20, 50};
-            const std::string sorts[] = {"1", "1"};  // version key for latest and hot
-            const SolutionSort sort_types[] = {SolutionSort::latest, SolutionSort::hot};
-
-            for (int p : pages) {
-                for (int s : sizes) {
-                    for (int t = 0; t < 2; ++t) {
-                        auto key = _cache.BuildSolutionCacheKey(input.question_id, p, s, sorts[t],
-                            Cache::CacheKey::PageType::kList, SolutionStatus::approved, sort_types[t]);
-                        _cache.DeleteStringByAnyKey(key->GetCacheKeyString(&_cache));
-                    }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.CreateSolution.ODBBegin");
+                    transaction = std::make_unique<odb::transaction>((*database)->begin());
                 }
+
+                const auto now = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                oj::db::Solution record{};
+                record.question_id = input.question_id;
+                record.user_id = static_cast<uint32_t>(input.user_id);
+                record.title = trimmed_title;
+                record.content_md = trimmed_content;
+                record.like_count = 0;
+                record.favorite_count = 0;
+                record.comment_count = 0;
+                record.status = input.status;
+                record.created_at = now;
+                record.updated_at = now;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.CreateSolution.ODBPersist");
+                    (*database)->persist(record);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.CreateSolution.ODBCommit");
+                    transaction->commit();
+                }
+                if (solution_id != nullptr)
+                    *solution_id = record.id;
+            }
+            catch (const std::exception& error)
+            {
+                if (transaction && !transaction->finalized())
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelSolution.CreateSolution.ODBRollback");
+                        transaction->rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB创建题解失败: ", error.what());
+                return false;
             }
 
+            InvalidateSolutionListCaches(input.question_id);
             LOG_INFO("{}{}", "Invalidated solution list cache for question ", input.question_id);
 
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -119,170 +140,163 @@ namespace ns_model
             }
             auto _metrics_begin = std::chrono::steady_clock::now();
 
-            //构造cache key
-            SolutionStatus status = SolutionStatus::approved;
+            solutions->clear();
+            *total_count = 0;
+            *total_pages = 0;
+            if (!status_filter.empty() && status_filter != "pending" &&
+                status_filter != "approved" && status_filter != "rejected")
+                return false;
+            if (!sort_order.empty() && sort_order != "latest" && sort_order != "hot")
+                return false;
+
+            const int safe_page = std::max(1, page);
+            const int safe_size = std::max(1, std::min(size, 50));
+            SolutionStatus cache_status = SolutionStatus::approved;
             if (status_filter == "pending")
-                status = SolutionStatus::pending;
+                cache_status = SolutionStatus::pending;
             else if (status_filter == "rejected")
-                status = SolutionStatus::rejected;
+                cache_status = SolutionStatus::rejected;
+            const SolutionSort cache_sort = sort_order == "hot"
+                ? SolutionSort::hot : SolutionSort::latest;
+            const std::string list_version = _cache.GetSolutionListVersion(question_id);
+            auto cache_key = _cache.BuildSolutionCacheKey(
+                question_id, page, size, list_version, Cache::CacheKey::PageType::kList,
+                cache_status, cache_sort);
 
-            SolutionSort sort = SolutionSort::latest;
-            if (sort_order == "hot")
-                sort = SolutionSort::hot;
-
-            auto cache_key = _cache.BuildSolutionCacheKey(question_id, page, size, "1",
-                                                           Cache::CacheKey::PageType::kList,
-                                                           status, sort);
-
-            // Try to read from cache
             std::string cached_json;
             if (_cache.GetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), &cached_json))
             {
-                // Cache hit: parse JSON and populate results
                 Json::CharReaderBuilder builder;
-                Json::Value json_value;
-                std::istringstream ss(cached_json);
-                if (Json::parseFromStream(builder, ss, &json_value, nullptr))
+                Json::Value root;
+                std::istringstream stream(cached_json);
+                if (Json::parseFromStream(builder, stream, &root, nullptr))
                 {
-                    if (json_value.isMember("total"))
-                        *total_count = json_value["total"].asInt();
-                    if (json_value.isMember("total_pages"))
-                        *total_pages = json_value["total_pages"].asInt();
-
-                    if (json_value.isMember("solutions") && json_value["solutions"].isArray())
+                    if (root.isMember("total"))
+                        *total_count = root["total"].asInt();
+                    if (root.isMember("total_pages"))
+                        *total_pages = root["total_pages"].asInt();
+                    if (root.isMember("solutions") && root["solutions"].isArray())
                     {
-                        for (const auto& item : json_value["solutions"])
+                        for (const auto& item : root["solutions"])
                         {
-                            Solution s;
-                            s.id = item["id"].asUInt64();
-                            s.question_id = item["question_id"].asString();
-                            s.user_id = item["user_id"].asInt();
-                            s.title = item["title"].asString();
-                            s.content_md = item["content_md"].asString();
-                            s.like_count = item["like_count"].asUInt();
-                            s.favorite_count = item["favorite_count"].asUInt();
-                            s.comment_count = item["comment_count"].asUInt();
-                            s.status = DbStringToSolutionStatus(item["status"].asString());
-                            s.created_at = item["created_at"].asString();
-                            s.updated_at = item["updated_at"].asString();
-                            solutions->push_back(s);
+                            Solution solution;
+                            solution.id = item["id"].asUInt64();
+                            solution.question_id = item["question_id"].asString();
+                            solution.user_id = item["user_id"].asInt();
+                            solution.title = item["title"].asString();
+                            solution.content_md = item["content_md"].asString();
+                            solution.like_count = item["like_count"].asUInt();
+                            solution.favorite_count = item["favorite_count"].asUInt();
+                            solution.comment_count = item["comment_count"].asUInt();
+                            solution.status = item["status"].asString();
+                            solution.created_at = oj::util::TimeUtil::IntToDateTime(item["created_at"].asInt64());
+                            solution.updated_at = oj::util::TimeUtil::IntToDateTime(item["updated_at"].asInt64());
+                            solutions->push_back(std::move(solution));
                         }
                     }
-                    LOG_INFO("{}{}", "Cache hit for solution list ", cache_key->GetCacheKeyString(&_cache));
-                    long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    LOG_INFO("{}{}", "Cache hit for solution list ",
+                             cache_key->GetCacheKeyString(&_cache));
+                    const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - _metrics_begin).count();
                     RecordCacheMetrics(RecordActionType::Solution, true, false, cost_ms);
                     return true;
                 }
             }
 
-            auto my = CreateConnection();
-            if (!my)
+            std::unique_ptr<ns_odb::ScopedDB> database;
+            std::unique_ptr<odb::transaction> transaction;
+            try
             {
-                return false;
-            }
-
-            std::string safe_qid = EscapeSqlString(question_id, my.get());
-            std::string safe_status = EscapeSqlString(status_filter, my.get());
-
-            std::string where_clause = " where question_id='" + safe_qid + "'";
-            if (!safe_status.empty())
-            {
-                where_clause += " and status='" + safe_status + "'";
-            }
-
-            std::string count_sql = "select count(*) from " + SolutionsTable() + where_clause;
-            if (!QueryCount(count_sql, total_count))
-            {
-                return false;
-            }
-
-            if (*total_count <= 0)
-            {
-                *total_pages = 0;
-                solutions->clear();
-                return true;
-            }
-
-            int safe_page = std::max(1, page);
-            int safe_size = std::max(1, std::min(size, 50));
-            *total_pages = (*total_count + safe_size - 1) / safe_size;
-            int safe_page_clamped = std::min(safe_page, *total_pages);
-            int offset = (safe_page_clamped - 1) * safe_size;
-
-            std::string order_clause = " order by id asc";
-            if (sort_order == "hot")
-            {
-                order_clause = " order by like_count desc, id asc";
-            }
-
-            std::ostringstream page_sql;
-            page_sql << "select id, question_id, user_id, title, content_md, like_count, favorite_count, comment_count, status, created_at, updated_at from "
-                      << SolutionsTable()
-                      << where_clause
-                      << order_clause
-                      << " limit " << safe_size << " offset " << offset;
-
-            MYSQL_RES* res = nullptr;
-            res = QueryMySql(my.get(), page_sql.str(), "MySql题解列表查询错误");
-            if (!res) return false;
-
-            int rows = mysql_num_rows(res);
-            solutions->clear();
-            solutions->reserve(rows);
-            for (int i = 0; i < rows; ++i)
-            {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr) continue;
-
-                Solution s;
-                try
+                database = std::make_unique<ns_odb::ScopedDB>(AcquireDatabase());
+                if (database->Get() == nullptr)
+                    return false;
                 {
-                    s.id = (row[0] != nullptr) ? std::stoull(row[0]) : 0;
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionsByPage.ODBBegin");
+                    transaction = std::make_unique<odb::transaction>((*database)->begin());
                 }
-                catch (const std::exception&) { s.id = 0; }
-                s.question_id = (row[1] != nullptr) ? row[1] : "";
-                s.user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
-                s.title = (row[3] != nullptr) ? row[3] : "";
-                s.content_md = (row[4] != nullptr) ? row[4] : "";
-                s.like_count = (row[5] != nullptr) ? static_cast<unsigned int>(std::atoi(row[5])) : 0;
-                s.favorite_count = (row[6] != nullptr) ? static_cast<unsigned int>(std::atoi(row[6])) : 0;
-                s.comment_count = (row[7] != nullptr) ? static_cast<unsigned int>(std::atoi(row[7])) : 0;
-                s.status = (row[8] != nullptr) ? DbStringToSolutionStatus(row[8]) : SolutionStatus::approved;
-                s.created_at = (row[9] != nullptr) ? row[9] : "";
-                s.updated_at = (row[10] != nullptr) ? row[10] : "";
-                solutions->push_back(s);
+
+                using CountQuery = odb::query<oj::db::SolutionCount>;
+                std::unique_ptr<oj::db::SolutionCount> count;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionsByPage.ODBCount");
+                    count.reset((*database)->query_one<oj::db::SolutionCount>(
+                        BuildSolutionQuery<CountQuery>(question_id, status_filter)));
+                }
+                if (!count || count->value > static_cast<uint64_t>(std::numeric_limits<int>::max()))
+                    throw std::overflow_error("solution count exceeds legacy int range");
+                *total_count = static_cast<int>(count->value);
+                *total_pages = *total_count == 0
+                    ? 0 : (*total_count - 1) / safe_size + 1;
+                const int effective_page = *total_pages > 0
+                    ? std::min(safe_page, *total_pages) : safe_page;
+                const uint64_t offset = static_cast<uint64_t>(effective_page - 1) *
+                                        static_cast<uint64_t>(safe_size);
+
+                using Query = odb::query<oj::db::Solution>;
+                Query page_query = BuildSolutionQuery<Query>(question_id, status_filter);
+                if (sort_order == "hot")
+                    page_query += " ORDER BY like_count DESC, id ASC LIMIT ";
+                else
+                    page_query += " ORDER BY id ASC LIMIT ";
+                page_query += std::to_string(safe_size) + " OFFSET " + std::to_string(offset);
+
+                odb::result<oj::db::Solution> result;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionsByPage.ODBQuery");
+                    result = (*database)->query<oj::db::Solution>(page_query, false);
+                }
+                solutions->reserve(static_cast<size_t>(safe_size));
+                {
+                    for (const auto& record : result)
+                        solutions->push_back(record);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionsByPage.ODBCommit");
+                    transaction->commit();
+                }
+            }
+            catch (const std::exception& error)
+            {
+                if (transaction && !transaction->finalized())
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionsByPage.ODBRollback");
+                        transaction->rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB题解列表查询失败: ", error.what());
+                return false;
             }
 
-            mysql_free_result(res);
-
-            // Write to cache
             Json::Value root(Json::objectValue);
             root["total"] = *total_count;
             root["total_pages"] = *total_pages;
-            Json::Value array_value(Json::arrayValue);
-            for (const auto& s : *solutions)
+            Json::Value array(Json::arrayValue);
+            for (const auto& solution : *solutions)
             {
                 Json::Value item;
-                item["id"] = static_cast<Json::UInt64>(s.id);
-                item["question_id"] = s.question_id;
-                item["user_id"] = s.user_id;
-                item["title"] = s.title;
-                item["content_md"] = s.content_md;
-                item["like_count"] = s.like_count;
-                item["favorite_count"] = s.favorite_count;
-                item["comment_count"] = s.comment_count;
-                item["status"] = SolutionStatusToDbString(s.status);
-                item["created_at"] = s.created_at;
-                item["updated_at"] = s.updated_at;
-                array_value.append(item);
+                item["id"] = static_cast<Json::UInt64>(solution.id);
+                item["question_id"] = solution.question_id;
+                item["user_id"] = solution.user_id;
+                item["title"] = solution.title;
+                item["content_md"] = solution.content_md;
+                item["like_count"] = solution.like_count;
+                item["favorite_count"] = solution.favorite_count;
+                item["comment_count"] = solution.comment_count;
+                item["status"] = solution.status;
+                item["created_at"] = oj::util::TimeUtil::DateTimeToInt(solution.created_at);
+                item["updated_at"] = oj::util::TimeUtil::DateTimeToInt(solution.updated_at);
+                array.append(item);
             }
-            root["solutions"] = array_value;
+            root["solutions"] = array;
             Json::FastWriter writer;
-            std::string json_str = writer.write(root);
-            _cache.SetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), json_str,
+            _cache.SetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), writer.write(root),
                                      _cache.BuildJitteredTtl(600, 120));
-            LOG_INFO("{}{}", "Cache miss for solution list, written to cache ", cache_key->GetCacheKeyString(&_cache));
+            LOG_INFO("{}{}", "Cache miss for solution list, written to cache ",
+                     cache_key->GetCacheKeyString(&_cache));
+
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - _metrics_begin).count();
             RecordCacheMetrics(RecordActionType::Solution, false, true, cost_ms);
@@ -292,7 +306,8 @@ namespace ns_model
 
         bool GetSolutionById(long long solution_id, Solution* solution)
         {
-            if (solution == nullptr)
+            if (solution == nullptr || solution_id <= 0 ||
+                static_cast<unsigned long long>(solution_id) > std::numeric_limits<uint32_t>::max())
             {
                 return false;
             }
@@ -318,9 +333,9 @@ namespace ns_model
                     solution->like_count = json_value["like_count"].asUInt();
                     solution->favorite_count = json_value["favorite_count"].asUInt();
                     solution->comment_count = json_value["comment_count"].asUInt();
-                    solution->status = DbStringToSolutionStatus(json_value["status"].asString());
-                    solution->created_at = json_value["created_at"].asString();
-                    solution->updated_at = json_value["updated_at"].asString();
+                    solution->status = json_value["status"].asString();
+                    solution->created_at = oj::util::TimeUtil::IntToDateTime(json_value["created_at"].asInt64());
+                    solution->updated_at = oj::util::TimeUtil::IntToDateTime(json_value["updated_at"].asInt64());
                     LOG_INFO("{}{}", "Cache hit for solution detail ", cache_key->GetCacheKeyString(&_cache));
                     long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - _metrics_begin).count();
@@ -329,51 +344,48 @@ namespace ns_model
                 }
             }
 
-            auto my = CreateConnection();
-            if (!my)
-            {
-                return false;
-            }
-
-            std::ostringstream sql;
-            sql << "select id, question_id, user_id, title, content_md, like_count, favorite_count, comment_count, status, created_at, updated_at from "
-                << SolutionsTable() << " where id=" << solution_id;
-
-            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql题解详情查询错误");
-            if (!res) return false;
-
-            int rows = mysql_num_rows(res);
-            if (rows != 1)
-            {
-                mysql_free_result(res);
-                return false;
-            }
-
-            MYSQL_ROW row = mysql_fetch_row(res);
-            if (row == nullptr)
-            {
-                mysql_free_result(res);
-                return false;
-            }
-
-            solution->id = 0;
+            std::unique_ptr<ns_odb::ScopedDB> database;
+            std::unique_ptr<odb::transaction> transaction;
             try
             {
-                if (row[0] != nullptr) solution->id = std::stoull(row[0]);
+                database = std::make_unique<ns_odb::ScopedDB>(AcquireDatabase());
+                if (database->Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionById.ODBBegin");
+                    transaction = std::make_unique<odb::transaction>((*database)->begin());
+                }
+                std::unique_ptr<oj::db::Solution> record;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionById.ODBQuery");
+                    record.reset((*database)->query_one<oj::db::Solution>(
+                        odb::query<oj::db::Solution>::id == static_cast<uint32_t>(solution_id)));
+                }
+                if (!record)
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionById.ODBCommit");
+                    transaction->commit();
+                    return false;
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionById.ODBCommit");
+                    transaction->commit();
+                }
             }
-            catch (const std::exception&) { solution->id = 0; }
-            solution->question_id = (row[1] != nullptr) ? row[1] : "";
-            solution->user_id = (row[2] != nullptr) ? std::atoi(row[2]) : 0;
-            solution->title = (row[3] != nullptr) ? row[3] : "";
-            solution->content_md = (row[4] != nullptr) ? row[4] : "";
-            solution->like_count = (row[5] != nullptr) ? static_cast<unsigned int>(std::atoi(row[5])) : 0;
-            solution->favorite_count = (row[6] != nullptr) ? static_cast<unsigned int>(std::atoi(row[6])) : 0;
-            solution->comment_count = (row[7] != nullptr) ? static_cast<unsigned int>(std::atoi(row[7])) : 0;
-            solution->status = (row[8] != nullptr) ? DbStringToSolutionStatus(row[8]) : SolutionStatus::approved;
-            solution->created_at = (row[9] != nullptr) ? row[9] : "";
-            solution->updated_at = (row[10] != nullptr) ? row[10] : "";
-
-            mysql_free_result(res);
+            catch (const std::exception& error)
+            {
+                if (transaction && !transaction->finalized())
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionById.ODBRollback");
+                        transaction->rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB题解详情查询失败: ", error.what());
+                return false;
+            }
 
             // Write to cache
             Json::Value json_value;
@@ -385,9 +397,9 @@ namespace ns_model
             json_value["like_count"] = solution->like_count;
             json_value["favorite_count"] = solution->favorite_count;
             json_value["comment_count"] = solution->comment_count;
-            json_value["status"] = SolutionStatusToDbString(solution->status);
-            json_value["created_at"] = solution->created_at;
-            json_value["updated_at"] = solution->updated_at;
+            json_value["status"] = solution->status;
+            json_value["created_at"] = oj::util::TimeUtil::DateTimeToInt(solution->created_at);
+            json_value["updated_at"] = oj::util::TimeUtil::DateTimeToInt(solution->updated_at);
             Json::FastWriter writer;
             std::string json_str = writer.write(json_value);
             _cache.SetStringByAnyKey(cache_key->GetCacheKeyString(&_cache), json_str,
@@ -408,130 +420,114 @@ namespace ns_model
                 return false;
             }
 
+            if (action_type != "like" && action_type != "favorite")
+                return false;
+            if (solution_id <= 0 || user_id <= 0 ||
+                static_cast<unsigned long long>(solution_id) > std::numeric_limits<uint32_t>::max())
+                return false;
+
             auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if (!my)
+            std::string question_id;
+            std::unique_ptr<ns_odb::ScopedDB> database;
+            std::unique_ptr<odb::transaction> transaction;
+            try
             {
+                database = std::make_unique<ns_odb::ScopedDB>(AcquireDatabase());
+                if (database->Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.ToggleSolutionAction.ODBBegin");
+                    transaction = std::make_unique<odb::transaction>((*database)->begin());
+                }
+
+                using SolutionQuery = odb::query<oj::db::Solution>;
+                SolutionQuery solution_query(
+                    SolutionQuery::id == static_cast<uint32_t>(solution_id));
+                solution_query += " FOR UPDATE";
+                std::unique_ptr<oj::db::Solution> solution;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.ToggleSolutionAction.ODBLockQuery");
+                    solution.reset((*database)->query_one<oj::db::Solution>(solution_query));
+                }
+                if (!solution)
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.ToggleSolutionAction.ODBRollback");
+                    transaction->rollback();
+                    return false;
+                }
+                question_id = solution->question_id;
+
+                using ActionQuery = odb::query<oj::db::SolutionAction>;
+                const ActionQuery action_query(
+                    ActionQuery::solution_id == static_cast<uint32_t>(solution_id) &&
+                    ActionQuery::user_id == static_cast<uint32_t>(user_id) &&
+                    ActionQuery::action_type == action_type);
+                std::unique_ptr<oj::db::SolutionAction> action;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.ToggleSolutionAction.ODBActionQuery");
+                    action.reset((*database)->query_one<oj::db::SolutionAction>(action_query));
+                }
+
+                uint32_t& count = action_type == "like"
+                    ? solution->like_count : solution->favorite_count;
+                if (action)
+                {
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelSolution.ToggleSolutionAction.ODBErase");
+                        (*database)->erase(*action);
+                    }
+                    if (count > 0)
+                        --count;
+                    *now_active = false;
+                }
+                else
+                {
+                    if (count == std::numeric_limits<uint32_t>::max())
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelSolution.ToggleSolutionAction.ODBRollback");
+                        transaction->rollback();
+                        return false;
+                    }
+                    oj::db::SolutionAction new_action{};
+                    new_action.solution_id = static_cast<uint32_t>(solution_id);
+                    new_action.user_id = static_cast<uint32_t>(user_id);
+                    new_action.action_type = action_type;
+                    new_action.created_at = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelSolution.ToggleSolutionAction.ODBPersist");
+                        (*database)->persist(new_action);
+                    }
+                    ++count;
+                    *now_active = true;
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.ToggleSolutionAction.ODBUpdate");
+                    (*database)->update(*solution);
+                }
+                *new_count = count;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.ToggleSolutionAction.ODBCommit");
+                    transaction->commit();
+                }
+            }
+            catch (const std::exception& error)
+            {
+                if (transaction && !transaction->finalized())
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelSolution.ToggleSolutionAction.ODBRollback");
+                        transaction->rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB切换题解交互失败: ", error.what());
                 return false;
             }
-
-            std::string safe_action = EscapeSqlString(action_type, my.get());
-
-            std::string count_column;
-            if (action_type == "like")
-            {
-                count_column = "like_count";
-            }
-            else if (action_type == "favorite")
-            {
-                count_column = "favorite_count";
-            }
-            else
-            {
-                return false;
-            }
-
-            std::ostringstream check_sql;
-            check_sql << "select id from " << SolutionActionsTable()
-                      << " where solution_id=" << solution_id
-                      << " and user_id=" << user_id
-                      << " and action_type='" << safe_action << "'";
-
-            MYSQL_RES* res = QueryMySql(my.get(), check_sql.str(), "MySql查询交互记录错误");
-            if (!res) return false;
-
-            int exist_rows = mysql_num_rows(res);
-            mysql_free_result(res);
-
-            if (exist_rows > 0)
-            {
-                std::ostringstream del_sql;
-                del_sql << "delete from " << SolutionActionsTable()
-                        << " where solution_id=" << solution_id
-                        << " and user_id=" << user_id
-                        << " and action_type='" << safe_action << "'";
-
-                if (mysql_query(my.get(), del_sql.str().c_str()) != 0)
-                {
-                    LOG_CRITICAL("{}", "MySql删除交互记录错误!");
-                    return false;
-                }
-
-                std::ostringstream dec_sql;
-                dec_sql << "update " << SolutionsTable()
-                        << " set " << count_column << "=" << count_column << "-1"
-                        << " where id=" << solution_id;
-
-                if (mysql_query(my.get(), dec_sql.str().c_str()) != 0)
-                {
-                    LOG_CRITICAL("{}", "MySql更新计数错误!");
-                    return false;
-                }
-
-                *now_active = false;
-            }
-            else
-            {
-                std::ostringstream ins_sql;
-                ins_sql << "insert into " << SolutionActionsTable()
-                        << " (solution_id, user_id, action_type, created_at) values ("
-                        << solution_id << ", " << user_id << ", '" << safe_action << "', NOW())";
-
-                if (mysql_query(my.get(), ins_sql.str().c_str()) != 0)
-                {
-                    LOG_CRITICAL("{}", "MySql插入交互记录错误!");
-                    return false;
-                }
-
-                std::ostringstream inc_sql;
-                inc_sql << "update " << SolutionsTable()
-                        << " set " << count_column << "=" << count_column << "+1"
-                        << " where id=" << solution_id;
-
-                if (mysql_query(my.get(), inc_sql.str().c_str()) != 0)
-                {
-                    LOG_CRITICAL("{}", "MySql更新计数错误!");
-                    return false;
-                }
-
-                *now_active = true;
-            }
-
-            std::ostringstream cnt_sql;
-            cnt_sql << "select " << count_column << " from " << SolutionsTable() << " where id=" << solution_id;
-
-            MYSQL_RES* cnt_res = QueryMySql(my.get(), cnt_sql.str(), "MySql查询计数错误");
-            if (!cnt_res) return false;
-
-            MYSQL_ROW cnt_row = mysql_fetch_row(cnt_res);
-            if (cnt_row == nullptr || cnt_row[0] == nullptr)
-            {
-                mysql_free_result(cnt_res);
-                return false;
-            }
-
-                *new_count = static_cast<unsigned int>(std::atoi(cnt_row[0]));
-                mysql_free_result(cnt_res);
 
             auto detail_key = _cache.BuildSolutionDetailCacheKey(solution_id);
-            std::string detail_key_str = detail_key->GetCacheKeyString(&_cache);
-            std::string cached_detail;
-            if (_cache.GetStringByAnyKey(detail_key_str, &cached_detail))
-            {
-                Json::CharReaderBuilder builder;
-                Json::Value val;
-                std::istringstream ss(cached_detail);
-                if (Json::parseFromStream(builder, ss, &val, nullptr))
-                {
-                    if (action_type == "like" && val.isMember("like_count"))
-                        val["like_count"] = *new_count;
-                    else if (action_type == "favorite" && val.isMember("favorite_count"))
-                        val["favorite_count"] = *new_count;
-                    Json::FastWriter writer;
-                    _cache.SetStringByAnyKey(detail_key_str, writer.write(val), _cache.BuildJitteredTtl(600, 120));
-                    LOG_INFO("{}{}", "Updated solution detail cache after action toggle for solution ", solution_id);
-                }
-            }
+            _cache.DeleteStringByAnyKey(detail_key->GetCacheKeyString(&_cache));
+            InvalidateSolutionListCaches(question_id);
 
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
@@ -544,42 +540,70 @@ namespace ns_model
         {
             if (solution_ids.empty())
             {
+                actions.clear();
                 return true;
             }
 
+            if (user_id < 0)
+                return false;
+
+            actions.clear();
+
             auto begin = std::chrono::steady_clock::now();
-            auto my = CreateConnection();
-            if (!my)
+            std::vector<uint32_t> ids;
+            ids.reserve(solution_ids.size());
+            for (long long id : solution_ids)
             {
+                if (id >= 0 && static_cast<unsigned long long>(id) <= std::numeric_limits<uint32_t>::max())
+                    ids.push_back(static_cast<uint32_t>(id));
+            }
+            if (ids.empty())
+                return true;
+
+            std::unique_ptr<ns_odb::ScopedDB> database;
+            std::unique_ptr<odb::transaction> transaction;
+            try
+            {
+                database = std::make_unique<ns_odb::ScopedDB>(AcquireDatabase());
+                if (database->Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetUserActionsForSolutions.ODBBegin");
+                    transaction = std::make_unique<odb::transaction>((*database)->begin());
+                }
+                using Query = odb::query<oj::db::SolutionAction>;
+                const Query query(
+                    Query::user_id == static_cast<uint32_t>(user_id) &&
+                    Query::solution_id.in_range(ids.begin(), ids.end()));
+                odb::result<oj::db::SolutionAction> result;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetUserActionsForSolutions.ODBQuery");
+                    result = (*database)->query<oj::db::SolutionAction>(query, false);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetUserActionsForSolutions.ODBLazyIteration");
+                    for (const auto& action : result)
+                        actions[action.solution_id][action.action_type] = true;
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetUserActionsForSolutions.ODBCommit");
+                    transaction->commit();
+                }
+            }
+            catch (const std::exception& error)
+            {
+                if (transaction && !transaction->finalized())
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetUserActionsForSolutions.ODBRollback");
+                        transaction->rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB查询用户题解交互失败: ", error.what());
                 return false;
             }
-
-            std::ostringstream ids_stream;
-            for (size_t i = 0; i < solution_ids.size(); ++i)
-            {
-                if (i > 0) ids_stream << ",";
-                ids_stream << solution_ids[i];
-            }
-
-            std::ostringstream sql;
-            sql << "select solution_id, action_type from " << SolutionActionsTable()
-                << " where user_id=" << user_id
-                << " and solution_id in (" << ids_stream.str() << ")";
-
-            MYSQL_RES* res = QueryMySql(my.get(), sql.str(), "MySql查询用户交互记录错误");
-            if (!res) return false;
-
-            for (int i = 0; i < mysql_num_rows(res); ++i)
-            {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr) continue;
-                long long sid = 0;
-                try { sid = std::stoll(row[0]); } catch (const std::exception&) { sid = 0; }
-                std::string atype = row[1] ? row[1] : "";
-                actions[sid][atype] = true;
-            }
-
-            mysql_free_result(res);
             long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Solution, false, true, cost_ms);

@@ -4,17 +4,11 @@
 #include <assert.h>
 #include <string>
 #include <vector>
-#include <map>
 #include <mutex>
 #include <assert.h>
 #include <memory>
-#include <random>
-#include <chrono>
 #include <algorithm>
 #include <cctype>
-#include <sstream>
-#include <array>
-#include <iomanip>
 #include <sys/stat.h>
 #include "../model/oj_model.hpp"
 #include "../oj_view.hpp"
@@ -25,15 +19,16 @@
 #include <sw/redis++/redis++.h>
 #include <openssl/sha.h>
 #include "../../../comm/comm.hpp"
+#include "../../../comm/models/user.hxx"
 
 // ControlBase: 基础设施，所有controller层的公共基类 — 共享成员、Judge、静态页面、session管理
-namespace ns_control
+namespace oj::control
 {
-    using namespace ns_model;
-    using namespace oj_util;
-    using namespace ns_view;
-    using namespace ns_session;
-
+    using namespace oj::model;
+    using namespace oj::util;
+    using namespace oj::view;
+    using namespace oj::session;
+    using oj::db::User;
     //表示后端编译服务器的类
     class Machine
     {
@@ -205,18 +200,18 @@ namespace ns_control
 
         //判断题目正确，调用主机责任链
         // Forward optional custom_input/output to the compile server
-        void Judge(const std::string& number,const std::string& in_json,std::string* out_json,
+        void Judge(const std::string& id,const std::string& in_json,std::string* out_json,
                    const std::string& custom_input = "",
                    const std::string& custom_output = "")
         {
             Question q;
-            _model.Question().GetOneQuestion(number, q);
+            _model.Question().GetOneQuestion(id, q);
             Json::Reader reader;
             Json::Value in_value;
             reader.parse(in_json, in_value);
             std::string code = in_value["code"].asString();
             Json::Value compile_value;
-            compile_value["id"] = number;
+            compile_value["id"] = id;
             compile_value["code"] = code;
             // Forward custom test input/output to the compile server when provided
             if (!custom_input.empty()) {
@@ -375,15 +370,6 @@ namespace ns_control
         }
 
     protected:
-
-        std::string TrimSpace(const std::string& input) const
-        {
-            std::string out = input;
-            out.erase(out.begin(), std::find_if(out.begin(), out.end(), [](unsigned char ch){ return !std::isspace(ch); }));
-            out.erase(std::find_if(out.rbegin(), out.rend(), [](unsigned char ch){ return !std::isspace(ch); }).base(), out.end());
-            return out;
-        }
-
         /// 构建用户信息JSON（作者名称和头像）
         /// @param user_id 用户ID
         /// @param item 输出JSON对象
@@ -449,9 +435,9 @@ namespace ns_control
             item["like_count"] = s.like_count;
             item["favorite_count"] = s.favorite_count;
             item["comment_count"] = s.comment_count;
-            item["status"] = _model.Solution().SolutionStatusToDbString(s.status);
-            item["created_at"] = s.created_at;
-            item["updated_at"] = s.updated_at;
+            item["status"] = s.status;
+            item["created_at"] = oj::util::TimeUtil::DateTimeToInt(s.created_at);
+            item["updated_at"] = oj::util::TimeUtil::DateTimeToInt(s.updated_at);
         }
 
         /// Comment对象转JSON
@@ -463,15 +449,13 @@ namespace ns_control
             item["solution_id"] = Json::UInt64(c.solution_id);
             item["user_id"] = c.user_id;
             item["content"] = c.content;
-            item["is_edited"] = c.is_edited;
-            item["created_at"] = c.created_at;
-            item["updated_at"] = c.updated_at;
-            item["parent_id"] = Json::UInt64(c.parent_id);
-            item["reply_to_user_id"] = c.reply_to_user_id;
-            item["reply_to_user_name"] = c.reply_to_user_name;
+            item["is_edited"] = c.is_edited.get();
+            item["created_at"] =  oj::util::TimeUtil::DateTimeToInt(c.created_at.get());
+            item["updated_at"] = oj::util::TimeUtil::DateTimeToInt(c.updated_at.get());
+            item["parent_id"] = c.parent_id.get();
+            item["reply_to_user_id"] = c.reply_to_user_id.get();
             item["like_count"] = c.like_count;
             item["favorite_count"] = c.favorite_count;
-            item["author_name"] = c.author_name;
             // 使用文件系统查找用户头像，优先使用用户上传的头像
             {
                 User author; author.uid = c.user_id;
@@ -529,6 +513,6 @@ namespace ns_control
         CentralConsole _console;
         SessionManager _session_manager;
         sw::redis::Redis _auth_redis;
-        ns_mail::Mail _mail;
+        oj::mail::Mail _mail;
     };
 }

@@ -1,16 +1,16 @@
 #pragma once
 
-#include <cstdio>
 #include <assert.h>
 #include <cstdlib>
 #include <vector>
 #include <memory>
 #include <algorithm>
 #include <cctype>
-#include <sstream>
-#include <chrono>
 #include <atomic>
-#include <map>
+#include <condition_variable>
+#include <cstdint>
+#include <ctime>
+#include <limits>
 #include "../../../comm/comm.hpp"
 #include "../oj_cache.hpp"
 #include "model_base.hpp"
@@ -18,139 +18,65 @@
 #include "model_solution.hpp"
 #include "model_user.hpp"
 #include "model_question.hpp"
-#include <mysql/mysql.h>
 #include <thread>
 
 // model: 主要用来和数据进行交互，对外提供访问数据的接口
 
-namespace ns_model
+namespace oj::model
 {
-    using namespace ns_cache;
+    using namespace oj::cache;
     //用户属性
     class Model : public ModelBase
     {
     private:
-
-        bool QueryAdminAccount(const std::string& sql, AdminAccount* admin)
+        class DeferredScopedDB
         {
-            if (admin == nullptr)
+        public:
+            DeferredScopedDB& operator=(ns_odb::ScopedDB&& database)
             {
-                return false;
+                _database = std::make_unique<ns_odb::ScopedDB>(std::move(database));
+                return *this;
             }
 
-            auto my = CreateConnection();
-            if (!my)
-                return false;
+            odb::database* operator->() { return _database->Get(); }
+            odb::database& operator*() { return **_database; }
+            odb::database* Get() { return _database ? _database->Get() : nullptr; }
 
-            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql, "MySql管理员查询错误");
-            if (!res) return false;
+        private:
+            std::unique_ptr<ns_odb::ScopedDB> _database;
+        };
 
-            int rows = mysql_num_rows(res);
-            if (rows != 1)
-            {
-                mysql_free_result(res);
-                return false;
-            }
-
-            MYSQL_ROW row = mysql_fetch_row(res);
-            if (row == nullptr)
-            {
-                mysql_free_result(res);
-                return false;
-            }
-
-            admin->admin_id = row[0] == nullptr ? 0 : std::atoi(row[0]);
-            admin->password_hash = row[1] == nullptr ? "" : row[1];
-            admin->uid = row[2] == nullptr ? 0 : std::atoi(row[2]);
-            admin->role = row[3] == nullptr ? "" : row[3];
-            admin->created_at = row[4] == nullptr ? "" : row[4];
-            mysql_free_result(res);
-            return true;
-        }
-
-        bool QueryAdminAccounts(const std::string& sql, std::vector<AdminAccount>* admins)
-        {
-            if (admins == nullptr)
-            {
-                return false;
-            }
-
-            auto my = CreateConnection();
-            if (!my)
-                return false;
-
-            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql, "MySql管理员列表查询错误");
-            if (!res) return false;
-
-            int rows = mysql_num_rows(res);
-            admins->clear();
-            admins->reserve(rows);
-            for (int i = 0; i < rows; ++i)
-            {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr)
-                {
-                    continue;
-                }
-
-                AdminAccount admin;
-                admin.admin_id = row[0] == nullptr ? 0 : std::atoi(row[0]);
-                admin.password_hash = row[1] == nullptr ? "" : row[1];
-                admin.uid = row[2] == nullptr ? 0 : std::atoi(row[2]);
-                admin.role = row[3] == nullptr ? "" : row[3];
-                admin.created_at = row[4] == nullptr ? "" : row[4];
-                admins->push_back(admin);
-            }
-
-            mysql_free_result(res);
-            return true;
-        }
-
-        bool QueryAuditLogs(const std::string& sql, std::vector<AdminAuditLog>* logs)
-        {
-            if (logs == nullptr)
-            {
-                return false;
-            }
-
-            auto my = CreateConnection();
-            if (!my)
-                return false;
-
-            MYSQL_RES* res = ModelBase::QueryMySql(my.get(), sql, "MySql审计日志查询错误");
-            if (!res) return false;
-
-            int rows = mysql_num_rows(res);
-            logs->clear();
-            logs->reserve(rows);
-            for (int i = 0; i < rows; ++i)
-            {
-                MYSQL_ROW row = mysql_fetch_row(res);
-                if (row == nullptr)
-                {
-                    continue;
-                }
-
-                AdminAuditLog item;
-                item.request_id = row[0] == nullptr ? "" : row[0];
-                item.operator_admin_id = row[1] == nullptr ? 0 : std::atoi(row[1]);
-                item.operator_role = row[2] == nullptr ? "" : row[2];
-                item.action = row[3] == nullptr ? "" : row[3];
-                item.resource_type = row[4] == nullptr ? "" : row[4];
-                item.result = row[5] == nullptr ? "" : row[5];
-                item.payload_text = row[6] == nullptr ? "" : row[6];
-                logs->push_back(item);
-            }
-
-            mysql_free_result(res);
-            return true;
-        }
+        using ODBAdminAccount = oj::db::AdminAccount;
+        using ODBAdminAccountQuery = odb::query<ODBAdminAccount>;
+        using ODBAdminAccountCount = oj::db::AdminAccountCount;
+        using ODBAdminAccountCountQuery = odb::query<ODBAdminAccountCount>;
+        using ODBAdminAuditLog = oj::db::AdminAuditLog;
+        using ODBAdminAuditLogQuery = odb::query<ODBAdminAuditLog>;
+        using ODBAdminAuditLogCount = oj::db::AdminAuditLogCount;
+        using ODBAdminAuditLogCountQuery = odb::query<ODBAdminAuditLogCount>;
+        using ODBCacheMetricsSnapshot = oj::db::CacheMetricsSnapshot;
+        using ODBCacheMetricsSnapshotQuery = odb::query<ODBCacheMetricsSnapshot>;
+        using ODBCacheMetricsAggregate = oj::db::CacheMetricsAggregateView;
 
     public:
+        struct CacheMetricsAggregate
+        {
+            int action_type = 0;
+            long long total_requests = 0;
+            long long cache_hits = 0;
+            long long db_fallbacks = 0;
+            long long total_ms = 0;
+        };
+
         ModelComment  _comment;
         ModelSolution _solution;
         ModelUser     _user;
         ModelQuestion _question;
+
+        ~Model()
+        {
+            StopMetricsFlushWorker();
+        }
         
         ModelComment&  Comment()  { return _comment; }
         ModelSolution& Solution() { return _solution; }
@@ -222,20 +148,109 @@ namespace ns_model
         bool GetAdminByUid(int uid)
         {
             AdminAccount admin;
-            std::string sql = "select admin_id,password_hash,uid,role,created_at from " + AdminAccountsTable() + " where uid=" + std::to_string(uid);
-            return QueryAdminAccount(sql, &admin);
+            return GetAdminByUid(uid, &admin);
         }
 
         bool GetAdminByUid(int uid, AdminAccount* admin)
         {
-            std::string sql = "select admin_id,password_hash,uid,role,created_at from " + AdminAccountsTable() + " where uid=" + std::to_string(uid);
-            return QueryAdminAccount(sql, admin);
+            if (admin == nullptr || uid < 0)
+                return false;
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
+            {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminByUid.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminByUid.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                odb::result<ODBAdminAccount> result;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminByUid.ODBQuery");
+                    result = database->query<ODBAdminAccount>(ODBAdminAccountQuery::uid == static_cast<uint32_t>(uid));
+                }
+                std::vector<ODBAdminAccount> matched;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminByUid.ODBLazyIteration");
+                    for (const auto& item : result)
+                        matched.push_back(item);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminByUid.ODBCommit");
+                    transaction->Commit();
+                }
+                if (matched.size() != 1)
+                    return false;
+                *admin = matched.front();
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.GetAdminByUid.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB admin uid query failed: ", e.what());
+                return false;
+            }
         }
 
         bool GetAdminByAdminId(int admin_id, AdminAccount* admin)
         {
-            std::string sql = "select admin_id,password_hash,uid,role,created_at from " + AdminAccountsTable() + " where admin_id=" + std::to_string(admin_id);
-            return QueryAdminAccount(sql, admin);
+            if (admin == nullptr || admin_id < 0)
+                return false;
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
+            {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminByAdminId.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminByAdminId.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                std::unique_ptr<ODBAdminAccount> item;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminByAdminId.ODBLoad");
+                    item.reset(database->find<ODBAdminAccount>(static_cast<uint32_t>(admin_id)));
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminByAdminId.ODBCommit");
+                    transaction->Commit();
+                }
+                if (!item)
+                    return false;
+                *admin = *item;
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.GetAdminByAdminId.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB admin id query failed: ", e.what());
+                return false;
+            }
         }
 
         bool GetAdminCount(int* count)
@@ -244,6 +259,7 @@ namespace ns_model
             {
                 return false;
             }
+            std::lock_guard<std::mutex> mutation_lock(_admin_mutation_mutex);
             std::string key = "admin_counts";
             std::string value;
             if(_cache.GetStringByAnyKey(key, &value))
@@ -252,13 +268,55 @@ namespace ns_model
                 LOG_INFO("{}", "Cache hit for admin count");
                 return true;
             }
-            std::string sql = "select count(*) from " + AdminAccountsTable();
-            if(!QueryCount(sql, count))
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminCount.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminCount.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                int found = 0;
+                {
+                    odb::result<ODBAdminAccountCount> result;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.GetAdminCount.ODBQuery");
+                        result = database->query<ODBAdminAccountCount>();
+                    }
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.GetAdminCount.ODBLazyIteration");
+                        for (const auto& item : result)
+                            found = static_cast<int>(item.value);
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetAdminCount.ODBCommit");
+                    transaction->Commit();
+                }
+                *count = found;
+                _cache.SetStringByAnyKey(key, std::to_string(*count), _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.GetAdminCount.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB admin count failed: ", e.what());
                 return false;
-             }
-             _cache.SetStringByAnyKey(key, std::to_string(*count), _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
-             return true;
+            }
         }
 
         bool GetRoleCount(const std::string& role, int* count)
@@ -267,27 +325,64 @@ namespace ns_model
             {
                 return false;
             }
+            std::lock_guard<std::mutex> mutation_lock(_admin_mutation_mutex);
+            const std::string cache_key = "admin_role_count:" + role;
             std::string value;
-            if(_cache.GetStringByAnyKey(role, &value))
+            if(_cache.GetStringByAnyKey(cache_key, &value))
             {
                 *count = std::atoi(value.c_str());
                 LOG_INFO("{}{}", "Cache hit for role count of role ", role);
                 return true;
             }
-            auto my = CreateConnection();
-            if (!my)
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetRoleCount.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetRoleCount.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                int found = 0;
+                {
+                    odb::result<ODBAdminAccountCount> result_set;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.GetRoleCount.ODBQuery");
+                        result_set = database->query<ODBAdminAccountCount>(ODBAdminAccountCountQuery::role == role);
+                    }
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.GetRoleCount.ODBLazyIteration");
+                        for (const auto& item : result_set)
+                            found = static_cast<int>(item.value);
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetRoleCount.ODBCommit");
+                    transaction->Commit();
+                }
+                *count = found;
+                _cache.SetStringByAnyKey(cache_key, std::to_string(*count), _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.GetRoleCount.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB admin role count failed: ", e.what());
                 return false;
             }
-
-            std::string safe_role = EscapeSqlString(role, my.get());
-            std::string sql = "select count(*) from " + AdminAccountsTable() + " where role='" + safe_role + "'";
-            if(!QueryCount(sql, count))
-            {
-                return false;
-             }
-             _cache.SetStringByAnyKey(role, std::to_string(*count), _cache.BuildJitteredTtl(6 * 60 * 60, 30 * 60));
-             return true;
         }
 
         bool ListAdminsPaged(int page, int size, const std::string& keyword, std::vector<AdminAccount>* admins, int* total_count)
@@ -299,100 +394,339 @@ namespace ns_model
 
             int safe_page = std::max(1, page);
             int safe_size = std::max(1, std::min(size, 200));
-            int offset = (safe_page - 1) * safe_size;
-
-            auto my = CreateConnection();
-            if (!my)
-            {
-                return false;
-            }
-
-            std::string where_clause;
+            long long offset = static_cast<long long>(safe_page - 1) * safe_size;
             std::string trimmed_keyword = TrimCopy(keyword);
-            if (!trimmed_keyword.empty())
+            ODBAdminAccountQuery condition(true);
+            ODBAdminAccountCountQuery count_condition(true);
+            if (!trimmed_keyword.empty() && IsAllDigits(trimmed_keyword))
             {
-                std::string safe_kw = EscapeSqlString(trimmed_keyword, my.get());
-                if (IsAllDigits(trimmed_keyword))
+                char* end = nullptr;
+                unsigned long long parsed = std::strtoull(trimmed_keyword.c_str(), &end, 10);
+                if (end != nullptr && *end == '\0' && parsed <= std::numeric_limits<uint32_t>::max())
                 {
-                    where_clause = " where uid=" + trimmed_keyword + " or role like '%" + safe_kw + "%'";
+                    condition = ODBAdminAccountQuery::uid == static_cast<uint32_t>(parsed) ||
+                                ODBAdminAccountQuery::role.like("%" + trimmed_keyword + "%");
+                    count_condition = ODBAdminAccountCountQuery::uid == static_cast<uint32_t>(parsed) ||
+                                      ODBAdminAccountCountQuery::role.like("%" + trimmed_keyword + "%");
                 }
                 else
                 {
-                    where_clause = " where role like '%" + safe_kw + "%'";
+                    condition = ODBAdminAccountQuery::role.like("%" + trimmed_keyword + "%");
+                    count_condition = ODBAdminAccountCountQuery::role.like("%" + trimmed_keyword + "%");
                 }
             }
-
-            std::string count_sql = "select count(*) from " + AdminAccountsTable() + where_clause;
-            if (!QueryCount(count_sql, total_count))
+            else if (!trimmed_keyword.empty())
             {
+                condition = ODBAdminAccountQuery::role.like("%" + trimmed_keyword + "%");
+                count_condition = ODBAdminAccountCountQuery::role.like("%" + trimmed_keyword + "%");
+            }
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
+            {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.ListAdminsPaged.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.ListAdminsPaged.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                {
+                    odb::result<ODBAdminAccountCount> count_result;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.ListAdminsPaged.ODBCountQuery");
+                        count_result = database->query<ODBAdminAccountCount>(count_condition);
+                    }
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.ListAdminsPaged.ODBCountLazyIteration");
+                        *total_count = 0;
+                        for (const auto& item : count_result)
+                            *total_count = static_cast<int>(item.value);
+                    }
+                }
+
+                condition += "ORDER BY" + ODBAdminAccountQuery::admin_id + "DESC LIMIT" +
+                             ODBAdminAccountQuery::_val(static_cast<uint64_t>(safe_size)) + "OFFSET" +
+                             ODBAdminAccountQuery::_val(static_cast<uint64_t>(offset));
+                admins->clear();
+                {
+                    odb::result<ODBAdminAccount> result;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.ListAdminsPaged.ODBQuery");
+                        result = database->query<ODBAdminAccount>(condition);
+                    }
+                    admins->reserve(static_cast<size_t>(safe_size));
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.ListAdminsPaged.ODBLazyIteration");
+                        for (const auto& item : result)
+                            admins->push_back(item);
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.ListAdminsPaged.ODBCommit");
+                    transaction->Commit();
+                }
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.ListAdminsPaged.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB admin list failed: ", e.what());
                 return false;
             }
-
-            std::ostringstream sql;
-            sql << "select admin_id,password_hash,uid,role,created_at from " << AdminAccountsTable()
-                << where_clause
-                << " order by admin_id desc limit " << safe_size << " offset " << offset;
-            return QueryAdminAccounts(sql.str(), admins);
         }
 
         bool CreateAdminAccount(int uid, const std::string& password_hash, const std::string& role)
         {
-            auto my = CreateConnection();
-            if (!my)
+            if (uid < 0)
+                return false;
+            std::lock_guard<std::mutex> mutation_lock(_admin_mutation_mutex);
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.CreateAdminAccount.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.CreateAdminAccount.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                if (role == "super_admin")
+                {
+                    odb::result<ODBAdminAccount> existing;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.CreateAdminAccount.ODBCheckSuperAdmin");
+                        existing = database->query<ODBAdminAccount>(ODBAdminAccountQuery::role == "super_admin");
+                    }
+                    if (existing.begin() != existing.end())
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.CreateAdminAccount.ODBRollback");
+                        transaction->Rollback();
+                        return false;
+                    }
+                }
+                ODBAdminAccount item{};
+                item.uid = static_cast<uint32_t>(uid);
+                item.password_hash = password_hash;
+                item.role = role;
+                item.created_at = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.CreateAdminAccount.ODBPersist");
+                    database->persist(item);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.CreateAdminAccount.ODBCommit");
+                    transaction->Commit();
+                }
+                _cache.DeleteStringByAnyKey("admin_counts");
+                _cache.DeleteStringByAnyKey("admin_role_count:" + role);
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.CreateAdminAccount.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB admin create failed: ", e.what());
                 return false;
             }
-
-            std::string safe_hash = EscapeSqlString(password_hash, my.get());
-            std::string safe_role = EscapeSqlString(role, my.get());
-            std::string sql = "insert into " + AdminAccountsTable() +
-                              " (password_hash, uid, role, created_at) values ('" + safe_hash + "', " + std::to_string(uid) + ", '" + safe_role + "', NOW())";
-            return ExecuteSql(sql);
         }
 
         bool UpdateAdminRole(int admin_id, const std::string& new_role)
         {
-            auto my = CreateConnection();
-            if (!my)
+            if (admin_id < 0)
+                return false;
+            std::lock_guard<std::mutex> mutation_lock(_admin_mutation_mutex);
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.UpdateAdminRole.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.UpdateAdminRole.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                std::unique_ptr<ODBAdminAccount> item;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.UpdateAdminRole.ODBLoad");
+                    item.reset(database->find<ODBAdminAccount>(static_cast<uint32_t>(admin_id)));
+                }
+                if (!item)
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.UpdateAdminRole.ODBCommit");
+                    transaction->Commit();
+                    return true;
+                }
+                const std::string old_role = item->role;
+                item->role = new_role;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.UpdateAdminRole.ODBUpdate");
+                    database->update(*item);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.UpdateAdminRole.ODBCommit");
+                    transaction->Commit();
+                }
+                _cache.DeleteStringByAnyKey("admin_role_count:" + old_role);
+                _cache.DeleteStringByAnyKey("admin_role_count:" + new_role);
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.UpdateAdminRole.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB admin role update failed: ", e.what());
                 return false;
             }
-
-            std::string safe_role = EscapeSqlString(new_role, my.get());
-            std::string sql = "update " + AdminAccountsTable() + " set role='" + safe_role + "' where admin_id=" + std::to_string(admin_id);
-            return ExecuteSql(sql);
         }
 
         bool DeleteAdminAccount(int admin_id)
         {
-            std::string sql = "delete from " + AdminAccountsTable() + " where admin_id=" + std::to_string(admin_id);
-            return ExecuteSql(sql);
+            if (admin_id < 0)
+                return false;
+            std::lock_guard<std::mutex> mutation_lock(_admin_mutation_mutex);
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
+            {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.DeleteAdminAccount.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.DeleteAdminAccount.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                std::unique_ptr<ODBAdminAccount> item;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.DeleteAdminAccount.ODBLoad");
+                    item.reset(database->find<ODBAdminAccount>(static_cast<uint32_t>(admin_id)));
+                }
+                if (!item)
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.DeleteAdminAccount.ODBCommit");
+                    transaction->Commit();
+                    return true;
+                }
+                const std::string old_role = item->role;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.DeleteAdminAccount.ODBErase");
+                    database->erase(*item);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.DeleteAdminAccount.ODBCommit");
+                    transaction->Commit();
+                }
+                _cache.DeleteStringByAnyKey("admin_counts");
+                _cache.DeleteStringByAnyKey("admin_role_count:" + old_role);
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.DeleteAdminAccount.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB admin delete failed: ", e.what());
+                return false;
+            }
         }
 
         bool InsertAdminAuditLog(const AdminAuditLog& log)
         {
-            auto my = CreateConnection();
-            if (!my)
+            if (log.operator_admin_id < 0 || log.operator_uid < 0)
+                return false;
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
-                LOG_CRITICAL("{}", "无法连接数据库，无法记录审计日志!");
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.InsertAdminAuditLog.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                {
+                    LOG_CRITICAL("{}", "无法连接数据库，无法记录审计日志!");
+                    return false;
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.InsertAdminAuditLog.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                ODBAdminAuditLog item{};
+                item.request_id = log.request_id;
+                item.operator_admin_id = static_cast<uint32_t>(log.operator_admin_id);
+                item.operator_uid = static_cast<uint32_t>(log.operator_uid);
+                item.operator_role = log.operator_role;
+                item.action = log.action;
+                item.resource_type = log.resource_type;
+                item.result = log.result;
+                item.created_at = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());
+                item.payload_text = log.payload_text;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.InsertAdminAuditLog.ODBPersist");
+                    database->persist(item);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.InsertAdminAuditLog.ODBCommit");
+                    transaction->Commit();
+                }
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.InsertAdminAuditLog.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB audit insert failed: ", e.what());
                 return false;
             }
-
-            std::string safe_request_id = EscapeSqlString(log.request_id, my.get());
-            std::string safe_role = EscapeSqlString(log.operator_role, my.get());
-            std::string safe_action = EscapeSqlString(log.action, my.get());
-            std::string safe_resource_type = EscapeSqlString(log.resource_type, my.get());
-            std::string safe_result = EscapeSqlString(log.result, my.get());
-            std::string safe_payload = EscapeSqlString(log.payload_text, my.get());
-
-            std::ostringstream sql;
-            sql << "insert into " << AdminAuditLogsTable()
-                << " (request_id, operator_admin_id, operator_role, action, resource_type, result, created_at, payload_text) values ('"
-                << safe_request_id << "', " << log.operator_admin_id << ", '"
-                << safe_role << "', '" << safe_action << "', '" << safe_resource_type << "', '"
-                << safe_result << "', NOW(), '" << safe_payload << "')";
-
-            return ExecuteSql(sql.str());
         }
 
         bool ListAdminAuditLogsPaged(int page,
@@ -410,125 +744,405 @@ namespace ns_model
 
             int safe_page = std::max(1, page);
             int safe_size = std::max(1, std::min(size, 200));
-            int offset = (safe_page - 1) * safe_size;
-
-            auto my = CreateConnection();
-            if (!my)
-            {
+            long long offset = static_cast<long long>(safe_page - 1) * safe_size;
+            const std::string safe_action = TrimCopy(action);
+            const std::string safe_result = TrimCopy(result);
+            if (operator_uid < 0 || safe_action.size() > 64 || safe_result.size() > 16 ||
+                (!safe_result.empty() && safe_result != "success" &&
+                 safe_result != "denied" && safe_result != "failed"))
                 return false;
-            }
-
-            std::vector<std::string> clauses;
-            if (!action.empty())
+            ODBAdminAuditLogQuery condition(true);
+            ODBAdminAuditLogCountQuery count_condition(true);
+            if (!safe_action.empty())
             {
-                std::string safe_action = EscapeSqlString(action, my.get());
-                clauses.push_back("action='" + safe_action + "'");
+                condition = condition && ODBAdminAuditLogQuery::action == safe_action;
+                count_condition = count_condition && ODBAdminAuditLogCountQuery::action == safe_action;
             }
             if (operator_uid > 0)
             {
-                clauses.push_back("operator_uid=" + std::to_string(operator_uid));
+                condition = condition && ODBAdminAuditLogQuery::operator_uid == static_cast<uint32_t>(operator_uid);
+                count_condition = count_condition &&
+                                  ODBAdminAuditLogCountQuery::operator_uid == static_cast<uint32_t>(operator_uid);
             }
-            if (!result.empty())
+            if (!safe_result.empty())
             {
-                std::string safe_result = EscapeSqlString(result, my.get());
-                clauses.push_back("result='" + safe_result + "'");
+                condition = condition && ODBAdminAuditLogQuery::result == safe_result;
+                count_condition = count_condition && ODBAdminAuditLogCountQuery::result == safe_result;
             }
-
-            std::string where_clause;
-            if (!clauses.empty())
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
             {
-                std::ostringstream where;
-                where << " where ";
-                for (size_t i = 0; i < clauses.size(); ++i)
                 {
-                    if (i != 0)
-                    {
-                        where << " and ";
-                    }
-                    where << clauses[i];
+                    latecyMonitor::Timer timer(Monitor(), "Model.ListAdminAuditLogsPaged.ODBAcquire");
+                    database = AcquireDatabase();
                 }
-                where_clause = where.str();
-            }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.ListAdminAuditLogsPaged.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                {
+                    odb::result<ODBAdminAuditLogCount> count_result;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.ListAdminAuditLogsPaged.ODBCountQuery");
+                        count_result = database->query<ODBAdminAuditLogCount>(count_condition);
+                    }
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.ListAdminAuditLogsPaged.ODBCountLazyIteration");
+                        *total_count = 0;
+                        for (const auto& item : count_result)
+                            *total_count = static_cast<int>(item.value);
+                    }
+                }
 
-            std::string count_sql = "select count(*) from " + AdminAuditLogsTable() + where_clause;
-            if (!QueryCount(count_sql, total_count))
+                condition += "ORDER BY" + ODBAdminAuditLogQuery::log_id + "DESC LIMIT" +
+                             ODBAdminAuditLogQuery::_val(static_cast<uint64_t>(safe_size)) + "OFFSET" +
+                             ODBAdminAuditLogQuery::_val(static_cast<uint64_t>(offset));
+                logs->clear();
+                {
+                    odb::result<ODBAdminAuditLog> result_set;
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.ListAdminAuditLogsPaged.ODBQuery");
+                        result_set = database->query<ODBAdminAuditLog>(condition);
+                    }
+                    logs->reserve(static_cast<size_t>(safe_size));
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.ListAdminAuditLogsPaged.ODBLazyIteration");
+                        for (const auto& item : result_set)
+                            logs->push_back(item);
+                    }
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.ListAdminAuditLogsPaged.ODBCommit");
+                    transaction->Commit();
+                }
+                return true;
+            }
+            catch (const std::exception& e)
             {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.ListAdminAuditLogsPaged.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB audit list failed: ", e.what());
                 return false;
             }
-
-            std::ostringstream sql;
-            sql << "select request_id,operator_admin_id,operator_role,action,resource_type,result,payload_text from "
-                << AdminAuditLogsTable()
-                << where_clause
-                << " order by log_id desc limit " << safe_size << " offset " << offset;
-
-            return QueryAuditLogs(sql.str(), logs);
         }
+
+        bool GetCacheMetricsOneDay(std::vector<CacheMetricsAggregate>* metrics)
+        {
+            if (metrics == nullptr)
+                return false;
+            std::lock_guard<std::mutex> flush_lock(_metrics_flush_mutex);
+            std::time_t cutoff_time = std::time(nullptr) - 24 * 60 * 60;
+            std::tm cutoff_tm{};
+            if (localtime_r(&cutoff_time, &cutoff_tm) == nullptr)
+                return false;
+            oj::db::DateTime cutoff{};
+            cutoff.year = static_cast<unsigned int>(cutoff_tm.tm_year + 1900);
+            cutoff.month = static_cast<unsigned int>(cutoff_tm.tm_mon + 1);
+            cutoff.day = static_cast<unsigned int>(cutoff_tm.tm_mday);
+            cutoff.hour = static_cast<unsigned int>(cutoff_tm.tm_hour);
+            cutoff.minute = static_cast<unsigned int>(cutoff_tm.tm_min);
+            cutoff.second = static_cast<unsigned int>(cutoff_tm.tm_sec);
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
+            {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetCacheMetricsOneDay.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetCacheMetricsOneDay.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                ODBCacheMetricsSnapshotQuery aggregate_query(
+                    ODBCacheMetricsSnapshotQuery::created_at >= cutoff);
+                aggregate_query += " GROUP BY `action_type` ORDER BY `action_type`";
+                odb::result<ODBCacheMetricsAggregate> result;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetCacheMetricsOneDay.ODBQuery");
+                    result = database->query<ODBCacheMetricsAggregate>(aggregate_query);
+                }
+                std::map<int, CacheMetricsAggregate> aggregate;
+                for (int action_type = 0; action_type < 5; ++action_type)
+                    aggregate[action_type].action_type = action_type;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetCacheMetricsOneDay.ODBLazyIteration");
+                    for (const auto& item : result)
+                    {
+                        const int action_type = static_cast<int>(item.action_type);
+                        if (action_type < 0 || action_type >= 5)
+                            continue;
+                        auto& row = aggregate[action_type];
+                        SaturatingAdd(&row.total_requests, item.total_requests);
+                        SaturatingAdd(&row.cache_hits, item.cache_hits);
+                        SaturatingAdd(&row.db_fallbacks, item.db_fallbacks);
+                        SaturatingAdd(&row.total_ms, item.total_ms);
+                    }
+                }
+                for (int action_type = 0; action_type < 5; ++action_type)
+                {
+                    const auto& live = Metrics().actions[action_type];
+                    auto& row = aggregate[action_type];
+                    SaturatingAdd(&row.total_requests, live.total_requests.load(std::memory_order_relaxed));
+                    SaturatingAdd(&row.cache_hits, live.cache_hits.load(std::memory_order_relaxed));
+                    SaturatingAdd(&row.db_fallbacks, live.db_fallbacks.load(std::memory_order_relaxed));
+                    SaturatingAdd(&row.total_ms, live.total_ms.load(std::memory_order_relaxed));
+                }
+                metrics->clear();
+                metrics->reserve(aggregate.size());
+                for (const auto& entry : aggregate)
+                    metrics->push_back(entry.second);
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.GetCacheMetricsOneDay.ODBCommit");
+                    transaction->Commit();
+                }
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.GetCacheMetricsOneDay.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_ERROR("{}{}", "ODB cache metrics aggregate failed: ", e.what());
+                return false;
+            }
+        }
+
         //在MySQL中插入缓存记录
         void InsertCacheMetricSnapshot(int action_type, long long total, long long hits, long long falls, long long ms)
         {
-            auto my = CreateConnection();
-            if (!my) return;
-            std::ostringstream sql;
-            sql << "insert into cache_metrics_snapshots (action_type,total_requests,cache_hits,db_fallbacks,total_ms) values ("
-                << action_type << "," << total << "," << hits << "," << falls << "," << ms << ")";
-            mysql_query(my.get(), sql.str().c_str());
-            if (mysql_errno(my.get()) != 0)
-                LOG_WARNING("{}{}", "InsertCacheMetricSnapshot failed: ", mysql_error(my.get()));
+            PersistCacheMetricSnapshot(action_type, total, hits, falls, ms);
         }
         //刷新缓存记录
         void FlushCacheMetrics()
         {
+            std::lock_guard<std::mutex> flush_lock(_metrics_flush_mutex);
             for (int t = 0; t < 5; ++t)
             {
                 auto& m = Metrics().actions[t];
-                long long req = m.total_requests.exchange(0);
-                if (req == 0) continue;
-                long long hits = m.cache_hits.exchange(0);
-                long long falls = m.db_fallbacks.exchange(0);
-                long long ms = m.total_ms.exchange(0);
-                InsertCacheMetricSnapshot(t, req, hits, falls, ms);
+                const long long hits = m.cache_hits.exchange(0, std::memory_order_acq_rel);
+                const long long falls = m.db_fallbacks.exchange(0, std::memory_order_acq_rel);
+                const long long ms = m.total_ms.exchange(0, std::memory_order_acq_rel);
+                const long long req = m.total_requests.exchange(0, std::memory_order_acq_rel);
+                if (req == 0 && hits == 0 && falls == 0 && ms == 0)
+                    continue;
+                if (!PersistCacheMetricSnapshot(t, req, hits, falls, ms))
+                {
+                    m.total_requests.fetch_add(req, std::memory_order_relaxed);
+                    m.cache_hits.fetch_add(hits, std::memory_order_relaxed);
+                    m.db_fallbacks.fetch_add(falls, std::memory_order_relaxed);
+                    m.total_ms.fetch_add(ms, std::memory_order_relaxed);
+                }
             }
         }
         //刷新缓存线程的工作区
         void StartMetricsFlushWorker()
         {
-            //每隔30秒或者缓存条数大于或等于100->刷新
-            _metrics_running = true;
-            _metrics_worker = std::thread([this]() {
-                while (_metrics_running)
-                {
-                    for (int i = 0; i < 30; ++i)
+            bool expected = false;
+            if (!_metrics_running.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
+                return;
+            try
+            {
+                _metrics_worker = std::thread([this]() {
+                    int waited_seconds = 0;
+                    while (_metrics_running.load(std::memory_order_acquire))
                     {
-                        if (!_metrics_running) return;
-                        bool need_flush = false;
-                        for (int t = 0; t < 5; ++t)
-                            if (Metrics().actions[t].total_requests.load() >= 100) { need_flush = true; break; }
-                        if (need_flush) break;
-                        std::this_thread::sleep_for(std::chrono::seconds(1));
+                        std::unique_lock<std::mutex> lock(_metrics_wait_mutex);
+                        _metrics_cv.wait_for(lock, std::chrono::seconds(1), [this]() {
+                            return !_metrics_running.load(std::memory_order_acquire);
+                        });
+                        lock.unlock();
+                        if (!_metrics_running.load(std::memory_order_acquire))
+                            break;
+                        ++waited_seconds;
+                        bool need_flush = waited_seconds >= 30;
+                        for (int t = 0; !need_flush && t < 5; ++t)
+                            need_flush = Metrics().actions[t].total_requests.load(std::memory_order_relaxed) >= 100;
+                        if (need_flush)
+                        {
+                            FlushCacheMetrics();
+                            waited_seconds = 0;
+                        }
                     }
-                    if (!_metrics_running) return;
-                    FlushCacheMetrics();
-                }
-            });
+                });
+            }
+            catch (...)
+            {
+                _metrics_running.store(false, std::memory_order_release);
+                throw;
+            }
         }
         //停止缓存刷新的功能
         void StopMetricsFlushWorker()
         {
-            _metrics_running = false;
-            if (_metrics_worker.joinable()) _metrics_worker.join();
+            const bool was_running = _metrics_running.exchange(false, std::memory_order_acq_rel);
+            _metrics_cv.notify_all();
+            if (_metrics_worker.joinable())
+                _metrics_worker.join();
+            if (was_running)
+                FlushCacheMetrics();
         }
         //清理MySQL中的旧缓存记录
         void CleanupOldMetrics()
         {
-            auto my = CreateConnection();
-            if (!my) return;
-            std::string sql = "delete from cache_metrics_snapshots where created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)";
-            mysql_query(my.get(), sql.c_str());
+            std::time_t cutoff_time = std::time(nullptr) - 30 * 24 * 60 * 60;
+            std::tm cutoff_tm{};
+            if (localtime_r(&cutoff_time, &cutoff_tm) == nullptr)
+                return;
+            oj::db::DateTime cutoff{};
+            cutoff.year = static_cast<unsigned int>(cutoff_tm.tm_year + 1900);
+            cutoff.month = static_cast<unsigned int>(cutoff_tm.tm_mon + 1);
+            cutoff.day = static_cast<unsigned int>(cutoff_tm.tm_mday);
+            cutoff.hour = static_cast<unsigned int>(cutoff_tm.tm_hour);
+            cutoff.minute = static_cast<unsigned int>(cutoff_tm.tm_min);
+            cutoff.second = static_cast<unsigned int>(cutoff_tm.tm_sec);
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
+            {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.CleanupOldMetrics.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.CleanupOldMetrics.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.CleanupOldMetrics.ODBErase");
+                    database->erase_query<ODBCacheMetricsSnapshot>(ODBCacheMetricsSnapshotQuery::created_at < cutoff);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.CleanupOldMetrics.ODBCommit");
+                    transaction->Commit();
+                }
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.CleanupOldMetrics.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_WARNING("{}{}", "CleanupOldMetrics failed: ", e.what());
+            }
         }
 
     private:
+        static void SaturatingAdd(long long* target, uint64_t value)
+        {
+            const uint64_t current = static_cast<uint64_t>(*target);
+            const uint64_t maximum = static_cast<uint64_t>(std::numeric_limits<long long>::max());
+            *target = value > maximum - current
+                ? std::numeric_limits<long long>::max()
+                : static_cast<long long>(current + value);
+        }
+
+        static void SaturatingAdd(long long* target, long long value)
+        {
+            if (value <= 0)
+                return;
+            const long long maximum = std::numeric_limits<long long>::max();
+            *target = value > maximum - *target ? maximum : *target + value;
+        }
+
+        bool PersistCacheMetricSnapshot(int action_type, long long total, long long hits,
+                                        long long falls, long long ms)
+        {
+            if (action_type < 0 || action_type >= 5 || total < 0 || hits < 0 ||
+                falls < 0 || ms < 0)
+                return false;
+
+            DeferredScopedDB database;
+            std::unique_ptr<ns_odb::ScopedTransaction> transaction;
+            try
+            {
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.InsertCacheMetricSnapshot.ODBAcquire");
+                    database = AcquireDatabase();
+                }
+                if (database.Get() == nullptr)
+                    return false;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.InsertCacheMetricSnapshot.ODBBegin");
+                    transaction = std::make_unique<ns_odb::ScopedTransaction>(*database);
+                }
+                ODBCacheMetricsSnapshot item{};
+                item.action_type = static_cast<uint8_t>(action_type);
+                item.total_requests = static_cast<uint64_t>(total);
+                item.cache_hits = static_cast<uint64_t>(hits);
+                item.db_fallbacks = static_cast<uint64_t>(falls);
+                item.total_ms = static_cast<uint64_t>(ms);
+                item.created_at = oj::util::TimeUtil::IntToDateTime(oj::util::TimeUtil::GetTimeStamp());;
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.InsertCacheMetricSnapshot.ODBPersist");
+                    database->persist(item);
+                }
+                {
+                    latecyMonitor::Timer timer(Monitor(), "Model.InsertCacheMetricSnapshot.ODBCommit");
+                    transaction->Commit();
+                }
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.InsertCacheMetricSnapshot.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_WARNING("{}{}", "InsertCacheMetricSnapshot failed: ", e.what());
+                return false;
+            }
+            catch (...)
+            {
+                if (transaction)
+                {
+                    try
+                    {
+                        latecyMonitor::Timer timer(Monitor(), "Model.InsertCacheMetricSnapshot.ODBRollback");
+                        transaction->Rollback();
+                    }
+                    catch (...) {}
+                }
+                LOG_WARNING("{}", "InsertCacheMetricSnapshot failed: unknown exception");
+                return false;
+            }
+        }
+
+        std::mutex _admin_mutation_mutex;
         std::atomic<bool> _metrics_running{false};
+        std::mutex _metrics_flush_mutex;
+        std::mutex _metrics_wait_mutex;
+        std::condition_variable _metrics_cv;
         std::thread _metrics_worker;
     };
 

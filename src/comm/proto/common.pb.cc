@@ -26,6 +26,7 @@ PROTOBUF_CONSTEXPR StatusResponse::StatusResponse(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.message_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.code_)*/0
+  , /*decltype(_impl_.success_)*/false
   , /*decltype(_impl_.retryable_)*/false
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct StatusResponseDefaultTypeInternal {
@@ -376,7 +377,7 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 }  // namespace common
 }  // namespace oj
 static ::_pb::Metadata file_level_metadata_common_2eproto[20];
-static const ::_pb::EnumDescriptor* file_level_enum_descriptors_common_2eproto[2];
+static const ::_pb::EnumDescriptor* file_level_enum_descriptors_common_2eproto[1];
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_common_2eproto = nullptr;
 
 const uint32_t TableStruct_common_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
@@ -386,6 +387,7 @@ const uint32_t TableStruct_common_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::oj::common::StatusResponse, _impl_.success_),
   PROTOBUF_FIELD_OFFSET(::oj::common::StatusResponse, _impl_.code_),
   PROTOBUF_FIELD_OFFSET(::oj::common::StatusResponse, _impl_.message_),
   PROTOBUF_FIELD_OFFSET(::oj::common::StatusResponse, _impl_.retryable_),
@@ -615,25 +617,25 @@ const uint32_t TableStruct_common_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::oj::common::StatusResponse)},
-  { 9, -1, -1, sizeof(::oj::common::PageRequest)},
-  { 17, -1, -1, sizeof(::oj::common::PageResponse)},
-  { 27, -1, -1, sizeof(::oj::common::TestCaseResult)},
-  { 41, -1, -1, sizeof(::oj::common::JudgeResult)},
-  { 53, -1, -1, sizeof(::oj::common::User)},
-  { 67, -1, -1, sizeof(::oj::common::AvatarMetadata)},
-  { 77, -1, -1, sizeof(::oj::common::UserStatistics)},
-  { 88, -1, -1, sizeof(::oj::common::Question)},
-  { 103, -1, -1, sizeof(::oj::common::TestCase)},
-  { 115, -1, -1, sizeof(::oj::common::Solution)},
-  { 132, -1, -1, sizeof(::oj::common::SolutionActionState)},
-  { 140, -1, -1, sizeof(::oj::common::Comment)},
-  { 157, -1, -1, sizeof(::oj::common::CommentActionState)},
-  { 166, -1, -1, sizeof(::oj::common::Submission)},
-  { 182, -1, -1, sizeof(::oj::common::AdminAccount)},
-  { 193, -1, -1, sizeof(::oj::common::AdminAuditLog)},
-  { 208, -1, -1, sizeof(::oj::common::CacheMetrics)},
-  { 219, -1, -1, sizeof(::oj::common::EmptyRequest)},
-  { 225, -1, -1, sizeof(::oj::common::EmptyResponse)},
+  { 10, -1, -1, sizeof(::oj::common::PageRequest)},
+  { 18, -1, -1, sizeof(::oj::common::PageResponse)},
+  { 28, -1, -1, sizeof(::oj::common::TestCaseResult)},
+  { 42, -1, -1, sizeof(::oj::common::JudgeResult)},
+  { 54, -1, -1, sizeof(::oj::common::User)},
+  { 68, -1, -1, sizeof(::oj::common::AvatarMetadata)},
+  { 78, -1, -1, sizeof(::oj::common::UserStatistics)},
+  { 89, -1, -1, sizeof(::oj::common::Question)},
+  { 104, -1, -1, sizeof(::oj::common::TestCase)},
+  { 116, -1, -1, sizeof(::oj::common::Solution)},
+  { 133, -1, -1, sizeof(::oj::common::SolutionActionState)},
+  { 141, -1, -1, sizeof(::oj::common::Comment)},
+  { 158, -1, -1, sizeof(::oj::common::CommentActionState)},
+  { 167, -1, -1, sizeof(::oj::common::Submission)},
+  { 183, -1, -1, sizeof(::oj::common::AdminAccount)},
+  { 194, -1, -1, sizeof(::oj::common::AdminAuditLog)},
+  { 209, -1, -1, sizeof(::oj::common::CacheMetrics)},
+  { 220, -1, -1, sizeof(::oj::common::EmptyRequest)},
+  { 226, -1, -1, sizeof(::oj::common::EmptyResponse)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -660,98 +662,90 @@ static const ::_pb::Message* const file_default_instances[] = {
 };
 
 const char descriptor_table_protodef_common_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
-  "\n\014common.proto\022\toj.common\"X\n\016StatusRespo"
-  "nse\022\"\n\004code\030\001 \001(\0162\024.oj.common.ErrorCode\022"
-  "\017\n\007message\030\002 \001(\t\022\021\n\tretryable\030\003 \001(\010\".\n\013P"
-  "ageRequest\022\014\n\004page\030\001 \001(\r\022\021\n\tpage_size\030\002 "
-  "\001(\r\"Y\n\014PageResponse\022\023\n\013total_items\030\001 \001(\004"
-  "\022\014\n\004page\030\002 \001(\r\022\021\n\tpage_size\030\003 \001(\r\022\023\n\013tot"
-  "al_pages\030\004 \001(\r\"\315\001\n\016TestCaseResult\022\r\n\005ind"
-  "ex\030\001 \001(\r\022+\n\006status\030\002 \001(\0162\033.oj.common.Sub"
-  "missionStatus\022\024\n\014time_used_ms\030\003 \001(\004\022\031\n\021m"
-  "emory_used_bytes\030\004 \001(\004\022\r\n\005input\030\005 \001(\t\022\027\n"
-  "\017expected_output\030\006 \001(\t\022\025\n\ractual_output\030"
-  "\007 \001(\t\022\017\n\007message\030\010 \001(\t\"\316\001\n\013JudgeResult\022+"
-  "\n\006status\030\001 \001(\0162\033.oj.common.SubmissionSta"
-  "tus\022\024\n\014time_used_ms\030\002 \001(\004\022\031\n\021memory_used"
-  "_bytes\030\003 \001(\004\022\025\n\rcompile_error\030\004 \001(\t\0224\n\021t"
-  "est_case_results\030\005 \003(\0132\031.oj.common.TestC"
-  "aseResult\022\024\n\014completed_at\030\006 \001(\003\"\244\001\n\004User"
-  "\022\013\n\003uid\030\001 \001(\r\022\014\n\004name\030\002 \001(\t\022\r\n\005email\030\003 \001"
-  "(\t\022\023\n\013create_time\030\004 \001(\003\022\022\n\nlast_login\030\005 "
-  "\001(\003\022\014\n\004role\030\006 \001(\005\022)\n\006avatar\030\007 \001(\0132\031.oj.c"
-  "ommon.AvatarMetadata\022\020\n\010disabled\030\010 \001(\010\"["
-  "\n\016AvatarMetadata\022\013\n\003url\030\001 \001(\t\022\024\n\014content"
-  "_type\030\002 \001(\t\022\022\n\nsize_bytes\030\003 \001(\004\022\022\n\nupdat"
-  "ed_at\030\004 \001(\003\"\234\001\n\016UserStatistics\022\031\n\021total_"
-  "submissions\030\001 \001(\004\022\034\n\024accepted_submission"
-  "s\030\002 \001(\004\022\032\n\022accepted_questions\030\003 \001(\004\022\027\n\017t"
-  "otal_solutions\030\004 \001(\004\022\034\n\024total_likes_rece"
-  "ived\030\005 \001(\004\"\271\001\n\010Question\022\n\n\002id\030\001 \001(\t\022\r\n\005t"
-  "itle\030\002 \001(\t\022\023\n\013description\030\003 \001(\t\022\022\n\ndiffi"
-  "culty\030\004 \001(\t\022\025\n\rtime_limit_ms\030\005 \001(\r\022\027\n\017me"
-  "mory_limit_mb\030\006 \001(\r\022\023\n\013create_time\030\007 \001(\003"
-  "\022\023\n\013update_time\030\010 \001(\003\022\017\n\007visible\030\t \001(\010\"\201"
-  "\001\n\010TestCase\022\024\n\014test_case_id\030\001 \001(\004\022\023\n\013que"
-  "stion_id\030\002 \001(\t\022\017\n\007ordinal\030\003 \001(\r\022\r\n\005input"
-  "\030\004 \001(\t\022\027\n\017expected_output\030\005 \001(\t\022\021\n\tis_sa"
-  "mple\030\006 \001(\010\"\345\001\n\010Solution\022\n\n\002id\030\001 \001(\004\022\023\n\013q"
-  "uestion_id\030\002 \001(\t\022\017\n\007user_id\030\003 \001(\r\022\r\n\005tit"
-  "le\030\004 \001(\t\022\022\n\ncontent_md\030\005 \001(\t\022\022\n\nlike_cou"
-  "nt\030\006 \001(\004\022\026\n\016favorite_count\030\007 \001(\004\022\025\n\rcomm"
-  "ent_count\030\010 \001(\004\022\031\n\021moderation_status\030\t \001"
-  "(\t\022\022\n\ncreated_at\030\n \001(\003\022\022\n\nupdated_at\030\013 \001"
-  "(\003\"7\n\023SolutionActionState\022\r\n\005liked\030\001 \001(\010"
-  "\022\021\n\tfavorited\030\002 \001(\010\"\340\001\n\007Comment\022\n\n\002id\030\001 "
-  "\001(\004\022\023\n\013solution_id\030\002 \001(\004\022\017\n\007user_id\030\003 \001("
-  "\r\022\021\n\tparent_id\030\004 \001(\004\022\030\n\020reply_to_user_id"
-  "\030\005 \001(\r\022\017\n\007content\030\006 \001(\t\022\022\n\nlike_count\030\007 "
-  "\001(\004\022\026\n\016favorite_count\030\010 \001(\004\022\021\n\tis_edited"
-  "\030\t \001(\010\022\022\n\ncreated_at\030\n \001(\003\022\022\n\nupdated_at"
-  "\030\013 \001(\003\"J\n\022CommentActionState\022\022\n\ncomment_"
-  "id\030\001 \001(\004\022\r\n\005liked\030\002 \001(\010\022\021\n\tfavorited\030\003 \001"
-  "(\010\"\200\002\n\nSubmission\022\025\n\rsubmission_id\030\001 \001(\004"
-  "\022\017\n\007user_id\030\002 \001(\r\022\023\n\013question_id\030\003 \001(\t\022\014"
-  "\n\004code\030\004 \001(\t\022\020\n\010language\030\005 \001(\t\022+\n\006status"
-  "\030\006 \001(\0162\033.oj.common.SubmissionStatus\022&\n\006r"
-  "esult\030\007 \001(\0132\026.oj.common.JudgeResult\022\022\n\nc"
-  "reated_at\030\010 \001(\003\022\024\n\014completed_at\030\t \001(\003\022\026\n"
-  "\016result_version\030\n \001(\004\"a\n\014AdminAccount\022\020\n"
-  "\010admin_id\030\001 \001(\r\022\013\n\003uid\030\002 \001(\r\022\014\n\004role\030\003 \001"
-  "(\t\022\022\n\ncreated_at\030\004 \001(\003\022\020\n\010disabled\030\005 \001(\010"
-  "\"\306\001\n\rAdminAuditLog\022\016\n\006log_id\030\001 \001(\004\022\022\n\nre"
-  "quest_id\030\002 \001(\t\022\031\n\021operator_admin_id\030\003 \001("
-  "\r\022\025\n\roperator_role\030\004 \001(\t\022\016\n\006action\030\005 \001(\t"
-  "\022\025\n\rresource_type\030\006 \001(\t\022\016\n\006result\030\007 \001(\t\022"
-  "\022\n\ncreated_at\030\010 \001(\003\022\024\n\014payload_text\030\t \001("
-  "\t\"g\n\014CacheMetrics\022\014\n\004hits\030\001 \001(\004\022\016\n\006misse"
-  "s\030\002 \001(\004\022\016\n\006errors\030\003 \001(\004\022\025\n\rinvalidations"
-  "\030\004 \001(\004\022\022\n\nsampled_at\030\005 \001(\003\"\016\n\014EmptyReque"
-  "st\":\n\rEmptyResponse\022)\n\006status\030\001 \001(\0132\031.oj"
-  ".common.StatusResponse*\242\002\n\tErrorCode\022\032\n\026"
-  "ERROR_CODE_UNSPECIFIED\020\000\022\021\n\rERROR_CODE_O"
-  "K\020\001\022\037\n\033ERROR_CODE_INVALID_ARGUMENT\020\002\022\036\n\032"
-  "ERROR_CODE_UNAUTHENTICATED\020\003\022 \n\034ERROR_CO"
-  "DE_PERMISSION_DENIED\020\004\022\030\n\024ERROR_CODE_NOT"
-  "_FOUND\020\005\022\027\n\023ERROR_CODE_CONFLICT\020\006\022\033\n\027ERR"
-  "OR_CODE_RATE_LIMITED\020\007\022\032\n\026ERROR_CODE_UNA"
-  "VAILABLE\020\010\022\027\n\023ERROR_CODE_INTERNAL\020\t*\274\003\n\020"
-  "SubmissionStatus\022!\n\035SUBMISSION_STATUS_UN"
-  "SPECIFIED\020\000\022\035\n\031SUBMISSION_STATUS_PENDING"
-  "\020\001\022\034\n\030SUBMISSION_STATUS_QUEUED\020\002\022\035\n\031SUBM"
-  "ISSION_STATUS_JUDGING\020\003\022\036\n\032SUBMISSION_ST"
-  "ATUS_ACCEPTED\020\004\022\"\n\036SUBMISSION_STATUS_WRO"
-  "NG_ANSWER\020\005\022#\n\037SUBMISSION_STATUS_COMPILE"
-  "_ERROR\020\006\022+\n\'SUBMISSION_STATUS_MEMORY_LIM"
-  "IT_EXCEEDED\020\007\022)\n%SUBMISSION_STATUS_TIME_"
-  "LIMIT_EXCEEDED\020\010\022#\n\037SUBMISSION_STATUS_RU"
-  "NTIME_ERROR\020\t\022\"\n\036SUBMISSION_STATUS_SYSTE"
-  "M_ERROR\020\n\022\037\n\033SUBMISSION_STATUS_CANCELLED"
-  "\020\013b\006proto3"
+  "\n\014common.proto\022\toj.common\"S\n\016StatusRespo"
+  "nse\022\017\n\007success\030\001 \001(\010\022\014\n\004code\030\002 \001(\005\022\017\n\007me"
+  "ssage\030\003 \001(\t\022\021\n\tretryable\030\004 \001(\010\".\n\013PageRe"
+  "quest\022\014\n\004page\030\001 \001(\r\022\021\n\tpage_size\030\002 \001(\r\"Y"
+  "\n\014PageResponse\022\023\n\013total_items\030\001 \001(\004\022\014\n\004p"
+  "age\030\002 \001(\r\022\021\n\tpage_size\030\003 \001(\r\022\023\n\013total_pa"
+  "ges\030\004 \001(\r\"\315\001\n\016TestCaseResult\022\r\n\005index\030\001 "
+  "\001(\r\022+\n\006status\030\002 \001(\0162\033.oj.common.Submissi"
+  "onStatus\022\024\n\014time_used_ms\030\003 \001(\004\022\031\n\021memory"
+  "_used_bytes\030\004 \001(\004\022\r\n\005input\030\005 \001(\t\022\027\n\017expe"
+  "cted_output\030\006 \001(\t\022\025\n\ractual_output\030\007 \001(\t"
+  "\022\017\n\007message\030\010 \001(\t\"\316\001\n\013JudgeResult\022+\n\006sta"
+  "tus\030\001 \001(\0162\033.oj.common.SubmissionStatus\022\024"
+  "\n\014time_used_ms\030\002 \001(\004\022\031\n\021memory_used_byte"
+  "s\030\003 \001(\004\022\025\n\rcompile_error\030\004 \001(\t\0224\n\021test_c"
+  "ase_results\030\005 \003(\0132\031.oj.common.TestCaseRe"
+  "sult\022\024\n\014completed_at\030\006 \001(\003\"\244\001\n\004User\022\013\n\003u"
+  "id\030\001 \001(\r\022\014\n\004name\030\002 \001(\t\022\r\n\005email\030\003 \001(\t\022\023\n"
+  "\013create_time\030\004 \001(\003\022\022\n\nlast_login\030\005 \001(\003\022\014"
+  "\n\004role\030\006 \001(\005\022)\n\006avatar\030\007 \001(\0132\031.oj.common"
+  ".AvatarMetadata\022\020\n\010disabled\030\010 \001(\010\"[\n\016Ava"
+  "tarMetadata\022\013\n\003url\030\001 \001(\t\022\024\n\014content_type"
+  "\030\002 \001(\t\022\022\n\nsize_bytes\030\003 \001(\004\022\022\n\nupdated_at"
+  "\030\004 \001(\003\"\234\001\n\016UserStatistics\022\031\n\021total_submi"
+  "ssions\030\001 \001(\004\022\034\n\024accepted_submissions\030\002 \001"
+  "(\004\022\032\n\022accepted_questions\030\003 \001(\004\022\027\n\017total_"
+  "solutions\030\004 \001(\004\022\034\n\024total_likes_received\030"
+  "\005 \001(\004\"\271\001\n\010Question\022\n\n\002id\030\001 \001(\t\022\r\n\005title\030"
+  "\002 \001(\t\022\023\n\013description\030\003 \001(\t\022\022\n\ndifficulty"
+  "\030\004 \001(\t\022\025\n\rtime_limit_ms\030\005 \001(\r\022\027\n\017memory_"
+  "limit_mb\030\006 \001(\r\022\023\n\013create_time\030\007 \001(\003\022\023\n\013u"
+  "pdate_time\030\010 \001(\003\022\017\n\007visible\030\t \001(\010\"\201\001\n\010Te"
+  "stCase\022\024\n\014test_case_id\030\001 \001(\004\022\023\n\013question"
+  "_id\030\002 \001(\t\022\017\n\007ordinal\030\003 \001(\r\022\r\n\005input\030\004 \001("
+  "\t\022\027\n\017expected_output\030\005 \001(\t\022\021\n\tis_sample\030"
+  "\006 \001(\010\"\345\001\n\010Solution\022\n\n\002id\030\001 \001(\004\022\023\n\013questi"
+  "on_id\030\002 \001(\t\022\017\n\007user_id\030\003 \001(\r\022\r\n\005title\030\004 "
+  "\001(\t\022\022\n\ncontent_md\030\005 \001(\t\022\022\n\nlike_count\030\006 "
+  "\001(\004\022\026\n\016favorite_count\030\007 \001(\004\022\025\n\rcomment_c"
+  "ount\030\010 \001(\004\022\031\n\021moderation_status\030\t \001(\t\022\022\n"
+  "\ncreated_at\030\n \001(\003\022\022\n\nupdated_at\030\013 \001(\003\"7\n"
+  "\023SolutionActionState\022\r\n\005liked\030\001 \001(\010\022\021\n\tf"
+  "avorited\030\002 \001(\010\"\340\001\n\007Comment\022\n\n\002id\030\001 \001(\004\022\023"
+  "\n\013solution_id\030\002 \001(\004\022\017\n\007user_id\030\003 \001(\r\022\021\n\t"
+  "parent_id\030\004 \001(\004\022\030\n\020reply_to_user_id\030\005 \001("
+  "\r\022\017\n\007content\030\006 \001(\t\022\022\n\nlike_count\030\007 \001(\004\022\026"
+  "\n\016favorite_count\030\010 \001(\004\022\021\n\tis_edited\030\t \001("
+  "\010\022\022\n\ncreated_at\030\n \001(\003\022\022\n\nupdated_at\030\013 \001("
+  "\003\"J\n\022CommentActionState\022\022\n\ncomment_id\030\001 "
+  "\001(\004\022\r\n\005liked\030\002 \001(\010\022\021\n\tfavorited\030\003 \001(\010\"\200\002"
+  "\n\nSubmission\022\025\n\rsubmission_id\030\001 \001(\004\022\017\n\007u"
+  "ser_id\030\002 \001(\r\022\023\n\013question_id\030\003 \001(\t\022\014\n\004cod"
+  "e\030\004 \001(\t\022\020\n\010language\030\005 \001(\t\022+\n\006status\030\006 \001("
+  "\0162\033.oj.common.SubmissionStatus\022&\n\006result"
+  "\030\007 \001(\0132\026.oj.common.JudgeResult\022\022\n\ncreate"
+  "d_at\030\010 \001(\003\022\024\n\014completed_at\030\t \001(\003\022\026\n\016resu"
+  "lt_version\030\n \001(\004\"a\n\014AdminAccount\022\020\n\010admi"
+  "n_id\030\001 \001(\r\022\013\n\003uid\030\002 \001(\r\022\014\n\004role\030\003 \001(\t\022\022\n"
+  "\ncreated_at\030\004 \001(\003\022\020\n\010disabled\030\005 \001(\010\"\306\001\n\r"
+  "AdminAuditLog\022\016\n\006log_id\030\001 \001(\004\022\022\n\nrequest"
+  "_id\030\002 \001(\t\022\031\n\021operator_admin_id\030\003 \001(\r\022\025\n\r"
+  "operator_role\030\004 \001(\t\022\016\n\006action\030\005 \001(\t\022\025\n\rr"
+  "esource_type\030\006 \001(\t\022\016\n\006result\030\007 \001(\t\022\022\n\ncr"
+  "eated_at\030\010 \001(\003\022\024\n\014payload_text\030\t \001(\t\"g\n\014"
+  "CacheMetrics\022\014\n\004hits\030\001 \001(\004\022\016\n\006misses\030\002 \001"
+  "(\004\022\016\n\006errors\030\003 \001(\004\022\025\n\rinvalidations\030\004 \001("
+  "\004\022\022\n\nsampled_at\030\005 \001(\003\"\016\n\014EmptyRequest\":\n"
+  "\rEmptyResponse\022)\n\006status\030\001 \001(\0132\031.oj.comm"
+  "on.StatusResponse*\274\003\n\020SubmissionStatus\022!"
+  "\n\035SUBMISSION_STATUS_UNSPECIFIED\020\000\022\035\n\031SUB"
+  "MISSION_STATUS_PENDING\020\001\022\034\n\030SUBMISSION_S"
+  "TATUS_QUEUED\020\002\022\035\n\031SUBMISSION_STATUS_JUDG"
+  "ING\020\003\022\036\n\032SUBMISSION_STATUS_ACCEPTED\020\004\022\"\n"
+  "\036SUBMISSION_STATUS_WRONG_ANSWER\020\005\022#\n\037SUB"
+  "MISSION_STATUS_COMPILE_ERROR\020\006\022+\n\'SUBMIS"
+  "SION_STATUS_MEMORY_LIMIT_EXCEEDED\020\007\022)\n%S"
+  "UBMISSION_STATUS_TIME_LIMIT_EXCEEDED\020\010\022#"
+  "\n\037SUBMISSION_STATUS_RUNTIME_ERROR\020\t\022\"\n\036S"
+  "UBMISSION_STATUS_SYSTEM_ERROR\020\n\022\037\n\033SUBMI"
+  "SSION_STATUS_CANCELLED\020\013b\006proto3"
   ;
 static ::_pbi::once_flag descriptor_table_common_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_common_2eproto = {
-    false, false, 3490, descriptor_table_protodef_common_2eproto,
+    false, false, 3192, descriptor_table_protodef_common_2eproto,
     "common.proto",
     &descriptor_table_common_2eproto_once, nullptr, 0, 20,
     schemas, file_default_instances, TableStruct_common_2eproto::offsets,
@@ -766,31 +760,9 @@ PROTOBUF_ATTRIBUTE_WEAK const ::_pbi::DescriptorTable* descriptor_table_common_2
 PROTOBUF_ATTRIBUTE_INIT_PRIORITY2 static ::_pbi::AddDescriptorsRunner dynamic_init_dummy_common_2eproto(&descriptor_table_common_2eproto);
 namespace oj {
 namespace common {
-const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ErrorCode_descriptor() {
-  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_common_2eproto);
-  return file_level_enum_descriptors_common_2eproto[0];
-}
-bool ErrorCode_IsValid(int value) {
-  switch (value) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-    case 4:
-    case 5:
-    case 6:
-    case 7:
-    case 8:
-    case 9:
-      return true;
-    default:
-      return false;
-  }
-}
-
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* SubmissionStatus_descriptor() {
   ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_common_2eproto);
-  return file_level_enum_descriptors_common_2eproto[1];
+  return file_level_enum_descriptors_common_2eproto[0];
 }
 bool SubmissionStatus_IsValid(int value) {
   switch (value) {
@@ -831,6 +803,7 @@ StatusResponse::StatusResponse(const StatusResponse& from)
   new (&_impl_) Impl_{
       decltype(_impl_.message_){}
     , decltype(_impl_.code_){}
+    , decltype(_impl_.success_){}
     , decltype(_impl_.retryable_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
@@ -856,6 +829,7 @@ inline void StatusResponse::SharedCtor(
   new (&_impl_) Impl_{
       decltype(_impl_.message_){}
     , decltype(_impl_.code_){0}
+    , decltype(_impl_.success_){false}
     , decltype(_impl_.retryable_){false}
     , /*decltype(_impl_._cached_size_)*/{}
   };
@@ -902,18 +876,25 @@ const char* StatusResponse::_InternalParse(const char* ptr, ::_pbi::ParseContext
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // .oj.common.ErrorCode code = 1;
+      // bool success = 1;
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
-          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          _impl_.success_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
-          _internal_set_code(static_cast<::oj::common::ErrorCode>(val));
         } else
           goto handle_unusual;
         continue;
-      // string message = 2;
+      // int32 code = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.code_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string message = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
           auto str = _internal_mutable_message();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -921,9 +902,9 @@ const char* StatusResponse::_InternalParse(const char* ptr, ::_pbi::ParseContext
         } else
           goto handle_unusual;
         continue;
-      // bool retryable = 3;
-      case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+      // bool retryable = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
           _impl_.retryable_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else
@@ -958,27 +939,32 @@ uint8_t* StatusResponse::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // .oj.common.ErrorCode code = 1;
-  if (this->_internal_code() != 0) {
+  // bool success = 1;
+  if (this->_internal_success() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteEnumToArray(
-      1, this->_internal_code(), target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(1, this->_internal_success(), target);
   }
 
-  // string message = 2;
+  // int32 code = 2;
+  if (this->_internal_code() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteInt32ToArray(2, this->_internal_code(), target);
+  }
+
+  // string message = 3;
   if (!this->_internal_message().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_message().data(), static_cast<int>(this->_internal_message().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "oj.common.StatusResponse.message");
     target = stream->WriteStringMaybeAliased(
-        2, this->_internal_message(), target);
+        3, this->_internal_message(), target);
   }
 
-  // bool retryable = 3;
+  // bool retryable = 4;
   if (this->_internal_retryable() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteBoolToArray(3, this->_internal_retryable(), target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(4, this->_internal_retryable(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -997,20 +983,24 @@ size_t StatusResponse::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // string message = 2;
+  // string message = 3;
   if (!this->_internal_message().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_message());
   }
 
-  // .oj.common.ErrorCode code = 1;
+  // int32 code = 2;
   if (this->_internal_code() != 0) {
-    total_size += 1 +
-      ::_pbi::WireFormatLite::EnumSize(this->_internal_code());
+    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(this->_internal_code());
   }
 
-  // bool retryable = 3;
+  // bool success = 1;
+  if (this->_internal_success() != 0) {
+    total_size += 1 + 1;
+  }
+
+  // bool retryable = 4;
   if (this->_internal_retryable() != 0) {
     total_size += 1 + 1;
   }
@@ -1038,6 +1028,9 @@ void StatusResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const :
   }
   if (from._internal_code() != 0) {
     _this->_internal_set_code(from._internal_code());
+  }
+  if (from._internal_success() != 0) {
+    _this->_internal_set_success(from._internal_success());
   }
   if (from._internal_retryable() != 0) {
     _this->_internal_set_retryable(from._internal_retryable());

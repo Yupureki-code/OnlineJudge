@@ -34,7 +34,7 @@ public:
         }
 
         // 创建 SubmissionService Stub
-        _stub = std::make_unique<oj::biz::SubmissionService::Stub>(_channel.get());
+        _stub = std::make_unique<oj::biz::OJService::Stub>(_channel.get());
     }
 
     /// 回传判题结果
@@ -82,7 +82,7 @@ public:
 private:
     std::string _business_addr;
     std::unique_ptr<brpc::Channel> _channel;
-    std::unique_ptr<oj::biz::SubmissionService::Stub> _stub;
+    std::unique_ptr<oj::biz::OJService::Stub> _stub;
     std::atomic<uint64_t> _report_count{0};
 };
 
