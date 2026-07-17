@@ -1,8 +1,8 @@
 #pragma once
-#include <httplib.h>
 #include <jsoncpp/json/reader.h>
 #include <jsoncpp/json/value.h>
 #include <memory>
+#include <limits>
 #include <string>
 #include <sstream>
 #include <ctime>
@@ -143,7 +143,7 @@ namespace oj::cache
         Cache(const std::string& redis = redis_addr,
               const std::string& business = "oj",
               const std::string& env = "prod",
-              const std::string& version = "v2")
+              const std::string& version = "v3")
         :_redis(Redis(redis)), _business(business), _env(env), _version(version)
         {}
 
@@ -245,6 +245,22 @@ namespace oj::cache
                 return false;
             }
         }
+        int ReserveStringByAnyKey(const std::string& key, const std::string& value, int expire_seconds)
+        {
+            try
+            {
+                const bool inserted = _redis.set(
+                    _business + ":" + _env + ":" + _version + ":" + key,
+                    value, std::chrono::milliseconds(expire_seconds * 1000),
+                    sw::redis::UpdateType::NOT_EXIST);
+                return inserted ? 1 : 0;
+            }
+            catch (const sw::redis::Error &e)
+            {
+                LOG_ERROR("{}{}", "Redis error: ", e.what());
+                return -1;
+            }
+        }
         bool GetStringByAnyKey(const std::string& key, std::string* value)
         {
             try
@@ -276,6 +292,38 @@ namespace oj::cache
                 return false;
             }
         }
+        static bool ParseDetailedQuestion(const std::string& json_str,
+                                          const std::string& expected_id,
+                                          Question* question)
+        {
+            if (question == nullptr) return false;
+            Json::CharReaderBuilder builder;
+            Json::Value value;
+            std::istringstream stream(json_str);
+            if (!Json::parseFromStream(builder, stream, &value, nullptr) || !value.isObject() ||
+                !value["id"].isString() || value["id"].asString() != expected_id ||
+                !value["title"].isString() || !value["star"].isString() ||
+                !value["desc"].isString() || !value["cpu_limit"].isInt() ||
+                !value["memory_limit"].isInt() || !value["visible"].isBool() ||
+                !value["create_time"].isInt64() || !value["update_time"].isInt64())
+                return false;
+
+            Question parsed;
+            parsed.id = value["id"].asString();
+            parsed.title = value["title"].asString();
+            parsed.star = value["star"].asString();
+            parsed.desc = value["desc"].asString();
+            const int cpu_limit = value["cpu_limit"].asInt();
+            if (cpu_limit < std::numeric_limits<int8_t>::min() ||
+                cpu_limit > std::numeric_limits<int8_t>::max()) return false;
+            parsed.cpu_limit = static_cast<int8_t>(cpu_limit);
+            parsed.memory_limit = value["memory_limit"].asInt();
+            parsed.visible = value["visible"].asBool();
+            parsed.create_time = oj::util::TimeUtil::IntToDateTime(value["create_time"].asInt64());
+            parsed.update_time = oj::util::TimeUtil::IntToDateTime(value["update_time"].asInt64());
+            *question = std::move(parsed);
+            return true;
+        }
         bool GetDetailedQuestion(const std::shared_ptr<CacheDetailKey>& key, Question& question)
         {
             std::string key_str = key->GetCacheKeyString(this);
@@ -292,20 +340,8 @@ namespace oj::cache
                             LOG_INFO("{}{}", "Null cache hit for question ", key_str);
                             return false;
                         }
-                        Json::CharReaderBuilder builder;
-                        Json::Value json_value;
-                        std::istringstream ss(json_str);
-                        if (Json::parseFromStream(builder, ss, &json_value, nullptr))
+                        if (ParseDetailedQuestion(json_str, key->GetPageName(), &question))
                         {
-                            question.id = json_value["id"].asString();
-                            question.title = json_value["title"].asString();
-                            question.star = json_value["star"].asString();
-                            question.desc = json_value["desc"].asString();
-                            question.cpu_limit = json_value["cpu_limit"].asInt();
-                            question.memory_limit = json_value["memory_limit"].asInt();
-                            question.create_time = oj::util::TimeUtil::IntToDateTime(json_value["create_time"].asInt64());
-                            question.update_time = oj::util::TimeUtil::IntToDateTime(json_value["update_time"].asInt64());
-
                             LOG_INFO("{}{}", "Cache hit for question ", key_str);
                             return true;
                         }
@@ -337,6 +373,7 @@ namespace oj::cache
             json_value["desc"] = question.desc;
             json_value["cpu_limit"] = question.cpu_limit;
             json_value["memory_limit"] = question.memory_limit;
+            json_value["visible"] = question.visible;
             json_value["create_time"] = oj::util::TimeUtil::DateTimeToInt(question.create_time);
             json_value["update_time"] = oj::util::TimeUtil::DateTimeToInt(question.update_time);
             Json::FastWriter writer;

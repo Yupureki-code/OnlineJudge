@@ -21,9 +21,12 @@ endif()
 # brpc 静态库依赖
 find_package(OpenSSL REQUIRED)
 find_library(GFLAGS_LIBRARY NAMES gflags PATHS /usr/lib/x86_64-linux-gnu)
-find_library(LEVELDB_LIBRARY NAMES leveldb PATHS /usr/lib/x86_64-linux-gnu)
+# The installed static brpc archive uses LevelDB for optional SpanDB tracing.
+find_library(BRPC_LEVELDB_LIBRARY NAMES leveldb REQUIRED)
 find_library(PROTOC_LIBRARY NAMES protoc PATHS /usr/lib/x86_64-linux-gnu)
 find_library(AMQPCPP_LIBRARY NAMES amqpcpp PATHS /usr/local/lib)
+find_library(REDIS_PLUS_PLUS_LIBRARY NAMES redis++ redis++_static REQUIRED)
+find_library(HIREDIS_LIBRARY NAMES hiredis hiredis_static REQUIRED)
 
 # Judge Service 可执行文件
 add_executable(judge_service
@@ -55,7 +58,9 @@ target_link_libraries(judge_service PRIVATE
     ${CURL_LIBRARIES}
     ${LIBEVENT_LIBRARIES}
     ${GFLAGS_LIBRARY}
-    ${LEVELDB_LIBRARY}
+    ${BRPC_LEVELDB_LIBRARY}
+    ${REDIS_PLUS_PLUS_LIBRARY}
+    ${HIREDIS_LIBRARY}
     ${AMQPCPP_LIBRARY}
     OpenSSL::SSL
     OpenSSL::Crypto
@@ -100,7 +105,7 @@ target_link_libraries(judge_integration_test PRIVATE
     ${CURL_LIBRARIES}
     ${LIBEVENT_LIBRARIES}
     ${GFLAGS_LIBRARY}
-    ${LEVELDB_LIBRARY}
+    ${BRPC_LEVELDB_LIBRARY}
     ${AMQPCPP_LIBRARY}
     OpenSSL::SSL
     OpenSSL::Crypto
@@ -121,6 +126,7 @@ add_executable(direct_e2e_test
     ${CMAKE_SOURCE_DIR}/src/comm/amqp_tcp_impl.cpp
     ${PROTO_GEN_DIR}/common.pb.cc
     ${PROTO_GEN_DIR}/judge_service.pb.cc
+    ${PROTO_GEN_DIR}/mq_message.pb.cc
 )
 
 target_include_directories(direct_e2e_test PRIVATE
@@ -143,7 +149,7 @@ target_link_libraries(direct_e2e_test PRIVATE
     ${CURL_LIBRARIES}
     ${LIBEVENT_LIBRARIES}
     ${GFLAGS_LIBRARY}
-    ${LEVELDB_LIBRARY}
+    ${BRPC_LEVELDB_LIBRARY}
     ${AMQPCPP_LIBRARY}
     OpenSSL::SSL
     OpenSSL::Crypto
@@ -181,6 +187,49 @@ target_link_libraries(verify_log_output PRIVATE
 )
 
 set_target_properties(verify_log_output PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/output
+)
+
+# ── Coroutine lifecycle test (no Docker/MQ) ──
+add_executable(judge_event_loop_test
+    ${CMAKE_SOURCE_DIR}/test/judge_event_loop_test.cpp
+    ${PROTO_GEN_DIR}/common.pb.cc
+)
+
+target_include_directories(judge_event_loop_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src/comm
+    ${PROTO_GEN_DIR}
+    ${PROTOBUF_INCLUDE_DIRS}
+)
+
+target_link_libraries(judge_event_loop_test PRIVATE
+    ${PROTOBUF_LIBRARIES}
+    pthread
+)
+
+set_target_properties(judge_event_loop_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/output
+)
+
+add_executable(judge_inbox_test
+    ${CMAKE_SOURCE_DIR}/test/judge_inbox_test.cpp
+    ${PROTO_GEN_DIR}/common.pb.cc
+)
+target_include_directories(judge_inbox_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${PROTO_GEN_DIR}
+    ${PROTOBUF_INCLUDE_DIRS}
+)
+target_link_libraries(judge_inbox_test PRIVATE
+    ${PROTOBUF_LIBRARIES}
+    ${REDIS_PLUS_PLUS_LIBRARY}
+    ${HIREDIS_LIBRARY}
+    OpenSSL::Crypto
+    pthread
+)
+add_dependencies(judge_inbox_test generate_phase3_proto)
+set_target_properties(judge_inbox_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/output
 )
 

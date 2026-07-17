@@ -33,6 +33,10 @@ message PasswordLoginRequest {
     string password = 2;
 }
 message SetPasswordRequest { string password = 1; }
+message SendSecurityCodeRequest {
+    string purpose = 1;
+    string new_email = 2;
+}
 message ChangePasswordRequest {
     string verification_code = 1;
     string new_password = 2;
@@ -364,7 +368,7 @@ service OJService {
     rpc LoginWithPassword(PasswordLoginRequest) returns (AuthResponse);
     rpc Logout(oj.common.EmptyRequest) returns (oj.common.EmptyResponse);
     rpc SetPassword(SetPasswordRequest) returns (oj.common.EmptyResponse);
-    rpc SendSecurityCode(oj.common.EmptyRequest) returns (SendVerificationCodeResponse);
+    rpc SendSecurityCode(SendSecurityCodeRequest) returns (SendVerificationCodeResponse);
     rpc ChangePassword(ChangePasswordRequest) returns (oj.common.EmptyResponse);
     rpc ChangeEmail(ChangeEmailRequest) returns (oj.common.EmptyResponse);
     rpc DeleteAccount(DeleteAccountRequest) returns (oj.common.EmptyResponse);

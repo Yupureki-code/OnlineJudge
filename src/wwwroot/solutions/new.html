@@ -190,6 +190,8 @@
         }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/editor.md@1.5.0/css/editormd.min.css">
+    <script src="/js/csrf.js"></script>
+    <script src="/js/api-client.js"></script>
 </head>
 <body>
     <div id="page-loading-mask" class="page-loading-mask">
@@ -302,7 +304,7 @@
             }
 
             try {
-                const response = await fetch('/api/question/' + questionId, { credentials: 'include' });
+                const response = await OJApi.fetch('/api/questions/' + questionId, { credentials: 'include' });
                 const data = await response.json();
                 if (data && data.success && data.question) {
                     badge.textContent = '题目 #' + data.question.number + ' \u00b7 ' + data.question.title;
@@ -352,7 +354,7 @@
             if (submitButton) submitButton.disabled = true;
 
             try {
-                const response = await fetch('/api/questions/' + questionId + '/solutions', {
+                const response = await OJApi.fetch('/api/questions/' + questionId + '/solutions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',

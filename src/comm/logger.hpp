@@ -217,7 +217,7 @@ namespace oj::logger
         return InitLogger(logger_name, logger_file, logger_level);
     }
     #define OJ_LOG_AT(level, ...) \
-    GetLogger()->log( \
+    ::oj::logger::GetLogger()->log( \
         ::spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, level, __VA_ARGS__)
     #define LOG_DEBUG(...) OJ_LOG_AT(::spdlog::level::debug, __VA_ARGS__)
     #define LOG_INFO(...) OJ_LOG_AT(::spdlog::level::info, __VA_ARGS__)

@@ -36,7 +36,9 @@ target_link_libraries(oj_runtime PUBLIC
 )
 
 add_executable(oj_server
+    ${CMAKE_SOURCE_DIR}/src/comm/amqp_tcp_impl.cpp
     src/oj_server.cpp
+    src/judge/outbox_publisher.cpp
     src/rpc/oj_service_impl.cpp
     src/rpc/static_http_service.cpp
 )
@@ -65,10 +67,6 @@ target_link_libraries(oj_admin PRIVATE
     ${OJ_LEGACY_LIBRARIES} ${OJ_BRPC_LIBRARIES}
 )
 
-set(SERVICE_MACHINE_CONF ${CONF_PATH}/service_machine.conf)
-if(NOT EXISTS ${SERVICE_MACHINE_CONF})
-    message(FATAL_ERROR "cannot find service_machine.conf : ${SERVICE_MACHINE_CONF}")
-endif()
 if(NOT EXISTS ${HTML_PATH})
     message(FATAL_ERROR "cannot find html : ${HTML_PATH}")
 endif()

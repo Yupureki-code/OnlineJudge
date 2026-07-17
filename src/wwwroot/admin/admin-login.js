@@ -1,6 +1,6 @@
 (function () {
     function postJson(url, body) {
-        return fetch(url, {
+        return OJApi.fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -49,7 +49,7 @@
         submitBtn.disabled = true;
         setMessage("正在验证身份...", "");
 
-        var result = await postJson("/api/admin/auth/login", {
+        var result = await postJson("/admin/api/auth/login", {
             admin_id: adminId,
             password: password
         });

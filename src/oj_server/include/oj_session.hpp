@@ -4,8 +4,10 @@
 #include <map>
 #include <mutex>
 #include <time.h>
-#include <random>
+#include <array>
+#include <charconv>
 #include <unordered_map>
+#include <openssl/rand.h>
 #include <sw/redis++/redis++.h>
 #include "../../comm/comm.hpp"
 #include "../../comm/logger.hpp"
@@ -37,6 +39,25 @@ namespace oj::session
         std::string _secret_key;
         Redis _redis;
 
+        template <typename Integer>
+        static bool ParseInteger(const std::string& encoded, Integer* value)
+        {
+            if (value == nullptr || encoded.empty())
+            {
+                return false;
+            }
+            Integer parsed{};
+            const char* begin = encoded.data();
+            const char* end = begin + encoded.size();
+            const auto result = std::from_chars(begin, end, parsed);
+            if (result.ec != std::errc{} || result.ptr != end)
+            {
+                return false;
+            }
+            *value = parsed;
+            return true;
+        }
+
         std::string BuildSessionKey(const std::string& session_id)
         {
             return std::string(kSessionPrefix) + session_id;
@@ -67,11 +88,31 @@ namespace oj::session
                 return false;
             }
 
+            const auto stored_id = fields.find("session_id");
+            const auto user_id = fields.find("user_id");
+            const auto email = fields.find("email");
+            const auto create_time = fields.find("create_time");
+            const auto last_access_time = fields.find("last_access_time");
+            long long parsed_create_time = 0;
+            long long parsed_last_access_time = 0;
+            int parsed_user_id = 0;
+            if (fields.size() != 5 || stored_id == fields.end() || user_id == fields.end() ||
+                email == fields.end() || create_time == fields.end() || last_access_time == fields.end() ||
+                stored_id->second != session_id || email->second.empty() || email->second.size() > 320 ||
+                !ParseInteger(user_id->second, &parsed_user_id) || parsed_user_id <= 0 ||
+                !ParseInteger(create_time->second, &parsed_create_time) || parsed_create_time <= 0 ||
+                !ParseInteger(last_access_time->second, &parsed_last_access_time) ||
+                parsed_last_access_time < parsed_create_time)
+            {
+                LOG_WARNING("{}", "Invalid Redis user session hash rejected");
+                return false;
+            }
+
             session->session_id = session_id;
-            session->user_id = std::stoi(fields["user_id"]);
-            session->email = fields["email"];
-            session->create_time = static_cast<time_t>(std::stoll(fields["create_time"]));
-            session->last_access_time = static_cast<time_t>(std::stoll(fields["last_access_time"]));
+            session->user_id = parsed_user_id;
+            session->email = email->second;
+            session->create_time = static_cast<time_t>(parsed_create_time);
+            session->last_access_time = static_cast<time_t>(parsed_last_access_time);
 
             // 滑动续期
             session->last_access_time = time(nullptr);
@@ -87,20 +128,26 @@ namespace oj::session
 
         std::string GenerateSessionId()
         {
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::uniform_int_distribution<> dis(0, 15);
-            
-            std::string session_id;
-            const char* hex = "0123456789abcdef";
-            for (int i = 0; i < 32; i++) {
-                session_id += hex[dis(gen)];
+            std::array<unsigned char, 32> bytes{};
+            if (RAND_bytes(bytes.data(), bytes.size()) != 1)
+            {
+                LOG_ERROR("{}", "CSPRNG failed while creating user session");
+                return {};
+            }
+
+            static constexpr char hex[] = "0123456789abcdef";
+            std::string session_id(bytes.size() * 2, '0');
+            for (size_t i = 0; i < bytes.size(); ++i)
+            {
+                session_id[i * 2] = hex[bytes[i] >> 4];
+                session_id[i * 2 + 1] = hex[bytes[i] & 0x0f];
             }
             return session_id;
         }
 
     public:
-        SessionManager() : _secret_key("oj_secret_key_2026"), _redis(redis_addr)
+        explicit SessionManager(const std::string& redis_address = redis_addr)
+            : _secret_key("oj_secret_key_2026"), _redis(redis_address)
         {
         }
 
@@ -109,6 +156,10 @@ namespace oj::session
             std::lock_guard<std::mutex> lock(_mtx);
             
             std::string session_id = GenerateSessionId();
+            if (session_id.empty())
+            {
+                return {};
+            }
             Session sess;
             sess.session_id = session_id;
             sess.user_id = user_id;
@@ -142,11 +193,13 @@ namespace oj::session
 
             try
             {
-                //优先尝试从 Redis 获取 session 信息，如果 Redis 出现错误则回退到本地 map 获取
+                // Redis 正常 miss 是权威撤销；只有 Redis 不可用时才允许本地降级。
                 if (GetSessionFromRedis(session_id, session))
                 {
                     return true;
                 }
+                _sessions.erase(session_id);
+                return false;
             }
             catch (const sw::redis::Error& e)
             {
@@ -174,7 +227,7 @@ namespace oj::session
             return true;
         }
 
-        void DestroySession(const std::string& session_id)
+        bool DestroySession(const std::string& session_id)
         {
             std::lock_guard<std::mutex> lock(_mtx);
             try
@@ -184,10 +237,13 @@ namespace oj::session
             catch (const sw::redis::Error& e)
             {
                 LOG_ERROR("{}{}", "Redis session delete failed: ", e.what());
+                _sessions.erase(session_id);
+                return false;
             }
 
             _sessions.erase(session_id); // fallback map cleanup
             LOG_INFO("Session destroyed");
+            return true;
         }
 
         std::string GetCookieHeader(const std::string& session_id)
@@ -197,16 +253,22 @@ namespace oj::session
             struct tm* tm_info = gmtime(&expire);
             strftime(expire_str, sizeof(expire_str), "%a, %d %b %Y %H:%M:%S GMT", tm_info);
             
-            return SESSION_COOKIE_NAME + "=" + session_id + 
+            const bool secure = std::getenv("OJ_COOKIE_SECURE") != nullptr &&
+                                std::string(std::getenv("OJ_COOKIE_SECURE")) == "true";
+            return SESSION_COOKIE_NAME + "=" + session_id +
                    "; Expires=" + expire_str + 
                    "; Path=/" + 
                    "; HttpOnly" +
-                   "; SameSite=Lax";
+                   "; SameSite=Lax" +
+                   (secure ? "; Secure" : "");
         }
 
         std::string GetClearCookieHeader()
         {
-            return SESSION_COOKIE_NAME + "=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/";
+            const bool secure = std::getenv("OJ_COOKIE_SECURE") != nullptr &&
+                                std::string(std::getenv("OJ_COOKIE_SECURE")) == "true";
+            return SESSION_COOKIE_NAME + "=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; HttpOnly; SameSite=Lax" +
+                   std::string(secure ? "; Secure" : "");
         }
 
         // 解析 Cookie 头，提取 session_id

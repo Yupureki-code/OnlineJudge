@@ -120,6 +120,20 @@ struct SetPasswordRequestDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 SetPasswordRequestDefaultTypeInternal _SetPasswordRequest_default_instance_;
+PROTOBUF_CONSTEXPR SendSecurityCodeRequest::SendSecurityCodeRequest(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.purpose_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.new_email_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct SendSecurityCodeRequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR SendSecurityCodeRequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~SendSecurityCodeRequestDefaultTypeInternal() {}
+  union {
+    SendSecurityCodeRequest _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 SendSecurityCodeRequestDefaultTypeInternal _SendSecurityCodeRequest_default_instance_;
 PROTOBUF_CONSTEXPR ChangePasswordRequest::ChangePasswordRequest(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.verification_code_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
@@ -1193,7 +1207,7 @@ struct InvalidateStaticCacheRequestDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 InvalidateStaticCacheRequestDefaultTypeInternal _InvalidateStaticCacheRequest_default_instance_;
 }  // namespace biz
 }  // namespace oj
-static ::_pb::Metadata file_level_metadata_biz_5fservice_2eproto[81];
+static ::_pb::Metadata file_level_metadata_biz_5fservice_2eproto[82];
 static const ::_pb::EnumDescriptor* file_level_enum_descriptors_biz_5fservice_2eproto[1];
 static const ::_pb::ServiceDescriptor* file_level_service_descriptors_biz_5fservice_2eproto[2];
 
@@ -1254,6 +1268,14 @@ const uint32_t TableStruct_biz_5fservice_2eproto::offsets[] PROTOBUF_SECTION_VAR
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::oj::biz::SetPasswordRequest, _impl_.password_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::oj::biz::SendSecurityCodeRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::oj::biz::SendSecurityCodeRequest, _impl_.purpose_),
+  PROTOBUF_FIELD_OFFSET(::oj::biz::SendSecurityCodeRequest, _impl_.new_email_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::oj::biz::ChangePasswordRequest, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -1890,80 +1912,81 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 33, -1, -1, sizeof(::oj::biz::VerificationCodeLoginRequest)},
   { 41, -1, -1, sizeof(::oj::biz::PasswordLoginRequest)},
   { 49, -1, -1, sizeof(::oj::biz::SetPasswordRequest)},
-  { 56, -1, -1, sizeof(::oj::biz::ChangePasswordRequest)},
-  { 64, -1, -1, sizeof(::oj::biz::ChangeEmailRequest)},
-  { 72, -1, -1, sizeof(::oj::biz::DeleteAccountRequest)},
-  { 79, -1, -1, sizeof(::oj::biz::GetUserProfileRequest)},
-  { 86, -1, -1, sizeof(::oj::biz::GetUserProfileResponse)},
-  { 95, -1, -1, sizeof(::oj::biz::UpdateProfileRequest)},
-  { 102, -1, -1, sizeof(::oj::biz::UpdateProfileResponse)},
-  { 110, -1, -1, sizeof(::oj::biz::UpdateAvatarRequest)},
-  { 118, -1, -1, sizeof(::oj::biz::UpdateAvatarResponse)},
-  { 126, -1, -1, sizeof(::oj::biz::GetUserStatisticsResponse)},
-  { 135, -1, -1, sizeof(::oj::biz::GetQuestionListRequest)},
-  { 145, -1, -1, sizeof(::oj::biz::GetQuestionListResponse)},
-  { 154, -1, -1, sizeof(::oj::biz::QuestionIdRequest)},
-  { 161, -1, -1, sizeof(::oj::biz::GetQuestionDetailResponse)},
-  { 171, -1, -1, sizeof(::oj::biz::GetQuestionPassStatusResponse)},
-  { 179, -1, -1, sizeof(::oj::biz::SaveQuestionRequest)},
-  { 186, -1, -1, sizeof(::oj::biz::QuestionResponse)},
-  { 194, -1, -1, sizeof(::oj::biz::ListTestCasesRequest)},
-  { 202, -1, -1, sizeof(::oj::biz::ListTestCasesResponse)},
-  { 210, -1, -1, sizeof(::oj::biz::CreateTestCaseRequest)},
-  { 221, -1, -1, sizeof(::oj::biz::UpdateTestCaseRequest)},
-  { 228, -1, -1, sizeof(::oj::biz::TestCaseIdRequest)},
-  { 235, -1, -1, sizeof(::oj::biz::TestCaseResponse)},
-  { 243, -1, -1, sizeof(::oj::biz::InvalidateQuestionCacheRequest)},
-  { 250, -1, -1, sizeof(::oj::biz::ListSolutionsRequest)},
-  { 260, -1, -1, sizeof(::oj::biz::ListSolutionsResponse)},
-  { 269, -1, -1, sizeof(::oj::biz::SolutionIdRequest)},
-  { 276, -1, -1, sizeof(::oj::biz::GetSolutionResponse)},
-  { 286, -1, -1, sizeof(::oj::biz::CreateSolutionRequest)},
-  { 295, -1, -1, sizeof(::oj::biz::UpdateSolutionRequest)},
-  { 304, -1, -1, sizeof(::oj::biz::SolutionResponse)},
-  { 312, -1, -1, sizeof(::oj::biz::SolutionActionResponse)},
-  { 322, -1, -1, sizeof(::oj::biz::ListCommentsRequest)},
-  { 330, -1, -1, sizeof(::oj::biz::ListRepliesRequest)},
-  { 338, -1, -1, sizeof(::oj::biz::ListCommentsResponse)},
-  { 348, -1, -1, sizeof(::oj::biz::CreateCommentRequest)},
-  { 357, -1, -1, sizeof(::oj::biz::UpdateCommentRequest)},
-  { 365, -1, -1, sizeof(::oj::biz::CommentIdRequest)},
-  { 372, -1, -1, sizeof(::oj::biz::CommentResponse)},
-  { 380, -1, -1, sizeof(::oj::biz::CommentActionResponse)},
-  { 390, -1, -1, sizeof(::oj::biz::GetCommentActionsRequest)},
-  { 397, -1, -1, sizeof(::oj::biz::GetCommentActionsResponse)},
-  { 405, -1, -1, sizeof(::oj::biz::AdminLoginRequest)},
-  { 413, -1, -1, sizeof(::oj::biz::AdminLoginResponse)},
-  { 421, -1, -1, sizeof(::oj::biz::GetVersionResponse)},
-  { 432, -1, -1, sizeof(::oj::biz::AdminOverviewResponse)},
-  { 445, -1, -1, sizeof(::oj::biz::AdminListUsersRequest)},
-  { 453, -1, -1, sizeof(::oj::biz::AdminListUsersResponse)},
-  { 462, -1, -1, sizeof(::oj::biz::AdminCreateUserRequest)},
-  { 470, -1, -1, sizeof(::oj::biz::AdminUpdateUserRequest)},
-  { 477, -1, -1, sizeof(::oj::biz::AdminUserIdRequest)},
-  { 484, -1, -1, sizeof(::oj::biz::AdminUserResponse)},
-  { 492, -1, -1, sizeof(::oj::biz::ListAdminAccountsRequest)},
-  { 500, -1, -1, sizeof(::oj::biz::ListAdminAccountsResponse)},
-  { 509, -1, -1, sizeof(::oj::biz::SaveAdminAccountRequest)},
-  { 517, -1, -1, sizeof(::oj::biz::AdminAccountIdRequest)},
-  { 524, -1, -1, sizeof(::oj::biz::AdminAccountResponse)},
-  { 532, -1, -1, sizeof(::oj::biz::GetCacheMetricsResponse)},
-  { 540, -1, -1, sizeof(::oj::biz::GetAuditLogsRequest)},
-  { 550, -1, -1, sizeof(::oj::biz::GetAuditLogsResponse)},
-  { 559, -1, -1, sizeof(::oj::biz::CreateSubmissionRequest)},
-  { 568, -1, -1, sizeof(::oj::biz::CreateSubmissionResponse)},
-  { 576, -1, -1, sizeof(::oj::biz::CreateCustomTestRequest)},
-  { 586, -1, -1, sizeof(::oj::biz::CreateCustomTestResponse)},
-  { 595, -1, -1, sizeof(::oj::biz::GetSubmissionRequest)},
-  { 602, -1, -1, sizeof(::oj::biz::GetSubmissionResponse)},
-  { 610, -1, -1, sizeof(::oj::biz::GetCustomTestRequest)},
-  { 617, -1, -1, sizeof(::oj::biz::GetCustomTestResponse)},
-  { 627, -1, -1, sizeof(::oj::biz::ListSubmissionsRequest)},
-  { 636, -1, -1, sizeof(::oj::biz::ListSubmissionsResponse)},
-  { 645, -1, -1, sizeof(::oj::biz::UpdateJudgeResultRequest)},
-  { 657, -1, -1, sizeof(::oj::biz::ServiceAuthentication)},
-  { 667, -1, -1, sizeof(::oj::biz::UpdateJudgeResultResponse)},
-  { 676, -1, -1, sizeof(::oj::biz::InvalidateStaticCacheRequest)},
+  { 56, -1, -1, sizeof(::oj::biz::SendSecurityCodeRequest)},
+  { 64, -1, -1, sizeof(::oj::biz::ChangePasswordRequest)},
+  { 72, -1, -1, sizeof(::oj::biz::ChangeEmailRequest)},
+  { 80, -1, -1, sizeof(::oj::biz::DeleteAccountRequest)},
+  { 87, -1, -1, sizeof(::oj::biz::GetUserProfileRequest)},
+  { 94, -1, -1, sizeof(::oj::biz::GetUserProfileResponse)},
+  { 103, -1, -1, sizeof(::oj::biz::UpdateProfileRequest)},
+  { 110, -1, -1, sizeof(::oj::biz::UpdateProfileResponse)},
+  { 118, -1, -1, sizeof(::oj::biz::UpdateAvatarRequest)},
+  { 126, -1, -1, sizeof(::oj::biz::UpdateAvatarResponse)},
+  { 134, -1, -1, sizeof(::oj::biz::GetUserStatisticsResponse)},
+  { 143, -1, -1, sizeof(::oj::biz::GetQuestionListRequest)},
+  { 153, -1, -1, sizeof(::oj::biz::GetQuestionListResponse)},
+  { 162, -1, -1, sizeof(::oj::biz::QuestionIdRequest)},
+  { 169, -1, -1, sizeof(::oj::biz::GetQuestionDetailResponse)},
+  { 179, -1, -1, sizeof(::oj::biz::GetQuestionPassStatusResponse)},
+  { 187, -1, -1, sizeof(::oj::biz::SaveQuestionRequest)},
+  { 194, -1, -1, sizeof(::oj::biz::QuestionResponse)},
+  { 202, -1, -1, sizeof(::oj::biz::ListTestCasesRequest)},
+  { 210, -1, -1, sizeof(::oj::biz::ListTestCasesResponse)},
+  { 218, -1, -1, sizeof(::oj::biz::CreateTestCaseRequest)},
+  { 229, -1, -1, sizeof(::oj::biz::UpdateTestCaseRequest)},
+  { 236, -1, -1, sizeof(::oj::biz::TestCaseIdRequest)},
+  { 243, -1, -1, sizeof(::oj::biz::TestCaseResponse)},
+  { 251, -1, -1, sizeof(::oj::biz::InvalidateQuestionCacheRequest)},
+  { 258, -1, -1, sizeof(::oj::biz::ListSolutionsRequest)},
+  { 268, -1, -1, sizeof(::oj::biz::ListSolutionsResponse)},
+  { 277, -1, -1, sizeof(::oj::biz::SolutionIdRequest)},
+  { 284, -1, -1, sizeof(::oj::biz::GetSolutionResponse)},
+  { 294, -1, -1, sizeof(::oj::biz::CreateSolutionRequest)},
+  { 303, -1, -1, sizeof(::oj::biz::UpdateSolutionRequest)},
+  { 312, -1, -1, sizeof(::oj::biz::SolutionResponse)},
+  { 320, -1, -1, sizeof(::oj::biz::SolutionActionResponse)},
+  { 330, -1, -1, sizeof(::oj::biz::ListCommentsRequest)},
+  { 338, -1, -1, sizeof(::oj::biz::ListRepliesRequest)},
+  { 346, -1, -1, sizeof(::oj::biz::ListCommentsResponse)},
+  { 356, -1, -1, sizeof(::oj::biz::CreateCommentRequest)},
+  { 365, -1, -1, sizeof(::oj::biz::UpdateCommentRequest)},
+  { 373, -1, -1, sizeof(::oj::biz::CommentIdRequest)},
+  { 380, -1, -1, sizeof(::oj::biz::CommentResponse)},
+  { 388, -1, -1, sizeof(::oj::biz::CommentActionResponse)},
+  { 398, -1, -1, sizeof(::oj::biz::GetCommentActionsRequest)},
+  { 405, -1, -1, sizeof(::oj::biz::GetCommentActionsResponse)},
+  { 413, -1, -1, sizeof(::oj::biz::AdminLoginRequest)},
+  { 421, -1, -1, sizeof(::oj::biz::AdminLoginResponse)},
+  { 429, -1, -1, sizeof(::oj::biz::GetVersionResponse)},
+  { 440, -1, -1, sizeof(::oj::biz::AdminOverviewResponse)},
+  { 453, -1, -1, sizeof(::oj::biz::AdminListUsersRequest)},
+  { 461, -1, -1, sizeof(::oj::biz::AdminListUsersResponse)},
+  { 470, -1, -1, sizeof(::oj::biz::AdminCreateUserRequest)},
+  { 478, -1, -1, sizeof(::oj::biz::AdminUpdateUserRequest)},
+  { 485, -1, -1, sizeof(::oj::biz::AdminUserIdRequest)},
+  { 492, -1, -1, sizeof(::oj::biz::AdminUserResponse)},
+  { 500, -1, -1, sizeof(::oj::biz::ListAdminAccountsRequest)},
+  { 508, -1, -1, sizeof(::oj::biz::ListAdminAccountsResponse)},
+  { 517, -1, -1, sizeof(::oj::biz::SaveAdminAccountRequest)},
+  { 525, -1, -1, sizeof(::oj::biz::AdminAccountIdRequest)},
+  { 532, -1, -1, sizeof(::oj::biz::AdminAccountResponse)},
+  { 540, -1, -1, sizeof(::oj::biz::GetCacheMetricsResponse)},
+  { 548, -1, -1, sizeof(::oj::biz::GetAuditLogsRequest)},
+  { 558, -1, -1, sizeof(::oj::biz::GetAuditLogsResponse)},
+  { 567, -1, -1, sizeof(::oj::biz::CreateSubmissionRequest)},
+  { 576, -1, -1, sizeof(::oj::biz::CreateSubmissionResponse)},
+  { 584, -1, -1, sizeof(::oj::biz::CreateCustomTestRequest)},
+  { 594, -1, -1, sizeof(::oj::biz::CreateCustomTestResponse)},
+  { 603, -1, -1, sizeof(::oj::biz::GetSubmissionRequest)},
+  { 610, -1, -1, sizeof(::oj::biz::GetSubmissionResponse)},
+  { 618, -1, -1, sizeof(::oj::biz::GetCustomTestRequest)},
+  { 625, -1, -1, sizeof(::oj::biz::GetCustomTestResponse)},
+  { 635, -1, -1, sizeof(::oj::biz::ListSubmissionsRequest)},
+  { 644, -1, -1, sizeof(::oj::biz::ListSubmissionsResponse)},
+  { 653, -1, -1, sizeof(::oj::biz::UpdateJudgeResultRequest)},
+  { 665, -1, -1, sizeof(::oj::biz::ServiceAuthentication)},
+  { 675, -1, -1, sizeof(::oj::biz::UpdateJudgeResultResponse)},
+  { 684, -1, -1, sizeof(::oj::biz::InvalidateStaticCacheRequest)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -1974,6 +1997,7 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::oj::biz::_VerificationCodeLoginRequest_default_instance_._instance,
   &::oj::biz::_PasswordLoginRequest_default_instance_._instance,
   &::oj::biz::_SetPasswordRequest_default_instance_._instance,
+  &::oj::biz::_SendSecurityCodeRequest_default_instance_._instance,
   &::oj::biz::_ChangePasswordRequest_default_instance_._instance,
   &::oj::biz::_ChangeEmailRequest_default_instance_._instance,
   &::oj::biz::_DeleteAccountRequest_default_instance_._instance,
@@ -2065,355 +2089,357 @@ const char descriptor_table_protodef_biz_5fservice_2eproto[] PROTOBUF_SECTION_VA
   "(\t\022\031\n\021verification_code\030\002 \001(\t\"\?\n\024Passwor"
   "dLoginRequest\022\025\n\remail_or_name\030\001 \001(\t\022\020\n\010"
   "password\030\002 \001(\t\"&\n\022SetPasswordRequest\022\020\n\010"
-  "password\030\001 \001(\t\"H\n\025ChangePasswordRequest\022"
-  "\031\n\021verification_code\030\001 \001(\t\022\024\n\014new_passwo"
-  "rd\030\002 \001(\t\"B\n\022ChangeEmailRequest\022\021\n\tnew_em"
-  "ail\030\001 \001(\t\022\031\n\021verification_code\030\002 \001(\t\"1\n\024"
-  "DeleteAccountRequest\022\031\n\021verification_cod"
-  "e\030\001 \001(\t\"$\n\025GetUserProfileRequest\022\013\n\003uid\030"
-  "\001 \001(\r\"\221\001\n\026GetUserProfileResponse\022)\n\006stat"
-  "us\030\001 \001(\0132\031.oj.common.StatusResponse\022\035\n\004u"
-  "ser\030\002 \001(\0132\017.oj.common.User\022-\n\nstatistics"
-  "\030\003 \001(\0132\031.oj.common.UserStatistics\"$\n\024Upd"
-  "ateProfileRequest\022\014\n\004name\030\001 \001(\t\"a\n\025Updat"
-  "eProfileResponse\022)\n\006status\030\001 \001(\0132\031.oj.co"
-  "mmon.StatusResponse\022\035\n\004user\030\002 \001(\0132\017.oj.c"
-  "ommon.User\"<\n\023UpdateAvatarRequest\022\017\n\007con"
-  "tent\030\001 \001(\014\022\024\n\014content_type\030\002 \001(\t\"l\n\024Upda"
-  "teAvatarResponse\022)\n\006status\030\001 \001(\0132\031.oj.co"
-  "mmon.StatusResponse\022)\n\006avatar\030\002 \001(\0132\031.oj"
-  ".common.AvatarMetadata\"\250\001\n\031GetUserStatis"
-  "ticsResponse\022)\n\006status\030\001 \001(\0132\031.oj.common"
-  ".StatusResponse\022-\n\nstatistics\030\002 \001(\0132\031.oj"
-  ".common.UserStatistics\0221\n\022recent_submiss"
-  "ions\030\003 \003(\0132\025.oj.common.Submission\"z\n\026Get"
-  "QuestionListRequest\022$\n\004page\030\001 \001(\0132\026.oj.c"
-  "ommon.PageRequest\022\016\n\006search\030\002 \001(\t\022\022\n\ndif"
-  "ficulty\030\003 \001(\t\022\026\n\016include_hidden\030\004 \001(\010\"\223\001"
-  "\n\027GetQuestionListResponse\022)\n\006status\030\001 \001("
-  "\0132\031.oj.common.StatusResponse\022%\n\004page\030\002 \001"
-  "(\0132\027.oj.common.PageResponse\022&\n\tquestions"
-  "\030\003 \003(\0132\023.oj.common.Question\"(\n\021QuestionI"
-  "dRequest\022\023\n\013question_id\030\001 \001(\t\"\270\001\n\031GetQue"
-  "stionDetailResponse\022)\n\006status\030\001 \001(\0132\031.oj"
-  ".common.StatusResponse\022%\n\010question\030\002 \001(\013"
-  "2\023.oj.common.Question\022)\n\014sample_tests\030\003 "
-  "\003(\0132\023.oj.common.TestCase\022\036\n\026passed_by_cu"
-  "rrent_user\030\004 \001(\010\"Z\n\035GetQuestionPassStatu"
-  "sResponse\022)\n\006status\030\001 \001(\0132\031.oj.common.St"
-  "atusResponse\022\016\n\006passed\030\002 \001(\010\"<\n\023SaveQues"
-  "tionRequest\022%\n\010question\030\001 \001(\0132\023.oj.commo"
-  "n.Question\"d\n\020QuestionResponse\022)\n\006status"
-  "\030\001 \001(\0132\031.oj.common.StatusResponse\022%\n\010que"
-  "stion\030\002 \001(\0132\023.oj.common.Question\"@\n\024List"
-  "TestCasesRequest\022\023\n\013question_id\030\001 \001(\t\022\023\n"
-  "\013sample_only\030\002 \001(\010\"k\n\025ListTestCasesRespo"
-  "nse\022)\n\006status\030\001 \001(\0132\031.oj.common.StatusRe"
-  "sponse\022\'\n\ntest_cases\030\002 \003(\0132\023.oj.common.T"
-  "estCase\"x\n\025CreateTestCaseRequest\022\023\n\013ques"
-  "tion_id\030\001 \001(\t\022\017\n\007ordinal\030\002 \001(\r\022\r\n\005input\030"
-  "\003 \001(\t\022\027\n\017expected_output\030\004 \001(\t\022\021\n\tis_sam"
-  "ple\030\005 \001(\010\"\?\n\025UpdateTestCaseRequest\022&\n\tte"
-  "st_case\030\001 \001(\0132\023.oj.common.TestCase\")\n\021Te"
-  "stCaseIdRequest\022\024\n\014test_case_id\030\001 \001(\004\"e\n"
-  "\020TestCaseResponse\022)\n\006status\030\001 \001(\0132\031.oj.c"
-  "ommon.StatusResponse\022&\n\ttest_case\030\002 \001(\0132"
-  "\023.oj.common.TestCase\"5\n\036InvalidateQuesti"
-  "onCacheRequest\022\023\n\013question_id\030\001 \001(\t\"v\n\024L"
-  "istSolutionsRequest\022$\n\004page\030\001 \001(\0132\026.oj.c"
-  "ommon.PageRequest\022\023\n\013question_id\030\002 \001(\t\022\017"
-  "\n\007sort_by\030\003 \001(\t\022\022\n\nauthor_uid\030\004 \001(\r\"\221\001\n\025"
-  "ListSolutionsResponse\022)\n\006status\030\001 \001(\0132\031."
-  "oj.common.StatusResponse\022%\n\004page\030\002 \001(\0132\027"
-  ".oj.common.PageResponse\022&\n\tsolutions\030\003 \003"
-  "(\0132\023.oj.common.Solution\"(\n\021SolutionIdReq"
-  "uest\022\023\n\013solution_id\030\001 \001(\004\"\306\001\n\023GetSolutio"
-  "nResponse\022)\n\006status\030\001 \001(\0132\031.oj.common.St"
-  "atusResponse\022%\n\010solution\030\002 \001(\0132\023.oj.comm"
-  "on.Solution\022\037\n\006author\030\003 \001(\0132\017.oj.common."
-  "User\022<\n\024current_user_actions\030\004 \001(\0132\036.oj."
-  "common.SolutionActionState\"O\n\025CreateSolu"
-  "tionRequest\022\023\n\013question_id\030\001 \001(\t\022\r\n\005titl"
-  "e\030\002 \001(\t\022\022\n\ncontent_md\030\003 \001(\t\"O\n\025UpdateSol"
-  "utionRequest\022\023\n\013solution_id\030\001 \001(\004\022\r\n\005tit"
-  "le\030\002 \001(\t\022\022\n\ncontent_md\030\003 \001(\t\"d\n\020Solution"
+  "password\030\001 \001(\t\"=\n\027SendSecurityCodeReques"
+  "t\022\017\n\007purpose\030\001 \001(\t\022\021\n\tnew_email\030\002 \001(\t\"H\n"
+  "\025ChangePasswordRequest\022\031\n\021verification_c"
+  "ode\030\001 \001(\t\022\024\n\014new_password\030\002 \001(\t\"B\n\022Chang"
+  "eEmailRequest\022\021\n\tnew_email\030\001 \001(\t\022\031\n\021veri"
+  "fication_code\030\002 \001(\t\"1\n\024DeleteAccountRequ"
+  "est\022\031\n\021verification_code\030\001 \001(\t\"$\n\025GetUse"
+  "rProfileRequest\022\013\n\003uid\030\001 \001(\r\"\221\001\n\026GetUser"
+  "ProfileResponse\022)\n\006status\030\001 \001(\0132\031.oj.com"
+  "mon.StatusResponse\022\035\n\004user\030\002 \001(\0132\017.oj.co"
+  "mmon.User\022-\n\nstatistics\030\003 \001(\0132\031.oj.commo"
+  "n.UserStatistics\"$\n\024UpdateProfileRequest"
+  "\022\014\n\004name\030\001 \001(\t\"a\n\025UpdateProfileResponse\022"
+  ")\n\006status\030\001 \001(\0132\031.oj.common.StatusRespon"
+  "se\022\035\n\004user\030\002 \001(\0132\017.oj.common.User\"<\n\023Upd"
+  "ateAvatarRequest\022\017\n\007content\030\001 \001(\014\022\024\n\014con"
+  "tent_type\030\002 \001(\t\"l\n\024UpdateAvatarResponse\022"
+  ")\n\006status\030\001 \001(\0132\031.oj.common.StatusRespon"
+  "se\022)\n\006avatar\030\002 \001(\0132\031.oj.common.AvatarMet"
+  "adata\"\250\001\n\031GetUserStatisticsResponse\022)\n\006s"
+  "tatus\030\001 \001(\0132\031.oj.common.StatusResponse\022-"
+  "\n\nstatistics\030\002 \001(\0132\031.oj.common.UserStati"
+  "stics\0221\n\022recent_submissions\030\003 \003(\0132\025.oj.c"
+  "ommon.Submission\"z\n\026GetQuestionListReque"
+  "st\022$\n\004page\030\001 \001(\0132\026.oj.common.PageRequest"
+  "\022\016\n\006search\030\002 \001(\t\022\022\n\ndifficulty\030\003 \001(\t\022\026\n\016"
+  "include_hidden\030\004 \001(\010\"\223\001\n\027GetQuestionList"
   "Response\022)\n\006status\030\001 \001(\0132\031.oj.common.Sta"
-  "tusResponse\022%\n\010solution\030\002 \001(\0132\023.oj.commo"
-  "n.Solution\"\240\001\n\026SolutionActionResponse\022)\n"
-  "\006status\030\001 \001(\0132\031.oj.common.StatusResponse"
-  "\022/\n\007actions\030\002 \001(\0132\036.oj.common.SolutionAc"
-  "tionState\022\022\n\nlike_count\030\003 \001(\004\022\026\n\016favorit"
-  "e_count\030\004 \001(\004\"P\n\023ListCommentsRequest\022\023\n\013"
-  "solution_id\030\001 \001(\004\022$\n\004page\030\002 \001(\0132\026.oj.com"
-  "mon.PageRequest\"U\n\022ListRepliesRequest\022\031\n"
-  "\021parent_comment_id\030\001 \001(\004\022$\n\004page\030\002 \001(\0132\026"
-  ".oj.common.PageRequest\"\313\001\n\024ListCommentsR"
-  "esponse\022)\n\006status\030\001 \001(\0132\031.oj.common.Stat"
-  "usResponse\022%\n\004page\030\002 \001(\0132\027.oj.common.Pag"
-  "eResponse\022$\n\010comments\030\003 \003(\0132\022.oj.common."
-  "Comment\022;\n\024current_user_actions\030\004 \003(\0132\035."
-  "oj.common.CommentActionState\"W\n\024CreateCo"
-  "mmentRequest\022\023\n\013solution_id\030\001 \001(\004\022\031\n\021par"
-  "ent_comment_id\030\002 \001(\004\022\017\n\007content\030\003 \001(\t\";\n"
-  "\024UpdateCommentRequest\022\022\n\ncomment_id\030\001 \001("
-  "\004\022\017\n\007content\030\002 \001(\t\"&\n\020CommentIdRequest\022\022"
-  "\n\ncomment_id\030\001 \001(\004\"a\n\017CommentResponse\022)\n"
-  "\006status\030\001 \001(\0132\031.oj.common.StatusResponse"
-  "\022#\n\007comment\030\002 \001(\0132\022.oj.common.Comment\"\236\001"
-  "\n\025CommentActionResponse\022)\n\006status\030\001 \001(\0132"
-  "\031.oj.common.StatusResponse\022.\n\007actions\030\002 "
-  "\001(\0132\035.oj.common.CommentActionState\022\022\n\nli"
-  "ke_count\030\003 \001(\004\022\026\n\016favorite_count\030\004 \001(\004\"/"
-  "\n\030GetCommentActionsRequest\022\023\n\013comment_id"
-  "s\030\001 \003(\004\"v\n\031GetCommentActionsResponse\022)\n\006"
-  "status\030\001 \001(\0132\031.oj.common.StatusResponse\022"
-  ".\n\007actions\030\002 \003(\0132\035.oj.common.CommentActi"
-  "onState\"7\n\021AdminLoginRequest\022\020\n\010admin_id"
-  "\030\001 \001(\r\022\020\n\010password\030\002 \001(\t\"g\n\022AdminLoginRe"
-  "sponse\022)\n\006status\030\001 \001(\0132\031.oj.common.Statu"
-  "sResponse\022&\n\005admin\030\002 \001(\0132\027.oj.common.Adm"
-  "inAccount\"\211\001\n\022GetVersionResponse\022)\n\006stat"
-  "us\030\001 \001(\0132\031.oj.common.StatusResponse\022\017\n\007s"
-  "ervice\030\002 \001(\t\022\017\n\007version\030\003 \001(\t\022\022\n\nbuild_d"
-  "ate\030\004 \001(\t\022\022\n\nbuild_time\030\005 \001(\t\"\333\001\n\025AdminO"
-  "verviewResponse\022)\n\006status\030\001 \001(\0132\031.oj.com"
-  "mon.StatusResponse\022\023\n\013total_users\030\002 \001(\004\022"
-  "\027\n\017total_questions\030\003 \001(\004\022\027\n\017total_soluti"
-  "ons\030\004 \001(\004\022\031\n\021total_submissions\030\005 \001(\004\022\031\n\021"
-  "today_submissions\030\006 \001(\004\022\032\n\022judge_server_"
-  "count\030\007 \001(\r\"M\n\025AdminListUsersRequest\022$\n\004"
-  "page\030\001 \001(\0132\026.oj.common.PageRequest\022\016\n\006se"
-  "arch\030\002 \001(\t\"\212\001\n\026AdminListUsersResponse\022)\n"
-  "\006status\030\001 \001(\0132\031.oj.common.StatusResponse"
-  "\022%\n\004page\030\002 \001(\0132\027.oj.common.PageResponse\022"
-  "\036\n\005users\030\003 \003(\0132\017.oj.common.User\"I\n\026Admin"
-  "CreateUserRequest\022\035\n\004user\030\001 \001(\0132\017.oj.com"
-  "mon.User\022\020\n\010password\030\002 \001(\t\"7\n\026AdminUpdat"
-  "eUserRequest\022\035\n\004user\030\001 \001(\0132\017.oj.common.U"
-  "ser\"!\n\022AdminUserIdRequest\022\013\n\003uid\030\001 \001(\r\"]"
-  "\n\021AdminUserResponse\022)\n\006status\030\001 \001(\0132\031.oj"
-  ".common.StatusResponse\022\035\n\004user\030\002 \001(\0132\017.o"
-  "j.common.User\"P\n\030ListAdminAccountsReques"
-  "t\022$\n\004page\030\001 \001(\0132\026.oj.common.PageRequest\022"
-  "\016\n\006search\030\002 \001(\t\"\230\001\n\031ListAdminAccountsRes"
-  "ponse\022)\n\006status\030\001 \001(\0132\031.oj.common.Status"
-  "Response\022%\n\004page\030\002 \001(\0132\027.oj.common.PageR"
-  "esponse\022)\n\010accounts\030\003 \003(\0132\027.oj.common.Ad"
-  "minAccount\"U\n\027SaveAdminAccountRequest\022(\n"
-  "\007account\030\001 \001(\0132\027.oj.common.AdminAccount\022"
-  "\020\n\010password\030\002 \001(\t\")\n\025AdminAccountIdReque"
-  "st\022\020\n\010admin_id\030\001 \001(\r\"k\n\024AdminAccountResp"
+  "tusResponse\022%\n\004page\030\002 \001(\0132\027.oj.common.Pa"
+  "geResponse\022&\n\tquestions\030\003 \003(\0132\023.oj.commo"
+  "n.Question\"(\n\021QuestionIdRequest\022\023\n\013quest"
+  "ion_id\030\001 \001(\t\"\270\001\n\031GetQuestionDetailRespon"
+  "se\022)\n\006status\030\001 \001(\0132\031.oj.common.StatusRes"
+  "ponse\022%\n\010question\030\002 \001(\0132\023.oj.common.Ques"
+  "tion\022)\n\014sample_tests\030\003 \003(\0132\023.oj.common.T"
+  "estCase\022\036\n\026passed_by_current_user\030\004 \001(\010\""
+  "Z\n\035GetQuestionPassStatusResponse\022)\n\006stat"
+  "us\030\001 \001(\0132\031.oj.common.StatusResponse\022\016\n\006p"
+  "assed\030\002 \001(\010\"<\n\023SaveQuestionRequest\022%\n\010qu"
+  "estion\030\001 \001(\0132\023.oj.common.Question\"d\n\020Que"
+  "stionResponse\022)\n\006status\030\001 \001(\0132\031.oj.commo"
+  "n.StatusResponse\022%\n\010question\030\002 \001(\0132\023.oj."
+  "common.Question\"@\n\024ListTestCasesRequest\022"
+  "\023\n\013question_id\030\001 \001(\t\022\023\n\013sample_only\030\002 \001("
+  "\010\"k\n\025ListTestCasesResponse\022)\n\006status\030\001 \001"
+  "(\0132\031.oj.common.StatusResponse\022\'\n\ntest_ca"
+  "ses\030\002 \003(\0132\023.oj.common.TestCase\"x\n\025Create"
+  "TestCaseRequest\022\023\n\013question_id\030\001 \001(\t\022\017\n\007"
+  "ordinal\030\002 \001(\r\022\r\n\005input\030\003 \001(\t\022\027\n\017expected"
+  "_output\030\004 \001(\t\022\021\n\tis_sample\030\005 \001(\010\"\?\n\025Upda"
+  "teTestCaseRequest\022&\n\ttest_case\030\001 \001(\0132\023.o"
+  "j.common.TestCase\")\n\021TestCaseIdRequest\022\024"
+  "\n\014test_case_id\030\001 \001(\004\"e\n\020TestCaseResponse"
+  "\022)\n\006status\030\001 \001(\0132\031.oj.common.StatusRespo"
+  "nse\022&\n\ttest_case\030\002 \001(\0132\023.oj.common.TestC"
+  "ase\"5\n\036InvalidateQuestionCacheRequest\022\023\n"
+  "\013question_id\030\001 \001(\t\"v\n\024ListSolutionsReque"
+  "st\022$\n\004page\030\001 \001(\0132\026.oj.common.PageRequest"
+  "\022\023\n\013question_id\030\002 \001(\t\022\017\n\007sort_by\030\003 \001(\t\022\022"
+  "\n\nauthor_uid\030\004 \001(\r\"\221\001\n\025ListSolutionsResp"
   "onse\022)\n\006status\030\001 \001(\0132\031.oj.common.StatusR"
-  "esponse\022(\n\007account\030\002 \001(\0132\027.oj.common.Adm"
-  "inAccount\"n\n\027GetCacheMetricsResponse\022)\n\006"
-  "status\030\001 \001(\0132\031.oj.common.StatusResponse\022"
-  "(\n\007metrics\030\002 \001(\0132\027.oj.common.CacheMetric"
-  "s\"q\n\023GetAuditLogsRequest\022$\n\004page\030\001 \001(\0132\026"
-  ".oj.common.PageRequest\022\016\n\006action\030\002 \001(\t\022\022"
-  "\n\nstart_time\030\003 \001(\003\022\020\n\010end_time\030\004 \001(\003\"\220\001\n"
-  "\024GetAuditLogsResponse\022)\n\006status\030\001 \001(\0132\031."
-  "oj.common.StatusResponse\022%\n\004page\030\002 \001(\0132\027"
-  ".oj.common.PageResponse\022&\n\004logs\030\003 \003(\0132\030."
-  "oj.common.AdminAuditLog\"N\n\027CreateSubmiss"
-  "ionRequest\022\023\n\013question_id\030\001 \001(\t\022\014\n\004code\030"
-  "\002 \001(\t\022\020\n\010language\030\003 \001(\t\"p\n\030CreateSubmiss"
-  "ionResponse\022)\n\006status\030\001 \001(\0132\031.oj.common."
-  "StatusResponse\022)\n\nsubmission\030\002 \001(\0132\025.oj."
-  "common.Submission\"d\n\027CreateCustomTestReq"
-  "uest\022\023\n\013question_id\030\001 \001(\t\022\014\n\004code\030\002 \001(\t\022"
-  "\020\n\010language\030\003 \001(\t\022\024\n\014custom_input\030\004 \001(\t\""
-  "\216\001\n\030CreateCustomTestResponse\022)\n\006status\030\001"
-  " \001(\0132\031.oj.common.StatusResponse\022\017\n\007task_"
-  "id\030\002 \001(\t\0226\n\021submission_status\030\003 \001(\0162\033.oj"
-  ".common.SubmissionStatus\"-\n\024GetSubmissio"
-  "nRequest\022\025\n\rsubmission_id\030\001 \001(\004\"m\n\025GetSu"
-  "bmissionResponse\022)\n\006status\030\001 \001(\0132\031.oj.co"
-  "mmon.StatusResponse\022)\n\nsubmission\030\002 \001(\0132"
-  "\025.oj.common.Submission\"\'\n\024GetCustomTestR"
-  "equest\022\017\n\007task_id\030\001 \001(\t\"\263\001\n\025GetCustomTes"
-  "tResponse\022)\n\006status\030\001 \001(\0132\031.oj.common.St"
-  "atusResponse\022\017\n\007task_id\030\002 \001(\t\0226\n\021submiss"
-  "ion_status\030\003 \001(\0162\033.oj.common.SubmissionS"
-  "tatus\022&\n\006result\030\004 \001(\0132\026.oj.common.JudgeR"
-  "esult\"\221\001\n\026ListSubmissionsRequest\022$\n\004page"
-  "\030\001 \001(\0132\026.oj.common.PageRequest\022\023\n\013questi"
-  "on_id\030\002 \001(\t\0226\n\021submission_status\030\004 \001(\0162\033"
-  ".oj.common.SubmissionStatusJ\004\010\003\020\004\"\227\001\n\027Li"
-  "stSubmissionsResponse\022)\n\006status\030\001 \001(\0132\031."
-  "oj.common.StatusResponse\022%\n\004page\030\002 \001(\0132\027"
-  ".oj.common.PageResponse\022*\n\013submissions\030\003"
-  " \003(\0132\025.oj.common.Submission\"\277\001\n\030UpdateJu"
-  "dgeResultRequest\022\022\n\nmessage_id\030\001 \001(\t\022\027\n\r"
-  "submission_id\030\003 \001(\004H\000\022\030\n\016custom_task_id\030"
-  "\004 \001(\tH\000\022\026\n\016result_payload\030\005 \001(\014\0223\n\014servi"
-  "ce_auth\030\006 \001(\0132\035.oj.biz.ServiceAuthentica"
-  "tionB\t\n\007task_idJ\004\010\002\020\003\"^\n\025ServiceAuthenti"
-  "cation\022\016\n\006key_id\030\001 \001(\t\022\021\n\ttimestamp\030\002 \001("
-  "\003\022\r\n\005nonce\030\003 \001(\t\022\023\n\013hmac_sha256\030\004 \001(\014\"\226\001"
-  "\n\031UpdateJudgeResultResponse\022)\n\006status\030\001 "
-  "\001(\0132\031.oj.common.StatusResponse\0226\n\007outcom"
-  "e\030\002 \001(\0162%.oj.biz.JudgeResultPersistenceO"
-  "utcome\022\026\n\016retry_after_ms\030\003 \001(\r\",\n\034Invali"
-  "dateStaticCacheRequest\022\014\n\004path\030\001 \001(\t*\231\002\n"
-  "\035JudgeResultPersistenceOutcome\0220\n,JUDGE_"
-  "RESULT_PERSISTENCE_OUTCOME_UNSPECIFIED\020\000"
-  "\022.\n*JUDGE_RESULT_PERSISTENCE_OUTCOME_PER"
-  "SISTED\020\001\022/\n+JUDGE_RESULT_PERSISTENCE_OUT"
-  "COME_IDEMPOTENT\020\002\0226\n2JUDGE_RESULT_PERSIS"
-  "TENCE_OUTCOME_RETRYABLE_FAILURE\020\003\022-\n)JUD"
-  "GE_RESULT_PERSISTENCE_OUTCOME_REJECTED\020\004"
-  "2\356\036\n\tOJService\022a\n\024SendRegistrationCode\022#"
-  ".oj.biz.SendVerificationCodeRequest\032$.oj"
-  ".biz.SendVerificationCodeResponse\0229\n\010Reg"
-  "ister\022\027.oj.biz.RegisterRequest\032\024.oj.biz."
-  "AuthResponse\022W\n\031LoginWithVerificationCod"
-  "e\022$.oj.biz.VerificationCodeLoginRequest\032"
-  "\024.oj.biz.AuthResponse\022G\n\021LoginWithPasswo"
-  "rd\022\034.oj.biz.PasswordLoginRequest\032\024.oj.bi"
-  "z.AuthResponse\022;\n\006Logout\022\027.oj.common.Emp"
-  "tyRequest\032\030.oj.common.EmptyResponse\022C\n\013S"
-  "etPassword\022\032.oj.biz.SetPasswordRequest\032\030"
-  ".oj.common.EmptyResponse\022Q\n\020SendSecurity"
-  "Code\022\027.oj.common.EmptyRequest\032$.oj.biz.S"
-  "endVerificationCodeResponse\022I\n\016ChangePas"
-  "sword\022\035.oj.biz.ChangePasswordRequest\032\030.o"
-  "j.common.EmptyResponse\022C\n\013ChangeEmail\022\032."
-  "oj.biz.ChangeEmailRequest\032\030.oj.common.Em"
-  "ptyResponse\022G\n\rDeleteAccount\022\034.oj.biz.De"
-  "leteAccountRequest\032\030.oj.common.EmptyResp"
-  "onse\022I\n\016GetCurrentUser\022\027.oj.common.Empty"
-  "Request\032\036.oj.biz.GetUserProfileResponse\022"
-  "O\n\016GetUserProfile\022\035.oj.biz.GetUserProfil"
-  "eRequest\032\036.oj.biz.GetUserProfileResponse"
-  "\022L\n\rUpdateProfile\022\034.oj.biz.UpdateProfile"
-  "Request\032\035.oj.biz.UpdateProfileResponse\022I"
-  "\n\014UpdateAvatar\022\033.oj.biz.UpdateAvatarRequ"
-  "est\032\034.oj.biz.UpdateAvatarResponse\022A\n\014Del"
-  "eteAvatar\022\027.oj.common.EmptyRequest\032\030.oj."
-  "common.EmptyResponse\022K\n\rGetStatistics\022\027."
-  "oj.common.EmptyRequest\032!.oj.biz.GetUserS"
-  "tatisticsResponse\022P\n\rListQuestions\022\036.oj."
-  "biz.GetQuestionListRequest\032\037.oj.biz.GetQ"
-  "uestionListResponse\022K\n\013GetQuestion\022\031.oj."
-  "biz.QuestionIdRequest\032!.oj.biz.GetQuesti"
-  "onDetailResponse\022Q\n\rGetPassStatus\022\031.oj.b"
-  "iz.QuestionIdRequest\032%.oj.biz.GetQuestio"
-  "nPassStatusResponse\022G\n\016CreateQuestion\022\033."
-  "oj.biz.SaveQuestionRequest\032\030.oj.biz.Ques"
-  "tionResponse\022G\n\016UpdateQuestion\022\033.oj.biz."
-  "SaveQuestionRequest\032\030.oj.biz.QuestionRes"
-  "ponse\022E\n\016DeleteQuestion\022\031.oj.biz.Questio"
-  "nIdRequest\032\030.oj.common.EmptyResponse\022L\n\r"
-  "ListTestCases\022\034.oj.biz.ListTestCasesRequ"
-  "est\032\035.oj.biz.ListTestCasesResponse\022I\n\016Cr"
-  "eateTestCase\022\035.oj.biz.CreateTestCaseRequ"
-  "est\032\030.oj.biz.TestCaseResponse\022I\n\016UpdateT"
-  "estCase\022\035.oj.biz.UpdateTestCaseRequest\032\030"
-  ".oj.biz.TestCaseResponse\022E\n\016DeleteTestCa"
-  "se\022\031.oj.biz.TestCaseIdRequest\032\030.oj.commo"
-  "n.EmptyResponse\022S\n\017InvalidateCache\022&.oj."
-  "biz.InvalidateQuestionCacheRequest\032\030.oj."
-  "common.EmptyResponse\022L\n\rListSolutions\022\034."
-  "oj.biz.ListSolutionsRequest\032\035.oj.biz.Lis"
-  "tSolutionsResponse\022E\n\013GetSolution\022\031.oj.b"
-  "iz.SolutionIdRequest\032\033.oj.biz.GetSolutio"
-  "nResponse\022I\n\016CreateSolution\022\035.oj.biz.Cre"
-  "ateSolutionRequest\032\030.oj.biz.SolutionResp"
-  "onse\022I\n\016UpdateSolution\022\035.oj.biz.UpdateSo"
-  "lutionRequest\032\030.oj.biz.SolutionResponse\022"
-  "E\n\016DeleteSolution\022\031.oj.biz.SolutionIdReq"
-  "uest\032\030.oj.common.EmptyResponse\022O\n\022Toggle"
-  "SolutionLike\022\031.oj.biz.SolutionIdRequest\032"
-  "\036.oj.biz.SolutionActionResponse\022S\n\026Toggl"
-  "eSolutionFavorite\022\031.oj.biz.SolutionIdReq"
-  "uest\032\036.oj.biz.SolutionActionResponse\022K\n\016"
-  "GetActionState\022\031.oj.biz.SolutionIdReques"
-  "t\032\036.oj.biz.SolutionActionResponse\022I\n\014Lis"
-  "tComments\022\033.oj.biz.ListCommentsRequest\032\034"
-  ".oj.biz.ListCommentsResponse\022G\n\013ListRepl"
-  "ies\022\032.oj.biz.ListRepliesRequest\032\034.oj.biz"
-  ".ListCommentsResponse\022F\n\rCreateComment\022\034"
-  ".oj.biz.CreateCommentRequest\032\027.oj.biz.Co"
-  "mmentResponse\022F\n\rUpdateComment\022\034.oj.biz."
-  "UpdateCommentRequest\032\027.oj.biz.CommentRes"
-  "ponse\022C\n\rDeleteComment\022\030.oj.biz.CommentI"
-  "dRequest\032\030.oj.common.EmptyResponse\022L\n\021To"
-  "ggleCommentLike\022\030.oj.biz.CommentIdReques"
-  "t\032\035.oj.biz.CommentActionResponse\022P\n\025Togg"
-  "leCommentFavorite\022\030.oj.biz.CommentIdRequ"
-  "est\032\035.oj.biz.CommentActionResponse\022V\n\017Ge"
-  "tActionStates\022 .oj.biz.GetCommentActions"
-  "Request\032!.oj.biz.GetCommentActionsRespon"
-  "se\022U\n\020CreateSubmission\022\037.oj.biz.CreateSu"
-  "bmissionRequest\032 .oj.biz.CreateSubmissio"
-  "nResponse\022U\n\020CreateCustomTest\022\037.oj.biz.C"
-  "reateCustomTestRequest\032 .oj.biz.CreateCu"
-  "stomTestResponse\022L\n\rGetSubmission\022\034.oj.b"
-  "iz.GetSubmissionRequest\032\035.oj.biz.GetSubm"
-  "issionResponse\022L\n\rGetCustomTest\022\034.oj.biz"
-  ".GetCustomTestRequest\032\035.oj.biz.GetCustom"
-  "TestResponse\022R\n\017ListSubmissions\022\036.oj.biz"
-  ".ListSubmissionsRequest\032\037.oj.biz.ListSub"
-  "missionsResponse\022X\n\021UpdateJudgeResult\022 ."
-  "oj.biz.UpdateJudgeResultRequest\032!.oj.biz"
-  ".UpdateJudgeResultResponse\022L\n\027LegacyUpda"
-  "teJudgeResult\022\036.oj_judge.JudgeFinishedRe"
-  "quest\032\021.oj_judge.NullRsp\022W\n\025InvalidateSt"
-  "aticCache\022$.oj.biz.InvalidateStaticCache"
-  "Request\032\030.oj.common.EmptyResponse2\270\020\n\016OJ"
-  "AdminService\022F\n\017AdminGetVersion\022\027.oj.com"
-  "mon.EmptyRequest\032\032.oj.biz.GetVersionResp"
-  "onse\022C\n\nAdminLogin\022\031.oj.biz.AdminLoginRe"
-  "quest\032\032.oj.biz.AdminLoginResponse\022@\n\013Adm"
-  "inLogout\022\027.oj.common.EmptyRequest\032\030.oj.c"
-  "ommon.EmptyResponse\022J\n\020AdminGetOverview\022"
-  "\027.oj.common.EmptyRequest\032\035.oj.biz.AdminO"
-  "verviewResponse\022O\n\016AdminListUsers\022\035.oj.b"
-  "iz.AdminListUsersRequest\032\036.oj.biz.AdminL"
-  "istUsersResponse\022E\n\014AdminGetUser\022\032.oj.bi"
-  "z.AdminUserIdRequest\032\031.oj.biz.AdminUserR"
-  "esponse\022L\n\017AdminCreateUser\022\036.oj.biz.Admi"
-  "nCreateUserRequest\032\031.oj.biz.AdminUserRes"
-  "ponse\022L\n\017AdminUpdateUser\022\036.oj.biz.AdminU"
-  "pdateUserRequest\032\031.oj.biz.AdminUserRespo"
-  "nse\022G\n\017AdminDeleteUser\022\032.oj.biz.AdminUse"
-  "rIdRequest\032\030.oj.common.EmptyResponse\022U\n\022"
-  "AdminListQuestions\022\036.oj.biz.GetQuestionL"
-  "istRequest\032\037.oj.biz.GetQuestionListRespo"
-  "nse\022P\n\020AdminGetQuestion\022\031.oj.biz.Questio"
-  "nIdRequest\032!.oj.biz.GetQuestionDetailRes"
-  "ponse\022L\n\023AdminCreateQuestion\022\033.oj.biz.Sa"
+  "esponse\022%\n\004page\030\002 \001(\0132\027.oj.common.PageRe"
+  "sponse\022&\n\tsolutions\030\003 \003(\0132\023.oj.common.So"
+  "lution\"(\n\021SolutionIdRequest\022\023\n\013solution_"
+  "id\030\001 \001(\004\"\306\001\n\023GetSolutionResponse\022)\n\006stat"
+  "us\030\001 \001(\0132\031.oj.common.StatusResponse\022%\n\010s"
+  "olution\030\002 \001(\0132\023.oj.common.Solution\022\037\n\006au"
+  "thor\030\003 \001(\0132\017.oj.common.User\022<\n\024current_u"
+  "ser_actions\030\004 \001(\0132\036.oj.common.SolutionAc"
+  "tionState\"O\n\025CreateSolutionRequest\022\023\n\013qu"
+  "estion_id\030\001 \001(\t\022\r\n\005title\030\002 \001(\t\022\022\n\nconten"
+  "t_md\030\003 \001(\t\"O\n\025UpdateSolutionRequest\022\023\n\013s"
+  "olution_id\030\001 \001(\004\022\r\n\005title\030\002 \001(\t\022\022\n\nconte"
+  "nt_md\030\003 \001(\t\"d\n\020SolutionResponse\022)\n\006statu"
+  "s\030\001 \001(\0132\031.oj.common.StatusResponse\022%\n\010so"
+  "lution\030\002 \001(\0132\023.oj.common.Solution\"\240\001\n\026So"
+  "lutionActionResponse\022)\n\006status\030\001 \001(\0132\031.o"
+  "j.common.StatusResponse\022/\n\007actions\030\002 \001(\013"
+  "2\036.oj.common.SolutionActionState\022\022\n\nlike"
+  "_count\030\003 \001(\004\022\026\n\016favorite_count\030\004 \001(\004\"P\n\023"
+  "ListCommentsRequest\022\023\n\013solution_id\030\001 \001(\004"
+  "\022$\n\004page\030\002 \001(\0132\026.oj.common.PageRequest\"U"
+  "\n\022ListRepliesRequest\022\031\n\021parent_comment_i"
+  "d\030\001 \001(\004\022$\n\004page\030\002 \001(\0132\026.oj.common.PageRe"
+  "quest\"\313\001\n\024ListCommentsResponse\022)\n\006status"
+  "\030\001 \001(\0132\031.oj.common.StatusResponse\022%\n\004pag"
+  "e\030\002 \001(\0132\027.oj.common.PageResponse\022$\n\010comm"
+  "ents\030\003 \003(\0132\022.oj.common.Comment\022;\n\024curren"
+  "t_user_actions\030\004 \003(\0132\035.oj.common.Comment"
+  "ActionState\"W\n\024CreateCommentRequest\022\023\n\013s"
+  "olution_id\030\001 \001(\004\022\031\n\021parent_comment_id\030\002 "
+  "\001(\004\022\017\n\007content\030\003 \001(\t\";\n\024UpdateCommentReq"
+  "uest\022\022\n\ncomment_id\030\001 \001(\004\022\017\n\007content\030\002 \001("
+  "\t\"&\n\020CommentIdRequest\022\022\n\ncomment_id\030\001 \001("
+  "\004\"a\n\017CommentResponse\022)\n\006status\030\001 \001(\0132\031.o"
+  "j.common.StatusResponse\022#\n\007comment\030\002 \001(\013"
+  "2\022.oj.common.Comment\"\236\001\n\025CommentActionRe"
+  "sponse\022)\n\006status\030\001 \001(\0132\031.oj.common.Statu"
+  "sResponse\022.\n\007actions\030\002 \001(\0132\035.oj.common.C"
+  "ommentActionState\022\022\n\nlike_count\030\003 \001(\004\022\026\n"
+  "\016favorite_count\030\004 \001(\004\"/\n\030GetCommentActio"
+  "nsRequest\022\023\n\013comment_ids\030\001 \003(\004\"v\n\031GetCom"
+  "mentActionsResponse\022)\n\006status\030\001 \001(\0132\031.oj"
+  ".common.StatusResponse\022.\n\007actions\030\002 \003(\0132"
+  "\035.oj.common.CommentActionState\"7\n\021AdminL"
+  "oginRequest\022\020\n\010admin_id\030\001 \001(\r\022\020\n\010passwor"
+  "d\030\002 \001(\t\"g\n\022AdminLoginResponse\022)\n\006status\030"
+  "\001 \001(\0132\031.oj.common.StatusResponse\022&\n\005admi"
+  "n\030\002 \001(\0132\027.oj.common.AdminAccount\"\211\001\n\022Get"
+  "VersionResponse\022)\n\006status\030\001 \001(\0132\031.oj.com"
+  "mon.StatusResponse\022\017\n\007service\030\002 \001(\t\022\017\n\007v"
+  "ersion\030\003 \001(\t\022\022\n\nbuild_date\030\004 \001(\t\022\022\n\nbuil"
+  "d_time\030\005 \001(\t\"\333\001\n\025AdminOverviewResponse\022)"
+  "\n\006status\030\001 \001(\0132\031.oj.common.StatusRespons"
+  "e\022\023\n\013total_users\030\002 \001(\004\022\027\n\017total_question"
+  "s\030\003 \001(\004\022\027\n\017total_solutions\030\004 \001(\004\022\031\n\021tota"
+  "l_submissions\030\005 \001(\004\022\031\n\021today_submissions"
+  "\030\006 \001(\004\022\032\n\022judge_server_count\030\007 \001(\r\"M\n\025Ad"
+  "minListUsersRequest\022$\n\004page\030\001 \001(\0132\026.oj.c"
+  "ommon.PageRequest\022\016\n\006search\030\002 \001(\t\"\212\001\n\026Ad"
+  "minListUsersResponse\022)\n\006status\030\001 \001(\0132\031.o"
+  "j.common.StatusResponse\022%\n\004page\030\002 \001(\0132\027."
+  "oj.common.PageResponse\022\036\n\005users\030\003 \003(\0132\017."
+  "oj.common.User\"I\n\026AdminCreateUserRequest"
+  "\022\035\n\004user\030\001 \001(\0132\017.oj.common.User\022\020\n\010passw"
+  "ord\030\002 \001(\t\"7\n\026AdminUpdateUserRequest\022\035\n\004u"
+  "ser\030\001 \001(\0132\017.oj.common.User\"!\n\022AdminUserI"
+  "dRequest\022\013\n\003uid\030\001 \001(\r\"]\n\021AdminUserRespon"
+  "se\022)\n\006status\030\001 \001(\0132\031.oj.common.StatusRes"
+  "ponse\022\035\n\004user\030\002 \001(\0132\017.oj.common.User\"P\n\030"
+  "ListAdminAccountsRequest\022$\n\004page\030\001 \001(\0132\026"
+  ".oj.common.PageRequest\022\016\n\006search\030\002 \001(\t\"\230"
+  "\001\n\031ListAdminAccountsResponse\022)\n\006status\030\001"
+  " \001(\0132\031.oj.common.StatusResponse\022%\n\004page\030"
+  "\002 \001(\0132\027.oj.common.PageResponse\022)\n\010accoun"
+  "ts\030\003 \003(\0132\027.oj.common.AdminAccount\"U\n\027Sav"
+  "eAdminAccountRequest\022(\n\007account\030\001 \001(\0132\027."
+  "oj.common.AdminAccount\022\020\n\010password\030\002 \001(\t"
+  "\")\n\025AdminAccountIdRequest\022\020\n\010admin_id\030\001 "
+  "\001(\r\"k\n\024AdminAccountResponse\022)\n\006status\030\001 "
+  "\001(\0132\031.oj.common.StatusResponse\022(\n\007accoun"
+  "t\030\002 \001(\0132\027.oj.common.AdminAccount\"n\n\027GetC"
+  "acheMetricsResponse\022)\n\006status\030\001 \001(\0132\031.oj"
+  ".common.StatusResponse\022(\n\007metrics\030\002 \001(\0132"
+  "\027.oj.common.CacheMetrics\"q\n\023GetAuditLogs"
+  "Request\022$\n\004page\030\001 \001(\0132\026.oj.common.PageRe"
+  "quest\022\016\n\006action\030\002 \001(\t\022\022\n\nstart_time\030\003 \001("
+  "\003\022\020\n\010end_time\030\004 \001(\003\"\220\001\n\024GetAuditLogsResp"
+  "onse\022)\n\006status\030\001 \001(\0132\031.oj.common.StatusR"
+  "esponse\022%\n\004page\030\002 \001(\0132\027.oj.common.PageRe"
+  "sponse\022&\n\004logs\030\003 \003(\0132\030.oj.common.AdminAu"
+  "ditLog\"N\n\027CreateSubmissionRequest\022\023\n\013que"
+  "stion_id\030\001 \001(\t\022\014\n\004code\030\002 \001(\t\022\020\n\010language"
+  "\030\003 \001(\t\"p\n\030CreateSubmissionResponse\022)\n\006st"
+  "atus\030\001 \001(\0132\031.oj.common.StatusResponse\022)\n"
+  "\nsubmission\030\002 \001(\0132\025.oj.common.Submission"
+  "\"d\n\027CreateCustomTestRequest\022\023\n\013question_"
+  "id\030\001 \001(\t\022\014\n\004code\030\002 \001(\t\022\020\n\010language\030\003 \001(\t"
+  "\022\024\n\014custom_input\030\004 \001(\t\"\216\001\n\030CreateCustomT"
+  "estResponse\022)\n\006status\030\001 \001(\0132\031.oj.common."
+  "StatusResponse\022\017\n\007task_id\030\002 \001(\t\0226\n\021submi"
+  "ssion_status\030\003 \001(\0162\033.oj.common.Submissio"
+  "nStatus\"-\n\024GetSubmissionRequest\022\025\n\rsubmi"
+  "ssion_id\030\001 \001(\004\"m\n\025GetSubmissionResponse\022"
+  ")\n\006status\030\001 \001(\0132\031.oj.common.StatusRespon"
+  "se\022)\n\nsubmission\030\002 \001(\0132\025.oj.common.Submi"
+  "ssion\"\'\n\024GetCustomTestRequest\022\017\n\007task_id"
+  "\030\001 \001(\t\"\263\001\n\025GetCustomTestResponse\022)\n\006stat"
+  "us\030\001 \001(\0132\031.oj.common.StatusResponse\022\017\n\007t"
+  "ask_id\030\002 \001(\t\0226\n\021submission_status\030\003 \001(\0162"
+  "\033.oj.common.SubmissionStatus\022&\n\006result\030\004"
+  " \001(\0132\026.oj.common.JudgeResult\"\221\001\n\026ListSub"
+  "missionsRequest\022$\n\004page\030\001 \001(\0132\026.oj.commo"
+  "n.PageRequest\022\023\n\013question_id\030\002 \001(\t\0226\n\021su"
+  "bmission_status\030\004 \001(\0162\033.oj.common.Submis"
+  "sionStatusJ\004\010\003\020\004\"\227\001\n\027ListSubmissionsResp"
+  "onse\022)\n\006status\030\001 \001(\0132\031.oj.common.StatusR"
+  "esponse\022%\n\004page\030\002 \001(\0132\027.oj.common.PageRe"
+  "sponse\022*\n\013submissions\030\003 \003(\0132\025.oj.common."
+  "Submission\"\277\001\n\030UpdateJudgeResultRequest\022"
+  "\022\n\nmessage_id\030\001 \001(\t\022\027\n\rsubmission_id\030\003 \001"
+  "(\004H\000\022\030\n\016custom_task_id\030\004 \001(\tH\000\022\026\n\016result"
+  "_payload\030\005 \001(\014\0223\n\014service_auth\030\006 \001(\0132\035.o"
+  "j.biz.ServiceAuthenticationB\t\n\007task_idJ\004"
+  "\010\002\020\003\"^\n\025ServiceAuthentication\022\016\n\006key_id\030"
+  "\001 \001(\t\022\021\n\ttimestamp\030\002 \001(\003\022\r\n\005nonce\030\003 \001(\t\022"
+  "\023\n\013hmac_sha256\030\004 \001(\014\"\226\001\n\031UpdateJudgeResu"
+  "ltResponse\022)\n\006status\030\001 \001(\0132\031.oj.common.S"
+  "tatusResponse\0226\n\007outcome\030\002 \001(\0162%.oj.biz."
+  "JudgeResultPersistenceOutcome\022\026\n\016retry_a"
+  "fter_ms\030\003 \001(\r\",\n\034InvalidateStaticCacheRe"
+  "quest\022\014\n\004path\030\001 \001(\t*\231\002\n\035JudgeResultPersi"
+  "stenceOutcome\0220\n,JUDGE_RESULT_PERSISTENC"
+  "E_OUTCOME_UNSPECIFIED\020\000\022.\n*JUDGE_RESULT_"
+  "PERSISTENCE_OUTCOME_PERSISTED\020\001\022/\n+JUDGE"
+  "_RESULT_PERSISTENCE_OUTCOME_IDEMPOTENT\020\002"
+  "\0226\n2JUDGE_RESULT_PERSISTENCE_OUTCOME_RET"
+  "RYABLE_FAILURE\020\003\022-\n)JUDGE_RESULT_PERSIST"
+  "ENCE_OUTCOME_REJECTED\020\0042\366\036\n\tOJService\022a\n"
+  "\024SendRegistrationCode\022#.oj.biz.SendVerif"
+  "icationCodeRequest\032$.oj.biz.SendVerifica"
+  "tionCodeResponse\0229\n\010Register\022\027.oj.biz.Re"
+  "gisterRequest\032\024.oj.biz.AuthResponse\022W\n\031L"
+  "oginWithVerificationCode\022$.oj.biz.Verifi"
+  "cationCodeLoginRequest\032\024.oj.biz.AuthResp"
+  "onse\022G\n\021LoginWithPassword\022\034.oj.biz.Passw"
+  "ordLoginRequest\032\024.oj.biz.AuthResponse\022;\n"
+  "\006Logout\022\027.oj.common.EmptyRequest\032\030.oj.co"
+  "mmon.EmptyResponse\022C\n\013SetPassword\022\032.oj.b"
+  "iz.SetPasswordRequest\032\030.oj.common.EmptyR"
+  "esponse\022Y\n\020SendSecurityCode\022\037.oj.biz.Sen"
+  "dSecurityCodeRequest\032$.oj.biz.SendVerifi"
+  "cationCodeResponse\022I\n\016ChangePassword\022\035.o"
+  "j.biz.ChangePasswordRequest\032\030.oj.common."
+  "EmptyResponse\022C\n\013ChangeEmail\022\032.oj.biz.Ch"
+  "angeEmailRequest\032\030.oj.common.EmptyRespon"
+  "se\022G\n\rDeleteAccount\022\034.oj.biz.DeleteAccou"
+  "ntRequest\032\030.oj.common.EmptyResponse\022I\n\016G"
+  "etCurrentUser\022\027.oj.common.EmptyRequest\032\036"
+  ".oj.biz.GetUserProfileResponse\022O\n\016GetUse"
+  "rProfile\022\035.oj.biz.GetUserProfileRequest\032"
+  "\036.oj.biz.GetUserProfileResponse\022L\n\rUpdat"
+  "eProfile\022\034.oj.biz.UpdateProfileRequest\032\035"
+  ".oj.biz.UpdateProfileResponse\022I\n\014UpdateA"
+  "vatar\022\033.oj.biz.UpdateAvatarRequest\032\034.oj."
+  "biz.UpdateAvatarResponse\022A\n\014DeleteAvatar"
+  "\022\027.oj.common.EmptyRequest\032\030.oj.common.Em"
+  "ptyResponse\022K\n\rGetStatistics\022\027.oj.common"
+  ".EmptyRequest\032!.oj.biz.GetUserStatistics"
+  "Response\022P\n\rListQuestions\022\036.oj.biz.GetQu"
+  "estionListRequest\032\037.oj.biz.GetQuestionLi"
+  "stResponse\022K\n\013GetQuestion\022\031.oj.biz.Quest"
+  "ionIdRequest\032!.oj.biz.GetQuestionDetailR"
+  "esponse\022Q\n\rGetPassStatus\022\031.oj.biz.Questi"
+  "onIdRequest\032%.oj.biz.GetQuestionPassStat"
+  "usResponse\022G\n\016CreateQuestion\022\033.oj.biz.Sa"
   "veQuestionRequest\032\030.oj.biz.QuestionRespo"
-  "nse\022L\n\023AdminUpdateQuestion\022\033.oj.biz.Save"
-  "QuestionRequest\032\030.oj.biz.QuestionRespons"
-  "e\022J\n\023AdminDeleteQuestion\022\031.oj.biz.Questi"
-  "onIdRequest\032\030.oj.common.EmptyResponse\022Q\n"
-  "\022AdminListTestCases\022\034.oj.biz.ListTestCas"
-  "esRequest\032\035.oj.biz.ListTestCasesResponse"
-  "\022N\n\023AdminCreateTestCase\022\035.oj.biz.CreateT"
-  "estCaseRequest\032\030.oj.biz.TestCaseResponse"
-  "\022N\n\023AdminUpdateTestCase\022\035.oj.biz.UpdateT"
-  "estCaseRequest\032\030.oj.biz.TestCaseResponse"
-  "\022J\n\023AdminDeleteTestCase\022\031.oj.biz.TestCas"
-  "eIdRequest\032\030.oj.common.EmptyResponse\022`\n\034"
-  "AdminInvalidateQuestionCache\022&.oj.biz.In"
-  "validateQuestionCacheRequest\032\030.oj.common"
-  ".EmptyResponse\022]\n\026AdminListAdminAccounts"
-  "\022 .oj.biz.ListAdminAccountsRequest\032!.oj."
-  "biz.ListAdminAccountsResponse\022S\n\024AdminGe"
-  "tAdminAccount\022\035.oj.biz.AdminAccountIdReq"
-  "uest\032\034.oj.biz.AdminAccountResponse\022X\n\027Ad"
-  "minCreateAdminAccount\022\037.oj.biz.SaveAdmin"
-  "AccountRequest\032\034.oj.biz.AdminAccountResp"
-  "onse\022X\n\027AdminUpdateAdminAccount\022\037.oj.biz"
-  ".SaveAdminAccountRequest\032\034.oj.biz.AdminA"
-  "ccountResponse\022R\n\027AdminDeleteAdminAccoun"
-  "t\022\035.oj.biz.AdminAccountIdRequest\032\030.oj.co"
-  "mmon.EmptyResponse\022P\n\024AdminGetCacheMetri"
-  "cs\022\027.oj.common.EmptyRequest\032\037.oj.biz.Get"
-  "CacheMetricsResponse\022N\n\021AdminGetAuditLog"
-  "s\022\033.oj.biz.GetAuditLogsRequest\032\034.oj.biz."
-  "GetAuditLogsResponseB\003\200\001\001b\006proto3"
+  "nse\022G\n\016UpdateQuestion\022\033.oj.biz.SaveQuest"
+  "ionRequest\032\030.oj.biz.QuestionResponse\022E\n\016"
+  "DeleteQuestion\022\031.oj.biz.QuestionIdReques"
+  "t\032\030.oj.common.EmptyResponse\022L\n\rListTestC"
+  "ases\022\034.oj.biz.ListTestCasesRequest\032\035.oj."
+  "biz.ListTestCasesResponse\022I\n\016CreateTestC"
+  "ase\022\035.oj.biz.CreateTestCaseRequest\032\030.oj."
+  "biz.TestCaseResponse\022I\n\016UpdateTestCase\022\035"
+  ".oj.biz.UpdateTestCaseRequest\032\030.oj.biz.T"
+  "estCaseResponse\022E\n\016DeleteTestCase\022\031.oj.b"
+  "iz.TestCaseIdRequest\032\030.oj.common.EmptyRe"
+  "sponse\022S\n\017InvalidateCache\022&.oj.biz.Inval"
+  "idateQuestionCacheRequest\032\030.oj.common.Em"
+  "ptyResponse\022L\n\rListSolutions\022\034.oj.biz.Li"
+  "stSolutionsRequest\032\035.oj.biz.ListSolution"
+  "sResponse\022E\n\013GetSolution\022\031.oj.biz.Soluti"
+  "onIdRequest\032\033.oj.biz.GetSolutionResponse"
+  "\022I\n\016CreateSolution\022\035.oj.biz.CreateSoluti"
+  "onRequest\032\030.oj.biz.SolutionResponse\022I\n\016U"
+  "pdateSolution\022\035.oj.biz.UpdateSolutionReq"
+  "uest\032\030.oj.biz.SolutionResponse\022E\n\016Delete"
+  "Solution\022\031.oj.biz.SolutionIdRequest\032\030.oj"
+  ".common.EmptyResponse\022O\n\022ToggleSolutionL"
+  "ike\022\031.oj.biz.SolutionIdRequest\032\036.oj.biz."
+  "SolutionActionResponse\022S\n\026ToggleSolution"
+  "Favorite\022\031.oj.biz.SolutionIdRequest\032\036.oj"
+  ".biz.SolutionActionResponse\022K\n\016GetAction"
+  "State\022\031.oj.biz.SolutionIdRequest\032\036.oj.bi"
+  "z.SolutionActionResponse\022I\n\014ListComments"
+  "\022\033.oj.biz.ListCommentsRequest\032\034.oj.biz.L"
+  "istCommentsResponse\022G\n\013ListReplies\022\032.oj."
+  "biz.ListRepliesRequest\032\034.oj.biz.ListComm"
+  "entsResponse\022F\n\rCreateComment\022\034.oj.biz.C"
+  "reateCommentRequest\032\027.oj.biz.CommentResp"
+  "onse\022F\n\rUpdateComment\022\034.oj.biz.UpdateCom"
+  "mentRequest\032\027.oj.biz.CommentResponse\022C\n\r"
+  "DeleteComment\022\030.oj.biz.CommentIdRequest\032"
+  "\030.oj.common.EmptyResponse\022L\n\021ToggleComme"
+  "ntLike\022\030.oj.biz.CommentIdRequest\032\035.oj.bi"
+  "z.CommentActionResponse\022P\n\025ToggleComment"
+  "Favorite\022\030.oj.biz.CommentIdRequest\032\035.oj."
+  "biz.CommentActionResponse\022V\n\017GetActionSt"
+  "ates\022 .oj.biz.GetCommentActionsRequest\032!"
+  ".oj.biz.GetCommentActionsResponse\022U\n\020Cre"
+  "ateSubmission\022\037.oj.biz.CreateSubmissionR"
+  "equest\032 .oj.biz.CreateSubmissionResponse"
+  "\022U\n\020CreateCustomTest\022\037.oj.biz.CreateCust"
+  "omTestRequest\032 .oj.biz.CreateCustomTestR"
+  "esponse\022L\n\rGetSubmission\022\034.oj.biz.GetSub"
+  "missionRequest\032\035.oj.biz.GetSubmissionRes"
+  "ponse\022L\n\rGetCustomTest\022\034.oj.biz.GetCusto"
+  "mTestRequest\032\035.oj.biz.GetCustomTestRespo"
+  "nse\022R\n\017ListSubmissions\022\036.oj.biz.ListSubm"
+  "issionsRequest\032\037.oj.biz.ListSubmissionsR"
+  "esponse\022X\n\021UpdateJudgeResult\022 .oj.biz.Up"
+  "dateJudgeResultRequest\032!.oj.biz.UpdateJu"
+  "dgeResultResponse\022L\n\027LegacyUpdateJudgeRe"
+  "sult\022\036.oj_judge.JudgeFinishedRequest\032\021.o"
+  "j_judge.NullRsp\022W\n\025InvalidateStaticCache"
+  "\022$.oj.biz.InvalidateStaticCacheRequest\032\030"
+  ".oj.common.EmptyResponse2\270\020\n\016OJAdminServ"
+  "ice\022F\n\017AdminGetVersion\022\027.oj.common.Empty"
+  "Request\032\032.oj.biz.GetVersionResponse\022C\n\nA"
+  "dminLogin\022\031.oj.biz.AdminLoginRequest\032\032.o"
+  "j.biz.AdminLoginResponse\022@\n\013AdminLogout\022"
+  "\027.oj.common.EmptyRequest\032\030.oj.common.Emp"
+  "tyResponse\022J\n\020AdminGetOverview\022\027.oj.comm"
+  "on.EmptyRequest\032\035.oj.biz.AdminOverviewRe"
+  "sponse\022O\n\016AdminListUsers\022\035.oj.biz.AdminL"
+  "istUsersRequest\032\036.oj.biz.AdminListUsersR"
+  "esponse\022E\n\014AdminGetUser\022\032.oj.biz.AdminUs"
+  "erIdRequest\032\031.oj.biz.AdminUserResponse\022L"
+  "\n\017AdminCreateUser\022\036.oj.biz.AdminCreateUs"
+  "erRequest\032\031.oj.biz.AdminUserResponse\022L\n\017"
+  "AdminUpdateUser\022\036.oj.biz.AdminUpdateUser"
+  "Request\032\031.oj.biz.AdminUserResponse\022G\n\017Ad"
+  "minDeleteUser\022\032.oj.biz.AdminUserIdReques"
+  "t\032\030.oj.common.EmptyResponse\022U\n\022AdminList"
+  "Questions\022\036.oj.biz.GetQuestionListReques"
+  "t\032\037.oj.biz.GetQuestionListResponse\022P\n\020Ad"
+  "minGetQuestion\022\031.oj.biz.QuestionIdReques"
+  "t\032!.oj.biz.GetQuestionDetailResponse\022L\n\023"
+  "AdminCreateQuestion\022\033.oj.biz.SaveQuestio"
+  "nRequest\032\030.oj.biz.QuestionResponse\022L\n\023Ad"
+  "minUpdateQuestion\022\033.oj.biz.SaveQuestionR"
+  "equest\032\030.oj.biz.QuestionResponse\022J\n\023Admi"
+  "nDeleteQuestion\022\031.oj.biz.QuestionIdReque"
+  "st\032\030.oj.common.EmptyResponse\022Q\n\022AdminLis"
+  "tTestCases\022\034.oj.biz.ListTestCasesRequest"
+  "\032\035.oj.biz.ListTestCasesResponse\022N\n\023Admin"
+  "CreateTestCase\022\035.oj.biz.CreateTestCaseRe"
+  "quest\032\030.oj.biz.TestCaseResponse\022N\n\023Admin"
+  "UpdateTestCase\022\035.oj.biz.UpdateTestCaseRe"
+  "quest\032\030.oj.biz.TestCaseResponse\022J\n\023Admin"
+  "DeleteTestCase\022\031.oj.biz.TestCaseIdReques"
+  "t\032\030.oj.common.EmptyResponse\022`\n\034AdminInva"
+  "lidateQuestionCache\022&.oj.biz.InvalidateQ"
+  "uestionCacheRequest\032\030.oj.common.EmptyRes"
+  "ponse\022]\n\026AdminListAdminAccounts\022 .oj.biz"
+  ".ListAdminAccountsRequest\032!.oj.biz.ListA"
+  "dminAccountsResponse\022S\n\024AdminGetAdminAcc"
+  "ount\022\035.oj.biz.AdminAccountIdRequest\032\034.oj"
+  ".biz.AdminAccountResponse\022X\n\027AdminCreate"
+  "AdminAccount\022\037.oj.biz.SaveAdminAccountRe"
+  "quest\032\034.oj.biz.AdminAccountResponse\022X\n\027A"
+  "dminUpdateAdminAccount\022\037.oj.biz.SaveAdmi"
+  "nAccountRequest\032\034.oj.biz.AdminAccountRes"
+  "ponse\022R\n\027AdminDeleteAdminAccount\022\035.oj.bi"
+  "z.AdminAccountIdRequest\032\030.oj.common.Empt"
+  "yResponse\022P\n\024AdminGetCacheMetrics\022\027.oj.c"
+  "ommon.EmptyRequest\032\037.oj.biz.GetCacheMetr"
+  "icsResponse\022N\n\021AdminGetAuditLogs\022\033.oj.bi"
+  "z.GetAuditLogsRequest\032\034.oj.biz.GetAuditL"
+  "ogsResponseB\003\200\001\001b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_biz_5fservice_2eproto_deps[2] = {
   &::descriptor_table_common_2eproto,
@@ -2421,9 +2447,9 @@ static const ::_pbi::DescriptorTable* const descriptor_table_biz_5fservice_2epro
 };
 static ::_pbi::once_flag descriptor_table_biz_5fservice_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_biz_5fservice_2eproto = {
-    false, false, 14513, descriptor_table_protodef_biz_5fservice_2eproto,
+    false, false, 14584, descriptor_table_protodef_biz_5fservice_2eproto,
     "biz_service.proto",
-    &descriptor_table_biz_5fservice_2eproto_once, descriptor_table_biz_5fservice_2eproto_deps, 2, 81,
+    &descriptor_table_biz_5fservice_2eproto_once, descriptor_table_biz_5fservice_2eproto_deps, 2, 82,
     schemas, file_default_instances, TableStruct_biz_5fservice_2eproto::offsets,
     file_level_metadata_biz_5fservice_2eproto, file_level_enum_descriptors_biz_5fservice_2eproto,
     file_level_service_descriptors_biz_5fservice_2eproto,
@@ -4202,6 +4228,259 @@ void SetPasswordRequest::InternalSwap(SetPasswordRequest* other) {
 
 // ===================================================================
 
+class SendSecurityCodeRequest::_Internal {
+ public:
+};
+
+SendSecurityCodeRequest::SendSecurityCodeRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:oj.biz.SendSecurityCodeRequest)
+}
+SendSecurityCodeRequest::SendSecurityCodeRequest(const SendSecurityCodeRequest& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  SendSecurityCodeRequest* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.purpose_){}
+    , decltype(_impl_.new_email_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.purpose_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.purpose_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_purpose().empty()) {
+    _this->_impl_.purpose_.Set(from._internal_purpose(),
+      _this->GetArenaForAllocation());
+  }
+  _impl_.new_email_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.new_email_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_new_email().empty()) {
+    _this->_impl_.new_email_.Set(from._internal_new_email(),
+      _this->GetArenaForAllocation());
+  }
+  // @@protoc_insertion_point(copy_constructor:oj.biz.SendSecurityCodeRequest)
+}
+
+inline void SendSecurityCodeRequest::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.purpose_){}
+    , decltype(_impl_.new_email_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.purpose_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.purpose_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.new_email_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.new_email_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+SendSecurityCodeRequest::~SendSecurityCodeRequest() {
+  // @@protoc_insertion_point(destructor:oj.biz.SendSecurityCodeRequest)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void SendSecurityCodeRequest::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.purpose_.Destroy();
+  _impl_.new_email_.Destroy();
+}
+
+void SendSecurityCodeRequest::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void SendSecurityCodeRequest::Clear() {
+// @@protoc_insertion_point(message_clear_start:oj.biz.SendSecurityCodeRequest)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.purpose_.ClearToEmpty();
+  _impl_.new_email_.ClearToEmpty();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* SendSecurityCodeRequest::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // string purpose = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_purpose();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj.biz.SendSecurityCodeRequest.purpose"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string new_email = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_new_email();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj.biz.SendSecurityCodeRequest.new_email"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* SendSecurityCodeRequest::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:oj.biz.SendSecurityCodeRequest)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string purpose = 1;
+  if (!this->_internal_purpose().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_purpose().data(), static_cast<int>(this->_internal_purpose().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj.biz.SendSecurityCodeRequest.purpose");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_purpose(), target);
+  }
+
+  // string new_email = 2;
+  if (!this->_internal_new_email().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_new_email().data(), static_cast<int>(this->_internal_new_email().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj.biz.SendSecurityCodeRequest.new_email");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_new_email(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:oj.biz.SendSecurityCodeRequest)
+  return target;
+}
+
+size_t SendSecurityCodeRequest::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:oj.biz.SendSecurityCodeRequest)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string purpose = 1;
+  if (!this->_internal_purpose().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_purpose());
+  }
+
+  // string new_email = 2;
+  if (!this->_internal_new_email().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_new_email());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData SendSecurityCodeRequest::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    SendSecurityCodeRequest::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*SendSecurityCodeRequest::GetClassData() const { return &_class_data_; }
+
+
+void SendSecurityCodeRequest::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<SendSecurityCodeRequest*>(&to_msg);
+  auto& from = static_cast<const SendSecurityCodeRequest&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:oj.biz.SendSecurityCodeRequest)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_purpose().empty()) {
+    _this->_internal_set_purpose(from._internal_purpose());
+  }
+  if (!from._internal_new_email().empty()) {
+    _this->_internal_set_new_email(from._internal_new_email());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void SendSecurityCodeRequest::CopyFrom(const SendSecurityCodeRequest& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:oj.biz.SendSecurityCodeRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool SendSecurityCodeRequest::IsInitialized() const {
+  return true;
+}
+
+void SendSecurityCodeRequest::InternalSwap(SendSecurityCodeRequest* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.purpose_, lhs_arena,
+      &other->_impl_.purpose_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.new_email_, lhs_arena,
+      &other->_impl_.new_email_, rhs_arena
+  );
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata SendSecurityCodeRequest::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
+      file_level_metadata_biz_5fservice_2eproto[7]);
+}
+
+// ===================================================================
+
 class ChangePasswordRequest::_Internal {
  public:
 };
@@ -4450,7 +4729,7 @@ void ChangePasswordRequest::InternalSwap(ChangePasswordRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ChangePasswordRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[7]);
+      file_level_metadata_biz_5fservice_2eproto[8]);
 }
 
 // ===================================================================
@@ -4703,7 +4982,7 @@ void ChangeEmailRequest::InternalSwap(ChangeEmailRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ChangeEmailRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[8]);
+      file_level_metadata_biz_5fservice_2eproto[9]);
 }
 
 // ===================================================================
@@ -4906,7 +5185,7 @@ void DeleteAccountRequest::InternalSwap(DeleteAccountRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata DeleteAccountRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[9]);
+      file_level_metadata_biz_5fservice_2eproto[10]);
 }
 
 // ===================================================================
@@ -5084,7 +5363,7 @@ void GetUserProfileRequest::InternalSwap(GetUserProfileRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetUserProfileRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[10]);
+      file_level_metadata_biz_5fservice_2eproto[11]);
 }
 
 // ===================================================================
@@ -5382,7 +5661,7 @@ void GetUserProfileResponse::InternalSwap(GetUserProfileResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetUserProfileResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[11]);
+      file_level_metadata_biz_5fservice_2eproto[12]);
 }
 
 // ===================================================================
@@ -5585,7 +5864,7 @@ void UpdateProfileRequest::InternalSwap(UpdateProfileRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata UpdateProfileRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[12]);
+      file_level_metadata_biz_5fservice_2eproto[13]);
 }
 
 // ===================================================================
@@ -5836,7 +6115,7 @@ void UpdateProfileResponse::InternalSwap(UpdateProfileResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata UpdateProfileResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[13]);
+      file_level_metadata_biz_5fservice_2eproto[14]);
 }
 
 // ===================================================================
@@ -6084,7 +6363,7 @@ void UpdateAvatarRequest::InternalSwap(UpdateAvatarRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata UpdateAvatarRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[14]);
+      file_level_metadata_biz_5fservice_2eproto[15]);
 }
 
 // ===================================================================
@@ -6335,7 +6614,7 @@ void UpdateAvatarResponse::InternalSwap(UpdateAvatarResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata UpdateAvatarResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[15]);
+      file_level_metadata_biz_5fservice_2eproto[16]);
 }
 
 // ===================================================================
@@ -6623,7 +6902,7 @@ void GetUserStatisticsResponse::InternalSwap(GetUserStatisticsResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetUserStatisticsResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[16]);
+      file_level_metadata_biz_5fservice_2eproto[17]);
 }
 
 // ===================================================================
@@ -6955,7 +7234,7 @@ void GetQuestionListRequest::InternalSwap(GetQuestionListRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetQuestionListRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[17]);
+      file_level_metadata_biz_5fservice_2eproto[18]);
 }
 
 // ===================================================================
@@ -7243,7 +7522,7 @@ void GetQuestionListResponse::InternalSwap(GetQuestionListResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetQuestionListResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[18]);
+      file_level_metadata_biz_5fservice_2eproto[19]);
 }
 
 // ===================================================================
@@ -7446,7 +7725,7 @@ void QuestionIdRequest::InternalSwap(QuestionIdRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata QuestionIdRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[19]);
+      file_level_metadata_biz_5fservice_2eproto[20]);
 }
 
 // ===================================================================
@@ -7760,7 +8039,7 @@ void GetQuestionDetailResponse::InternalSwap(GetQuestionDetailResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetQuestionDetailResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[20]);
+      file_level_metadata_biz_5fservice_2eproto[21]);
 }
 
 // ===================================================================
@@ -7990,7 +8269,7 @@ void GetQuestionPassStatusResponse::InternalSwap(GetQuestionPassStatusResponse* 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetQuestionPassStatusResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[21]);
+      file_level_metadata_biz_5fservice_2eproto[22]);
 }
 
 // ===================================================================
@@ -8189,7 +8468,7 @@ void SaveQuestionRequest::InternalSwap(SaveQuestionRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SaveQuestionRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[22]);
+      file_level_metadata_biz_5fservice_2eproto[23]);
 }
 
 // ===================================================================
@@ -8440,7 +8719,7 @@ void QuestionResponse::InternalSwap(QuestionResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata QuestionResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[23]);
+      file_level_metadata_biz_5fservice_2eproto[24]);
 }
 
 // ===================================================================
@@ -8670,7 +8949,7 @@ void ListTestCasesRequest::InternalSwap(ListTestCasesRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListTestCasesRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[24]);
+      file_level_metadata_biz_5fservice_2eproto[25]);
 }
 
 // ===================================================================
@@ -8906,7 +9185,7 @@ void ListTestCasesResponse::InternalSwap(ListTestCasesResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListTestCasesResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[25]);
+      file_level_metadata_biz_5fservice_2eproto[26]);
 }
 
 // ===================================================================
@@ -9269,7 +9548,7 @@ void CreateTestCaseRequest::InternalSwap(CreateTestCaseRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CreateTestCaseRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[26]);
+      file_level_metadata_biz_5fservice_2eproto[27]);
 }
 
 // ===================================================================
@@ -9468,7 +9747,7 @@ void UpdateTestCaseRequest::InternalSwap(UpdateTestCaseRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata UpdateTestCaseRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[27]);
+      file_level_metadata_biz_5fservice_2eproto[28]);
 }
 
 // ===================================================================
@@ -9646,7 +9925,7 @@ void TestCaseIdRequest::InternalSwap(TestCaseIdRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata TestCaseIdRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[28]);
+      file_level_metadata_biz_5fservice_2eproto[29]);
 }
 
 // ===================================================================
@@ -9897,7 +10176,7 @@ void TestCaseResponse::InternalSwap(TestCaseResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata TestCaseResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[29]);
+      file_level_metadata_biz_5fservice_2eproto[30]);
 }
 
 // ===================================================================
@@ -10100,7 +10379,7 @@ void InvalidateQuestionCacheRequest::InternalSwap(InvalidateQuestionCacheRequest
 ::PROTOBUF_NAMESPACE_ID::Metadata InvalidateQuestionCacheRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[30]);
+      file_level_metadata_biz_5fservice_2eproto[31]);
 }
 
 // ===================================================================
@@ -10432,7 +10711,7 @@ void ListSolutionsRequest::InternalSwap(ListSolutionsRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListSolutionsRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[31]);
+      file_level_metadata_biz_5fservice_2eproto[32]);
 }
 
 // ===================================================================
@@ -10720,7 +10999,7 @@ void ListSolutionsResponse::InternalSwap(ListSolutionsResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListSolutionsResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[32]);
+      file_level_metadata_biz_5fservice_2eproto[33]);
 }
 
 // ===================================================================
@@ -10898,7 +11177,7 @@ void SolutionIdRequest::InternalSwap(SolutionIdRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SolutionIdRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[33]);
+      file_level_metadata_biz_5fservice_2eproto[34]);
 }
 
 // ===================================================================
@@ -11243,7 +11522,7 @@ void GetSolutionResponse::InternalSwap(GetSolutionResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetSolutionResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[34]);
+      file_level_metadata_biz_5fservice_2eproto[35]);
 }
 
 // ===================================================================
@@ -11546,7 +11825,7 @@ void CreateSolutionRequest::InternalSwap(CreateSolutionRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CreateSolutionRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[35]);
+      file_level_metadata_biz_5fservice_2eproto[36]);
 }
 
 // ===================================================================
@@ -11826,7 +12105,7 @@ void UpdateSolutionRequest::InternalSwap(UpdateSolutionRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata UpdateSolutionRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[36]);
+      file_level_metadata_biz_5fservice_2eproto[37]);
 }
 
 // ===================================================================
@@ -12077,7 +12356,7 @@ void SolutionResponse::InternalSwap(SolutionResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SolutionResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[37]);
+      file_level_metadata_biz_5fservice_2eproto[38]);
 }
 
 // ===================================================================
@@ -12382,7 +12661,7 @@ void SolutionActionResponse::InternalSwap(SolutionActionResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SolutionActionResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[38]);
+      file_level_metadata_biz_5fservice_2eproto[39]);
 }
 
 // ===================================================================
@@ -12612,7 +12891,7 @@ void ListCommentsRequest::InternalSwap(ListCommentsRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListCommentsRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[39]);
+      file_level_metadata_biz_5fservice_2eproto[40]);
 }
 
 // ===================================================================
@@ -12842,7 +13121,7 @@ void ListRepliesRequest::InternalSwap(ListRepliesRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListRepliesRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[40]);
+      file_level_metadata_biz_5fservice_2eproto[41]);
 }
 
 // ===================================================================
@@ -13167,7 +13446,7 @@ void ListCommentsResponse::InternalSwap(ListCommentsResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListCommentsResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[41]);
+      file_level_metadata_biz_5fservice_2eproto[42]);
 }
 
 // ===================================================================
@@ -13430,7 +13709,7 @@ void CreateCommentRequest::InternalSwap(CreateCommentRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CreateCommentRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[42]);
+      file_level_metadata_biz_5fservice_2eproto[43]);
 }
 
 // ===================================================================
@@ -13660,7 +13939,7 @@ void UpdateCommentRequest::InternalSwap(UpdateCommentRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata UpdateCommentRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[43]);
+      file_level_metadata_biz_5fservice_2eproto[44]);
 }
 
 // ===================================================================
@@ -13838,7 +14117,7 @@ void CommentIdRequest::InternalSwap(CommentIdRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CommentIdRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[44]);
+      file_level_metadata_biz_5fservice_2eproto[45]);
 }
 
 // ===================================================================
@@ -14089,7 +14368,7 @@ void CommentResponse::InternalSwap(CommentResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CommentResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[45]);
+      file_level_metadata_biz_5fservice_2eproto[46]);
 }
 
 // ===================================================================
@@ -14394,7 +14673,7 @@ void CommentActionResponse::InternalSwap(CommentActionResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CommentActionResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[46]);
+      file_level_metadata_biz_5fservice_2eproto[47]);
 }
 
 // ===================================================================
@@ -14587,7 +14866,7 @@ void GetCommentActionsRequest::InternalSwap(GetCommentActionsRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetCommentActionsRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[47]);
+      file_level_metadata_biz_5fservice_2eproto[48]);
 }
 
 // ===================================================================
@@ -14823,7 +15102,7 @@ void GetCommentActionsResponse::InternalSwap(GetCommentActionsResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetCommentActionsResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[48]);
+      file_level_metadata_biz_5fservice_2eproto[49]);
 }
 
 // ===================================================================
@@ -15053,7 +15332,7 @@ void AdminLoginRequest::InternalSwap(AdminLoginRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AdminLoginRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[49]);
+      file_level_metadata_biz_5fservice_2eproto[50]);
 }
 
 // ===================================================================
@@ -15304,7 +15583,7 @@ void AdminLoginResponse::InternalSwap(AdminLoginResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AdminLoginResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[50]);
+      file_level_metadata_biz_5fservice_2eproto[51]);
 }
 
 // ===================================================================
@@ -15705,7 +15984,7 @@ void GetVersionResponse::InternalSwap(GetVersionResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetVersionResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[51]);
+      file_level_metadata_biz_5fservice_2eproto[52]);
 }
 
 // ===================================================================
@@ -16059,7 +16338,7 @@ void AdminOverviewResponse::InternalSwap(AdminOverviewResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AdminOverviewResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[52]);
+      file_level_metadata_biz_5fservice_2eproto[53]);
 }
 
 // ===================================================================
@@ -16310,7 +16589,7 @@ void AdminListUsersRequest::InternalSwap(AdminListUsersRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AdminListUsersRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[53]);
+      file_level_metadata_biz_5fservice_2eproto[54]);
 }
 
 // ===================================================================
@@ -16598,7 +16877,7 @@ void AdminListUsersResponse::InternalSwap(AdminListUsersResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AdminListUsersResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[54]);
+      file_level_metadata_biz_5fservice_2eproto[55]);
 }
 
 // ===================================================================
@@ -16849,7 +17128,7 @@ void AdminCreateUserRequest::InternalSwap(AdminCreateUserRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AdminCreateUserRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[55]);
+      file_level_metadata_biz_5fservice_2eproto[56]);
 }
 
 // ===================================================================
@@ -17048,7 +17327,7 @@ void AdminUpdateUserRequest::InternalSwap(AdminUpdateUserRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AdminUpdateUserRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[56]);
+      file_level_metadata_biz_5fservice_2eproto[57]);
 }
 
 // ===================================================================
@@ -17226,7 +17505,7 @@ void AdminUserIdRequest::InternalSwap(AdminUserIdRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AdminUserIdRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[57]);
+      file_level_metadata_biz_5fservice_2eproto[58]);
 }
 
 // ===================================================================
@@ -17477,7 +17756,7 @@ void AdminUserResponse::InternalSwap(AdminUserResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AdminUserResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[58]);
+      file_level_metadata_biz_5fservice_2eproto[59]);
 }
 
 // ===================================================================
@@ -17728,7 +18007,7 @@ void ListAdminAccountsRequest::InternalSwap(ListAdminAccountsRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListAdminAccountsRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[59]);
+      file_level_metadata_biz_5fservice_2eproto[60]);
 }
 
 // ===================================================================
@@ -18016,7 +18295,7 @@ void ListAdminAccountsResponse::InternalSwap(ListAdminAccountsResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListAdminAccountsResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[60]);
+      file_level_metadata_biz_5fservice_2eproto[61]);
 }
 
 // ===================================================================
@@ -18267,7 +18546,7 @@ void SaveAdminAccountRequest::InternalSwap(SaveAdminAccountRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata SaveAdminAccountRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[61]);
+      file_level_metadata_biz_5fservice_2eproto[62]);
 }
 
 // ===================================================================
@@ -18445,7 +18724,7 @@ void AdminAccountIdRequest::InternalSwap(AdminAccountIdRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AdminAccountIdRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[62]);
+      file_level_metadata_biz_5fservice_2eproto[63]);
 }
 
 // ===================================================================
@@ -18696,7 +18975,7 @@ void AdminAccountResponse::InternalSwap(AdminAccountResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AdminAccountResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[63]);
+      file_level_metadata_biz_5fservice_2eproto[64]);
 }
 
 // ===================================================================
@@ -18947,7 +19226,7 @@ void GetCacheMetricsResponse::InternalSwap(GetCacheMetricsResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetCacheMetricsResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[64]);
+      file_level_metadata_biz_5fservice_2eproto[65]);
 }
 
 // ===================================================================
@@ -19257,7 +19536,7 @@ void GetAuditLogsRequest::InternalSwap(GetAuditLogsRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetAuditLogsRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[65]);
+      file_level_metadata_biz_5fservice_2eproto[66]);
 }
 
 // ===================================================================
@@ -19545,7 +19824,7 @@ void GetAuditLogsResponse::InternalSwap(GetAuditLogsResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetAuditLogsResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[66]);
+      file_level_metadata_biz_5fservice_2eproto[67]);
 }
 
 // ===================================================================
@@ -19848,7 +20127,7 @@ void CreateSubmissionRequest::InternalSwap(CreateSubmissionRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CreateSubmissionRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[67]);
+      file_level_metadata_biz_5fservice_2eproto[68]);
 }
 
 // ===================================================================
@@ -20099,7 +20378,7 @@ void CreateSubmissionResponse::InternalSwap(CreateSubmissionResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CreateSubmissionResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[68]);
+      file_level_metadata_biz_5fservice_2eproto[69]);
 }
 
 // ===================================================================
@@ -20452,7 +20731,7 @@ void CreateCustomTestRequest::InternalSwap(CreateCustomTestRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CreateCustomTestRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[69]);
+      file_level_metadata_biz_5fservice_2eproto[70]);
 }
 
 // ===================================================================
@@ -20737,7 +21016,7 @@ void CreateCustomTestResponse::InternalSwap(CreateCustomTestResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CreateCustomTestResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[70]);
+      file_level_metadata_biz_5fservice_2eproto[71]);
 }
 
 // ===================================================================
@@ -20915,7 +21194,7 @@ void GetSubmissionRequest::InternalSwap(GetSubmissionRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetSubmissionRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[71]);
+      file_level_metadata_biz_5fservice_2eproto[72]);
 }
 
 // ===================================================================
@@ -21166,7 +21445,7 @@ void GetSubmissionResponse::InternalSwap(GetSubmissionResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetSubmissionResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[72]);
+      file_level_metadata_biz_5fservice_2eproto[73]);
 }
 
 // ===================================================================
@@ -21369,7 +21648,7 @@ void GetCustomTestRequest::InternalSwap(GetCustomTestRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetCustomTestRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[73]);
+      file_level_metadata_biz_5fservice_2eproto[74]);
 }
 
 // ===================================================================
@@ -21701,7 +21980,7 @@ void GetCustomTestResponse::InternalSwap(GetCustomTestResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetCustomTestResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[74]);
+      file_level_metadata_biz_5fservice_2eproto[75]);
 }
 
 // ===================================================================
@@ -21986,7 +22265,7 @@ void ListSubmissionsRequest::InternalSwap(ListSubmissionsRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListSubmissionsRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[75]);
+      file_level_metadata_biz_5fservice_2eproto[76]);
 }
 
 // ===================================================================
@@ -22274,7 +22553,7 @@ void ListSubmissionsResponse::InternalSwap(ListSubmissionsResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListSubmissionsResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[76]);
+      file_level_metadata_biz_5fservice_2eproto[77]);
 }
 
 // ===================================================================
@@ -22672,7 +22951,7 @@ void UpdateJudgeResultRequest::InternalSwap(UpdateJudgeResultRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata UpdateJudgeResultRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[77]);
+      file_level_metadata_biz_5fservice_2eproto[78]);
 }
 
 // ===================================================================
@@ -22997,7 +23276,7 @@ void ServiceAuthentication::InternalSwap(ServiceAuthentication* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ServiceAuthentication::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[78]);
+      file_level_metadata_biz_5fservice_2eproto[79]);
 }
 
 // ===================================================================
@@ -23258,7 +23537,7 @@ void UpdateJudgeResultResponse::InternalSwap(UpdateJudgeResultResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata UpdateJudgeResultResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[79]);
+      file_level_metadata_biz_5fservice_2eproto[80]);
 }
 
 // ===================================================================
@@ -23461,7 +23740,7 @@ void InvalidateStaticCacheRequest::InternalSwap(InvalidateStaticCacheRequest* ot
 ::PROTOBUF_NAMESPACE_ID::Metadata InvalidateStaticCacheRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[80]);
+      file_level_metadata_biz_5fservice_2eproto[81]);
 }
 
 // ===================================================================
@@ -23526,7 +23805,7 @@ void OJService::SetPassword(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
 }
 
 void OJService::SendSecurityCode(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                         const ::oj::common::EmptyRequest*,
+                         const ::oj::biz::SendSecurityCodeRequest*,
                          ::oj::biz::SendVerificationCodeResponse*,
                          ::google::protobuf::Closure* done) {
   controller->SetFailed("Method SendSecurityCode() not implemented.");
@@ -23942,7 +24221,7 @@ void OJService::CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* meth
       break;
     case 6:
       SendSecurityCode(controller,
-             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<const ::oj::common::EmptyRequest*>(
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<const ::oj::biz::SendSecurityCodeRequest*>(
                  request),
              ::PROTOBUF_NAMESPACE_ID::internal::DownCast<::oj::biz::SendVerificationCodeResponse*>(
                  response),
@@ -24323,7 +24602,7 @@ const ::PROTOBUF_NAMESPACE_ID::Message& OJService::GetRequestPrototype(
     case 5:
       return ::oj::biz::SetPasswordRequest::default_instance();
     case 6:
-      return ::oj::common::EmptyRequest::default_instance();
+      return ::oj::biz::SendSecurityCodeRequest::default_instance();
     case 7:
       return ::oj::biz::ChangePasswordRequest::default_instance();
     case 8:
@@ -24586,7 +24865,7 @@ void OJService_Stub::SetPassword(::PROTOBUF_NAMESPACE_ID::RpcController* control
                        controller, request, response, done);
 }
 void OJService_Stub::SendSecurityCode(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                              const ::oj::common::EmptyRequest* request,
+                              const ::oj::biz::SendSecurityCodeRequest* request,
                               ::oj::biz::SendVerificationCodeResponse* response,
                               ::google::protobuf::Closure* done) {
   channel_->CallMethod(descriptor()->method(6),
@@ -25693,6 +25972,10 @@ Arena::CreateMaybeMessage< ::oj::biz::PasswordLoginRequest >(Arena* arena) {
 template<> PROTOBUF_NOINLINE ::oj::biz::SetPasswordRequest*
 Arena::CreateMaybeMessage< ::oj::biz::SetPasswordRequest >(Arena* arena) {
   return Arena::CreateMessageInternal< ::oj::biz::SetPasswordRequest >(arena);
+}
+template<> PROTOBUF_NOINLINE ::oj::biz::SendSecurityCodeRequest*
+Arena::CreateMaybeMessage< ::oj::biz::SendSecurityCodeRequest >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::oj::biz::SendSecurityCodeRequest >(arena);
 }
 template<> PROTOBUF_NOINLINE ::oj::biz::ChangePasswordRequest*
 Arena::CreateMaybeMessage< ::oj::biz::ChangePasswordRequest >(Arena* arena) {

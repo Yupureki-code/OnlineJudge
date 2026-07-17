@@ -9,11 +9,11 @@
 #include <mutex>
 #include <stdexcept>
 #include "../../../comm/models/question.hxx"
-#include "../../../comm/models/gen/question-odb.hxx"
+#include "question-odb.hxx"
 #include "../../../comm/models/test_case.hxx"
 #include "../../../comm/models/model_counts.hxx"
-#include "../../../comm/models/gen/test_case-odb.hxx"
-#include "../../../comm/models/gen//model_counts-odb.hxx"
+#include "test_case-odb.hxx"
+#include "model_counts-odb.hxx"
 
 namespace oj::model
 {
@@ -62,13 +62,16 @@ namespace oj::model
         }
 
         template <typename Query>
-        Query BuildQuestionQuery(const std::shared_ptr<QueryStruct>& query_hash)
+        Query BuildQuestionQuery(const std::shared_ptr<QueryStruct>& query_hash,
+                                 bool visible_only = false)
         {
             auto q = std::dynamic_pointer_cast<QuestionQuery>(query_hash);
-            if (!q)
-                return Query(true);
-
             Query condition(true);
+            if (visible_only)
+                condition = condition && Query::visible == true;
+            if (!q)
+                return condition;
+
             if (!q->id.empty() && !q->title.empty() && q->id == q->title && IsAllDigits(q->id))
             {
                 condition = condition &&
@@ -122,13 +125,14 @@ namespace oj::model
         bool GetQuestionsByPage(std::shared_ptr<Cache::CacheListKey> key,
                                 std::vector<Question>& questions,
                                 int* total_count,
-                                int* total_pages)
+                                int* total_pages,
+                                bool include_hidden = false)
         {
             auto begin = std::chrono::steady_clock::now();
             if (!key || key->GetSize() <= 0 || total_count == nullptr || total_pages == nullptr)
                 return false;
 
-            if (_cache.GetQuestionsByPage(key, questions, total_count, total_pages))
+            if (!include_hidden && _cache.GetQuestionsByPage(key, questions, total_count, total_pages))
             {
                 LOG_INFO("{}{}", "Cache hit for question list page ", key->GetCacheKeyString(&_cache));
                 const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -157,7 +161,7 @@ namespace oj::model
                 {
                     latecyMonitor::Timer timer(Monitor(), "ModelQuestion.GetQuestionsByPage.ODBCount");
                     count.reset(database->query_one<oj::db::QuestionCount>(
-                        BuildQuestionQuery<CountQuery>(key->GetQueryHash())));
+                        BuildQuestionQuery<CountQuery>(key->GetQueryHash(), !include_hidden)));
                 }
                 if (!count || count->value > static_cast<uint64_t>(std::numeric_limits<int>::max()))
                 {
@@ -179,7 +183,7 @@ namespace oj::model
                     const uint64_t offset = static_cast<uint64_t>(safe_page - 1) *
                                             static_cast<uint64_t>(size);
                     ODBQuestionQuery page_query =
-                        BuildQuestionQuery<ODBQuestionQuery>(key->GetQueryHash());
+                        BuildQuestionQuery<ODBQuestionQuery>(key->GetQueryHash(), !include_hidden);
                     page_query += " ORDER BY CAST(id AS UNSIGNED) ASC, id ASC LIMIT " +
                                   std::to_string(size) + " OFFSET " + std::to_string(offset);
                     odb::result<ODBQuestion> result;
@@ -200,11 +204,11 @@ namespace oj::model
                     transaction->Commit();
                 }
 
-                if (*total_count <= 0)
+                if (!include_hidden && *total_count <= 0)
                 {
                     _cache.SetQuestionsByPage(key, questions, *total_count, *total_pages);
                 }
-                else
+                else if (!include_hidden)
                 {
                     const int safe_page = std::max(1, std::min(key->GetPage(), *total_pages));
                     auto write_key = _cache.BuildListCacheKey(
@@ -238,7 +242,7 @@ namespace oj::model
         }
 
         //题目:获得单个题目
-        bool GetOneQuestion(const std::string& id, Question& q)
+        bool GetOneQuestion(const std::string& id, Question& q, bool include_hidden = false)
         {
             auto begin = std::chrono::steady_clock::now();
             if (!IsAllDigits(id))
@@ -251,7 +255,7 @@ namespace oj::model
                 const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - begin).count();
                 RecordCacheMetrics(RecordActionType::Question, true, false, cost_ms);
-                return true;
+                return include_hidden || q.visible;
             }
 
             DatabaseHandle database;
@@ -284,7 +288,8 @@ namespace oj::model
                     _cache.SetQuestionNotFound(detail_key, id);
                     return false;
                 }
-                _cache.SetDetailedQuestion(detail_key, item);
+                q = item;
+                _cache.SetDetailedQuestion(detail_key, q);
             }
             catch (const std::exception& e)
             {
@@ -307,7 +312,7 @@ namespace oj::model
             const long long cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - begin).count();
             RecordCacheMetrics(RecordActionType::Question, false, true, cost_ms);
-            return true;
+            return include_hidden || q.visible;
         }
 
         //题目写接口:新增或修改题目
@@ -349,6 +354,7 @@ namespace oj::model
                     stored.star = input.star;
                     stored.cpu_limit = static_cast<int8_t>(input.cpu_limit);
                     stored.memory_limit = input.memory_limit;
+                    stored.visible = input.visible;
                     stored.update_time = now;
                     {
                         latecyMonitor::Timer timer(Monitor(), "ModelQuestion.SaveQuestion.ODBUpdate");
@@ -363,6 +369,7 @@ namespace oj::model
                     stored.star = input.star;
                     stored.cpu_limit = static_cast<int8_t>(input.cpu_limit);
                     stored.memory_limit = input.memory_limit;
+                    stored.visible = input.visible;
                     stored.create_time = now;
                     stored.update_time = now;
                     {

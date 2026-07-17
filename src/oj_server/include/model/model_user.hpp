@@ -577,6 +577,13 @@ namespace oj::model
             }
         }
 
+        void InvalidateSubmissionCaches(int user_id, const std::string& question_id)
+        {
+            _cache.DeleteStringByAnyKey("submit:user:" + std::to_string(user_id) + ":q:" + question_id);
+            _cache.DeleteStringByAnyKey("stats:user:" + std::to_string(user_id));
+            _cache.DeleteStringByAnyKey("pass:user:" + std::to_string(user_id) + ":q:" + question_id);
+        }
+
         //检查该用户是否通过该题目（带Redis缓存）
         bool HasUserPassedQuestion(int user_id, const std::string& question_id)
         {

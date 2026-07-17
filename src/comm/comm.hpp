@@ -17,6 +17,7 @@
 #include "config.h"
 #include "models/types.hxx"
 #include <cassert>
+#include <iomanip>
 
 inline constexpr const char root[] = "/";
 inline constexpr const char dev_null[] = "/dev/null";
@@ -203,12 +204,12 @@ namespace oj::util
     class TimeUtil
     {
     public:
-        //获取时间戳
+        // 获取与 DateTimeToInt/IntToDateTime 一致的微秒时间戳。
         static inline int64_t GetTimeStamp()
         {
             auto now = std::chrono::system_clock::now();
-            auto ms  = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
-            return ms.count();
+            auto us = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch());
+            return us.count();
         }
         //获取毫秒级别时间戳
         static std::string GetTimeMs()
@@ -219,30 +220,47 @@ namespace oj::util
         }
         static inline int64_t DateTimeToInt(const MYSQL_TIME& t) noexcept 
         {
-            assert(t.time_type == MYSQL_TIMESTAMP_DATETIME ||
-                t.time_type == MYSQL_TIMESTAMP_DATETIME_TZ);
-            using namespace std::chrono;
-            // C++20 sys_days + operator/ 一行构建时间点
-            auto tp = sys_days(year(t.year) / month(t.month) / day(t.day))
-                    + hours(t.hour) + minutes(t.minute) + seconds(t.second)
-                    + microseconds(t.second_part);
-            return duration_cast<microseconds>(tp.time_since_epoch()).count();
+            if (t.year < 1970 || t.month < 1 || t.month > 12 || t.day < 1 || t.day > 31 ||
+                t.hour > 23 || t.minute > 59 || t.second > 59 || t.second_part > 999999)
+                return 0;
+
+            std::tm value{};
+            value.tm_year = static_cast<int>(t.year) - 1900;
+            value.tm_mon = static_cast<int>(t.month) - 1;
+            value.tm_mday = static_cast<int>(t.day);
+            value.tm_hour = static_cast<int>(t.hour);
+            value.tm_min = static_cast<int>(t.minute);
+            value.tm_sec = static_cast<int>(t.second);
+            const std::time_t seconds = timegm(&value);
+            if (seconds < 0 || value.tm_year != static_cast<int>(t.year) - 1900 ||
+                value.tm_mon != static_cast<int>(t.month) - 1 ||
+                value.tm_mday != static_cast<int>(t.day) ||
+                value.tm_hour != static_cast<int>(t.hour) ||
+                value.tm_min != static_cast<int>(t.minute) ||
+                value.tm_sec != static_cast<int>(t.second))
+                return 0;
+            return static_cast<int64_t>(seconds) * 1000000 + t.second_part;
         }
         static inline MYSQL_TIME IntToDateTime(int64_t ts_us) noexcept 
         {
-            using namespace std::chrono;
-            auto tp = sys_time<microseconds>(microseconds(ts_us));
-            auto days = floor<std::chrono::days>(tp);
-            auto ymd  = year_month_day(days);
-            auto hms  = hh_mm_ss(tp - days);
             MYSQL_TIME t{};
-            t.year        = static_cast<int>(ymd.year());
-            t.month       = static_cast<unsigned>(ymd.month());
-            t.day         = static_cast<unsigned>(ymd.day());
-            t.hour        = hms.hours().count();
-            t.minute      = hms.minutes().count();
-            t.second      = hms.seconds().count();
-            t.second_part = hms.subseconds().count();
+            int64_t seconds = ts_us / 1000000;
+            int64_t micros = ts_us % 1000000;
+            if (micros < 0) {
+                micros += 1000000;
+                --seconds;
+            }
+            const std::time_t value = static_cast<std::time_t>(seconds);
+            std::tm utc{};
+            if (gmtime_r(&value, &utc) == nullptr)
+                return t;
+            t.year        = utc.tm_year + 1900;
+            t.month       = utc.tm_mon + 1;
+            t.day         = utc.tm_mday;
+            t.hour        = utc.tm_hour;
+            t.minute      = utc.tm_min;
+            t.second      = utc.tm_sec;
+            t.second_part = static_cast<unsigned long>(micros);
             t.time_type   = MYSQL_TIMESTAMP_DATETIME;
             return t;
         }

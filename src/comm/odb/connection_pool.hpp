@@ -10,8 +10,11 @@
 #include <odb/transaction.hxx>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -379,20 +382,39 @@ namespace ns_odb
             }
         }
 
-        ~ScopedTransaction()
+        ~ScopedTransaction() noexcept
         {
             if (_tx && !_committed) {
                 try {
                     _tx->rollback();
                 } catch (...) {
+                    const std::uint64_t failures =
+                        RollbackFailureCounter().fetch_add(1, std::memory_order_relaxed) + 1;
+                    if ((failures & (failures - 1)) == 0) {
+                        std::fprintf(stderr,
+                                     "ScopedTransaction rollback failed during destruction "
+                                     "(total failures: %llu)\n",
+                                     static_cast<unsigned long long>(failures));
+                    }
                 }
             }
+        }
+
+        static std::uint64_t RollbackFailureCount() noexcept
+        {
+            return RollbackFailureCounter().load(std::memory_order_relaxed);
         }
 
         ScopedTransaction(const ScopedTransaction&) = delete;
         ScopedTransaction& operator=(const ScopedTransaction&) = delete;
 
     private:
+        static std::atomic<std::uint64_t>& RollbackFailureCounter() noexcept
+        {
+            static std::atomic<std::uint64_t> failures{0};
+            return failures;
+        }
+
         std::unique_ptr<odb::transaction> _tx;
         bool _committed = false;
     };

@@ -107,13 +107,15 @@ namespace oj::control
                              const std::string& status,
                              const std::string& sort,
                              int page, int size,
-                             Json::Value* result,
+                             std::vector<Solution>* solutions,
+                             int* total_count,
                              std::string* err_code)
         {
-            if (result == nullptr || err_code == nullptr)
+            if (solutions == nullptr || total_count == nullptr || err_code == nullptr)
             {
                 return false;
             }
+            (void)status;
 
             Question question;
             //获取题目
@@ -123,15 +125,7 @@ namespace oj::control
                 return false;
             }
 
-            std::string status_filter;
-            if (status == "pending" || status == "approved" || status == "rejected")
-            {
-                status_filter = status;
-            }
-            else
-            {
-                status_filter = "approved";
-            }
+            const std::string status_filter = "approved";
 
             std::string sort_order = sort;
             if (sort_order != "hot" && sort_order != "latest")
@@ -142,65 +136,41 @@ namespace oj::control
             int safe_page = std::max(1, page);
             int safe_size = std::max(1, std::min(size, 50));
 
-            std::vector<Solution> solutions;
-            int total_count = 0;
             int total_pages = 0;
             //获取分页的题解列表
             if (!_model.Solution().GetSolutionsByPage(question_id, status_filter, sort_order,
                                            safe_page, safe_size,
-                                           &solutions, &total_count, &total_pages))
+                                            solutions, total_count, &total_pages))
             {
                 *err_code = "DB_ERROR";
                 return false;
             }
 
-            SetPaginationResult(result, total_count, safe_page, safe_size);
-
-            // 批量获取所有作者信息（N+1优化：1次查询替代N次查询）
-            std::set<int> user_ids;
-            for (const auto& s : solutions) { user_ids.insert(s.user_id); }
-            std::map<int, User> user_map;
-            _model.User().GetUsersByIds(user_ids, &user_map);
-
-            Json::Value items(Json::arrayValue);
-            for (const auto& s : solutions)
-            {
-                Json::Value item;
-                SolutionToJson(s, item);
-                BuildUserInfoJsonBatch(s.user_id, item, user_map);
-                items.append(item);
-            }
-            (*result)["solutions"] = items;
             return true;
         }
         //获取题解详情
         bool GetSolutionDetail(long long solution_id,
-                               Json::Value* result,
+                               Solution* result,
+                               User* author,
                                std::string* err_code)
         {
-            if (result == nullptr || err_code == nullptr)
+            if (result == nullptr || author == nullptr || err_code == nullptr)
             {
                 return false;
             }
 
-            Solution solution;
             //获取题解详情
-            if (!_model.Solution().GetSolutionById(solution_id, &solution))
-            {
-                *err_code = "SOLUTION_NOT_FOUND";
-                return false;
-            }
-
-            (*result)["success"] = true;
-            SolutionToJson(solution, *result);
-            BuildUserInfoJson(solution.user_id, *result);
+            if (!GetPublicSolution(solution_id, result, err_code)) return false;
+            *author = User{};
+            author->uid = result->user_id;
+            _model.User().GetUserById(result->user_id, author);
 
             return true;
         }
 
         bool ToggleLike(long long solution_id,
                         const User& current_user,
-                        Json::Value* result,
+                        ActionState* result,
                         std::string* err_code)
         {
             return ToggleSolutionAction(solution_id, current_user, "like", result, err_code);
@@ -208,30 +178,41 @@ namespace oj::control
 
         bool ToggleFavorite(long long solution_id,
                             const User& current_user,
-                            Json::Value* result,
+                            ActionState* result,
                             std::string* err_code)
         {
             return ToggleSolutionAction(solution_id, current_user, "favorite", result, err_code);
         }
 
         bool GetUserSolutionActions(long long solution_id,
-                                    int user_id,
-                                    Json::Value* result)
+                                     int user_id,
+                                     ActionState* result,
+                                     std::string* err_code)
         {
-            if (result == nullptr)
+            if (result == nullptr || err_code == nullptr)
             {
                 return false;
+            }
+
+            Solution solution;
+            if (!GetPublicSolution(solution_id, &solution, err_code)) return false;
+
+            if (user_id <= 0)
+            {
+                *result = ActionState{};
+                return true;
             }
 
             std::vector<long long> ids = {solution_id};
             std::map<long long, std::map<std::string, bool>> actions;
             if (!_model.Solution().GetUserActionsForSolutions(user_id, ids, actions))
             {
+                *err_code = "DB_ERROR";
                 return false;
             }
 
-            (*result)["liked"] = actions.count(solution_id) > 0 && actions[solution_id].count("like") > 0;
-            (*result)["favorited"] = actions.count(solution_id) > 0 && actions[solution_id].count("favorite") > 0;
+            result->liked = actions.count(solution_id) > 0 && actions[solution_id].count("like") > 0;
+            result->favorited = actions.count(solution_id) > 0 && actions[solution_id].count("favorite") > 0;
             return true;
         }
     };

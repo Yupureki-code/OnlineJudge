@@ -10,8 +10,7 @@ namespace oj::admin { class AdminSessionStore; }
 namespace oj::control { class Control; }
 namespace oj::runtime { class BusinessExecutor; }
 namespace oj::rpc { class AdminAuditWorker; }
-
-struct AdminAccount;
+namespace oj::db { struct AdminAccount; }
 
 namespace oj::rpc
 {
@@ -82,9 +81,9 @@ public:
                            oj::biz::GetAuditLogsResponse*, google::protobuf::Closure*) override;
 
 private:
-    bool RequireAdmin(brpc::Controller*, bool super_only, AdminAccount*,
+    bool RequireAdmin(brpc::Controller*, bool super_only, oj::db::AdminAccount*,
                       oj::common::StatusResponse*) const;
-    void WriteAudit(brpc::Controller*, const AdminAccount&, const char* action,
+    void WriteAudit(brpc::Controller*, const oj::db::AdminAccount&, const char* action,
                     const char* resource_type, const std::string& resource_id);
 
     oj::control::Control& _control;

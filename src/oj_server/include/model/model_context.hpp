@@ -53,7 +53,7 @@ namespace oj::model
             pool_config.port = static_cast<unsigned int>(configured_port);
             pool_config.user = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_USER", user);
             pool_config.password = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_PASS", passwd);
-            pool_config.database = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_NAME", database);
+            pool_config.database = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_NAME", ::db);
             try {
                 _pool.Init(pool_config, _monitor);
             }

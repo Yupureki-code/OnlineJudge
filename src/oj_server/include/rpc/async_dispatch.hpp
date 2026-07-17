@@ -75,7 +75,7 @@ namespace oj::rpc
 
             ~DispatchCompletion()
             {
-                Fail(kDispatchStopped, "BUSINESS__executorSTOPPED", true);
+                Fail(kDispatchStopped, "BUSINESS_EXECUTOR_STOPPED", true);
             }
 
             void Finish() noexcept
@@ -189,7 +189,7 @@ namespace oj::rpc
         if (result == oj::runtime::SubmitResult::QueueFull)
             completion->Fail(kDispatchQueueFull, "BUSINESS_QUEUE_FULL", true);
         else if (result == oj::runtime::SubmitResult::Stopped)
-            completion->Fail(kDispatchStopped, "BUSINESS__executorSTOPPED", true);
+            completion->Fail(kDispatchStopped, "BUSINESS_EXECUTOR_STOPPED", true);
         return result;
     }
 

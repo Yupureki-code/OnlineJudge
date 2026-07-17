@@ -9,6 +9,7 @@ namespace oj::control
 {
 class Control;
 }
+namespace oj::judge { class OutboxPublisher; }
 
 namespace oj::rpc
 {
@@ -17,7 +18,8 @@ namespace oj::rpc
     {
     public:
         OJServiceImpl(std::shared_ptr<oj::control::Control> control,
-                    oj::runtime::BusinessExecutor& executor);
+                    oj::runtime::BusinessExecutor& executor,
+                    oj::judge::OutboxPublisher* outbox_publisher = nullptr);
 
     #define OJ_MAIN_RPC(method, request_type, response_type) \
         void method(google::protobuf::RpcController* controller, \
@@ -30,7 +32,7 @@ namespace oj::rpc
         OJ_MAIN_RPC(LoginWithPassword, oj::biz::PasswordLoginRequest, oj::biz::AuthResponse);
         OJ_MAIN_RPC(Logout, oj::common::EmptyRequest, oj::common::EmptyResponse);
         OJ_MAIN_RPC(SetPassword, oj::biz::SetPasswordRequest, oj::common::EmptyResponse);
-        OJ_MAIN_RPC(SendSecurityCode, oj::common::EmptyRequest, oj::biz::SendVerificationCodeResponse);
+        OJ_MAIN_RPC(SendSecurityCode, oj::biz::SendSecurityCodeRequest, oj::biz::SendVerificationCodeResponse);
         OJ_MAIN_RPC(ChangePassword, oj::biz::ChangePasswordRequest, oj::common::EmptyResponse);
         OJ_MAIN_RPC(ChangeEmail, oj::biz::ChangeEmailRequest, oj::common::EmptyResponse);
         OJ_MAIN_RPC(DeleteAccount, oj::biz::DeleteAccountRequest, oj::common::EmptyResponse);
@@ -81,5 +83,6 @@ namespace oj::rpc
     private:
         std::shared_ptr<oj::control::Control> _control;
         oj::runtime::BusinessExecutor& _executor;
+        oj::judge::OutboxPublisher* _outbox_publisher;
     };
 } // namespace oj::rpc

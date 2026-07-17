@@ -3,10 +3,9 @@
 #include <condition_variable>
 #include <cstdlib>
 #include <iostream>
-#include <memory>
 #include <mutex>
+#include <set>
 #include <string>
-#include <thread>
 
 #include <brpc/controller.h>
 
@@ -17,12 +16,15 @@ namespace
 
 using namespace std::chrono_literals;
 
-void Check(bool condition, const char* message)
+[[noreturn]] void Fail(const std::string& message)
 {
-    if (!condition) {
-        std::cerr << "FAIL: " << message << '\n';
-        std::exit(1);
-    }
+    std::cerr << "FAIL: " << message << '\n';
+    std::exit(1);
+}
+
+void Check(bool condition, const std::string& message)
+{
+    if (!condition) Fail(message);
 }
 
 class WaitingClosure final : public google::protobuf::Closure
@@ -34,15 +36,15 @@ public:
         condition_.notify_all();
     }
 
-    void Wait()
+    void Wait(const std::string& method)
     {
         std::unique_lock lock(mutex_);
         Check(condition_.wait_for(lock, 2s, [&] {
-            return count_.load(std::memory_order_acquire) == 1;
-        }), "RPC completed");
+            return count_.load(std::memory_order_acquire) >= 1;
+        }), method + " did not complete");
+        Check(count_.load(std::memory_order_acquire) == 1,
+              method + " completed more than once");
     }
-
-    int Count() const { return count_.load(std::memory_order_acquire); }
 
 private:
     std::atomic_int count_{0};
@@ -50,183 +52,276 @@ private:
     std::condition_variable condition_;
 };
 
-class TestController final : public brpc::Controller
+class TestController : public brpc::Controller
 {
 public:
     bool IsCanceled() const override { return false; }
 };
 
-class Gate
+class CancelledController final : public TestController
 {
 public:
-    void Block()
+    bool IsCanceled() const override { return true; }
+};
+
+template <typename Response>
+Response ExpectedStatus(int code, const std::string& message = {}, bool retryable = false)
+{
+    Response response;
+    auto* status = response.mutable_status();
+    status->set_success(code == 200);
+    status->set_code(code);
+    status->set_message(message);
+    status->set_retryable(retryable);
+    return response;
+}
+
+class RpcSuite
+{
+public:
+    RpcSuite()
+        : executor_({.worker_count = 1, .queue_capacity = 16}), service_(nullptr, executor_)
     {
-        std::unique_lock lock(mutex_);
-        entered_ = true;
-        condition_.notify_all();
-        condition_.wait(lock, [&] { return open_; });
+        Check(executor_.Start(), "business executor starts");
     }
 
-    void WaitUntilEntered()
+    ~RpcSuite()
     {
-        std::unique_lock lock(mutex_);
-        Check(condition_.wait_for(lock, 2s, [&] { return entered_; }), "worker enters gate");
+        executor_.Stop();
     }
 
-    void Open()
+    template <typename Request, typename Response, typename Setup>
+    void Expect(const std::string& name,
+                void (oj::rpc::OJServiceImpl::*method)(google::protobuf::RpcController*,
+                                                       const Request*, Response*,
+                                                       google::protobuf::Closure*),
+                google::protobuf::RpcController* controller,
+                Setup setup,
+                const Response& expected)
     {
-        std::lock_guard lock(mutex_);
-        open_ = true;
-        condition_.notify_all();
+        Check(tested_.insert(name).second, "duplicate test for " + name);
+        Request request;
+        setup(request);
+        Response actual;
+        WaitingClosure done;
+        (service_.*method)(controller, &request, &actual, &done);
+        done.Wait(name);
+        if (actual.SerializeAsString() != expected.SerializeAsString()) {
+            std::cerr << "FAIL: " << name << " response mismatch\n"
+                      << "Expected:\n" << expected.DebugString()
+                      << "Actual:\n" << actual.DebugString();
+            std::exit(1);
+        }
+    }
+
+    template <typename Request, typename Response>
+    void ExpectStatus(const std::string& name,
+                      void (oj::rpc::OJServiceImpl::*method)(google::protobuf::RpcController*,
+                                                             const Request*, Response*,
+                                                             google::protobuf::Closure*),
+                      google::protobuf::RpcController* controller,
+                      int code,
+                      const std::string& message = {},
+                      bool retryable = false)
+    {
+        Expect<Request, Response>(name, method, controller, [](Request&) {},
+                                  ExpectedStatus<Response>(code, message, retryable));
+    }
+
+    void ExpectLegacyFailure(TestController* controller)
+    {
+        const std::string name = "LegacyUpdateJudgeResult";
+        Check(tested_.insert(name).second, "duplicate test for " + name);
+        oj_judge::JudgeFinishedRequest request;
+        oj_judge::NullRsp response;
+        WaitingClosure done;
+        service_.LegacyUpdateJudgeResult(controller, &request, &response, &done);
+        done.Wait(name);
+        Check(controller->Failed() && controller->ErrorText() == "NOT_IMPLEMENTED",
+              name + " controller failure mismatch");
+        Check(response.SerializeAsString().empty(), name + " response must remain empty");
+    }
+
+    void VerifyDescriptorCoverage() const
+    {
+        const auto* descriptor = oj::biz::OJService::descriptor();
+        Check(descriptor != nullptr, "OJService descriptor exists");
+        Check(static_cast<int>(tested_.size()) == descriptor->method_count(),
+              "tested RPC count does not match OJService descriptor");
+        for (int index = 0; index < descriptor->method_count(); ++index) {
+            const std::string& name = descriptor->method(index)->name();
+            Check(tested_.contains(name), "missing RPC test for " + name);
+        }
     }
 
 private:
-    std::mutex mutex_;
-    std::condition_variable condition_;
-    bool entered_ = false;
-    bool open_ = false;
+    oj::runtime::BusinessExecutor executor_;
+    oj::rpc::OJServiceImpl service_;
+    std::set<std::string> tested_;
 };
 
-void CheckValidationAndUnauthenticated()
+void CheckAuthAndUserRpcs(RpcSuite& suite, TestController* controller)
 {
-    oj::runtime::BusinessExecutor executor({.worker_count = 1, .queue_capacity = 8});
-    Check(executor.Start(), "executor starts");
-    oj::rpc::OJServiceImpl service(nullptr, executor);
-    TestController controller;
+    auto invalid_email = ExpectedStatus<oj::biz::SendVerificationCodeResponse>(400, "INVALID_EMAIL");
+    suite.Expect<oj::biz::SendVerificationCodeRequest>(
+        "SendRegistrationCode", &oj::rpc::OJServiceImpl::SendRegistrationCode, controller,
+        [](auto& request) { request.set_email("invalid"); }, invalid_email);
 
-    oj::biz::SendVerificationCodeRequest send_request;
-    send_request.set_email("not-an-email");
-    oj::biz::SendVerificationCodeResponse send_response;
-    WaitingClosure send_done;
-    service.SendRegistrationCode(&controller, &send_request, &send_response, &send_done);
-    send_done.Wait();
-    if (send_response.status().code() != 400)
-        std::cerr << "SendRegistrationCode status: " << send_response.status().code()
-                  << " " << send_response.status().message() << '\n';
-    Check(send_response.status().code() == 400 &&
-              send_response.status().message() == "INVALID_EMAIL",
-          "registration-code validation is stable");
+    suite.Expect<oj::biz::RegisterRequest>(
+        "Register", &oj::rpc::OJServiceImpl::Register, controller,
+        [](auto& request) { request.set_email("invalid"); },
+        ExpectedStatus<oj::biz::AuthResponse>(400, "INVALID_EMAIL"));
 
-    oj::biz::RegisterRequest register_request;
-    register_request.set_email("user@example.test");
-    register_request.set_verification_code("12x456");
-    register_request.set_name("User");
-    register_request.set_password("password1");
-    oj::biz::AuthResponse register_response;
-    WaitingClosure register_done;
-    service.Register(&controller, &register_request, &register_response, &register_done);
-    register_done.Wait();
-    Check(register_response.status().code() == 400 &&
-              register_response.status().message() == "INVALID_VERIFICATION_CODE",
-          "registration code format is validated before business access");
+    suite.Expect<oj::biz::VerificationCodeLoginRequest>(
+        "LoginWithVerificationCode", &oj::rpc::OJServiceImpl::LoginWithVerificationCode, controller,
+        [](auto& request) { request.set_email("invalid"); },
+        ExpectedStatus<oj::biz::AuthResponse>(400, "INVALID_EMAIL"));
 
-    oj::common::EmptyRequest security_request;
-    oj::biz::SendVerificationCodeResponse security_response;
-    WaitingClosure security_done;
-    service.SendSecurityCode(&controller, &security_request, &security_response, &security_done);
-    security_done.Wait();
-    Check(security_response.status().code() == 401,
-          "security code is session-bound and distinct from registration code");
-
-    oj::biz::CreateSolutionRequest solution_request;
-    solution_request.set_question_id("1");
-    solution_request.set_title("No request actor field");
-    solution_request.set_content_md("content");
-    oj::biz::SolutionResponse solution_response;
-    WaitingClosure solution_done;
-    service.CreateSolution(&controller, &solution_request, &solution_response, &solution_done);
-    solution_done.Wait();
-    Check(solution_response.status().code() == 401 &&
-              solution_response.status().message() == "UNAUTHORIZED",
-          "solution actor is derived from the session cookie");
-
-    oj::biz::CreateCommentRequest comment_request;
-    comment_request.set_solution_id(4);
-    comment_request.set_content("content");
-    oj::biz::CommentResponse comment_response;
-    WaitingClosure comment_done;
-    service.CreateComment(&controller, &comment_request, &comment_response, &comment_done);
-    comment_done.Wait();
-    Check(comment_response.status().code() == 401, "comment actor is not accepted from the request");
-
-    oj::biz::GetCommentActionsRequest actions_request;
-    actions_request.add_comment_ids(9);
-    actions_request.add_comment_ids(11);
-    oj::biz::GetCommentActionsResponse actions_response;
-    WaitingClosure actions_done;
-    service.GetActionStates(&controller, &actions_request, &actions_response, &actions_done);
-    actions_done.Wait();
-    Check(actions_response.status().success() && actions_response.actions_size() == 2 &&
-              actions_response.actions(0).comment_id() == 9 &&
-              actions_response.actions(1).comment_id() == 11 &&
-              !actions_response.actions(0).liked() && !actions_response.actions(0).favorited(),
-          "protobuf comment IDs convert to guest action states");
-    Check(send_done.Count() == 1 && register_done.Count() == 1 &&
-              security_done.Count() == 1 && solution_done.Count() == 1 &&
-              comment_done.Count() == 1 && actions_done.Count() == 1,
-          "supported overrides complete exactly once");
-    executor.Stop();
+    suite.ExpectStatus<oj::biz::PasswordLoginRequest, oj::biz::AuthResponse>(
+        "LoginWithPassword", &oj::rpc::OJServiceImpl::LoginWithPassword, controller,
+        400, "LOGIN_ID_REQUIRED");
+    suite.ExpectStatus<oj::common::EmptyRequest, oj::common::EmptyResponse>(
+        "Logout", &oj::rpc::OJServiceImpl::Logout, nullptr, 200);
+    suite.ExpectStatus<oj::biz::SetPasswordRequest, oj::common::EmptyResponse>(
+        "SetPassword", &oj::rpc::OJServiceImpl::SetPassword, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::SendSecurityCodeRequest, oj::biz::SendVerificationCodeResponse>(
+        "SendSecurityCode", &oj::rpc::OJServiceImpl::SendSecurityCode, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::ChangePasswordRequest, oj::common::EmptyResponse>(
+        "ChangePassword", &oj::rpc::OJServiceImpl::ChangePassword, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::ChangeEmailRequest, oj::common::EmptyResponse>(
+        "ChangeEmail", &oj::rpc::OJServiceImpl::ChangeEmail, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::DeleteAccountRequest, oj::common::EmptyResponse>(
+        "DeleteAccount", &oj::rpc::OJServiceImpl::DeleteAccount, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::common::EmptyRequest, oj::biz::GetUserProfileResponse>(
+        "GetCurrentUser", &oj::rpc::OJServiceImpl::GetCurrentUser, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::GetUserProfileRequest, oj::biz::GetUserProfileResponse>(
+        "GetUserProfile", &oj::rpc::OJServiceImpl::GetUserProfile, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::UpdateProfileRequest, oj::biz::UpdateProfileResponse>(
+        "UpdateProfile", &oj::rpc::OJServiceImpl::UpdateProfile, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::UpdateAvatarRequest, oj::biz::UpdateAvatarResponse>(
+        "UpdateAvatar", &oj::rpc::OJServiceImpl::UpdateAvatar, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::common::EmptyRequest, oj::common::EmptyResponse>(
+        "DeleteAvatar", &oj::rpc::OJServiceImpl::DeleteAvatar, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::common::EmptyRequest, oj::biz::GetUserStatisticsResponse>(
+        "GetStatistics", &oj::rpc::OJServiceImpl::GetStatistics, controller, 401, "UNAUTHORIZED");
 }
 
-void CheckNotImplementedAndLegacyFallback()
+void CheckQuestionRpcs(RpcSuite& suite, TestController* controller)
 {
-    oj::runtime::BusinessExecutor executor({.worker_count = 1, .queue_capacity = 4});
-    Check(executor.Start(), "501 executor starts");
-    oj::rpc::OJServiceImpl service(nullptr, executor);
-    TestController controller;
+    CancelledController cancelled;
+    suite.ExpectStatus<oj::biz::GetQuestionListRequest, oj::biz::GetQuestionListResponse>(
+        "ListQuestions", &oj::rpc::OJServiceImpl::ListQuestions, &cancelled, 499, "REQUEST_CANCELLED");
+    suite.ExpectStatus<oj::biz::QuestionIdRequest, oj::biz::GetQuestionDetailResponse>(
+        "GetQuestion", &oj::rpc::OJServiceImpl::GetQuestion, controller, 400, "INVALID_QUESTION_ID");
 
-    oj::biz::UpdateSolutionRequest request;
-    request.set_solution_id(7);
-    oj::biz::SolutionResponse response;
-    WaitingClosure done;
-    service.UpdateSolution(&controller, &request, &response, &done);
-    done.Wait();
-    Check(response.status().code() == 501 && response.status().message() == "NOT_IMPLEMENTED",
-          "unsupported method returns stable 501");
+    auto pass_status = ExpectedStatus<oj::biz::GetQuestionPassStatusResponse>(200);
+    pass_status.set_passed(false);
+    suite.Expect<oj::biz::QuestionIdRequest>(
+        "GetPassStatus", &oj::rpc::OJServiceImpl::GetPassStatus, nullptr,
+        [](auto& request) { request.set_question_id("1"); }, pass_status);
 
-    oj_judge::JudgeFinishedRequest legacy_request;
-    oj_judge::NullRsp legacy_response;
-    WaitingClosure legacy_done;
-    service.LegacyUpdateJudgeResult(&controller, &legacy_request, &legacy_response, &legacy_done);
-    legacy_done.Wait();
-    Check(controller.Failed() && controller.ErrorText() == "NOT_IMPLEMENTED",
-          "legacy callback uses controller failure");
-    Check(done.Count() == 1 && legacy_done.Count() == 1, "unsupported overrides complete exactly once");
-    executor.Stop();
+    suite.ExpectStatus<oj::biz::SaveQuestionRequest, oj::biz::QuestionResponse>(
+        "CreateQuestion", &oj::rpc::OJServiceImpl::CreateQuestion, controller, 501, "NOT_IMPLEMENTED");
+    suite.ExpectStatus<oj::biz::SaveQuestionRequest, oj::biz::QuestionResponse>(
+        "UpdateQuestion", &oj::rpc::OJServiceImpl::UpdateQuestion, controller, 501, "NOT_IMPLEMENTED");
+    suite.ExpectStatus<oj::biz::QuestionIdRequest, oj::common::EmptyResponse>(
+        "DeleteQuestion", &oj::rpc::OJServiceImpl::DeleteQuestion, controller, 501, "NOT_IMPLEMENTED");
+
+    suite.Expect<oj::biz::ListTestCasesRequest>(
+        "ListTestCases", &oj::rpc::OJServiceImpl::ListTestCases, controller,
+        [](auto& request) { request.set_question_id("1"); },
+        ExpectedStatus<oj::biz::ListTestCasesResponse>(501, "NOT_IMPLEMENTED"));
+    suite.ExpectStatus<oj::biz::CreateTestCaseRequest, oj::biz::TestCaseResponse>(
+        "CreateTestCase", &oj::rpc::OJServiceImpl::CreateTestCase, controller, 501, "NOT_IMPLEMENTED");
+    suite.ExpectStatus<oj::biz::UpdateTestCaseRequest, oj::biz::TestCaseResponse>(
+        "UpdateTestCase", &oj::rpc::OJServiceImpl::UpdateTestCase, controller, 501, "NOT_IMPLEMENTED");
+    suite.ExpectStatus<oj::biz::TestCaseIdRequest, oj::common::EmptyResponse>(
+        "DeleteTestCase", &oj::rpc::OJServiceImpl::DeleteTestCase, controller, 501, "NOT_IMPLEMENTED");
+    suite.ExpectStatus<oj::biz::InvalidateQuestionCacheRequest, oj::common::EmptyResponse>(
+        "InvalidateCache", &oj::rpc::OJServiceImpl::InvalidateCache, controller, 501, "NOT_IMPLEMENTED");
 }
 
-void CheckQueueRejection()
+void CheckSolutionRpcs(RpcSuite& suite, TestController* controller)
 {
-    oj::runtime::BusinessExecutor executor({.worker_count = 1, .queue_capacity = 1});
-    Check(executor.Start(), "queue executor starts");
-    Gate gate;
-    Check(executor.Submit([&] { gate.Block(); }) == oj::runtime::SubmitResult::Accepted,
-          "blocking work accepted");
-    gate.WaitUntilEntered();
-    Check(executor.Submit([] {}) == oj::runtime::SubmitResult::Accepted, "queue is filled");
-    oj::rpc::OJServiceImpl service(nullptr, executor);
-    TestController controller;
-    oj::biz::UpdateSolutionRequest request;
-    oj::biz::SolutionResponse response;
-    WaitingClosure done;
-    service.UpdateSolution(&controller, &request, &response, &done);
-    done.Wait();
-    Check(response.status().code() == 503 &&
-              response.status().message() == "BUSINESS_QUEUE_FULL" &&
-              response.status().retryable(),
-          "queue rejection is surfaced by AsyncDispatch");
-    Check(done.Count() == 1, "rejected override completes exactly once");
-    gate.Open();
-    executor.Stop();
+    suite.ExpectStatus<oj::biz::ListSolutionsRequest, oj::biz::ListSolutionsResponse>(
+        "ListSolutions", &oj::rpc::OJServiceImpl::ListSolutions, controller, 400, "INVALID_QUESTION_ID");
+    suite.ExpectStatus<oj::biz::SolutionIdRequest, oj::biz::GetSolutionResponse>(
+        "GetSolution", &oj::rpc::OJServiceImpl::GetSolution, controller, 400, "INVALID_ID");
+    suite.ExpectStatus<oj::biz::CreateSolutionRequest, oj::biz::SolutionResponse>(
+        "CreateSolution", &oj::rpc::OJServiceImpl::CreateSolution, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::UpdateSolutionRequest, oj::biz::SolutionResponse>(
+        "UpdateSolution", &oj::rpc::OJServiceImpl::UpdateSolution, controller, 501, "NOT_IMPLEMENTED");
+    suite.ExpectStatus<oj::biz::SolutionIdRequest, oj::common::EmptyResponse>(
+        "DeleteSolution", &oj::rpc::OJServiceImpl::DeleteSolution, controller, 501, "NOT_IMPLEMENTED");
+    suite.ExpectStatus<oj::biz::SolutionIdRequest, oj::biz::SolutionActionResponse>(
+        "ToggleSolutionLike", &oj::rpc::OJServiceImpl::ToggleSolutionLike, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::SolutionIdRequest, oj::biz::SolutionActionResponse>(
+        "ToggleSolutionFavorite", &oj::rpc::OJServiceImpl::ToggleSolutionFavorite, controller,
+        401, "UNAUTHORIZED");
+
+    suite.Expect<oj::biz::SolutionIdRequest>(
+        "GetActionState", &oj::rpc::OJServiceImpl::GetActionState, nullptr,
+        [](auto& request) { request.set_solution_id(uint64_t{1} << 32); },
+        ExpectedStatus<oj::biz::SolutionActionResponse>(404, "SOLUTION_NOT_FOUND"));
+}
+
+void CheckCommentRpcs(RpcSuite& suite, TestController* controller)
+{
+    suite.ExpectStatus<oj::biz::ListCommentsRequest, oj::biz::ListCommentsResponse>(
+        "ListComments", &oj::rpc::OJServiceImpl::ListComments, controller, 400, "INVALID_ID");
+    suite.ExpectStatus<oj::biz::ListRepliesRequest, oj::biz::ListCommentsResponse>(
+        "ListReplies", &oj::rpc::OJServiceImpl::ListReplies, controller, 400, "INVALID_ID");
+    suite.ExpectStatus<oj::biz::CreateCommentRequest, oj::biz::CommentResponse>(
+        "CreateComment", &oj::rpc::OJServiceImpl::CreateComment, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::UpdateCommentRequest, oj::biz::CommentResponse>(
+        "UpdateComment", &oj::rpc::OJServiceImpl::UpdateComment, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::CommentIdRequest, oj::common::EmptyResponse>(
+        "DeleteComment", &oj::rpc::OJServiceImpl::DeleteComment, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::CommentIdRequest, oj::biz::CommentActionResponse>(
+        "ToggleCommentLike", &oj::rpc::OJServiceImpl::ToggleCommentLike, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::CommentIdRequest, oj::biz::CommentActionResponse>(
+        "ToggleCommentFavorite", &oj::rpc::OJServiceImpl::ToggleCommentFavorite, controller,
+        401, "UNAUTHORIZED");
+
+    suite.Expect<oj::biz::GetCommentActionsRequest>(
+        "GetActionStates", &oj::rpc::OJServiceImpl::GetActionStates, nullptr,
+        [](auto& request) {
+            request.add_comment_ids(uint64_t{1} << 32);
+        }, ExpectedStatus<oj::biz::GetCommentActionsResponse>(404, "COMMENT_NOT_FOUND"));
+}
+
+void CheckSubmissionAndCacheRpcs(RpcSuite& suite, TestController* controller)
+{
+    suite.ExpectStatus<oj::biz::CreateSubmissionRequest, oj::biz::CreateSubmissionResponse>(
+        "CreateSubmission", &oj::rpc::OJServiceImpl::CreateSubmission, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::CreateCustomTestRequest, oj::biz::CreateCustomTestResponse>(
+        "CreateCustomTest", &oj::rpc::OJServiceImpl::CreateCustomTest, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::GetSubmissionRequest, oj::biz::GetSubmissionResponse>(
+        "GetSubmission", &oj::rpc::OJServiceImpl::GetSubmission, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::GetCustomTestRequest, oj::biz::GetCustomTestResponse>(
+        "GetCustomTest", &oj::rpc::OJServiceImpl::GetCustomTest, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::ListSubmissionsRequest, oj::biz::ListSubmissionsResponse>(
+        "ListSubmissions", &oj::rpc::OJServiceImpl::ListSubmissions, controller, 401, "UNAUTHORIZED");
+    suite.ExpectStatus<oj::biz::UpdateJudgeResultRequest, oj::biz::UpdateJudgeResultResponse>(
+        "UpdateJudgeResult", &oj::rpc::OJServiceImpl::UpdateJudgeResult, controller, 400, "INVALID_CALLBACK");
+    suite.ExpectLegacyFailure(controller);
+    suite.ExpectStatus<oj::biz::InvalidateStaticCacheRequest, oj::common::EmptyResponse>(
+        "InvalidateStaticCache", &oj::rpc::OJServiceImpl::InvalidateStaticCache, controller,
+        401, "UNAUTHORIZED");
 }
 
 } // namespace
 
 int main()
 {
-    CheckValidationAndUnauthenticated();
-    CheckNotImplementedAndLegacyFallback();
-    CheckQueueRejection();
-    std::cout << "oj_service_rpc_test: PASS\n";
+    RpcSuite suite;
+    TestController controller;
+    CheckAuthAndUserRpcs(suite, &controller);
+    CheckQuestionRpcs(suite, &controller);
+    CheckSolutionRpcs(suite, &controller);
+    CheckCommentRpcs(suite, &controller);
+    CheckSubmissionAndCacheRpcs(suite, &controller);
+    suite.VerifyDescriptorCoverage();
+    std::cout << "oj_service_rpc_test: PASS (51/51 OJService RPCs)\n";
     return 0;
 }

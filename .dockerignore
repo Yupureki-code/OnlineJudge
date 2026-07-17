@@ -1,0 +1,10 @@
+.git
+build
+output
+log
+tmp
+node_modules
+docs
+gateway/generated
+*.pem
+*.key

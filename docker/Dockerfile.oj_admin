@@ -1,0 +1,5 @@
+# Standalone wrapper for registries that publish the generic Phase 8 app image.
+ARG APP_BASE_IMAGE=onlinejudge-app:phase8
+FROM ${APP_BASE_IMAGE}
+USER oj
+ENTRYPOINT ["/app/bin/oj_admin"]

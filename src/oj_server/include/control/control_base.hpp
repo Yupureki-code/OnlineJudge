@@ -14,14 +14,13 @@
 #include "../oj_view.hpp"
 #include "../oj_session.hpp"
 #include "../oj_mail.hpp"
-#include <httplib.h>
 #include <jsoncpp/json/json.h>
 #include <sw/redis++/redis++.h>
 #include <openssl/sha.h>
 #include "../../../comm/comm.hpp"
 #include "../../../comm/models/user.hxx"
 
-// ControlBase: 基础设施，所有controller层的公共基类 — 共享成员、Judge、静态页面、session管理
+// ControlBase: 基础设施，所有controller层的公共基类 — 共享成员、静态页面、session管理
 namespace oj::control
 {
     using namespace oj::model;
@@ -29,165 +28,13 @@ namespace oj::control
     using namespace oj::view;
     using namespace oj::session;
     using oj::db::User;
-    //表示后端编译服务器的类
-    class Machine
-    {
-    public:
-        Machine(std::string ip,uint16_t port)
-        :_ip(ip),_port(port),_mtx(std::make_shared<std::mutex>())
-        {}
-        void Inload()
-        {
-            _mtx->lock();
-            _load++;
-            _mtx->unlock();
-        }
-        void Deload()
-        {
-            _mtx->lock();
-            _load--;
-            _mtx->unlock();
-        }
-        void ResetLoad()
-        {
-            _mtx->lock();
-            _load = 0;
-            _mtx->unlock();
-        }
-        uint32_t Load()
-        {
-            int load;
-            _mtx->lock();
-            load = _load;
-            _mtx->unlock();
-            return load;
-        }
-        std::string Ip()
-        {
-            return _ip;
-        }
-        uint16_t Port()
-        {
-            return _port;
-        }
-        ~Machine()
-        {}
-    private:
-        std::string _ip;  //编译服务器的ip地址
-        uint16_t _port;   //编译服务器的port端口
-        uint32_t _load = 0;  //编译服务器的负载
-        std::shared_ptr<std::mutex> _mtx; //互斥锁
-    };
 
-    //默认配置文件
-    const std::string machine_conf = CONF_PATH + std::string("service_machine.conf");
-
-    class CentralConsole
+    struct ActionState
     {
-    public:
-        CentralConsole()
-        {
-            assert(LoadConf(machine_conf));
-            LOG_INFO("{}{}{}", "加载 ", machine_conf, " 成功");
-        }
-        //加载配置文件:配置编译服务器
-        bool LoadConf(const std::string& conf)
-        {
-            LOG_DEBUG("{}{}", "conf : ", conf);
-            std::ifstream in(conf);
-            if(!in.is_open())
-                return false;
-            std::string line;
-            std::string space = ":";
-            while(std::getline(in,line))
-            {
-                std::vector<std::string> v;
-                StringUtil::SplitString(line, space, &v);
-                if(v.size() != 2)
-                {
-                    LOG_WARNING("{}{}{}", "配置服务器 ", line, " 失败");
-                    continue;
-                }
-                Machine machine(v[0],std::stoi(v[1]));
-                _online.push_back(_machines.size());
-                _machines.push_back(machine);
-                LOG_INFO("{}{}{}{}{}", "配置服务器 ", v[0], ":", v[1], " 成功");
-            }
-            in.close();
-            return true;
-        }
-        //智能选择负载最小的编译服务器
-        bool SmartChoose(int* id,Machine** m)
-        {
-            _mtx.lock();
-            if(_online.size() == 0)
-            {
-                LOG_CRITICAL("{}", "服务器全挂!");
-                _mtx.unlock();
-                return false;
-            }
-            *id = _online[0];
-            *m = &_machines[*id];
-            int load = _machines[*id].Load();
-            for(auto & it : _online)
-            {
-                int cur = _machines[it].Load();
-                if(cur < load) //比较负载
-                {
-                    load = cur;
-                    *id = it;
-                    *m = &_machines[*id];
-                }
-            }
-            _mtx.unlock();
-            return true;
-        }
-        //编译服务器下线
-         void OfflineMachine(int which)
-        {
-            _mtx.lock();
-            for(auto iter = _online.begin(); iter != _online.end(); iter++)
-            {
-                if(*iter == which)
-                {
-                    _machines[which].ResetLoad();
-                    _online.erase(iter);
-                    _offline.push_back(which);
-                    break;
-                }
-            }
-            _mtx.unlock();
-        }
-        //编译服务器上线
-        void OnlineMachine()
-        {
-            _mtx.lock();
-            _online.insert(_online.end(), _offline.begin(), _offline.end());
-            _offline.erase(_offline.begin(), _offline.end());
-            _mtx.unlock();
-            LOG_INFO("{}", "所有的主机都上线啦!");
-        }
-        //DEBUG::显示目前的主机情况
-        void ShowMachines()
-        {
-            _mtx.lock();
-            std::cout<<"当前在线主机列表:"<<std::endl;
-            for(auto& it : _online)
-            {
-                std::cout<<_machines[it].Ip()<<":"<<_machines[it].Port()<<" load:"<<_machines[it].Load();
-            }
-            std::cout<<"当前离线主机列表:"<<std::endl;
-            for(auto& it : _offline)
-            {
-                std::cout<<_machines[it].Ip()<<":"<<_machines[it].Port()<<" load:"<<_machines[it].Load();
-            }
-            _mtx.unlock();
-        }
-    private:
-        std::vector<Machine> _machines;  //表示全部主机的数组，下标代表编号
-        std::vector<int> _online;  //上线的主机
-        std::vector<int> _offline; //下线的主机
-        std::mutex _mtx; //互斥锁
+        bool liked = false;
+        bool favorited = false;
+        uint64_t like_count = 0;
+        uint64_t favorite_count = 0;
     };
 
     class ControlBase
@@ -197,63 +44,6 @@ namespace oj::control
         {}
 
         Model* GetModel() { return &_model; }
-
-        //判断题目正确，调用主机责任链
-        // Forward optional custom_input/output to the compile server
-        void Judge(const std::string& id,const std::string& in_json,std::string* out_json,
-                   const std::string& custom_input = "",
-                   const std::string& custom_output = "")
-        {
-            Question q;
-            _model.Question().GetOneQuestion(id, q);
-            Json::Reader reader;
-            Json::Value in_value;
-            reader.parse(in_json, in_value);
-            std::string code = in_value["code"].asString();
-            Json::Value compile_value;
-            compile_value["id"] = id;
-            compile_value["code"] = code;
-            // Forward custom test input/output to the compile server when provided
-            if (!custom_input.empty()) {
-                compile_value["custom_input"] = custom_input;
-                // Mark this as a custom test so the judge can skip normal judging
-                compile_value["is_custom_test"] = true;  // ADD THIS LINE
-            }
-            if (!custom_output.empty()) {
-                compile_value["custom_output"] = custom_output;
-            }
-            Json::FastWriter writer;
-            std::string compile_string = writer.write(compile_value);
-            while(true)
-            {
-                int id = 0;
-                Machine *m = nullptr;
-                if(!_console.SmartChoose(&id, &m))
-                {
-                    break;
-                }
-                httplib::Client cli(m->Ip(), m->Port());
-                m->Inload();
-                LOG_INFO("{}{}{}{}{}{}{}{}", " 选择主机成功, 主机id: ", id, " 详情: ", m->Ip(), ":", m->Port(), " 当前主机的负载是: ", m->Load());
-                if(auto res = cli.Post("/compile_and_run", compile_string, "application/json;charset=utf-8"))
-                {
-                    if(res->status == 200)
-                    {
-                        *out_json = res->body;
-                        m->Deload();
-                        LOG_INFO("{}", "请求编译和运行服务成功...");
-                        break;
-                    }
-                    m->Deload();
-                }
-                else
-                {
-                    LOG_ERROR("{}{}{}{}{}{}{}", " 当前请求的主机id: ", id, " 详情: ", m->Ip(), ":", m->Port(), " 可能已经离线");
-                    _console.OfflineMachine(id);
-                    _console.ShowMachines();
-                }
-            }
-        }
 
         //获取静态页面，优先级：redis缓存 > view内存缓存 > 磁盘文件
         bool GetStaticHtml(const std::string& path, std::string* html)
@@ -311,18 +101,19 @@ namespace oj::control
             return _session_manager.CreateSession(user_id, email);
         }
 
-        void DestroySession(const std::string& session_id)
+        bool DestroySession(const std::string& session_id)
         {
-            _session_manager.DestroySession(session_id);
+            return _session_manager.DestroySession(session_id);
         }
 
-        void DestroySessionByCookieHeader(const std::string& cookie_header)
+        bool DestroySessionByCookieHeader(const std::string& cookie_header)
         {
             std::string session_id;
             if (_session_manager.ParseCookie(cookie_header, &session_id))
             {
-                _session_manager.DestroySession(session_id);
+                return _session_manager.DestroySession(session_id);
             }
+            return true;
         }
 
         //通过session获取用户信息，失败返回false，成功返回true并将用户信息写入user参数
@@ -370,110 +161,33 @@ namespace oj::control
         }
 
     protected:
-        /// 构建用户信息JSON（作者名称和头像）
-        /// @param user_id 用户ID
-        /// @param item 输出JSON对象
-        void BuildUserInfoJson(int user_id, Json::Value& item)
+        bool GetPublicSolution(long long solution_id, Solution* solution, std::string* err_code)
         {
-            User author;
-            if (_model.User().GetUserById(user_id, &author))
+            if (solution == nullptr || err_code == nullptr)
             {
-                item["author_name"] = author.name;
-                item["author_avatar"] = GetEffectiveAvatarUrl(author);
+                return false;
             }
-            else
+
+            if (!_model.Solution().GetSolutionById(solution_id, solution) ||
+                solution->status != "approved")
             {
-                item["author_name"] = "";
-                item["author_avatar"] = "/pictures/head.jpg";
+                *err_code = "SOLUTION_NOT_FOUND";
+                return false;
             }
+
+            Question question;
+            if (!_model.Question().GetOneQuestion(solution->question_id, question))
+            {
+                *err_code = "SOLUTION_NOT_FOUND";
+                return false;
+            }
+            return true;
         }
 
-        /// 构建用户信息JSON（批量模式，使用预查询的用户映射）
-        /// @param user_id 用户ID
-        /// @param item 输出JSON对象
-        /// @param user_map 预查询的用户映射 (uid -> User)
-        void BuildUserInfoJsonBatch(int user_id, Json::Value& item, const std::map<int, User>& user_map)
-        {
-            auto it = user_map.find(user_id);
-            if (it != user_map.end())
-            {
-                item["author_name"] = it->second.name;
-                item["author_avatar"] = GetEffectiveAvatarUrl(it->second);
-            }
-            else
-            {
-                item["author_name"] = "";
-                item["author_avatar"] = "/pictures/head.jpg";
-            }
-        }
-
-        /// 设置分页结果
-        /// @param result 输出JSON
-        /// @param total_count 总数
-        /// @param page 当前页
-        /// @param size 每页大小
-        void SetPaginationResult(Json::Value* result, int total_count, int page, int size)
-        {
-            (*result)["success"] = true;
-            (*result)["total"] = total_count;
-            int total_pages = (size > 0) ? ((total_count + size - 1) / size) : 0;
-            (*result)["total_pages"] = total_pages;
-            (*result)["page"] = std::max(1, page);
-            (*result)["size"] = size;
-        }
-
-        /// Solution对象转JSON
-        /// @param s Solution对象
-        /// @param item 输出JSON
-        void SolutionToJson(const Solution& s, Json::Value& item)
-        {
-            item["id"] = Json::UInt64(s.id);
-            item["question_id"] = s.question_id;
-            item["user_id"] = s.user_id;
-            item["title"] = s.title;
-            item["content_md"] = s.content_md;
-            item["like_count"] = s.like_count;
-            item["favorite_count"] = s.favorite_count;
-            item["comment_count"] = s.comment_count;
-            item["status"] = s.status;
-            item["created_at"] = oj::util::TimeUtil::DateTimeToInt(s.created_at);
-            item["updated_at"] = oj::util::TimeUtil::DateTimeToInt(s.updated_at);
-        }
-
-        /// Comment对象转JSON
-        /// @param c Comment对象
-        /// @param item 输出JSON
-        void CommentToJson(const Comment& c, Json::Value& item)
-        {
-            item["id"] = Json::UInt64(c.id);
-            item["solution_id"] = Json::UInt64(c.solution_id);
-            item["user_id"] = c.user_id;
-            item["content"] = c.content;
-            item["is_edited"] = c.is_edited.get();
-            item["created_at"] =  oj::util::TimeUtil::DateTimeToInt(c.created_at.get());
-            item["updated_at"] = oj::util::TimeUtil::DateTimeToInt(c.updated_at.get());
-            item["parent_id"] = c.parent_id.get();
-            item["reply_to_user_id"] = c.reply_to_user_id.get();
-            item["like_count"] = c.like_count;
-            item["favorite_count"] = c.favorite_count;
-            // 使用文件系统查找用户头像，优先使用用户上传的头像
-            {
-                User author; author.uid = c.user_id;
-                item["author_avatar"] = GetEffectiveAvatarUrl(author);
-            }
-        }
-
-        /// 通用切换操作（点赞/收藏）
-        /// @param solution_id 题解ID
-        /// @param current_user 当前用户
-        /// @param action_type 操作类型（"like" 或 "favorite"）
-        /// @param result 输出JSON
-        /// @param err_code 错误码
-        /// @return 是否成功
         bool ToggleSolutionAction(long long solution_id,
                                   const User& current_user,
                                   const std::string& action_type,
-                                  Json::Value* result,
+                                  ActionState* result,
                                   std::string* err_code)
         {
             if (result == nullptr || err_code == nullptr)
@@ -488,11 +202,7 @@ namespace oj::control
             }
 
             Solution solution;
-            if (!_model.Solution().GetSolutionById(solution_id, &solution))
-            {
-                *err_code = "SOLUTION_NOT_FOUND";
-                return false;
-            }
+            if (!GetPublicSolution(solution_id, &solution, err_code)) return false;
 
             bool now_active = false;
             unsigned int new_count = 0;
@@ -502,15 +212,21 @@ namespace oj::control
                 return false;
             }
 
-            (*result)["success"] = true;
-            (*result)[action_type + "d"] = now_active;
-            (*result)[action_type + "_count"] = new_count;
+            if (action_type == "like")
+            {
+                result->liked = now_active;
+                result->like_count = new_count;
+            }
+            else
+            {
+                result->favorited = now_active;
+                result->favorite_count = new_count;
+            }
             return true;
         }
 
         Model _model;
         View _view;
-        CentralConsole _console;
         SessionManager _session_manager;
         sw::redis::Redis _auth_redis;
         oj::mail::Mail _mail;

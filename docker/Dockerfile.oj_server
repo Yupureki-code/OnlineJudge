@@ -1,0 +1,31 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LD_LIBRARY_PATH=/app/lib
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl \
+    libprotobuf32t64 libhiredis1.1.0 libjsoncpp25 libspdlog1.12 libgflags2.2 \
+    libleveldb1d libssl3t64 libevent-2.1-7t64 libevent-pthreads-2.1-7t64 \
+    libfmt9 libmysqlclient21 libsnappy1v5 zlib1g libzstd1 libcurl4t64 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system oj \
+    && useradd --system --gid oj --home /app oj
+
+COPY dist/phase8/ /app/
+COPY conf/ /app/conf/
+COPY src/wwwroot/ /app/wwwroot/
+
+RUN cd /app && sha256sum -c SHA256SUMS \
+    && case "$(uname -m):$(sed -n 's/^architecture=//p' metadata.env)" in x86_64:x86_64|aarch64:aarch64) ;; *) exit 1 ;; esac \
+    && for binary in /app/bin/oj_server /app/bin/oj_admin /app/bin/judge_service; do \
+         ldd "$binary"; \
+         ! ldd "$binary" | grep -q 'not found'; \
+       done \
+    && mkdir -p /app/log /app/tmp \
+    && chown -R oj:oj /app/log /app/tmp \
+    && chmod 0555 /app/bin/* /app/lib/*
+
+USER oj
+WORKDIR /app
+ENTRYPOINT ["/app/bin/oj_server"]

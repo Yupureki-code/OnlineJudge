@@ -46,6 +46,9 @@ public:
 
     bool Start();
     SubmitResult Submit(Task task);
+    void Stop();
+    void Stop(StopPolicy policy);
+    bool IsAccepting() const;
     std::size_t PendingTaskCount() const;
 
 private:
@@ -58,6 +61,9 @@ private:
     std::condition_variable work_available_;
     std::queue<Task> tasks_;
     std::vector<std::thread> workers_;
+    bool started_ = false;
+    bool stopping_ = false;
+    bool stopped_ = false;
     StopPolicy active_stop_policy_ = StopPolicy::Drain;
 };
 

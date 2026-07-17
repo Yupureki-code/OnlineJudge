@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <mutex>
 #include <cstring>
+#include <chrono>
+#include <thread>
 
 namespace oj_sandbox {
 
@@ -34,6 +36,7 @@ struct SandboxConfig {
     bool network_disabled = true;              // 禁止网络
     bool read_only_root = true;                // 只读根文件系统
     std::string work_dir = "/home/judge";      // 工作目录
+    size_t output_limit_bytes = 1024 * 1024;    // 单次 Docker 响应/用户输出上限
 };
 
 // ==================== 内部辅助 ====================
@@ -47,9 +50,24 @@ inline void EnsureCurlInit() {
 }
 
 /// libcurl 写回调
+struct CurlOutput {
+    std::string data;
+    size_t limit = 0;
+    bool limited = false;
+};
+
 inline size_t CurlWriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-    ((std::string*)userp)->append((char*)contents, size * nmemb);
-    return size * nmemb;
+    auto* output = static_cast<CurlOutput*>(userp);
+    const size_t bytes = size * nmemb;
+    if (output->data.size() + bytes > output->limit) {
+        const size_t remaining = output->limit > output->data.size()
+            ? output->limit - output->data.size() : 0;
+        output->data.append(static_cast<char*>(contents), remaining);
+        output->limited = true;
+        return 0;
+    }
+    output->data.append(static_cast<char*>(contents), bytes);
+    return bytes;
 }
 
 /// Base64 编码（用于 WriteFile 避免命令注入）
@@ -165,12 +183,15 @@ public:
 
         // 临时文件系统挂载（可写工作目录）
         Json::Value tmpfs;
-        tmpfs[config.work_dir] = "";  // Docker API expects string, not object
+        tmpfs[config.work_dir] = "rw,exec,nosuid,nodev,uid=1000,gid=1000,mode=0700,size=" +
+            std::to_string(config.memory_limit_mb) + "m";
         host_config["Tmpfs"] = tmpfs;
 
-        // Explicit bridge network for container→host communication
-        if (!config.network_disabled) {
-            host_config["NetworkMode"] = "bridge";
+        if (config.network_disabled) {
+            host_config["NetworkMode"] = "none";
+        } else {
+            const char* network = std::getenv("OJ_SANDBOX_NETWORK");
+            host_config["NetworkMode"] = network && *network ? network : "bridge";
         }
 
         req["HostConfig"] = host_config;
@@ -178,8 +199,8 @@ public:
         Json::FastWriter writer;
         std::string body = writer.write(req);
 
-        std::string response = DockerApiCall("POST", "/v1.41/containers/create", body);
-        auto id = ParseDockerResponse(response, "Id");
+        auto response = DockerApiCall("POST", "/v1.41/containers/create", body);
+        auto id = response.ok ? ParseDockerResponse(response.body, "Id") : std::nullopt;
 
         if (id.has_value()) {
             _container_id = id.value();
@@ -191,8 +212,8 @@ public:
     /// 启动容器（Create 之后必须 Start）
     int Start() {
         if (_container_id.empty()) return -1;
-        DockerApiCall("POST", "/v1.41/containers/" + _container_id + "/start", "");
-        return 0;
+        auto response = DockerApiCall("POST", "/v1.41/containers/" + _container_id + "/start", "");
+        return response.ok ? 0 : -1;
     }
 
     /// 写入文件到容器
@@ -208,7 +229,13 @@ public:
         std::string encoded = _detail::Base64Encode(content);
         std::string cmd = "echo '" + encoded + "' | base64 -d > " + path;
         ExecResult result = Exec(cmd, 5000);
-        return result.exit_code == 0 ? 0 : -1;
+        if (result.exit_code == 0) return 0;
+        if (_last_error.empty()) {
+            _last_error = result.stderr_str.empty()
+                ? "Docker exec exited with code " + std::to_string(result.exit_code)
+                : result.stderr_str;
+        }
+        return -1;
     }
 
     /// 读取容器内文件
@@ -237,16 +264,16 @@ public:
 
         Json::FastWriter writer;
         std::string body = writer.write(req);
-        std::string response = DockerApiCall("POST",
+        auto response = DockerApiCall("POST",
             "/v1.41/containers/" + _container_id + "/exec", body);
-        auto exec_id = ParseDockerResponse(response, "Id");
+        auto exec_id = response.ok ? ParseDockerResponse(response.body, "Id") : std::nullopt;
         if (!exec_id.has_value()) return -1;
 
         Json::Value start_req;
         start_req["Detach"] = true;
         std::string start_body = writer.write(start_req);
-        DockerApiCall("POST", "/v1.41/exec/" + exec_id.value() + "/start", start_body);
-        return 0;
+        return DockerApiCall("POST", "/v1.41/exec/" + exec_id.value() + "/start",
+                             start_body).ok ? 0 : -1;
     }
 
     /// 在容器内执行命令（同步）
@@ -273,6 +300,7 @@ public:
     ExecResult Exec(const std::string& command, int timeout_ms) {
         ExecResult result;
         if (_container_id.empty()) { result.exit_code = -1; return result; }
+        const auto started_at = std::chrono::steady_clock::now();
 
         // ① 创建 exec 实例
         Json::Value req;
@@ -286,9 +314,9 @@ public:
         Json::FastWriter writer;
         std::string body = writer.write(req);
 
-        std::string response = DockerApiCall("POST",
+        auto response = DockerApiCall("POST",
             "/v1.41/containers/" + _container_id + "/exec", body);
-        auto exec_id = ParseDockerResponse(response, "Id");
+        auto exec_id = response.ok ? ParseDockerResponse(response.body, "Id") : std::nullopt;
         if (!exec_id.has_value()) { result.exit_code = -1; return result; }
 
         // ② 启动 exec，捕获多路复用输出流
@@ -297,25 +325,64 @@ public:
         start_req["Tty"] = false;
         std::string start_body = writer.write(start_req);
 
-        std::string raw_output = DockerApiCall("POST",
-            "/v1.41/exec/" + exec_id.value() + "/start", start_body);
+        auto start_response = DockerApiCall("POST",
+            "/v1.41/exec/" + exec_id.value() + "/start", start_body,
+            std::max(1, timeout_ms), _config.output_limit_bytes);
+        if (start_response.timed_out || start_response.output_limited) {
+            result.timed_out = start_response.timed_out;
+            result.killed = true;
+            Kill();
+        } else if (!start_response.ok) {
+            result.stderr_str = start_response.error;
+            result.exit_code = -1;
+            return result;
+        }
 
         // ③ 解析多路复用流：分离 stdout/stderr
-        auto frames = _detail::ParseMuxStream(raw_output);
+        auto frames = _detail::ParseMuxStream(start_response.body);
         for (const auto& frame : frames) {
             if (frame.stream_type == 1) result.stdout_str += frame.payload;
             else if (frame.stream_type == 2) result.stderr_str += frame.payload;
         }
 
         // ④ 查询 exec 退出码
-        std::string inspect_resp = DockerApiCall("GET",
-            "/v1.41/exec/" + exec_id.value() + "/json", "");
-        Json::Value inspect;
-        Json::Reader reader;
-        if (reader.parse(inspect_resp, inspect))
-            result.exit_code = inspect.get("ExitCode", -1).asInt();
+        const auto deadline = started_at + std::chrono::milliseconds(std::max(1, timeout_ms));
+        while (!result.killed) {
+            const auto now = std::chrono::steady_clock::now();
+            if (now >= deadline) {
+                result.timed_out = true;
+                result.killed = true;
+                Kill();
+                break;
+            }
+            const int remaining_ms = static_cast<int>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now).count());
+            auto inspect_resp = DockerApiCall("GET",
+                "/v1.41/exec/" + exec_id.value() + "/json", "",
+                std::min(2000, std::max(1, remaining_ms)));
+            Json::Value inspect;
+            Json::Reader reader;
+            if (!inspect_resp.ok || !reader.parse(inspect_resp.body, inspect)) {
+                result.stderr_str = inspect_resp.error.empty()
+                    ? "Invalid Docker exec inspect response" : inspect_resp.error;
+                break;
+            }
+            if (!inspect.get("Running", true).asBool()) {
+                result.exit_code = inspect.get("ExitCode", -1).asInt();
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        result.time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - started_at).count();
 
         return result;
+    }
+
+    bool Kill() {
+        if (_container_id.empty()) return false;
+        return DockerApiCall("POST", "/v1.41/containers/" + _container_id + "/kill", "",
+                             2000).ok;
     }
 
     /// 销毁容器
@@ -325,47 +392,100 @@ public:
     ///   2. DELETE /containers/{id}?force=true — 强制删除
     void Destroy() {
         if (_container_id.empty()) return;
-        DockerApiCall("POST", "/v1.41/containers/" + _container_id + "/stop?t=5", "");
-        DockerApiCall("DELETE", "/v1.41/containers/" + _container_id + "?force=true", "");
+        DockerApiCall("DELETE", "/v1.41/containers/" + _container_id + "?force=true", "", 3000);
         _container_id.clear();
         _created = false;
     }
 
     bool IsRunning() const { return _created && !_container_id.empty(); }
     const std::string& GetContainerId() const { return _container_id; }
+    const std::string& GetLastError() const { return _last_error; }
+
+    bool WasOomKilled() {
+        if (_container_id.empty()) return false;
+        auto response = DockerApiCall("GET", "/v1.41/containers/" + _container_id + "/json", "", 2000);
+        Json::Value root;
+        Json::Reader reader;
+        return response.ok && reader.parse(response.body, root) &&
+               root["State"].get("OOMKilled", false).asBool();
+    }
+
+    uint64_t MemoryPeakBytes() {
+        ExecResult result = Exec("cat /sys/fs/cgroup/memory.peak", 2000);
+        if (result.exit_code != 0) return 0;
+        try {
+            size_t consumed = 0;
+            const uint64_t value = std::stoull(result.stdout_str, &consumed);
+            return consumed == 0 ? 0 : value;
+        } catch (...) {
+            return 0;
+        }
+    }
 
 private:
+    struct ApiResponse {
+        bool ok = false;
+        bool timed_out = false;
+        bool output_limited = false;
+        long http_status = 0;
+        std::string body;
+        std::string error;
+    };
+
     /// 通过 Unix Socket 调用 Docker Engine API
-    std::string DockerApiCall(const std::string& method,
-                               const std::string& path,
-                               const std::string& body = "") {
+    ApiResponse DockerApiCall(const std::string& method,
+                              const std::string& path,
+                              const std::string& body = "",
+                              int timeout_ms = 5000,
+                              size_t output_limit = 1024 * 1024) {
+        ApiResponse api_result;
         CURL* curl = curl_easy_init();
-        if (!curl) return "";
+        if (!curl) { api_result.error = "curl_easy_init failed"; return api_result; }
 
         std::string url = "http://localhost" + path;
-        std::string response;
+        _detail::CurlOutput response;
+        response.limit = output_limit;
 
         curl_easy_setopt(curl, CURLOPT_UNIX_SOCKET_PATH, "/var/run/docker.sock");
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, _detail::CurlWriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 1000L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<long>(std::max(1, timeout_ms)));
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 
         struct curl_slist* headers = nullptr;
         headers = curl_slist_append(headers, "Content-Type: application/json");
 
         if (method == "POST") {
             curl_easy_setopt(curl, CURLOPT_POST, 1L);
-            if (!body.empty()) curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body.size()));
         } else if (method == "DELETE") {
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
         }
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
         CURLcode res = curl_easy_perform(curl);
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &api_result.http_status);
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
 
-        return (res == CURLE_OK) ? response : "";
+        api_result.body = std::move(response.data);
+        api_result.output_limited = response.limited;
+        api_result.timed_out = res == CURLE_OPERATION_TIMEDOUT;
+        api_result.ok = res == CURLE_OK &&
+                        (api_result.http_status == 101 ||
+                         (api_result.http_status >= 200 && api_result.http_status < 300));
+        if (!api_result.ok) {
+            api_result.error = res == CURLE_OK
+                ? "Docker API HTTP " + std::to_string(api_result.http_status) + ": " + api_result.body
+                : curl_easy_strerror(res);
+            _last_error = api_result.error;
+        } else {
+            _last_error.clear();
+        }
+        return api_result;
     }
 
     /// 从 JSON 响应中提取指定 key 的字符串值
@@ -380,63 +500,38 @@ private:
     std::string _container_id;
     SandboxConfig _config;
     bool _created = false;
+    std::string _last_error;
 };
 
 // ==================== SandboxPool ====================
 
-/// Docker 沙箱池：预热 N 个运行容器，减少创建开销
-///
-/// 设计说明：
-///   - 运行容器镜像小（~100MB），预热后复用
-///   - 编译容器镜像大（~2GB），每次新建销毁（不在此池管理）
-///   - 容器内脚本执行完后清理临时文件，实现复用
+/// Runner factory. A container that has executed untrusted code is never reused.
 class SandboxPool {
 public:
     SandboxPool(size_t pool_size, const SandboxConfig& config)
-        : _pool_size(pool_size), _config(config) {
-        for (size_t i = 0; i < pool_size; ++i) {
-            auto sandbox = std::make_unique<DockerSandbox>();
-            std::string id = sandbox->Create(config);
-            if (!id.empty()) {
-                sandbox->Start();
-                _idle_pool.push_back(std::move(sandbox));
-            }
-        }
-    }
+        : _pool_size(pool_size), _config(config) {}
 
     /// 获取一个沙箱实例（从池中取出或新建）
     std::unique_ptr<DockerSandbox> Acquire() {
-        std::lock_guard<std::mutex> lock(_mtx);
-        if (!_idle_pool.empty()) {
-            auto sandbox = std::move(_idle_pool.back());
-            _idle_pool.pop_back();
-            return sandbox;
-        }
-        // 池空，创建新容器
         auto sandbox = std::make_unique<DockerSandbox>();
         std::string id = sandbox->Create(_config);
-        if (!id.empty()) sandbox->Start();
+        if (!id.empty() && sandbox->Start() != 0) sandbox->Destroy();
         return sandbox;
     }
 
-    /// 归还沙箱实例（容器失效则丢弃，不放回池中）
+    /// Used runners are destroyed so processes and files cannot cross submissions.
     void Release(std::unique_ptr<DockerSandbox> sandbox) {
-        if (!sandbox || !sandbox->IsRunning()) return;
-        std::lock_guard<std::mutex> lock(_mtx);
-        _idle_pool.push_back(std::move(sandbox));
+        if (sandbox) sandbox->Destroy();
     }
 
     /// 销毁所有预热容器
     void Shutdown() {
-        std::lock_guard<std::mutex> lock(_mtx);
-        while (!_idle_pool.empty()) _idle_pool.pop_back();  // unique_ptr 析构 → Destroy()
+        // No reusable untrusted containers are retained.
     }
 
 private:
     size_t _pool_size;
     SandboxConfig _config;
-    std::vector<std::unique_ptr<DockerSandbox>> _idle_pool;
-    std::mutex _mtx;
 };
 
 } // namespace oj_sandbox

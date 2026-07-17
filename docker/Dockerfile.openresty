@@ -1,0 +1,33 @@
+FROM openresty/openresty:1.27.1.2-2-alpine-fat
+
+ARG LUA_PROTOBUF_VERSION=0.5.3-1
+ARG LUA_RESTY_HTTP_VERSION=0.17.2-0
+ARG LUA_CJSON_VERSION=2.1.0.10-1
+
+RUN apk add --no-cache openssl=3.3.7-r0 protobuf=24.4-r4 \
+    && luarocks --lua-version=5.1 install lua-protobuf "${LUA_PROTOBUF_VERSION}" \
+    && luarocks --lua-version=5.1 install lua-resty-http "${LUA_RESTY_HTTP_VERSION}" \
+    && luarocks --lua-version=5.1 install lua-cjson "${LUA_CJSON_VERSION}"
+
+WORKDIR /build
+COPY src/comm/proto/common.proto src/comm/proto/judge_service.proto src/comm/proto/biz_service.proto /build/proto/
+RUN protoc --proto_path=/build/proto --include_imports \
+    --descriptor_set_out=/tmp/onlinejudge.pb \
+    /build/proto/common.proto /build/proto/judge_service.proto /build/proto/biz_service.proto
+
+COPY gateway/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
+COPY gateway/conf/default.conf /usr/local/openresty/nginx/conf/conf.d/default.conf
+COPY gateway/routes.lua /usr/local/openresty/oj/routes.lua
+COPY gateway/lua/ /usr/local/openresty/oj/lua/
+COPY gateway/docker-entrypoint.sh /usr/local/bin/oj-gateway-entrypoint
+COPY src/wwwroot/ /usr/local/openresty/oj/wwwroot/
+RUN mkdir -p /usr/local/openresty/oj \
+    && cp /tmp/onlinejudge.pb /usr/local/openresty/oj/onlinejudge.pb \
+    && chmod 0555 /usr/local/bin/oj-gateway-entrypoint \
+    && chmod -R a-w /usr/local/openresty/oj \
+    && /usr/local/openresty/bin/resty \
+       -I /usr/local/openresty/oj -I /usr/local/openresty/oj/lua \
+       -e 'require("bootstrap").init()'
+
+EXPOSE 8080 8443
+ENTRYPOINT ["/usr/local/bin/oj-gateway-entrypoint"]

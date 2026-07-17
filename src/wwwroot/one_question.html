@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{title}} - Yupureki-OJ</title>
+    <title>题目详情 - Yupureki-OJ</title>
     <link rel="stylesheet" href="/css/common.css">
     <link rel="icon" type="image/png" sizes="32x32" href="/pictures/icon.png">
     <style>
@@ -1522,6 +1522,10 @@
             .tab { padding: 6px 10px; font-size: 12px; }
         }
 </style>
+    <script src="/js/csrf.js"></script>
+    <script src="/js/api-client.js"></script>
+    <script src="/js/submission-poller.js"></script>
+    <script src="/js/question-page.js" defer></script>
 </head>
 <body>
 
@@ -1562,11 +1566,11 @@
     <div class="container">
         <div class="question-section" id="questionSection">
                 <div class="question-header">
-                    <h1 class="question-title">{{number}}. {{title}}</h1>
+                    <h1 class="question-title">题目加载中...</h1>
                     <div class="question-meta">
                         <div class="meta-item">
                             <span>难度：</span>
-                            <span class="difficulty-badge difficulty-{{star}}">{{star}}</span>
+                            <span class="difficulty-badge">-</span>
                         </div>
                         <div class="meta-item">
                             <span>时间限制：</span>
@@ -1584,7 +1588,7 @@
                         <button class="content-tab" data-tab="solutions">题解</button>
                     </div>
                     <div class="tab-content active" id="tab-desc">
-                        <div class="description">{{desc}}</div>
+                        <div class="description">题目加载中...</div>
                     </div>
                     <div class="tab-content" id="tab-solutions">
                         <div id="solutions-container">
@@ -1604,7 +1608,7 @@
                     </div>
                     <div>支持C++11标准</div>
                 </div>
-                    <form action="/judge/{{number}}" method="post" style="flex: 1; display: flex; flex-direction: column; height: 100%;">
+                    <form action="#" method="post" style="flex: 1; display: flex; flex-direction: column; height: 100%;">
                         <div id="editor-container" style="flex: 3; min-height: 200px; display: flex; flex-direction: column;">
                             <div id="editor" style="flex: 1; min-height: 0;"></div>
                         </div>
@@ -1640,7 +1644,9 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.13/ace.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/js/marked.js"></script>
+    <script src="/js/dompurify.min.js"></script>
+    <script src="/js/markdown.js"></script>
     <script>
         // 涟漪效果
         const interactiveElements = document.querySelectorAll('a, button, .rain-toggle');
@@ -1858,7 +1864,7 @@
             // 检查用户是否通过该题
             function loadPassStatus(qid) {
                 var container = document.getElementById('solutions-container');
-                return fetch('/api/question/' + qid + '/pass_status', {credentials:'include'})
+                return OJApi.fetch('/api/questions/' + qid + '/pass-status', {credentials:'include'})
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
                         var statusHtml = '';
@@ -1887,7 +1893,7 @@
 
                 // 先加载 pass 状态，再加载题解列表
                 loadPassStatus(qid).then(function(passStatusHtml) {
-                    fetch('/api/questions/' + qid + '/solutions?page=' + solutionsPage + '&size=10&sort=' + solutionsSort, {credentials:'include'})
+                    OJApi.fetch('/api/questions/' + qid + '/solutions?page=' + solutionsPage + '&page_size=10&sort_by=' + solutionsSort, {credentials:'include'})
                         .then(function(r) { return r.json(); })
                         .then(function(data) {
                             if (!data.success) {
@@ -1982,7 +1988,7 @@
                 history.pushState({ solutionDetail: solutionId }, '', '/questions/' + qid + '/solutions/' + solutionId);
 
                 // Fetch solution detail
-                fetch('/api/solutions/' + solutionId, { credentials: 'include' })
+                OJApi.fetch('/api/solutions/' + solutionId, { credentials: 'include' })
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
                         if (!data.success) {
@@ -2002,8 +2008,8 @@
                 var detailArea = document.getElementById('solution-content-area');
                 var initial = (data.author_name && data.author_name.charAt(0)) || '?';
                 var contentHtml = '';
-                if (typeof marked !== 'undefined' && data.content_md) {
-                    contentHtml = marked.parse(data.content_md);
+                if (typeof OJMarkdown !== 'undefined' && data.content_md) {
+                    contentHtml = OJMarkdown.render(data.content_md);
                 } else {
                     contentHtml = '<pre>' + escapeHtml(data.content_md || '') + '</pre>';
                 }
@@ -2037,7 +2043,7 @@
                 var isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
                 if (!isLoggedIn) return;
 
-                fetch('/api/solutions/' + solutionId + '/actions', { credentials: 'include' })
+                OJApi.fetch('/api/solutions/' + solutionId + '/actions', { credentials: 'include' })
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -2064,7 +2070,7 @@
                     if (signInButton) signInButton.click();
                     return;
                 }
-                fetch('/api/solutions/' + solutionId + '/like', {
+                OJApi.fetch('/api/solutions/' + solutionId + '/like', {
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' }
@@ -2088,7 +2094,7 @@
                     if (signInButton) signInButton.click();
                     return;
                 }
-                fetch('/api/solutions/' + solutionId + '/favorite', {
+                OJApi.fetch('/api/solutions/' + solutionId + '/favorite', {
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' }
@@ -2113,7 +2119,7 @@
                 var isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
                 if (isLoggedIn) {
                     // Check user info for comment ownership
-                    fetch('/api/user/info', { credentials: 'include' })
+                    OJApi.fetch('/api/user', { credentials: 'include' })
                         .then(function(r) { return r.json(); })
                         .then(function(data) {
                             if (data.success) {
@@ -2146,7 +2152,7 @@
                 var loadingEl = document.getElementById('sol-comment-loading');
                 if (loadingEl) loadingEl.style.display = 'block';
 
-                fetch('/api/solutions/' + solutionId + '/comments?page=' + page + '&size=20', { credentials: 'include' })
+                OJApi.fetch('/api/solutions/' + solutionId + '/comments?page=' + page + '&page_size=20', { credentials: 'include' })
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
                         if (data.success) {
@@ -2257,7 +2263,7 @@
                     alert('\u8bc4\u8bba\u5185\u5bb9\u4e0d\u80fd\u8d85\u8fc71000\u5b57');
                     return;
                 }
-                fetch('/api/comments/' + commentId, {
+                OJApi.fetch('/api/comments/' + commentId, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -2281,7 +2287,7 @@
 
             window.deleteDetailComment = function(commentId) {
                 if (!confirm('\u786e\u5b9a\u8981\u5220\u9664\u8fd9\u6761\u8bc4\u8bba\u5417\uff1f')) return;
-                fetch('/api/comments/' + commentId, {
+                OJApi.fetch('/api/comments/' + commentId, {
                     method: 'DELETE',
                     credentials: 'include'
                 })
@@ -2334,7 +2340,7 @@
                 var content = textarea ? textarea.value.trim() : '';
                 if (!content) return;
                 console.log('提交回复: solutionId=' + currentDetailId + ' parentId=' + parentId);
-                fetch('/api/solutions/' + currentDetailId + '/comments', {
+                OJApi.fetch('/api/solutions/' + currentDetailId + '/comments', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -2361,7 +2367,7 @@
             function loadDetailReplies(parentId, container) {
                 if (container.dataset.loaded === 'true') return;
                 container.innerHTML = '<div style="color:rgba(244,246,240,0.5);padding:12px 0;">加载中...</div>';
-                fetch('/api/comments/' + parentId + '/replies?page=1&size=50', { credentials: 'include' })
+                OJApi.fetch('/api/comments/' + parentId + '/replies?page=1&page_size=50', { credentials: 'include' })
                     .then(function(r) {
                         if (!r.ok) throw new Error('HTTP ' + r.status);
                         return r.json();
@@ -2425,7 +2431,7 @@
             // Toggle like on comment
             function toggleDetailCommentLike(commentId, btn) {
                 if (!commentCurrentUser) { alert('请先登录'); return; }
-                fetch('/api/comments/' + commentId + '/like', { method: 'POST', credentials: 'include' })
+                OJApi.fetch('/api/comments/' + commentId + '/like', { method: 'POST', credentials: 'include' })
                     .then(function(r) { return r.json(); })
                     .then(function(d) {
                         if (d.success) {
@@ -2453,7 +2459,7 @@
                     showToast('评论内容不能超过1000字', true);
                     return;
                 }
-                fetch('/api/solutions/' + solutionId + '/comments', {
+                OJApi.fetch('/api/solutions/' + solutionId + '/comments', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -2614,7 +2620,7 @@
             // ---- Test Cases ----
             function loadSampleTests() {
                 panelBody.innerHTML = '<div class="panel-loading">加载中...</div>';
-                fetch('/api/question/' + questionId + '/sample_tests', { credentials: 'include' })
+                OJApi.fetch('/api/questions/' + questionId + '/test-cases?sample_only=true', { credentials: 'include' })
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
                         if (data.success && data.tests && data.tests.length > 0) {
@@ -2739,12 +2745,14 @@
                 var body = { code: code, test_type: type };
                 if (type === 'sample' && testCaseId) {
                     body.test_case_id = testCaseId;
+                    var selected = sampleTests.find(function(item) { return String(item.id) === String(testCaseId); });
+                    body.custom_input = selected ? (selected.input || '') : '';
                 }
                 if (type === 'custom' && customInput) {
                     body.custom_input = customInput;
                 }
 
-                fetch('/api/question/' + questionId + '/test', {
+                OJApi.fetch('/api/questions/' + questionId + '/custom-tests', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -2752,8 +2760,31 @@
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    lastTestResults = data;
-                    renderTestResults();
+                    if (!data.success || !data.task_id) {
+                        lastTestResults = data;
+                        renderTestResults();
+                        return;
+                    }
+                    sessionStorage.setItem('oj_custom_task_' + questionId, data.task_id);
+                    return window.OJSubmissionPoller.pollCustom(data.task_id, {
+                        onUpdate: function(_, status) {
+                            panelBody.innerHTML = '<div class="panel-loading">' + (status === 'SUBMISSION_STATUS_QUEUED' ? '排队中...' : '运行中...') + '</div>';
+                        }
+                    }).then(function(result) {
+                        sessionStorage.removeItem('oj_custom_task_' + questionId);
+                        var judge = result.result || {};
+                        var cases = judge.test_case_results || [];
+                        var last = cases.length ? cases[cases.length - 1] : {};
+                        lastTestResults = {
+                            success: true,
+                            status: String(result.submission_status || judge.status || '').replace('SUBMISSION_STATUS_', ''),
+                            stderr: judge.compile_error || '',
+                            stdout: last.actual_output || '',
+                            expected_output: last.expected_output || '',
+                            input: last.input || ''
+                        };
+                        renderTestResults();
+                    });
                 })
                 .catch(function(err) {
                     panelBody.innerHTML = '<div class="panel-error">运行失败: ' + escapeHtml(err.message || '网络错误') + '</div>';
@@ -2842,7 +2873,7 @@
             // ---- Submissions ----
             function loadSubmissions() {
                 panelBody.innerHTML = '<div class="panel-loading">加载中...</div>';
-                fetch('/api/question/' + questionId + '/submits', { credentials: 'include' })
+                OJApi.fetch('/api/submissions?question_id=' + encodeURIComponent(questionId) + '&page=1&page_size=20', { credentials: 'include' })
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
                         if (data.guest) {
@@ -2858,6 +2889,29 @@
                     .catch(function() {
                         panelBody.innerHTML = '<div class="panel-error">加载失败，请重试</div>';
                     });
+            }
+
+            var resumableTaskId = sessionStorage.getItem('oj_custom_task_' + questionId);
+            if (resumableTaskId) {
+                showPanel('test-results');
+                panelBody.innerHTML = '<div class="panel-loading">正在恢复测试任务...</div>';
+                window.OJSubmissionPoller.pollCustom(resumableTaskId).then(function(result) {
+                    sessionStorage.removeItem('oj_custom_task_' + questionId);
+                    var judge = result.result || {};
+                    var cases = judge.test_case_results || [];
+                    var last = cases.length ? cases[cases.length - 1] : {};
+                    lastTestResults = {
+                        success: true,
+                        status: String(result.submission_status || judge.status || '').replace('SUBMISSION_STATUS_', ''),
+                        stderr: judge.compile_error || '',
+                        stdout: last.actual_output || '',
+                        expected_output: last.expected_output || '',
+                        input: last.input || ''
+                    };
+                    renderTestResults();
+                }).catch(function() {
+                    panelBody.innerHTML = '<div class="panel-error">任务恢复失败，请重新运行</div>';
+                });
             }
 
             function renderSubmissions(submits) {

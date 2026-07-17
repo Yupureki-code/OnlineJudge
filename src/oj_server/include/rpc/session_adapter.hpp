@@ -2,9 +2,12 @@
 
 #include <string>
 #include <string_view>
+#include <cstdlib>
+#include <fstream>
 
 #include <brpc/controller.h>
 #include <butil/endpoint.h>
+#include <openssl/crypto.h>
 
 namespace oj::rpc
 {
@@ -24,6 +27,22 @@ public:
 
     static std::string RemoteIp(const brpc::Controller& controller)
     {
+        if (controller.has_http_request())
+        {
+            const std::string configured_token = GatewayToken();
+            const auto* supplied_token = controller.http_request().GetHeader("X-OJ-Gateway-Token");
+            const auto* client_ip = controller.http_request().GetHeader("X-OJ-Client-IP");
+            if (!configured_token.empty() && supplied_token != nullptr &&
+                client_ip != nullptr && !client_ip->empty())
+            {
+                if (configured_token.size() == supplied_token->size() &&
+                    CRYPTO_memcmp(configured_token.data(), supplied_token->data(), configured_token.size()) == 0)
+                {
+                    return *client_ip;
+                }
+            }
+        }
+
         const auto endpoint = controller.remote_side();
         if (!butil::is_endpoint_extended(endpoint))
             return butil::ip2str(endpoint.ip).c_str();
@@ -34,6 +53,23 @@ public:
                 return text.substr(1, close - 1);
         }
         return text;
+    }
+
+    static std::string GatewayToken()
+    {
+        const char* token_file = std::getenv("OJ_GATEWAY_AUTH_TOKEN_FILE");
+        if (token_file != nullptr && *token_file != '\0')
+        {
+            std::ifstream input(token_file);
+            std::string token;
+            if (input && std::getline(input, token))
+            {
+                while (!token.empty() && (token.back() == '\r' || token.back() == '\n')) token.pop_back();
+                if (!token.empty()) return token;
+            }
+        }
+        const char* token = std::getenv("OJ_GATEWAY_AUTH_TOKEN");
+        return token == nullptr ? std::string{} : std::string(token);
     }
 
     template <typename Control, typename User>
@@ -57,12 +93,13 @@ public:
     }
 
     template <typename Control>
-    static void DestroySession(brpc::Controller& controller, Control& control)
+    static bool DestroySession(brpc::Controller& controller, Control& control)
     {
         const std::string session_id = CookieValue(Cookie(controller), kCookieName);
-        if (!session_id.empty())
-            control.DestroySession(session_id);
+        if (!session_id.empty() && !control.DestroySession(session_id))
+            return false;
         controller.http_response().SetHeader("Set-Cookie", control.GetClearCookieHeader());
+        return true;
     }
 
     static std::string CookieValue(std::string_view cookie_header, std::string_view name)
@@ -111,10 +148,12 @@ public:
     }
 
     template <typename Store>
-    static void DestroySession(brpc::Controller& controller, Store& store)
+    static bool DestroySession(brpc::Controller& controller, Store& store)
     {
-        store.DestroySessionByCookie(SessionAdapter::Cookie(controller));
+        if (!store.DestroySessionByCookie(SessionAdapter::Cookie(controller)))
+            return false;
         controller.http_response().SetHeader("Set-Cookie", store.BuildClearCookieHeader());
+        return true;
     }
 };
 

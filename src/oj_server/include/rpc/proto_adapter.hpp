@@ -12,11 +12,15 @@
 #include <utility>
 
 #include <jsoncpp/json/json.h>
+#include <google/protobuf/util/json_util.h>
 
 #include "../../../comm/proto/common.pb.h"
 #include "../../../comm/comm.hpp"
 #include "../../../comm/models/user.hxx"
 #include "../../../comm/models/question.hxx"
+#include "../../../comm/models/solution.hxx"
+#include "../../../comm/models/comment.hxx"
+#include "../../../comm/models/submission.hxx"
 
 namespace oj::rpc
 {
@@ -89,6 +93,85 @@ namespace oj::rpc
             if (normalized == "CANCELLED") return oj::common::SUBMISSION_STATUS_CANCELLED;
             return oj::common::SUBMISSION_STATUS_UNSPECIFIED;
         }
+
+        static void ToProto(const oj::db::User& input, oj::common::User* output)
+        {
+            if (output == nullptr) return;
+            output->set_uid(input.uid);
+            output->set_name(input.name);
+            output->set_email(input.email);
+            output->set_create_time(oj::util::TimeUtil::DateTimeToInt(input.create_time));
+            output->set_last_login(oj::util::TimeUtil::DateTimeToInt(input.last_login));
+            output->set_role(0);
+            output->set_disabled(false);
+        }
+
+        static void ToProto(const oj::db::Question& input, oj::common::Question* output)
+        {
+            if (output == nullptr) return;
+            output->set_id(input.id);
+            output->set_title(input.title);
+            output->set_description(input.desc);
+            output->set_difficulty(input.star);
+            output->set_time_limit_ms(LegacyTimeLimitMs(input.cpu_limit));
+            output->set_memory_limit_mb(LegacyMemoryLimitMb(input.memory_limit));
+            output->set_create_time(oj::util::TimeUtil::DateTimeToInt(input.create_time));
+            output->set_update_time(oj::util::TimeUtil::DateTimeToInt(input.update_time));
+            output->set_visible(input.visible);
+        }
+
+        static void ToProto(const oj::db::Submission& input, oj::common::Submission* output)
+        {
+            if (output == nullptr) return;
+            output->set_submission_id(input.submission_id);
+            output->set_user_id(input.user_id);
+            output->set_question_id(input.question_id);
+            if (input.code) output->set_code(input.code.get());
+            if (input.language) output->set_language(input.language.get());
+            output->set_status(SubmissionStatus(input.status));
+            if (input.result_json) {
+                google::protobuf::util::JsonStringToMessage(input.result_json.get(), output->mutable_result());
+            }
+            output->set_created_at(oj::util::TimeUtil::DateTimeToInt(input.created_at) / 1000000);
+            if (input.completed_at)
+                output->set_completed_at(oj::util::TimeUtil::DateTimeToInt(input.completed_at.get()) / 1000000);
+            output->set_result_version(input.result_version);
+        }
+
+        static void ToProto(const oj::db::Solution& input, oj::common::Solution* output)
+        {
+            if (output == nullptr) return;
+            output->set_id(input.id);
+            output->set_question_id(input.question_id);
+            output->set_user_id(input.user_id);
+            output->set_title(input.title);
+            output->set_content_md(input.content_md);
+            output->set_like_count(input.like_count);
+            output->set_favorite_count(input.favorite_count);
+            output->set_comment_count(input.comment_count);
+            output->set_moderation_status(input.status);
+            output->set_created_at(oj::util::TimeUtil::DateTimeToInt(input.created_at));
+            output->set_updated_at(oj::util::TimeUtil::DateTimeToInt(input.updated_at));
+        }
+
+        static void ToProto(const oj::db::Comment& input, oj::common::Comment* output)
+        {
+            if (output == nullptr) return;
+            output->Clear();
+            output->set_id(input.id);
+            output->set_solution_id(input.solution_id);
+            output->set_user_id(input.user_id);
+            if (!input.parent_id.null()) output->set_parent_id(input.parent_id.get());
+            if (!input.reply_to_user_id.null()) output->set_reply_to_user_id(input.reply_to_user_id.get());
+            output->set_content(input.content);
+            output->set_like_count(input.like_count);
+            output->set_favorite_count(input.favorite_count);
+            if (!input.is_edited.null()) output->set_is_edited(input.is_edited.get());
+            if (!input.created_at.null())
+                output->set_created_at(oj::util::TimeUtil::DateTimeToInt(input.created_at.get()));
+            if (!input.updated_at.null())
+                output->set_updated_at(oj::util::TimeUtil::DateTimeToInt(input.updated_at.get()));
+        }
         
         static void ToProto(const Json::Value& input, oj::common::User* output)
         {
@@ -118,38 +201,6 @@ namespace oj::rpc
             output->set_visible(!input.isMember("visible") || Bool(input, "visible"));
         }
 
-        static void ToProto(const Json::Value& input, oj::common::Solution* output)
-        {
-            if (output == nullptr) return;
-            output->set_id(UInt64(input, "id"));
-            output->set_question_id(String(input, "question_id"));
-            output->set_user_id(UInt(input, "user_id"));
-            output->set_title(String(input, "title"));
-            output->set_content_md(String(input, "content_md"));
-            output->set_like_count(UInt64(input, "like_count"));
-            output->set_favorite_count(UInt64(input, "favorite_count"));
-            output->set_comment_count(UInt64(input, "comment_count"));
-            output->set_moderation_status(String(input, input.isMember("moderation_status") ? "moderation_status" : "status"));
-            output->set_created_at(Time(input, "created_at"));
-            output->set_updated_at(Time(input, "updated_at"));
-        }
-
-        static void ToProto(const Json::Value& input, oj::common::Comment* output)
-        {
-            if (output == nullptr) return;
-            output->set_id(UInt64(input, "id"));
-            output->set_solution_id(UInt64(input, "solution_id"));
-            output->set_user_id(UInt(input, "user_id"));
-            output->set_parent_id(UInt64(input, "parent_id"));
-            output->set_reply_to_user_id(UInt(input, "reply_to_user_id"));
-            output->set_content(String(input, "content"));
-            output->set_like_count(UInt64(input, "like_count"));
-            output->set_favorite_count(UInt64(input, "favorite_count"));
-            output->set_is_edited(Bool(input, "is_edited"));
-            output->set_created_at(Time(input, "created_at"));
-            output->set_updated_at(Time(input, "updated_at"));
-        }
-
         static void ToProto(const Json::Value& input, oj::common::TestCase* output)
         {
             if (output == nullptr) return;
@@ -175,11 +226,9 @@ namespace oj::rpc
                 static_cast<uint64_t>(seconds) * 1000, std::numeric_limits<uint32_t>::max()));
         }
 
-        static uint32_t LegacyMemoryLimitMb(int bytes)
+        static uint32_t LegacyMemoryLimitMb(int megabytes)
         {
-            if (bytes <= 0) return 0;
-            constexpr uint64_t kBytesPerMb = 1024 * 1024;
-            return static_cast<uint32_t>((static_cast<uint64_t>(bytes) + kBytesPerMb - 1) / kBytesPerMb);
+            return megabytes <= 0 ? 0 : static_cast<uint32_t>(megabytes);
         }
 
         static std::string SolutionStatusString(::SolutionStatus status)
@@ -221,6 +270,7 @@ namespace oj::rpc
         {
             if (!value.isMember(key)) return 0;
             if (value[key].isInt64() || value[key].isUInt64()) return value[key].asInt64();
+            return 0;
         }
     };
 

@@ -5,7 +5,6 @@
 #include "../../../comm/comm.hpp"
 #include <odb/query.hxx>
 #include <limits>
-#include <set>
 
 namespace oj::model
 {
@@ -67,38 +66,57 @@ namespace oj::model
             item["solution_id"] = static_cast<Json::UInt64>(comment.solution_id);
             item["user_id"] = comment.user_id;
             item["content"] = comment.content;
-            item["is_edited"] = comment.is_edited.get();
-            item["parent_id"] = static_cast<Json::UInt64>(comment.parent_id.get());
-            item["reply_to_user_id"] = comment.reply_to_user_id.get();
+            item["is_edited"] = comment.is_edited.null()
+                ? Json::Value() : Json::Value(comment.is_edited.get());
+            item["parent_id"] = comment.parent_id.null()
+                ? Json::Value() : Json::Value(static_cast<Json::UInt64>(comment.parent_id.get()));
+            item["reply_to_user_id"] = comment.reply_to_user_id.null()
+                ? Json::Value() : Json::Value(comment.reply_to_user_id.get());
             item["like_count"] = comment.like_count;
             item["favorite_count"] = comment.favorite_count;
-            item["created_at"] = oj::util::TimeUtil::DateTimeToInt(comment.created_at.get());
-            item["updated_at"] = oj::util::TimeUtil::DateTimeToInt(comment.updated_at.get());
+            item["created_at"] = comment.created_at.null() ? Json::Value() : Json::Value(
+                oj::util::TimeUtil::DateTimeToInt(comment.created_at.get()));
+            item["updated_at"] = comment.updated_at.null() ? Json::Value() : Json::Value(
+                oj::util::TimeUtil::DateTimeToInt(comment.updated_at.get()));
             return item;
         }
 
-        static void CommentFromJson(const Json::Value& item, Comment* comment)
+        static bool CommentFromJson(const Json::Value& item, Comment* comment)
         {
+            if (comment == nullptr || !item.isObject() ||
+                !item["id"].isUInt64() || !item["solution_id"].isUInt64() ||
+                !item["user_id"].isUInt() || !item["content"].isString() ||
+                !item["like_count"].isUInt() || !item["favorite_count"].isUInt() ||
+                (!item["is_edited"].isNull() && !item["is_edited"].isBool()) ||
+                (!item["parent_id"].isNull() && !item["parent_id"].isUInt64()) ||
+                (!item["reply_to_user_id"].isNull() && !item["reply_to_user_id"].isUInt()) ||
+                (!item["created_at"].isNull() && !item["created_at"].isInt64()) ||
+                (!item["updated_at"].isNull() && !item["updated_at"].isInt64()))
+                return false;
             comment->id = item["id"].asUInt64();
             comment->solution_id = item["solution_id"].asUInt64();
             comment->user_id = item["user_id"].asInt();
             comment->content = item["content"].asString();
-            comment->is_edited = item["is_edited"].asBool();
-            comment->parent_id = item["parent_id"].asUInt64();
-            comment->reply_to_user_id = item["reply_to_user_id"].asInt();
+            comment->is_edited = item["is_edited"].isNull()
+                ? odb::nullable<bool>() : odb::nullable<bool>(item["is_edited"].asBool());
+            comment->parent_id = item["parent_id"].isNull()
+                ? odb::nullable<uint64_t>() : odb::nullable<uint64_t>(item["parent_id"].asUInt64());
+            comment->reply_to_user_id = item["reply_to_user_id"].isNull()
+                ? odb::nullable<uint32_t>() : odb::nullable<uint32_t>(item["reply_to_user_id"].asUInt());
             comment->like_count = item["like_count"].asUInt();
             comment->favorite_count = item["favorite_count"].asUInt();
-            comment->created_at = oj::util::TimeUtil::IntToDateTime(item["created_at"].asInt64());
-            comment->updated_at = oj::util::TimeUtil::IntToDateTime(item["updated_at"].asInt64());
+            comment->created_at = item["created_at"].isNull()
+                ? odb::nullable<oj::db::DateTime>()
+                : odb::nullable<oj::db::DateTime>(oj::util::TimeUtil::IntToDateTime(item["created_at"].asInt64()));
+            comment->updated_at = item["updated_at"].isNull()
+                ? odb::nullable<oj::db::DateTime>()
+                : odb::nullable<oj::db::DateTime>(oj::util::TimeUtil::IntToDateTime(item["updated_at"].asInt64()));
+            return true;
         }
 
-        static odb::query<oj::db::User> UserIdsQuery(const std::set<uint32_t>& ids)
+        static std::string CommentDetailCacheKey(unsigned long long comment_id)
         {
-            using Query = odb::query<oj::db::User>;
-            Query query(false);
-            for (uint32_t id : ids)
-                query = query || Query::uid == id;
-            return query;
+            return "comment:detail:v2:" + std::to_string(comment_id);
         }
 
         static int CountAsInt(uint64_t count)
@@ -107,9 +125,10 @@ namespace oj::model
         }
 
         static constexpr size_t MaxBatchIds = 200;
-        static constexpr int MaxPageSize = 100;
 
     public:
+        static constexpr int MaxPageSize = 100;
+
         bool GetCommentsBySolutionId(unsigned long long solution_id, int page, int size,
                                      std::vector<Comment>* comments, int* total_count)
         {
@@ -129,7 +148,6 @@ namespace oj::model
                 const uint64_t offset = static_cast<uint64_t>(safe_page - 1) *
                     static_cast<uint64_t>(safe_size);
                 std::vector<oj::db::Comment> rows;
-                std::map<uint32_t, std::string> names;
                 {
                     TimedTransaction transaction(*database, Monitor(),
                         "ModelComment.GetCommentsBySolutionId.ODBBegin",
@@ -158,24 +176,6 @@ namespace oj::model
                     {
                         latecyMonitor::Timer iterate_timer(Monitor(), "ModelComment.GetCommentsBySolutionId.ODBIterateComments");
                         for (const auto& row : result) rows.push_back(row);
-                    }
-                    std::set<uint32_t> user_ids;
-                    for (const auto& row : rows)
-                    {
-                        user_ids.insert(row.user_id);
-                        if (!row.reply_to_user_id.null()) user_ids.insert(row.reply_to_user_id.get());
-                    }
-                    if (!user_ids.empty())
-                    {
-                        odb::result<oj::db::User> users;
-                        {
-                            latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetCommentsBySolutionId.ODBQueryUsers");
-                            users = database->query<oj::db::User>(UserIdsQuery(user_ids));
-                        }
-                        {
-                            latecyMonitor::Timer iterate_timer(Monitor(), "ModelComment.GetCommentsBySolutionId.ODBIterateUsers");
-                            for (const auto& user : users) names[user.uid] = user.name;
-                        }
                     }
                     {
                         latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.GetCommentsBySolutionId.ODBCommit");
@@ -211,8 +211,8 @@ namespace oj::model
             if (comment.solution_id == 0 || comment.user_id <= 0 ||
                 !FitsOdbId(comment.solution_id) || !FitsOdbId(comment.parent_id) ||
                 !FitsOdbId(static_cast<unsigned long long>(comment.user_id)) ||
-                comment.reply_to_user_id.get() < 0 ||
-                !FitsOdbId(static_cast<unsigned long long>(comment.reply_to_user_id.get())))
+                (!comment.reply_to_user_id.null() &&
+                 !FitsOdbId(static_cast<unsigned long long>(comment.reply_to_user_id.get()))))
                 return false;
 
             auto begin = std::chrono::steady_clock::now();
@@ -226,10 +226,11 @@ namespace oj::model
                     TimedTransaction transaction(*database, Monitor(),
                         "ModelComment.CreateComment.ODBBegin",
                         "ModelComment.CreateComment.ODBRollback");
-                    if (comment.parent_id.get() > 0)
+                    const uint64_t parent_id = comment.parent_id.null() ? 0 : comment.parent_id.get();
+                    if (parent_id > 0)
                     {
                         using Query = odb::query<oj::db::Comment>;
-                        Query query(Query::id == static_cast<uint32_t>(comment.parent_id.get()));
+                        Query query(Query::id == static_cast<uint32_t>(parent_id));
                         query += " FOR UPDATE";
                         std::unique_ptr<oj::db::Comment> parent;
                         {
@@ -250,11 +251,13 @@ namespace oj::model
                     if (!solution) return false;
                     question_id = solution->question_id;
                     oj::db::Comment row{};
-                    row.parent_id = comment.parent_id == 0
-                        ? odb::nullable<uint64_t>() : odb::nullable<uint64_t>(comment.parent_id);
-                    row.reply_to_user_id = comment.reply_to_user_id == 0
+                    row.parent_id = parent_id == 0
+                        ? odb::nullable<uint64_t>() : odb::nullable<uint64_t>(parent_id);
+                    const uint32_t reply_to_user_id = comment.reply_to_user_id.null()
+                        ? 0 : comment.reply_to_user_id.get();
+                    row.reply_to_user_id = reply_to_user_id == 0
                         ? odb::nullable<uint32_t>()
-                        : odb::nullable<uint32_t>(static_cast<uint32_t>(comment.reply_to_user_id.get()));
+                        : odb::nullable<uint32_t>(reply_to_user_id);
                     row.like_count = 0;
                     row.favorite_count = 0;
                     row.solution_id = static_cast<uint32_t>(comment.solution_id);
@@ -268,7 +271,7 @@ namespace oj::model
                         latecyMonitor::Timer persist_timer(Monitor(), "ModelComment.CreateComment.ODBPersistComment");
                         new_id = database->persist(row);
                     }
-                    if (comment.parent_id == 0)
+                    if (parent_id == 0)
                     {
                         if (solution->comment_count == std::numeric_limits<uint32_t>::max())
                             return false;
@@ -296,7 +299,7 @@ namespace oj::model
             }
 
             if (comment_id != nullptr) *comment_id = new_id;
-            if (comment.parent_id == 0)
+            if (comment.parent_id.null() || comment.parent_id.get() == 0)
             {
                 auto key = _cache.BuildSolutionDetailCacheKey(comment.solution_id);
                 _cache.DeleteStringByAnyKey(key->GetCacheKeyString(&_cache));
@@ -312,16 +315,16 @@ namespace oj::model
         {
             if (comment == nullptr || comment_id == 0 || !FitsOdbId(comment_id)) return false;
             auto metrics_begin = std::chrono::steady_clock::now();
-            const std::string cache_key = "comment:detail:" + std::to_string(comment_id);
+            const std::string cache_key = CommentDetailCacheKey(comment_id);
             std::string cached;
             if (_cache.GetStringByAnyKey(cache_key, &cached))
             {
                 Json::CharReaderBuilder builder;
                 Json::Value value;
                 std::istringstream stream(cached);
-                if (Json::parseFromStream(builder, stream, &value, nullptr) && value.isMember("id"))
+                if (Json::parseFromStream(builder, stream, &value, nullptr) &&
+                    CommentFromJson(value, comment) && comment->id == comment_id)
                 {
-                    CommentFromJson(value, comment);
                     RecordCacheMetrics(RecordActionType::Comment, true, false,
                         std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::steady_clock::now() - metrics_begin).count());
@@ -344,13 +347,6 @@ namespace oj::model
                     }
                     if (!row) return false;
                     *comment = *row;
-                    std::set<uint32_t> ids{row->user_id};
-                    if (!row->reply_to_user_id.null()) ids.insert(row->reply_to_user_id.get());
-                    odb::result<oj::db::User> users;
-                    {
-                        latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetCommentById.ODBQueryUsers");
-                        users = database->query<oj::db::User>(UserIdsQuery(ids));
-                    }
                     {
                         latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.GetCommentById.ODBCommit");
                         transaction.commit();
@@ -389,7 +385,6 @@ namespace oj::model
             *total_count = 0;
 
             std::vector<oj::db::Comment> rows;
-            std::map<uint32_t, std::string> names;
             try
             {
                 auto database = AcquireDatabase();
@@ -419,24 +414,6 @@ namespace oj::model
                     {
                         latecyMonitor::Timer iterate_timer(Monitor(), "ModelComment.GetCommentReplies.ODBIterateComments");
                         for (const auto& row : result) rows.push_back(row);
-                    }
-                    std::set<uint32_t> ids;
-                    for (const auto& row : rows)
-                    {
-                        ids.insert(row.user_id);
-                        if (!row.reply_to_user_id.null()) ids.insert(row.reply_to_user_id.get());
-                    }
-                    if (!ids.empty())
-                    {
-                        odb::result<oj::db::User> users;
-                        {
-                            latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetCommentReplies.ODBQueryUsers");
-                            users = database->query<oj::db::User>(UserIdsQuery(ids));
-                        }
-                        {
-                            latecyMonitor::Timer iterate_timer(Monitor(), "ModelComment.GetCommentReplies.ODBIterateUsers");
-                            for (const auto& user : users) names[user.uid] = user.name;
-                        }
                     }
                     {
                         latecyMonitor::Timer commit_timer(Monitor(), "ModelComment.GetCommentReplies.ODBCommit");
@@ -472,11 +449,12 @@ namespace oj::model
             reply_counts->clear();
             if (comment_ids.empty()) return true;
             if (comment_ids.size() > MaxBatchIds) return false;
-            std::set<uint32_t> ids;
+            std::vector<uint64_t> ids;
+            ids.reserve(comment_ids.size());
             for (unsigned long long id : comment_ids)
             {
                 if (id == 0 || !FitsOdbId(id)) return false;
-                ids.insert(static_cast<uint32_t>(id));
+                ids.push_back(id);
             }
             try
             {
@@ -486,14 +464,16 @@ namespace oj::model
                     TimedTransaction transaction(*database, Monitor(),
                         "ModelComment.GetDirectChildReplyCounts.ODBBegin",
                         "ModelComment.GetDirectChildReplyCounts.ODBRollback");
-                    using CountQuery = odb::query<oj::db::CommentCount>;
+                    using Query = odb::query<oj::db::Comment>;
                     {
                         latecyMonitor::Timer query_timer(Monitor(), "ModelComment.GetDirectChildReplyCounts.ODBQueryCounts");
-                        for (uint32_t id : ids)
+                        odb::result<oj::db::Comment> children = database->query<oj::db::Comment>(
+                            Query::parent_id.in_range(ids.begin(), ids.end()), false);
+                        for (const auto& child : children)
                         {
-                            const uint64_t count = database->query_value<oj::db::CommentCount>(
-                                CountQuery::parent_id == static_cast<uint64_t>(id)).value;
-                            if (count != 0) (*reply_counts)[id] = CountAsInt(count);
+                            if (child.parent_id.null()) continue;
+                            int& count = (*reply_counts)[child.parent_id.get()];
+                            if (count < std::numeric_limits<int>::max()) ++count;
                         }
                     }
                     {
@@ -559,7 +539,7 @@ namespace oj::model
                 LOG_ERROR("ModelComment.UpdateComment failed: {}", error.what());
                 return false;
             }
-            _cache.DeleteStringByAnyKey("comment:detail:" + std::to_string(comment_id));
+            _cache.DeleteStringByAnyKey(CommentDetailCacheKey(comment_id));
             RecordCacheMetrics(RecordActionType::Comment, false, true,
                 std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - begin).count());
@@ -665,9 +645,9 @@ namespace oj::model
                 return false;
             }
 
-            _cache.DeleteStringByAnyKey("comment:detail:" + std::to_string(comment_id));
+            _cache.DeleteStringByAnyKey(CommentDetailCacheKey(comment_id));
             for (uint32_t child_id : child_ids)
-                _cache.DeleteStringByAnyKey("comment:detail:" + std::to_string(child_id));
+                _cache.DeleteStringByAnyKey(CommentDetailCacheKey(child_id));
             if (parent_id == 0)
             {
                 auto key = _cache.BuildSolutionDetailCacheKey(solution_id);
@@ -827,7 +807,7 @@ namespace oj::model
 
             _cache.DeleteStringByAnyKey("action:user:" + std::to_string(user_id)
                 + ":comment:" + std::to_string(comment_id));
-            _cache.DeleteStringByAnyKey("comment:detail:" + std::to_string(comment_id));
+            _cache.DeleteStringByAnyKey(CommentDetailCacheKey(comment_id));
             RecordCacheMetrics(RecordActionType::Comment, false, true,
                 std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - begin).count());

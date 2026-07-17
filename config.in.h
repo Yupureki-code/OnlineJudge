@@ -51,11 +51,21 @@ namespace ns_runtime_cfg
 			return fallback;
 		}
 	}
+
+	inline std::string GetPathOrDefault(const char* key, const std::string& fallback)
+	{
+		std::string path = GetEnvOrDefault(key, fallback);
+		if (!path.empty() && path.back() != '/')
+		{
+			path.push_back('/');
+		}
+		return path;
+	}
 }
 
-const std::string HTML_PATH = "@HTML_PATH@/";
-const std::string LOG_PATH  = "@LOG_PATH@/";
-const std::string CONF_PATH = "@CONF_PATH@/";
+const std::string HTML_PATH = ns_runtime_cfg::GetPathOrDefault("OJ_HTML_PATH", "@HTML_PATH@");
+const std::string LOG_PATH  = ns_runtime_cfg::GetPathOrDefault("OJ_LOG_PATH", "@LOG_PATH@");
+const std::string CONF_PATH = ns_runtime_cfg::GetPathOrDefault("OJ_CONF_PATH", "@CONF_PATH@");
 const std::string oj_tests = ns_runtime_cfg::GetEnvOrDefault("OJ_TESTS", "@OJ_TESTS@");
 const std::string oj_questions = ns_runtime_cfg::GetEnvOrDefault("OJ_QUESTIONS", "@OJ_QUESTIONS@");
 const std::string oj_users = ns_runtime_cfg::GetEnvOrDefault("OJ_USERS", "@OJ_USERS@");
@@ -77,3 +87,7 @@ const bool smtp_ssl = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_SSL", "@SMTP_SSL@
 
 const std::string admin_host = ns_runtime_cfg::GetEnvOrDefault("OJ_ADMIN_HOST", "@ADMIN_HOST@");
 const int admin_port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_ADMIN_PORT", ns_runtime_cfg::ParseIntOrDefault("@ADMIN_PORT@", 8090));
+
+const std::string es_host = ns_runtime_cfg::GetEnvOrDefault("OJ_ES_HOST", "@ES_HOST@");
+const std::string es_passwd = ns_runtime_cfg::GetEnvOrDefault("OJ_ES_PASSWD", "@ES_PASSWD@");
+const std::string es_user = ns_runtime_cfg::GetEnvOrDefault("OJ_ES_USER", "@ES_USER@");

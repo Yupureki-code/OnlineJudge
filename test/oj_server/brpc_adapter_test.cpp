@@ -130,7 +130,11 @@ struct FakeControl
         return "new-session";
     }
 
-    void DestroySession(const std::string& session_id) { destroyed_session = session_id; }
+    bool DestroySession(const std::string& session_id)
+    {
+        destroyed_session = session_id;
+        return destroy_succeeds;
+    }
     std::string GetSetCookieHeader(const std::string& id) { return "oj_session_id=" + id + "; Path=/"; }
     std::string GetClearCookieHeader() { return "oj_session_id=; Max-Age=0; Path=/"; }
 
@@ -138,6 +142,7 @@ struct FakeControl
     int created_uid = 0;
     std::string created_email;
     std::string destroyed_session;
+    bool destroy_succeeds = true;
 };
 
 void CheckAcceptedAndException()
@@ -200,7 +205,7 @@ void CheckRejectedAndStopped()
               oj::runtime::SubmitResult::Stopped,
           "stopped executor rejects dispatch");
     Check(stopped_done.WaitFor(1) && stopped_done.Count() == 1, "stopped dispatch done once");
-    Check(stopped_response.status().message() == "BUSINESS__executorSTOPPED", "stopped status stable");
+    Check(stopped_response.status().message() == "BUSINESS_EXECUTOR_STOPPED", "stopped status stable");
 }
 
 void CheckCancelPending()
@@ -221,7 +226,7 @@ void CheckCancelPending()
           "pending dispatch accepted before cancellation");
     std::thread stopper([&] { executor.Stop(oj::runtime::StopPolicy::CancelPending); });
     Check(done.WaitFor(1), "dropped pending dispatch completes");
-    Check(done.Count() == 1 && response.status().message() == "BUSINESS__executorSTOPPED",
+    Check(done.Count() == 1 && response.status().message() == "BUSINESS_EXECUTOR_STOPPED",
           "dropped pending dispatch done once with stopped status");
     gate.Open();
     stopper.join();
@@ -263,7 +268,7 @@ void CheckControllerFallback()
               oj::runtime::SubmitResult::Stopped,
           "fallback dispatch rejected");
     Check(done.WaitFor(1) && controller.Failed(), "response without status fails controller");
-    Check(controller.ErrorText() == "BUSINESS__executorSTOPPED", "controller failure is stable");
+    Check(controller.ErrorText() == "BUSINESS_EXECUTOR_STOPPED", "controller failure is stable");
 }
 
 void CheckHttpTransportPolicy()
@@ -305,6 +310,16 @@ void CheckSessions()
           "cookie header passed to control");
     Check(oj::rpc::SessionAdapter::RemoteIp(controller) == "192.0.2.10", "remote IP excludes port");
 
+    setenv("OJ_GATEWAY_AUTH_TOKEN", "test-gateway-token", 1);
+    controller.http_request().SetHeader("X-OJ-Client-IP", "198.51.100.7");
+    controller.http_request().SetHeader("X-OJ-Gateway-Token", "wrong-token");
+    Check(oj::rpc::SessionAdapter::RemoteIp(controller) == "192.0.2.10",
+          "untrusted client IP header is ignored");
+    controller.http_request().SetHeader("X-OJ-Gateway-Token", "test-gateway-token");
+    Check(oj::rpc::SessionAdapter::RemoteIp(controller) == "198.51.100.7",
+          "gateway-authenticated client IP header is accepted");
+    unsetenv("OJ_GATEWAY_AUTH_TOKEN");
+
     Check(oj::rpc::SessionAdapter::CreateSession(controller, control, 8, "u@example.test") == "new-session",
           "session created");
     Check(*controller.http_response().GetHeader("Set-Cookie") == "oj_session_id=new-session; Path=/",
@@ -313,20 +328,85 @@ void CheckSessions()
     Check(control.destroyed_session == "abc123", "session ID parsed for destroy");
     Check(controller.http_response().GetHeader("Set-Cookie")->find("Max-Age=0") != std::string::npos,
           "clear-cookie response header written");
+
+    brpc::Controller failed_controller;
+    failed_controller.http_request().SetHeader("Cookie", "oj_session_id=retry-session");
+    control.destroy_succeeds = false;
+    Check(!oj::rpc::SessionAdapter::DestroySession(failed_controller, control),
+          "unconfirmed revocation is retryable");
+    Check(failed_controller.http_response().GetHeader("Set-Cookie") == nullptr,
+          "failed revocation keeps cookie for retry");
 }
 
 void CheckProtoConversions()
 {
-    User user{.uid = 42,
-              .name = "Ada",
-              .email = "ada@example.test",
-              .create_time = "1970-01-02 00:00:00",
-              .last_login = "1970-01-02 00:00:01",
-              .password_algo = "argon2id"};
+    oj::db::User user{};
+    user.uid = 42;
+    user.name = "Ada";
+    user.email = "ada@example.test";
+    user.create_time = oj::util::TimeUtil::IntToDateTime(86400LL * 1000000);
+    user.last_login = oj::util::TimeUtil::IntToDateTime(86401LL * 1000000);
+    user.password_algo = "argon2id";
     oj::common::User proto_user;
     oj::rpc::ProtoAdapter::ToProto(user, &proto_user);
-    Check(proto_user.uid() == 42 && proto_user.create_time() == 86400 && proto_user.last_login() == 86401,
-          "legacy user and UTC datetimes convert");
+    Check(proto_user.uid() == 42 && proto_user.create_time() == 86400LL * 1000000 &&
+              proto_user.last_login() == 86401LL * 1000000,
+          "ODB user and datetimes convert");
+
+    oj::db::Question question{};
+    question.id = "10001";
+    question.title = "Limits";
+    question.star = "easy";
+    question.cpu_limit = 2;
+    question.memory_limit = 128;
+    question.visible = true;
+    oj::common::Question proto_question;
+    oj::rpc::ProtoAdapter::ToProto(question, &proto_question);
+    Check(proto_question.time_limit_ms() == 2000 && proto_question.memory_limit_mb() == 128,
+          "question limits preserve database seconds and megabytes");
+
+    oj::db::Solution solution{};
+    solution.id = 9;
+    solution.question_id = "10001";
+    solution.user_id = 42;
+    solution.title = "Typed path";
+    solution.content_md = "body";
+    solution.status = "approved";
+    solution.created_at = oj::util::TimeUtil::IntToDateTime(1000000);
+    solution.updated_at = oj::util::TimeUtil::IntToDateTime(2000000);
+    oj::common::Solution proto_solution;
+    oj::rpc::ProtoAdapter::ToProto(solution, &proto_solution);
+    Check(proto_solution.id() == 9 && proto_solution.user_id() == 42 &&
+              proto_solution.moderation_status() == "approved" && proto_solution.created_at() == 1000000,
+          "ODB solution converts without a JSON intermediate");
+
+    oj::db::Comment comment{};
+    comment.id = 11;
+    comment.solution_id = 9;
+    comment.user_id = 42;
+    comment.content = "top level";
+    oj::common::Comment proto_comment;
+    oj::rpc::ProtoAdapter::ToProto(comment, &proto_comment);
+    Check(proto_comment.id() == 11 && proto_comment.parent_id() == 0 &&
+              proto_comment.reply_to_user_id() == 0 && !proto_comment.is_edited() &&
+              proto_comment.created_at() == 0 && proto_comment.updated_at() == 0,
+          "nullable comment fields remain unset defaults");
+    comment.parent_id = 7;
+    comment.reply_to_user_id = 8;
+    comment.is_edited = true;
+    comment.created_at = oj::util::TimeUtil::IntToDateTime(3000000);
+    oj::rpc::ProtoAdapter::ToProto(comment, &proto_comment);
+    Check(proto_comment.parent_id() == 7 && proto_comment.reply_to_user_id() == 8 &&
+              proto_comment.is_edited() && proto_comment.created_at() == 3000000,
+          "present nullable comment fields convert directly");
+    comment.parent_id.reset();
+    comment.reply_to_user_id.reset();
+    comment.is_edited.reset();
+    comment.created_at.reset();
+    oj::rpc::ProtoAdapter::ToProto(comment, &proto_comment);
+    Check(proto_comment.parent_id() == 0 && proto_comment.reply_to_user_id() == 0 &&
+              !proto_comment.is_edited() && proto_comment.created_at() == 0,
+          "absent nullable fields clear reused protobuf output");
 
     Json::Value test;
     test["id"] = Json::UInt64(17);

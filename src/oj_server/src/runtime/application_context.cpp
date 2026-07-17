@@ -141,6 +141,7 @@ void ApplicationContext::Notify(LifecycleStage stage, LifecycleEvent event) noex
 void ApplicationContext::StopStartedComponents() noexcept
 {
     if (_executorstarted_) {
+        _executor.Stop(config_.executor.stop_policy);
         _executorstarted_ = false;
         Notify(LifecycleStage::Executor, LifecycleEvent::Stopped);
     }

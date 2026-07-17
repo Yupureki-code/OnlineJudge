@@ -54,15 +54,14 @@ add_subdirectory(src/comm/models)
 # add_subdirectory(src/gateway)       # Gateway 暂未就绪
 # add_subdirectory(src/business_service)  # Phase 3 启用
 add_subdirectory(src/judge_service)
-foreach(JUDGE_TARGET judge_service judge_integration_test direct_e2e_test verify_log_output concurrency_bench)
+foreach(JUDGE_TARGET judge_service judge_integration_test direct_e2e_test verify_log_output
+                     judge_event_loop_test judge_inbox_test concurrency_bench)
     if(TARGET ${JUDGE_TARGET})
         add_dependencies(${JUDGE_TARGET} generate_phase3_proto)
     endif()
 endforeach()
 
 # ==================== 现有单体服务（保持运行） ====================
-# 添加子目录
-add_subdirectory(src/compile_server)
 add_subdirectory(src/oj_server)
 
 # Phase 3 protocol contract verification against the tracked generated sources.

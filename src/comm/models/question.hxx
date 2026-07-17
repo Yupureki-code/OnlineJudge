@@ -34,6 +34,9 @@ struct Question {
 
     #pragma db type("INT")
     int32_t memory_limit;
+
+    #pragma db type("TINYINT(1)")
+    bool visible = true;
 };
 
 } // namespace oj::db

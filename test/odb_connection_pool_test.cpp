@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 namespace {
@@ -218,6 +219,7 @@ void TestScopedDBMoveAssignmentReturnsOwnedConnection()
 
 int main()
 {
+    static_assert(std::is_nothrow_destructible_v<ns_odb::ScopedTransaction>);
     TestMaximumConcurrencyAndCounts();
     TestShutdownWakesWaitersAndHealthThread();
     TestCreateAndReplacementFailuresKeepCountsExact();

@@ -78,7 +78,7 @@ int main()
     brpc::Server server;
     brpc::ServiceOptions service_options;
     service_options.ownership = brpc::SERVER_DOESNT_OWN_SERVICE;
-    service_options.allow_http_body_to_pb = false;
+    service_options.allow_http_body_to_pb = true;
     if (server.AddService(&service, service_options) != 0) {
         LOG_CRITICAL("Failed to add OJAdminService");
         executor.Stop();

@@ -1,4 +1,5 @@
 add_subdirectory(oj_server)
+add_subdirectory(judge)
 
 if(TARGET oj_odb_models)
     add_executable(odb_model_mapping_test odb_model_mapping_test.cpp)
@@ -17,7 +18,7 @@ if(TARGET oj_odb_models)
 endif()
 
 add_executable(latency_monitor_test latency_monitor_test.cpp)
-target_compile_features(latency_monitor_test PRIVATE cxx_std_17)
+target_compile_features(latency_monitor_test PRIVATE cxx_std_20)
 target_include_directories(latency_monitor_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(latency_monitor_test PRIVATE Threads::Threads spdlog::spdlog)
 
@@ -35,3 +36,13 @@ target_link_libraries(odb_connection_pool_test PRIVATE
     PkgConfig::ODB_TEST
     PkgConfig::ODB_MYSQL_TEST
 )
+
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+    add_custom_target(gateway_contract_tests
+        COMMAND ${Python3_EXECUTABLE} -m unittest discover
+                -s ${CMAKE_SOURCE_DIR}/test/gateway -p "*_test.py" -v
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        VERBATIM
+    )
+endif()

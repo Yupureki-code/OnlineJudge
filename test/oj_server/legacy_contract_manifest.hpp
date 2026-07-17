@@ -40,7 +40,7 @@ inline constexpr std::array<RpcContract, 36> kUserRpcs{{
     {"user", "POST", "/api/user/logout", "OJService", "Logout", "EmptyRequest", "EmptyResponse", Auth::kOptionalUser, ""},
     {"user", "GET", "/api/user/info", "OJService", "GetCurrentUser", "EmptyRequest", "GetUserProfileResponse", Auth::kOptionalUser, "UNAUTHENTICATED"},
     {"user", "POST", "/api/user/password/set", "OJService", "SetPassword", "SetPasswordRequest", "EmptyResponse", Auth::kUser, "INVALID_ARGUMENT,UNAUTHENTICATED"},
-    {"user", "POST", "/api/user/security/send_code", "OJService", "SendSecurityCode", "EmptyRequest", "SendVerificationCodeResponse", Auth::kUser, "UNAUTHENTICATED,RATE_LIMITED,UNAVAILABLE"},
+    {"user", "POST", "/api/user/security/send_code", "OJService", "SendSecurityCode", "SendSecurityCodeRequest", "SendVerificationCodeResponse", Auth::kUser, "UNAUTHENTICATED,RATE_LIMITED,UNAVAILABLE"},
     {"user", "POST", "/api/user/email/change", "OJService", "ChangeEmail", "ChangeEmailRequest", "EmptyResponse", Auth::kUser, "INVALID_ARGUMENT,UNAUTHENTICATED,CONFLICT"},
     {"user", "POST", "/api/user/password/change", "OJService", "ChangePassword", "ChangePasswordRequest", "EmptyResponse", Auth::kUser, "INVALID_ARGUMENT,UNAUTHENTICATED"},
     {"user", "POST", "/api/user/account/delete", "OJService", "DeleteAccount", "DeleteAccountRequest", "EmptyResponse", Auth::kUser, "INVALID_ARGUMENT,UNAUTHENTICATED,INTERNAL"},

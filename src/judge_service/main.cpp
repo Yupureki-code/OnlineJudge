@@ -2,10 +2,10 @@
 // Judge Service 入口
 //
 // 职责：
-// 1. brpc Server：DockerWorkDone（容器回调）
-// 2. 协程事件循环：管理协程挂起/恢复
+// 1. brpc Server：Judge API（容器不回调服务）
+// 2. 协程事件循环：管理协程挂起/恢复和宿主 Docker I/O
 // 3. MQ Consumer：从 judge_task_queue 消费判题任务 → 创建协程
-// 4. Docker Sandbox：编译容器（新建销毁）+ 运行容器（预热池复用）
+// 4. Docker Sandbox：编译和运行容器均按任务新建销毁
 // 5. Result Reporter：判题完成后通过 brpc RPC 回传结果给 Business Service
 
 #include <brpc/server.h>
@@ -22,15 +22,14 @@
 #include "../comm/logger.hpp"
 #include "../comm/proto/judge_service.pb.h"
 
-namespace oj_judge 
+using namespace oj::logger;
+
+namespace oj::judge
 {
 
-class JudgeServiceImpl : public JudgeService 
+class JudgeServiceImpl : public oj_judge::JudgeService
 {
 public:
-    explicit JudgeServiceImpl(std::shared_ptr<JudgeEventLoop> loop)
-        : _loop(std::move(loop)) {}
-
     void DockerWorkDone(::google::protobuf::RpcController* cntl_base,
                         const oj_judge::DockerWorkDoneRequest* req,
                         oj_judge::NullRsp* resp,
@@ -38,44 +37,43 @@ public:
     {
         brpc::ClosureGuard done_guard(done);
 
-        std::string task_id = req->id();
-        std::string status = req->status();
-        int exit_code = req->exit_code();
-
-        LOG_INFO("DockerWorkDone task_id={} status={} exit_code={}", task_id, status, exit_code);
-
-        oj_judge::DockerTaskResult result;
-        result.status = status;
-        result.exit_code = exit_code;
-        result.timed_out = (status == "TIMEOUT");
-
-        _loop->PushDockerDoneTask(task_id, result);
+        (void)req;
+        (void)resp;
+        cntl_base->SetFailed("Container callbacks are disabled");
+        LOG_WARNING("Rejected deprecated DockerWorkDone callback");
     }
-
-private:
-    std::shared_ptr<JudgeEventLoop> _loop;
 };
 
 } // namespace oj_judge
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     if (!oj::logger::InitLogger("judge_service", LOG_PATH + "judge_service.log", spdlog::level::info))
         LOG_ERROR("Failed to initialize judge_service file logger");
 
-    auto event_loop = std::make_shared<oj_judge::JudgeEventLoop>();
+    const char* mq_user = std::getenv("OJ_MQ_USER");
+    const char* mq_pass = std::getenv("OJ_MQ_PASS");
+    if (mq_user == nullptr || *mq_user == '\0' || mq_pass == nullptr || *mq_pass == '\0') {
+        LOG_CRITICAL("OJ_MQ_USER and OJ_MQ_PASS are required");
+        oj::logger::ShutdownLogger();
+        return 1;
+    }
+
+    auto event_loop = std::make_shared<oj::judge::JudgeEventLoop>();
     event_loop->Run(4);
     LOG_INFO("Event loop started with {} worker threads", 4);
 
-    const char* biz_addr = std::getenv("OJ_BUSINESS_ADDR");
-    if (!biz_addr) biz_addr = "127.0.0.1:8081";
-    auto reporter = std::make_shared<oj_judge::ResultReporter>();
+    const char* biz_addr = std::getenv("OJ_SERVER_RPC_ADDR");
+    if (!biz_addr) biz_addr = "127.0.0.1:8080";
+    auto reporter = std::make_shared<oj::judge::ResultReporter>();
     try {
         reporter->Init(biz_addr);
         LOG_INFO("Result reporter initialized to {}", biz_addr);
     } catch (const std::exception& e) {
-        LOG_WARNING("Result reporter unavailable: {}; judge_service will operate without result reporting", e.what());
-        reporter = nullptr;  // allow service to run without Business Service
+        LOG_CRITICAL("Result reporter initialization failed: {}", e.what());
+        oj::logger::ShutdownLogger();
+        return 1;
     }
 
     oj_sandbox::SandboxConfig runner_config;
@@ -83,28 +81,33 @@ int main(int argc, char* argv[]) {
     runner_config.memory_limit_mb = 256;
     runner_config.cpu_limit_ms = 2000;
     runner_config.timeout_ms = 5000;
-    runner_config.network_disabled = false;
-    runner_config.read_only_root = false;
+    runner_config.network_disabled = true;
+    runner_config.read_only_root = true;
     auto runner_pool = std::make_unique<oj_sandbox::SandboxPool>(3, runner_config);
     LOG_INFO("Runner sandbox pool initialized with {} containers", 3);
 
-    auto consumer = std::make_shared<oj_judge::JudgeConsumer>();
+    auto consumer = std::make_shared<oj::judge::JudgeConsumer>();
 
     ns_mq::MQConfig mq_config;
     const char* mq_host = std::getenv("OJ_MQ_HOST");
     mq_config.host = mq_host ? mq_host : "localhost";
-    const char* mq_user = std::getenv("OJ_MQ_USER");
-    mq_config.user = mq_user ? mq_user : "oj";
-    const char* mq_pass = std::getenv("OJ_MQ_PASS");
-    mq_config.password = mq_pass ? mq_pass : "ojpassword";
+    mq_config.user = mq_user;
+    mq_config.password = mq_pass;
     mq_config.queue_name = "oj.judge.task";
 
-    consumer->Init(mq_config, reporter, event_loop, runner_pool.get());
-    consumer->Start();
+    try {
+        consumer->Init(mq_config, reporter, event_loop, runner_pool.get());
+        consumer->Start();
+    } catch (const std::exception& e) {
+        LOG_CRITICAL("MQ consumer initialization failed: {}", e.what());
+        runner_pool->Shutdown();
+        oj::logger::ShutdownLogger();
+        return 1;
+    }
     LOG_INFO("MQ consumer started for queue {}", mq_config.queue_name);
 
     brpc::Server server;
-    oj_judge::JudgeServiceImpl judge_service(event_loop);
+    oj::judge::JudgeServiceImpl judge_service;
 
     if (server.AddService(&judge_service, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG_ERROR("Failed to add judge service");
@@ -125,6 +128,7 @@ int main(int argc, char* argv[]) {
 
     LOG_INFO("Shutting down Judge Service");
     consumer->Stop();
+    event_loop->Stop();
     runner_pool->Shutdown();
     oj::logger::ShutdownLogger();
 

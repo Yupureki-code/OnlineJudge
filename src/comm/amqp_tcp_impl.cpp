@@ -6,6 +6,7 @@
 // included before it, exactly as the original `includes.h` does.
 
 #include <amqpcpp.h>          // core protocol library
+#include <algorithm>
 #include <sys/types.h>         // for connectToHost()
 #include <sys/socket.h>
 #include <netdb.h>
@@ -33,6 +34,7 @@ class SimpleTcpState : public TcpState
 public:
     SimpleTcpState(TcpParent* parent, int sockfd)
         : TcpState(parent), _sockfd(sockfd) {}
+    ~SimpleTcpState() override { if (_sockfd >= 0) ::close(_sockfd); }
 
     int fileno() const override { return _sockfd; }
     bool closed() const override { return _closed; }
@@ -49,6 +51,7 @@ public:
             if (n > 0) _outbuf.erase(0, n);
             else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
                 _closed = true;
+                _parent->onLost(this);
                 return this;
             }
         }
@@ -58,11 +61,13 @@ public:
             char buf[65536];
             ssize_t n = ::recv(_sockfd, buf, sizeof(buf), 0);
             if (n > 0) {
-                // Feed into AMQP protocol layer via TcpParent::onReceived
-                ByteBuffer bb(buf, n);
-                _parent->onReceived(this, bb);
+                _inbuf.append(buf, static_cast<size_t>(n));
+                ByteBuffer bb(_inbuf.data(), _inbuf.size());
+                const size_t consumed = _parent->onReceived(this, bb);
+                if (consumed > 0) _inbuf.erase(0, std::min(consumed, _inbuf.size()));
             } else if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
                 _closed = true;
+                _parent->onLost(this);
             }
         }
         return this;
@@ -77,6 +82,7 @@ private:
     int _sockfd;
     bool _closed = false;
     std::string _outbuf;
+    std::string _inbuf;
 };
 
 // ==================== Helper: connect to RabbitMQ ====================
@@ -123,25 +129,14 @@ static int connectToHost(const Address& address)
 
 TcpConnection::TcpConnection(TcpHandler* handler, const Address& address)
     : _handler(handler)
-    , _state(nullptr)
+    , _state(new SimpleTcpState(this, connectToHost(address)))
     , _connection(this, address.login(), address.vhost())
 {
-    int sockfd = connectToHost(address);
-    std::cerr << "[AMQP-TCP] Constructor: sockfd=" << sockfd 
-              << " host=" << address.hostname() << " port=" << address.port() << std::endl;
-    
-    // Set up state BEFORE _connection generates any callbacks
-    if (sockfd >= 0) {
-        _state.reset(new SimpleTcpState(this, sockfd));
-    } else {
-        _state.reset(new SimpleTcpState(this, -1));
-    }
-
+    const int sockfd = fileno();
     if (sockfd >= 0 && _handler) {
         _handler->onAttached(this);
         _handler->monitor(this, sockfd, AMQP::readable | AMQP::writable);
     } else if (_handler) {
-        std::cerr << "[AMQP-TCP] Connection failed — calling onDetached" << std::endl;
         _handler->onDetached(this);
     }
 }
@@ -188,7 +183,6 @@ void TcpConnection::onData(Connection* connection, const char* buffer, size_t si
     auto* s = static_cast<SimpleTcpState*>(_state.get());
     if (s) {
         s->sendData(buffer, size);
-        std::cerr << "[AMQP-TCP] onData: " << size << " bytes buffered" << std::endl;
     }
     int fd = fileno();
     if (fd >= 0 && _handler) {
@@ -234,12 +228,14 @@ void TcpConnection::onError(TcpState* state, const char* message, bool connected
 {
     (void)state;
     (void)connected;
+    _connection.fail(message == nullptr ? "TCP connection error" : message);
     if (_handler) _handler->onError(this, message);
 }
 
 void TcpConnection::onLost(TcpState* state)
 {
     (void)state;
+    _connection.fail("TCP connection lost");
     if (_handler) _handler->onDetached(this);
 }
 

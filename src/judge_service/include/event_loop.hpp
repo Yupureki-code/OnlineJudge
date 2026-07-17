@@ -1,286 +1,376 @@
 #pragma once
+
+#include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <event2/event.h>
-#include <event2/thread.h>
+#include <coroutine>
+#include <ctime>
+#include <exception>
+#include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
 #include <queue>
 #include <string>
 #include <thread>
-#include <functional>
+#include <utility>
+#include <vector>
+
 #include "../../comm/comm.hpp"
-#include <unordered_map>
-#include "../../comm/proto/judge_service.pb.h"
-#include <coroutine>
-#include <exception>
-#include <functional>
+#include "../../comm/proto/common.pb.h"
 
-
-namespace oj_judge 
+namespace oj::judge
 {
-    /// JudgeEventLoop — libevent 事件循环封装
-    ///
-    /// 职责：
-    /// 1. 运行 libevent 事件循环（处理 MQ socket 事件、定时器事件）
-    /// 2. 被 brpc DockerWorkDone handler 线程通过 event_active 唤醒
-    /// 3. 检查 PendingTaskManager 中已完成/超时的任务 → resume 协程
-    struct DockerTaskResult 
+    struct DockerTaskResult
     {
-        std::string status;       // OK / COMPILE_ERROR / MEMORY_LIMIT / SEGV / FPE / TIME_LIMIT / TIMEOUT
-        int exit_code = -1;       // 进程退出码
-        bool timed_out = false;   // 是否超时
+        std::string status;
+        int exit_code = -1;
+        bool timed_out = false;
+        bool killed = false;
+        int64_t time_used_ms = 0;
+        uint64_t memory_used_bytes = 0;
+        std::string stdout_str;
+        std::string stderr_str;
     };
-    enum PendingStatus
-    {
-        Working,
-        Blocking,
-        Done,
-        Finished,
-        TimeOut
-    };
-    /// Task<T> — C++20 协程返回类型
-    ///
-    /// 用法：
-    ///   Task<JudgeResult> JudgeAsync(const JudgeTask& task) {
-    ///       co_await DockerTaskAwaitable{...};
-    ///       co_return result;
-    ///   }
-    ///
-    ///   auto coro = JudgeAsync(task);
-    ///   coro.resume();  // 启动协程，遇到 co_await 时挂起
-    ///   // ... 事件循环恢复协程后 ...
-    ///   auto result = coro.GetResult();
-    class CoTask 
+
+    class CoTask
     {
     public:
-        struct promise_type 
+        struct promise_type
         {
-            using CallBack = std::function<void(const JudgeFinishedRequest& request)>;
-            std::string task_id;
-            std::coroutine_handle<promise_type> home = nullptr;
+            using CallBack = std::function<void(const oj::common::JudgeResult&)>;
+            using IoWork = std::function<DockerTaskResult()>;
+            using IoSubmit = std::function<bool(IoWork, int)>;
+
             std::exception_ptr exception;
             CallBack cb;
+            IoSubmit submit_io;
             DockerTaskResult result;
-            PendingStatus* status = nullptr;
-            std::shared_ptr<JudgeFinishedRequest> request;
-            CoTask get_return_object() 
-            {
-                return CoTask{handle_type::from_promise(*this)};
-            }
+            std::shared_ptr<oj::common::JudgeResult> request;
+
+            CoTask get_return_object() { return CoTask{handle_type::from_promise(*this)}; }
             std::suspend_always initial_suspend() noexcept { return {}; }
-            void return_value(std::shared_ptr<JudgeFinishedRequest> req)
+            std::suspend_always final_suspend() noexcept { return {}; }
+            void return_value(std::shared_ptr<oj::common::JudgeResult> value) { request = std::move(value); }
+            void unhandled_exception()
             {
-                request = req;
+                exception = std::current_exception();
+                request = std::make_shared<oj::common::JudgeResult>();
+                request->set_status(oj::common::SUBMISSION_STATUS_SYSTEM_ERROR);
+                request->set_completed_at(std::time(nullptr));
             }
-            auto final_suspend() noexcept 
-            {
-                struct FinalAwaiter 
-                {
-                    const oj_judge::JudgeFinishedRequest& request;
-                    CallBack cb;
-                    bool await_ready() noexcept { return false; }
-                    std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> h) noexcept 
-                    {
-                        auto& promise = h.promise();
-                        if (promise.cb) promise.cb(request);
-                        if (promise.status) *promise.status = Finished;
-                        if (promise.home) 
-                        {
-                            return promise.home;
-                        }
-                        return std::noop_coroutine();
-                    }
-                    void await_resume() noexcept {}
-                };
-                return FinalAwaiter{*request};
-            }
-            void unhandled_exception() { exception = std::current_exception(); }
         };
 
         using handle_type = std::coroutine_handle<promise_type>;
 
-        CoTask() : _handle(nullptr) {}
-        CoTask(std::coroutine_handle<promise_type> h) {_handle = h;}
-
-        // Move-only — prevent double-free of coroutine handle
+        CoTask() = default;
+        explicit CoTask(handle_type handle) : _handle(handle) {}
         CoTask(const CoTask&) = delete;
         CoTask& operator=(const CoTask&) = delete;
-        CoTask(CoTask&& other) noexcept : _handle(other._handle) { other._handle = nullptr; }
-        CoTask& operator=(CoTask&& other) noexcept {
-            if (this != &other) { if (_handle) _handle.destroy(); _handle = other._handle; other._handle = nullptr; }
+        CoTask(CoTask&& other) noexcept : _handle(std::exchange(other._handle, nullptr)) {}
+        CoTask& operator=(CoTask&& other) noexcept
+        {
+            if (this != &other) {
+                if (_handle) _handle.destroy();
+                _handle = std::exchange(other._handle, nullptr);
+            }
             return *this;
         }
         ~CoTask() { if (_handle) _handle.destroy(); }
-        /// 恢复协程
-        void resume() { if (_handle && !_handle.done()) _handle.resume(); }
-        /// 协程是否完成
-        bool done() const { return !_handle || _handle.done(); }
-        /// 获取结果（协程完成后调用）
-        /// 获取协程句柄
+
+        void Resume() { if (_handle && !_handle.done()) _handle.resume(); }
+        bool Done() const { return !_handle || _handle.done(); }
         handle_type GetHandle() const { return _handle; }
 
     private:
-        handle_type _handle;
+        handle_type _handle = nullptr;
     };
 
-    struct LoopAwaitable 
+    struct DockerTaskAwaitable
     {
-        std::coroutine_handle<CoTask::promise_type> parent_handle;
-        PendingStatus* status;
-        bool await_ready() const { return false; }  // 总是挂起
-        
-        std::coroutine_handle<CoTask::promise_type> await_suspend(std::coroutine_handle<CoTask::promise_type> h) 
-        {
-            parent_handle.promise().home = h;
-            parent_handle.promise().status = status;
-            return parent_handle;
-        }
+        int timeout_ms = 5000;
+        CoTask::promise_type::IoWork work;
+        CoTask::handle_type handle = nullptr;
 
-        void await_resume() 
+        bool await_ready() const noexcept { return false; }
+        bool await_suspend(CoTask::handle_type handle)
         {
-            return;
-        }
-    };
-    struct DockerTaskAwaitable 
-    {
-        std::string container_id;    // Docker 容器 ID
-        std::string script;           // 容器内执行的脚本命令
-        std::string task_id;
-        int timeout_ms;               // 超时时间
-        std::coroutine_handle<CoTask::promise_type> home;
-        /// 启动容器的回调（由外部注入，实际调用 Docker API）
-        /// 参数: container_id, script, task_id
-        std::function<void(const std::string&, const std::string&, const std::string&)> start_container;
-
-        bool await_ready() const { return false; }  // 总是挂起
-
-        std::coroutine_handle<CoTask::promise_type> await_suspend(std::coroutine_handle<CoTask::promise_type> h) 
-        {
-            if (start_container) 
-            {
-                start_container(container_id, script, task_id);
+            this->handle = handle;
+            if (!handle.promise().submit_io || !work) {
+                handle.promise().result = {"SYSTEM_ERROR", -1, false, false, 0, 0, {},
+                                           "Docker I/O executor is unavailable"};
+                return false;
             }
-            return home;
+            if (handle.promise().submit_io(std::move(work), std::max(1, timeout_ms))) return true;
+            handle.promise().result = {"CANCELLED", -1, false, true, 0, 0, {},
+                                       "Judge event loop stopped"};
+            return false;
+        }
+        DockerTaskResult await_resume() noexcept { return std::move(handle.promise().result); }
+    };
+
+    class JudgeEventLoop
+    {
+        enum class PendingState { Ready, Running, Waiting };
+
+        struct PendingEntry
+        {
+            CoTask task;
+            PendingState state = PendingState::Ready;
+            uint64_t generation = 0;
+            std::chrono::steady_clock::time_point deadline;
+            std::chrono::steady_clock::time_point io_deadline;
+            bool io_in_flight = false;
+            bool cancel_requested = false;
+        };
+
+        struct IoJob
+        {
+            std::string task_id;
+            uint64_t generation = 0;
+            std::chrono::steady_clock::time_point deadline;
+            CoTask::promise_type::IoWork work;
+        };
+
+    public:
+        JudgeEventLoop() = default;
+        ~JudgeEventLoop() { Stop(); }
+
+        void Run(int thread_nums)
+        {
+            bool expected = false;
+            if (!_running.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) return;
+            _accepting_io.store(true, std::memory_order_release);
+            _stop_owners.store(false, std::memory_order_release);
+            const int count = std::max(1, thread_nums);
+            for (int i = 0; i < count; ++i) _owner_threads.emplace_back(&JudgeEventLoop::OwnerWork, this);
+            for (int i = 0; i < count; ++i) _io_threads.emplace_back(&JudgeEventLoop::IoWork, this);
         }
 
-        DockerTaskResult await_resume() 
+        void Stop()
         {
-            return {};
-        }
-    };
-    struct PendingEntry 
-    {
-        std::string task_id;
-        CoTask task;
-        int64_t start_time;
-        int timeout_ms;
-        PendingStatus status;
-    };
-    class JudgeEventLoop 
-    {
-    private:
-        CoTask Work()
-        {
-            for(;;)
+            _accepting_io.store(false, std::memory_order_release);
+            if (!_running.exchange(false, std::memory_order_acq_rel)) return;
             {
-                // 非阻塞处理一轮事件
-                thread_local std::string task_id;
-                thread_local PendingEntry* pending;
-                {
-                    std::unique_lock<std::mutex> lock(_mutex);
-                    _cv.wait(lock, [this]
-                    {
-                        return !_task_queue.empty();
-                    });
-                    task_id = _task_queue.front();
-                    _task_queue.pop();
-                    auto it = _pendings.find(task_id);
-                    if(it == _pendings.end())
-                        continue;
-                    pending = &it->second;
-                    if(pending->status != Done)
-                        continue;
-                    pending->status = Working;
-                }
-                co_await LoopAwaitable{pending->task.GetHandle(),&pending->status};
-                // Coroutine finished — clean up from _pendings
-                {
-                    std::unique_lock<std::mutex> lock(_mutex);
-                    _pendings.erase(task_id);
-                }
+                std::lock_guard<std::mutex> lock(_io_mutex);
+                std::queue<IoJob> abandoned;
+                _io_queue.swap(abandoned);
             }
-        }
-        void WorkHelper()
-        {
-            auto task = Work();
-            task.resume();
-        }
-        void CheckTimeOut()
-        {
-            for(;;)
+            _io_cv.notify_all();
+            for (auto& thread : _io_threads) if (thread.joinable()) thread.join();
+            _io_threads.clear();
+
             {
-                std::unique_lock<std::mutex> lock(_mutex);
-                _cv.wait_for(lock, std::chrono::milliseconds(30), [this]
-                {
-                    return !_pendings.empty();
-                });
-                // Collect keys to erase (avoid iterator invalidation)
-                std::vector<std::string> to_erase;
-                for(auto & it : _pendings)
-                {
-                    auto& pending = it.second;
-                    // Only erase timed-out tasks — Finished tasks are cleaned up by Work()
-                    if(pending.status == Blocking && oj::util::TimeUtil::GetTimeStamp() - pending.start_time > pending.timeout_ms)
-                    {
-                        to_erase.push_back(it.first);
+                std::lock_guard<std::mutex> lock(_mutex);
+                for (auto& [task_id, pending] : _pendings) {
+                    pending.io_in_flight = false;
+                    pending.cancel_requested = true;
+                    if (pending.state != PendingState::Running) {
+                        pending.state = PendingState::Ready;
+                        _ready.push(task_id);
                     }
                 }
-                for(auto& key : to_erase) {
-                    _pendings.erase(key);  // ~CoTask destroys coroutine handle
-                }
             }
+            _stop_owners.store(true, std::memory_order_release);
+            _cv.notify_all();
+            for (auto& thread : _owner_threads) if (thread.joinable()) thread.join();
+            _owner_threads.clear();
         }
-    public:
-        JudgeEventLoop() 
-        { }
-        /// 启动事件循环（阻塞当前线程）
-        void Run(int thread_nums) 
+
+        std::string PushNewTask(CoTask&& task, int timeout_ms,
+                                CoTask::promise_type::CallBack callback)
         {
-            for(int i = 1;i<=thread_nums;i++)
-            {
-                std::thread(std::bind(&JudgeEventLoop::WorkHelper,this)).detach();
-            }
-            std::thread(std::bind(&JudgeEventLoop::CheckTimeOut,this)).detach();
-        }
-        std::string PushNewTask(CoTask&& task)
-        {
-            std::unique_lock<std::mutex> lock(_mutex);
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (!_running.load(std::memory_order_acquire) ||
+                !_accepting_io.load(std::memory_order_acquire) || !task.GetHandle()) return {};
             std::string task_id = oj::util::StringUtil::GetUniqueName();
-            _task_queue.push(task_id);
+            auto [it, inserted] = _pendings.try_emplace(task_id);
+            if (!inserted) return {};
+            it->second.task = std::move(task);
+            it->second.deadline = std::chrono::steady_clock::now() +
+                                  std::chrono::milliseconds(std::max(1, timeout_ms));
+            it->second.task.GetHandle().promise().cb = std::move(callback);
+            it->second.task.GetHandle().promise().submit_io =
+                [this, task_id](CoTask::promise_type::IoWork work, int timeout_ms) {
+                    return SubmitIo(task_id, std::move(work), timeout_ms);
+                };
+            _ready.push(task_id);
             _cv.notify_one();
-            PendingEntry pending;
-            pending.task_id = task_id;
-            pending.start_time = oj::util::TimeUtil::GetTimeStamp();
-            pending.timeout_ms = 1000;
-            pending.task = std::move(task);
-            pending.status = Done; 
-            _pendings[task_id] = std::move(pending);
             return task_id;
         }
-        void PushDockerDoneTask(const std::string& task_id,const DockerTaskResult& result)
+
+        std::string PushNewTask(CoTask&& task) { return PushNewTask(std::move(task), 30000, {}); }
+
+        size_t PendingCount() const
         {
-            std::unique_lock<std::mutex> lock(_mutex);
+            std::lock_guard<std::mutex> lock(_mutex);
+            return _pendings.size();
+        }
+
+    private:
+        bool SubmitIo(const std::string& task_id, CoTask::promise_type::IoWork work,
+                      int timeout_ms)
+        {
+            std::scoped_lock lock(_mutex, _io_mutex);
             auto it = _pendings.find(task_id);
-            if(it == _pendings.end() || it->second.status != Blocking)
+            if (!_accepting_io.load(std::memory_order_acquire) || it == _pendings.end() ||
+                it->second.state != PendingState::Running || it->second.cancel_requested) return false;
+            const auto now = std::chrono::steady_clock::now();
+            if (now >= it->second.deadline) {
+                it->second.cancel_requested = true;
+                return false;
+            }
+            it->second.state = PendingState::Waiting;
+            it->second.io_in_flight = true;
+            it->second.io_deadline = std::min(
+                it->second.deadline, now + std::chrono::milliseconds(std::max(1, timeout_ms)));
+            const uint64_t generation = ++it->second.generation;
+            _io_queue.push({task_id, generation, it->second.io_deadline, std::move(work)});
+            _io_cv.notify_one();
+            return true;
+        }
+
+        void CompleteIo(const std::string& task_id, uint64_t generation, DockerTaskResult result)
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto it = _pendings.find(task_id);
+            if (it == _pendings.end() || it->second.generation != generation) return;
+            it->second.io_in_flight = false;
+            if (it->second.cancel_requested || !_running.load(std::memory_order_acquire)) {
+                it->second.cancel_requested = true;
+                if (it->second.state != PendingState::Running) {
+                    it->second.state = PendingState::Ready;
+                    _ready.push(task_id);
+                    _cv.notify_one();
+                }
                 return;
-            it->second.status = Done;
-            it->second.task.GetHandle().promise().result = result;
-            _task_queue.push(task_id);
+            }
+            if (std::chrono::steady_clock::now() >= it->second.io_deadline) {
+                result.status = "TIME_LIMIT";
+                result.timed_out = true;
+                result.killed = result.killed || result.exit_code < 0;
+                if (result.stderr_str.empty()) result.stderr_str = "Docker I/O deadline exceeded";
+            }
+            it->second.task.GetHandle().promise().result = std::move(result);
+            it->second.state = PendingState::Ready;
+            _ready.push(task_id);
             _cv.notify_one();
         }
-    private:
-        std::unordered_map<std::string, PendingEntry> _pendings;
-        std::queue<std::string> _task_queue;
-        std::mutex _mutex;
+
+        void IoWork()
+        {
+            while (true) {
+                IoJob job;
+                {
+                    std::unique_lock<std::mutex> lock(_io_mutex);
+                    _io_cv.wait(lock, [this] { return !_running.load() || !_io_queue.empty(); });
+                    if (!_running.load()) return;
+                    job = std::move(_io_queue.front());
+                    _io_queue.pop();
+                }
+                DockerTaskResult result;
+                if (std::chrono::steady_clock::now() >= job.deadline) {
+                    result = {"TIME_LIMIT", -1, true, false, 0, 0, {},
+                              "Docker I/O deadline exceeded before execution"};
+                } else {
+                    try {
+                        result = job.work();
+                    } catch (const std::exception& e) {
+                        result.status = "SYSTEM_ERROR";
+                        result.stderr_str = e.what();
+                    } catch (...) {
+                        result.status = "SYSTEM_ERROR";
+                        result.stderr_str = "Unknown Docker executor failure";
+                    }
+                }
+                CompleteIo(job.task_id, job.generation, std::move(result));
+            }
+        }
+
+        void OwnerWork()
+        {
+            while (true) {
+                std::string task_id;
+                CoTask* task = nullptr;
+                bool stopping = false;
+                {
+                    std::unique_lock<std::mutex> lock(_mutex);
+                    _cv.wait_for(lock, std::chrono::milliseconds(5),
+                                 [this] { return _stop_owners.load() || !_ready.empty(); });
+                    const auto now = std::chrono::steady_clock::now();
+                    for (auto& [id, pending] : _pendings) {
+                        if (!pending.cancel_requested && now >= pending.deadline) {
+                            pending.cancel_requested = true;
+                            if (pending.state != PendingState::Running) {
+                                pending.state = PendingState::Ready;
+                                _ready.push(id);
+                            }
+                        }
+                    }
+                    if (_ready.empty()) {
+                        if (_stop_owners.load()) return;
+                        continue;
+                    }
+                    task_id = std::move(_ready.front());
+                    _ready.pop();
+                    auto it = _pendings.find(task_id);
+                    if (it == _pendings.end() || it->second.state != PendingState::Ready) continue;
+                    it->second.state = PendingState::Running;
+                    task = &it->second.task;
+                    stopping = !_running.load() || it->second.cancel_requested;
+                }
+
+                if (!stopping) task->Resume();
+
+                std::unique_lock<std::mutex> lock(_mutex);
+                auto it = _pendings.find(task_id);
+                if (it == _pendings.end()) continue;
+                if (stopping || it->second.cancel_requested) {
+                    auto callback = std::move(it->second.task.GetHandle().promise().cb);
+                    lock.unlock();
+                    if (callback) {
+                        oj::common::JudgeResult cancelled;
+                        cancelled.set_status(oj::common::SUBMISSION_STATUS_CANCELLED);
+                        cancelled.set_completed_at(std::time(nullptr));
+                        try { callback(cancelled); } catch (...) {}
+                    }
+                    lock.lock();
+                    it = _pendings.find(task_id);
+                    if (it != _pendings.end()) {
+                        if (it->second.io_in_flight) it->second.state = PendingState::Waiting;
+                        else _pendings.erase(it);
+                    }
+                    continue;
+                }
+                if (!it->second.task.Done()) continue;
+                auto callback = std::move(it->second.task.GetHandle().promise().cb);
+                auto result = it->second.task.GetHandle().promise().request;
+                if (!result) {
+                    result = std::make_shared<oj::common::JudgeResult>();
+                    result->set_status(oj::common::SUBMISSION_STATUS_SYSTEM_ERROR);
+                }
+                lock.unlock();
+                if (callback) {
+                    try { callback(*result); } catch (...) {}
+                }
+                lock.lock();
+                _pendings.erase(task_id); // owner worker is the only coroutine destroyer
+            }
+        }
+
+        mutable std::mutex _mutex;
         std::condition_variable _cv;
+        std::map<std::string, PendingEntry> _pendings;
+        std::queue<std::string> _ready;
+
+        std::mutex _io_mutex;
+        std::condition_variable _io_cv;
+        std::queue<IoJob> _io_queue;
+        std::atomic<bool> _running{false};
+        std::atomic<bool> _accepting_io{false};
+        std::atomic<bool> _stop_owners{false};
+        std::vector<std::thread> _owner_threads;
+        std::vector<std::thread> _io_threads;
     };
 }

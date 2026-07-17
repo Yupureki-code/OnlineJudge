@@ -236,6 +236,9 @@ extern SaveAdminAccountRequestDefaultTypeInternal _SaveAdminAccountRequest_defau
 class SaveQuestionRequest;
 struct SaveQuestionRequestDefaultTypeInternal;
 extern SaveQuestionRequestDefaultTypeInternal _SaveQuestionRequest_default_instance_;
+class SendSecurityCodeRequest;
+struct SendSecurityCodeRequestDefaultTypeInternal;
+extern SendSecurityCodeRequestDefaultTypeInternal _SendSecurityCodeRequest_default_instance_;
 class SendVerificationCodeRequest;
 struct SendVerificationCodeRequestDefaultTypeInternal;
 extern SendVerificationCodeRequestDefaultTypeInternal _SendVerificationCodeRequest_default_instance_;
@@ -358,6 +361,7 @@ template<> ::oj::biz::QuestionResponse* Arena::CreateMaybeMessage<::oj::biz::Que
 template<> ::oj::biz::RegisterRequest* Arena::CreateMaybeMessage<::oj::biz::RegisterRequest>(Arena*);
 template<> ::oj::biz::SaveAdminAccountRequest* Arena::CreateMaybeMessage<::oj::biz::SaveAdminAccountRequest>(Arena*);
 template<> ::oj::biz::SaveQuestionRequest* Arena::CreateMaybeMessage<::oj::biz::SaveQuestionRequest>(Arena*);
+template<> ::oj::biz::SendSecurityCodeRequest* Arena::CreateMaybeMessage<::oj::biz::SendSecurityCodeRequest>(Arena*);
 template<> ::oj::biz::SendVerificationCodeRequest* Arena::CreateMaybeMessage<::oj::biz::SendVerificationCodeRequest>(Arena*);
 template<> ::oj::biz::SendVerificationCodeResponse* Arena::CreateMaybeMessage<::oj::biz::SendVerificationCodeResponse>(Arena*);
 template<> ::oj::biz::ServiceAuthentication* Arena::CreateMaybeMessage<::oj::biz::ServiceAuthentication>(Arena*);
@@ -1601,6 +1605,175 @@ class SetPasswordRequest final :
 };
 // -------------------------------------------------------------------
 
+class SendSecurityCodeRequest final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:oj.biz.SendSecurityCodeRequest) */ {
+ public:
+  inline SendSecurityCodeRequest() : SendSecurityCodeRequest(nullptr) {}
+  ~SendSecurityCodeRequest() override;
+  explicit PROTOBUF_CONSTEXPR SendSecurityCodeRequest(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  SendSecurityCodeRequest(const SendSecurityCodeRequest& from);
+  SendSecurityCodeRequest(SendSecurityCodeRequest&& from) noexcept
+    : SendSecurityCodeRequest() {
+    *this = ::std::move(from);
+  }
+
+  inline SendSecurityCodeRequest& operator=(const SendSecurityCodeRequest& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline SendSecurityCodeRequest& operator=(SendSecurityCodeRequest&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const SendSecurityCodeRequest& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const SendSecurityCodeRequest* internal_default_instance() {
+    return reinterpret_cast<const SendSecurityCodeRequest*>(
+               &_SendSecurityCodeRequest_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    7;
+
+  friend void swap(SendSecurityCodeRequest& a, SendSecurityCodeRequest& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(SendSecurityCodeRequest* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(SendSecurityCodeRequest* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  SendSecurityCodeRequest* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<SendSecurityCodeRequest>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const SendSecurityCodeRequest& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const SendSecurityCodeRequest& from) {
+    SendSecurityCodeRequest::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(SendSecurityCodeRequest* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "oj.biz.SendSecurityCodeRequest";
+  }
+  protected:
+  explicit SendSecurityCodeRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kPurposeFieldNumber = 1,
+    kNewEmailFieldNumber = 2,
+  };
+  // string purpose = 1;
+  void clear_purpose();
+  const std::string& purpose() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_purpose(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_purpose();
+  PROTOBUF_NODISCARD std::string* release_purpose();
+  void set_allocated_purpose(std::string* purpose);
+  private:
+  const std::string& _internal_purpose() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_purpose(const std::string& value);
+  std::string* _internal_mutable_purpose();
+  public:
+
+  // string new_email = 2;
+  void clear_new_email();
+  const std::string& new_email() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_new_email(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_new_email();
+  PROTOBUF_NODISCARD std::string* release_new_email();
+  void set_allocated_new_email(std::string* new_email);
+  private:
+  const std::string& _internal_new_email() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_new_email(const std::string& value);
+  std::string* _internal_mutable_new_email();
+  public:
+
+  // @@protoc_insertion_point(class_scope:oj.biz.SendSecurityCodeRequest)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr purpose_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr new_email_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_biz_5fservice_2eproto;
+};
+// -------------------------------------------------------------------
+
 class ChangePasswordRequest final :
     public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:oj.biz.ChangePasswordRequest) */ {
  public:
@@ -1649,7 +1822,7 @@ class ChangePasswordRequest final :
                &_ChangePasswordRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    7;
+    8;
 
   friend void swap(ChangePasswordRequest& a, ChangePasswordRequest& b) {
     a.Swap(&b);
@@ -1818,7 +1991,7 @@ class ChangeEmailRequest final :
                &_ChangeEmailRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    8;
+    9;
 
   friend void swap(ChangeEmailRequest& a, ChangeEmailRequest& b) {
     a.Swap(&b);
@@ -1987,7 +2160,7 @@ class DeleteAccountRequest final :
                &_DeleteAccountRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    9;
+    10;
 
   friend void swap(DeleteAccountRequest& a, DeleteAccountRequest& b) {
     a.Swap(&b);
@@ -2140,7 +2313,7 @@ class GetUserProfileRequest final :
                &_GetUserProfileRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    10;
+    11;
 
   friend void swap(GetUserProfileRequest& a, GetUserProfileRequest& b) {
     a.Swap(&b);
@@ -2288,7 +2461,7 @@ class GetUserProfileResponse final :
                &_GetUserProfileResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    11;
+    12;
 
   friend void swap(GetUserProfileResponse& a, GetUserProfileResponse& b) {
     a.Swap(&b);
@@ -2485,7 +2658,7 @@ class UpdateProfileRequest final :
                &_UpdateProfileRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    12;
+    13;
 
   friend void swap(UpdateProfileRequest& a, UpdateProfileRequest& b) {
     a.Swap(&b);
@@ -2638,7 +2811,7 @@ class UpdateProfileResponse final :
                &_UpdateProfileResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    13;
+    14;
 
   friend void swap(UpdateProfileResponse& a, UpdateProfileResponse& b) {
     a.Swap(&b);
@@ -2815,7 +2988,7 @@ class UpdateAvatarRequest final :
                &_UpdateAvatarRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    14;
+    15;
 
   friend void swap(UpdateAvatarRequest& a, UpdateAvatarRequest& b) {
     a.Swap(&b);
@@ -2984,7 +3157,7 @@ class UpdateAvatarResponse final :
                &_UpdateAvatarResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    15;
+    16;
 
   friend void swap(UpdateAvatarResponse& a, UpdateAvatarResponse& b) {
     a.Swap(&b);
@@ -3161,7 +3334,7 @@ class GetUserStatisticsResponse final :
                &_GetUserStatisticsResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    16;
+    17;
 
   friend void swap(GetUserStatisticsResponse& a, GetUserStatisticsResponse& b) {
     a.Swap(&b);
@@ -3358,7 +3531,7 @@ class GetQuestionListRequest final :
                &_GetQuestionListRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    17;
+    18;
 
   friend void swap(GetQuestionListRequest& a, GetQuestionListRequest& b) {
     a.Swap(&b);
@@ -3558,7 +3731,7 @@ class GetQuestionListResponse final :
                &_GetQuestionListResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    18;
+    19;
 
   friend void swap(GetQuestionListResponse& a, GetQuestionListResponse& b) {
     a.Swap(&b);
@@ -3755,7 +3928,7 @@ class QuestionIdRequest final :
                &_QuestionIdRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    19;
+    20;
 
   friend void swap(QuestionIdRequest& a, QuestionIdRequest& b) {
     a.Swap(&b);
@@ -3908,7 +4081,7 @@ class GetQuestionDetailResponse final :
                &_GetQuestionDetailResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    20;
+    21;
 
   friend void swap(GetQuestionDetailResponse& a, GetQuestionDetailResponse& b) {
     a.Swap(&b);
@@ -4116,7 +4289,7 @@ class GetQuestionPassStatusResponse final :
                &_GetQuestionPassStatusResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    21;
+    22;
 
   friend void swap(GetQuestionPassStatusResponse& a, GetQuestionPassStatusResponse& b) {
     a.Swap(&b);
@@ -4284,7 +4457,7 @@ class SaveQuestionRequest final :
                &_SaveQuestionRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    22;
+    23;
 
   friend void swap(SaveQuestionRequest& a, SaveQuestionRequest& b) {
     a.Swap(&b);
@@ -4441,7 +4614,7 @@ class QuestionResponse final :
                &_QuestionResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    23;
+    24;
 
   friend void swap(QuestionResponse& a, QuestionResponse& b) {
     a.Swap(&b);
@@ -4618,7 +4791,7 @@ class ListTestCasesRequest final :
                &_ListTestCasesRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    24;
+    25;
 
   friend void swap(ListTestCasesRequest& a, ListTestCasesRequest& b) {
     a.Swap(&b);
@@ -4782,7 +4955,7 @@ class ListTestCasesResponse final :
                &_ListTestCasesResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    25;
+    26;
 
   friend void swap(ListTestCasesResponse& a, ListTestCasesResponse& b) {
     a.Swap(&b);
@@ -4959,7 +5132,7 @@ class CreateTestCaseRequest final :
                &_CreateTestCaseRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    26;
+    27;
 
   friend void swap(CreateTestCaseRequest& a, CreateTestCaseRequest& b) {
     a.Swap(&b);
@@ -5166,7 +5339,7 @@ class UpdateTestCaseRequest final :
                &_UpdateTestCaseRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    27;
+    28;
 
   friend void swap(UpdateTestCaseRequest& a, UpdateTestCaseRequest& b) {
     a.Swap(&b);
@@ -5323,7 +5496,7 @@ class TestCaseIdRequest final :
                &_TestCaseIdRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    28;
+    29;
 
   friend void swap(TestCaseIdRequest& a, TestCaseIdRequest& b) {
     a.Swap(&b);
@@ -5471,7 +5644,7 @@ class TestCaseResponse final :
                &_TestCaseResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    29;
+    30;
 
   friend void swap(TestCaseResponse& a, TestCaseResponse& b) {
     a.Swap(&b);
@@ -5648,7 +5821,7 @@ class InvalidateQuestionCacheRequest final :
                &_InvalidateQuestionCacheRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    30;
+    31;
 
   friend void swap(InvalidateQuestionCacheRequest& a, InvalidateQuestionCacheRequest& b) {
     a.Swap(&b);
@@ -5801,7 +5974,7 @@ class ListSolutionsRequest final :
                &_ListSolutionsRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    31;
+    32;
 
   friend void swap(ListSolutionsRequest& a, ListSolutionsRequest& b) {
     a.Swap(&b);
@@ -6001,7 +6174,7 @@ class ListSolutionsResponse final :
                &_ListSolutionsResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    32;
+    33;
 
   friend void swap(ListSolutionsResponse& a, ListSolutionsResponse& b) {
     a.Swap(&b);
@@ -6198,7 +6371,7 @@ class SolutionIdRequest final :
                &_SolutionIdRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    33;
+    34;
 
   friend void swap(SolutionIdRequest& a, SolutionIdRequest& b) {
     a.Swap(&b);
@@ -6346,7 +6519,7 @@ class GetSolutionResponse final :
                &_GetSolutionResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    34;
+    35;
 
   friend void swap(GetSolutionResponse& a, GetSolutionResponse& b) {
     a.Swap(&b);
@@ -6563,7 +6736,7 @@ class CreateSolutionRequest final :
                &_CreateSolutionRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    35;
+    36;
 
   friend void swap(CreateSolutionRequest& a, CreateSolutionRequest& b) {
     a.Swap(&b);
@@ -6748,7 +6921,7 @@ class UpdateSolutionRequest final :
                &_UpdateSolutionRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    36;
+    37;
 
   friend void swap(UpdateSolutionRequest& a, UpdateSolutionRequest& b) {
     a.Swap(&b);
@@ -6928,7 +7101,7 @@ class SolutionResponse final :
                &_SolutionResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    37;
+    38;
 
   friend void swap(SolutionResponse& a, SolutionResponse& b) {
     a.Swap(&b);
@@ -7105,7 +7278,7 @@ class SolutionActionResponse final :
                &_SolutionActionResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    38;
+    39;
 
   friend void swap(SolutionActionResponse& a, SolutionActionResponse& b) {
     a.Swap(&b);
@@ -7304,7 +7477,7 @@ class ListCommentsRequest final :
                &_ListCommentsRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    39;
+    40;
 
   friend void swap(ListCommentsRequest& a, ListCommentsRequest& b) {
     a.Swap(&b);
@@ -7472,7 +7645,7 @@ class ListRepliesRequest final :
                &_ListRepliesRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    40;
+    41;
 
   friend void swap(ListRepliesRequest& a, ListRepliesRequest& b) {
     a.Swap(&b);
@@ -7640,7 +7813,7 @@ class ListCommentsResponse final :
                &_ListCommentsResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    41;
+    42;
 
   friend void swap(ListCommentsResponse& a, ListCommentsResponse& b) {
     a.Swap(&b);
@@ -7857,7 +8030,7 @@ class CreateCommentRequest final :
                &_CreateCommentRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    42;
+    43;
 
   friend void swap(CreateCommentRequest& a, CreateCommentRequest& b) {
     a.Swap(&b);
@@ -8032,7 +8205,7 @@ class UpdateCommentRequest final :
                &_UpdateCommentRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    43;
+    44;
 
   friend void swap(UpdateCommentRequest& a, UpdateCommentRequest& b) {
     a.Swap(&b);
@@ -8196,7 +8369,7 @@ class CommentIdRequest final :
                &_CommentIdRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    44;
+    45;
 
   friend void swap(CommentIdRequest& a, CommentIdRequest& b) {
     a.Swap(&b);
@@ -8344,7 +8517,7 @@ class CommentResponse final :
                &_CommentResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    45;
+    46;
 
   friend void swap(CommentResponse& a, CommentResponse& b) {
     a.Swap(&b);
@@ -8521,7 +8694,7 @@ class CommentActionResponse final :
                &_CommentActionResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    46;
+    47;
 
   friend void swap(CommentActionResponse& a, CommentActionResponse& b) {
     a.Swap(&b);
@@ -8720,7 +8893,7 @@ class GetCommentActionsRequest final :
                &_GetCommentActionsRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    47;
+    48;
 
   friend void swap(GetCommentActionsRequest& a, GetCommentActionsRequest& b) {
     a.Swap(&b);
@@ -8882,7 +9055,7 @@ class GetCommentActionsResponse final :
                &_GetCommentActionsResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    48;
+    49;
 
   friend void swap(GetCommentActionsResponse& a, GetCommentActionsResponse& b) {
     a.Swap(&b);
@@ -9059,7 +9232,7 @@ class AdminLoginRequest final :
                &_AdminLoginRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    49;
+    50;
 
   friend void swap(AdminLoginRequest& a, AdminLoginRequest& b) {
     a.Swap(&b);
@@ -9223,7 +9396,7 @@ class AdminLoginResponse final :
                &_AdminLoginResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    50;
+    51;
 
   friend void swap(AdminLoginResponse& a, AdminLoginResponse& b) {
     a.Swap(&b);
@@ -9400,7 +9573,7 @@ class GetVersionResponse final :
                &_GetVersionResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    51;
+    52;
 
   friend void swap(GetVersionResponse& a, GetVersionResponse& b) {
     a.Swap(&b);
@@ -9621,7 +9794,7 @@ class AdminOverviewResponse final :
                &_AdminOverviewResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    52;
+    53;
 
   friend void swap(AdminOverviewResponse& a, AdminOverviewResponse& b) {
     a.Swap(&b);
@@ -9844,7 +10017,7 @@ class AdminListUsersRequest final :
                &_AdminListUsersRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    53;
+    54;
 
   friend void swap(AdminListUsersRequest& a, AdminListUsersRequest& b) {
     a.Swap(&b);
@@ -10017,7 +10190,7 @@ class AdminListUsersResponse final :
                &_AdminListUsersResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    54;
+    55;
 
   friend void swap(AdminListUsersResponse& a, AdminListUsersResponse& b) {
     a.Swap(&b);
@@ -10214,7 +10387,7 @@ class AdminCreateUserRequest final :
                &_AdminCreateUserRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    55;
+    56;
 
   friend void swap(AdminCreateUserRequest& a, AdminCreateUserRequest& b) {
     a.Swap(&b);
@@ -10387,7 +10560,7 @@ class AdminUpdateUserRequest final :
                &_AdminUpdateUserRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    56;
+    57;
 
   friend void swap(AdminUpdateUserRequest& a, AdminUpdateUserRequest& b) {
     a.Swap(&b);
@@ -10544,7 +10717,7 @@ class AdminUserIdRequest final :
                &_AdminUserIdRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    57;
+    58;
 
   friend void swap(AdminUserIdRequest& a, AdminUserIdRequest& b) {
     a.Swap(&b);
@@ -10692,7 +10865,7 @@ class AdminUserResponse final :
                &_AdminUserResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    58;
+    59;
 
   friend void swap(AdminUserResponse& a, AdminUserResponse& b) {
     a.Swap(&b);
@@ -10869,7 +11042,7 @@ class ListAdminAccountsRequest final :
                &_ListAdminAccountsRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    59;
+    60;
 
   friend void swap(ListAdminAccountsRequest& a, ListAdminAccountsRequest& b) {
     a.Swap(&b);
@@ -11042,7 +11215,7 @@ class ListAdminAccountsResponse final :
                &_ListAdminAccountsResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    60;
+    61;
 
   friend void swap(ListAdminAccountsResponse& a, ListAdminAccountsResponse& b) {
     a.Swap(&b);
@@ -11239,7 +11412,7 @@ class SaveAdminAccountRequest final :
                &_SaveAdminAccountRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    61;
+    62;
 
   friend void swap(SaveAdminAccountRequest& a, SaveAdminAccountRequest& b) {
     a.Swap(&b);
@@ -11412,7 +11585,7 @@ class AdminAccountIdRequest final :
                &_AdminAccountIdRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    62;
+    63;
 
   friend void swap(AdminAccountIdRequest& a, AdminAccountIdRequest& b) {
     a.Swap(&b);
@@ -11560,7 +11733,7 @@ class AdminAccountResponse final :
                &_AdminAccountResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    63;
+    64;
 
   friend void swap(AdminAccountResponse& a, AdminAccountResponse& b) {
     a.Swap(&b);
@@ -11737,7 +11910,7 @@ class GetCacheMetricsResponse final :
                &_GetCacheMetricsResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    64;
+    65;
 
   friend void swap(GetCacheMetricsResponse& a, GetCacheMetricsResponse& b) {
     a.Swap(&b);
@@ -11914,7 +12087,7 @@ class GetAuditLogsRequest final :
                &_GetAuditLogsRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    65;
+    66;
 
   friend void swap(GetAuditLogsRequest& a, GetAuditLogsRequest& b) {
     a.Swap(&b);
@@ -12109,7 +12282,7 @@ class GetAuditLogsResponse final :
                &_GetAuditLogsResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    66;
+    67;
 
   friend void swap(GetAuditLogsResponse& a, GetAuditLogsResponse& b) {
     a.Swap(&b);
@@ -12306,7 +12479,7 @@ class CreateSubmissionRequest final :
                &_CreateSubmissionRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    67;
+    68;
 
   friend void swap(CreateSubmissionRequest& a, CreateSubmissionRequest& b) {
     a.Swap(&b);
@@ -12491,7 +12664,7 @@ class CreateSubmissionResponse final :
                &_CreateSubmissionResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    68;
+    69;
 
   friend void swap(CreateSubmissionResponse& a, CreateSubmissionResponse& b) {
     a.Swap(&b);
@@ -12668,7 +12841,7 @@ class CreateCustomTestRequest final :
                &_CreateCustomTestRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    69;
+    70;
 
   friend void swap(CreateCustomTestRequest& a, CreateCustomTestRequest& b) {
     a.Swap(&b);
@@ -12869,7 +13042,7 @@ class CreateCustomTestResponse final :
                &_CreateCustomTestResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    70;
+    71;
 
   friend void swap(CreateCustomTestResponse& a, CreateCustomTestResponse& b) {
     a.Swap(&b);
@@ -13053,7 +13226,7 @@ class GetSubmissionRequest final :
                &_GetSubmissionRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    71;
+    72;
 
   friend void swap(GetSubmissionRequest& a, GetSubmissionRequest& b) {
     a.Swap(&b);
@@ -13201,7 +13374,7 @@ class GetSubmissionResponse final :
                &_GetSubmissionResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    72;
+    73;
 
   friend void swap(GetSubmissionResponse& a, GetSubmissionResponse& b) {
     a.Swap(&b);
@@ -13378,7 +13551,7 @@ class GetCustomTestRequest final :
                &_GetCustomTestRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    73;
+    74;
 
   friend void swap(GetCustomTestRequest& a, GetCustomTestRequest& b) {
     a.Swap(&b);
@@ -13531,7 +13704,7 @@ class GetCustomTestResponse final :
                &_GetCustomTestResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    74;
+    75;
 
   friend void swap(GetCustomTestResponse& a, GetCustomTestResponse& b) {
     a.Swap(&b);
@@ -13735,7 +13908,7 @@ class ListSubmissionsRequest final :
                &_ListSubmissionsRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    75;
+    76;
 
   friend void swap(ListSubmissionsRequest& a, ListSubmissionsRequest& b) {
     a.Swap(&b);
@@ -13919,7 +14092,7 @@ class ListSubmissionsResponse final :
                &_ListSubmissionsResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    76;
+    77;
 
   friend void swap(ListSubmissionsResponse& a, ListSubmissionsResponse& b) {
     a.Swap(&b);
@@ -14122,7 +14295,7 @@ class UpdateJudgeResultRequest final :
                &_UpdateJudgeResultRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    77;
+    78;
 
   friend void swap(UpdateJudgeResultRequest& a, UpdateJudgeResultRequest& b) {
     a.Swap(&b);
@@ -14359,7 +14532,7 @@ class ServiceAuthentication final :
                &_ServiceAuthentication_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    78;
+    79;
 
   friend void swap(ServiceAuthentication& a, ServiceAuthentication& b) {
     a.Swap(&b);
@@ -14555,7 +14728,7 @@ class UpdateJudgeResultResponse final :
                &_UpdateJudgeResultResponse_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    79;
+    80;
 
   friend void swap(UpdateJudgeResultResponse& a, UpdateJudgeResultResponse& b) {
     a.Swap(&b);
@@ -14734,7 +14907,7 @@ class InvalidateStaticCacheRequest final :
                &_InvalidateStaticCacheRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    80;
+    81;
 
   friend void swap(InvalidateStaticCacheRequest& a, InvalidateStaticCacheRequest& b) {
     a.Swap(&b);
@@ -14877,7 +15050,7 @@ class OJService : public ::PROTOBUF_NAMESPACE_ID::Service {
                        ::oj::common::EmptyResponse* response,
                        ::google::protobuf::Closure* done);
   virtual void SendSecurityCode(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::common::EmptyRequest* request,
+                       const ::oj::biz::SendSecurityCodeRequest* request,
                        ::oj::biz::SendVerificationCodeResponse* response,
                        ::google::protobuf::Closure* done);
   virtual void ChangePassword(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
@@ -15110,7 +15283,7 @@ class OJService_Stub : public OJService {
                        ::oj::common::EmptyResponse* response,
                        ::google::protobuf::Closure* done);
   void SendSecurityCode(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                       const ::oj::common::EmptyRequest* request,
+                       const ::oj::biz::SendSecurityCodeRequest* request,
                        ::oj::biz::SendVerificationCodeResponse* response,
                        ::google::protobuf::Closure* done);
   void ChangePassword(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
@@ -16363,6 +16536,110 @@ inline void SetPasswordRequest::set_allocated_password(std::string* password) {
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:oj.biz.SetPasswordRequest.password)
+}
+
+// -------------------------------------------------------------------
+
+// SendSecurityCodeRequest
+
+// string purpose = 1;
+inline void SendSecurityCodeRequest::clear_purpose() {
+  _impl_.purpose_.ClearToEmpty();
+}
+inline const std::string& SendSecurityCodeRequest::purpose() const {
+  // @@protoc_insertion_point(field_get:oj.biz.SendSecurityCodeRequest.purpose)
+  return _internal_purpose();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void SendSecurityCodeRequest::set_purpose(ArgT0&& arg0, ArgT... args) {
+
+ _impl_.purpose_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:oj.biz.SendSecurityCodeRequest.purpose)
+}
+inline std::string* SendSecurityCodeRequest::mutable_purpose() {
+  std::string* _s = _internal_mutable_purpose();
+  // @@protoc_insertion_point(field_mutable:oj.biz.SendSecurityCodeRequest.purpose)
+  return _s;
+}
+inline const std::string& SendSecurityCodeRequest::_internal_purpose() const {
+  return _impl_.purpose_.Get();
+}
+inline void SendSecurityCodeRequest::_internal_set_purpose(const std::string& value) {
+
+  _impl_.purpose_.Set(value, GetArenaForAllocation());
+}
+inline std::string* SendSecurityCodeRequest::_internal_mutable_purpose() {
+
+  return _impl_.purpose_.Mutable(GetArenaForAllocation());
+}
+inline std::string* SendSecurityCodeRequest::release_purpose() {
+  // @@protoc_insertion_point(field_release:oj.biz.SendSecurityCodeRequest.purpose)
+  return _impl_.purpose_.Release();
+}
+inline void SendSecurityCodeRequest::set_allocated_purpose(std::string* purpose) {
+  if (purpose != nullptr) {
+
+  } else {
+
+  }
+  _impl_.purpose_.SetAllocated(purpose, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.purpose_.IsDefault()) {
+    _impl_.purpose_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:oj.biz.SendSecurityCodeRequest.purpose)
+}
+
+// string new_email = 2;
+inline void SendSecurityCodeRequest::clear_new_email() {
+  _impl_.new_email_.ClearToEmpty();
+}
+inline const std::string& SendSecurityCodeRequest::new_email() const {
+  // @@protoc_insertion_point(field_get:oj.biz.SendSecurityCodeRequest.new_email)
+  return _internal_new_email();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void SendSecurityCodeRequest::set_new_email(ArgT0&& arg0, ArgT... args) {
+
+ _impl_.new_email_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:oj.biz.SendSecurityCodeRequest.new_email)
+}
+inline std::string* SendSecurityCodeRequest::mutable_new_email() {
+  std::string* _s = _internal_mutable_new_email();
+  // @@protoc_insertion_point(field_mutable:oj.biz.SendSecurityCodeRequest.new_email)
+  return _s;
+}
+inline const std::string& SendSecurityCodeRequest::_internal_new_email() const {
+  return _impl_.new_email_.Get();
+}
+inline void SendSecurityCodeRequest::_internal_set_new_email(const std::string& value) {
+
+  _impl_.new_email_.Set(value, GetArenaForAllocation());
+}
+inline std::string* SendSecurityCodeRequest::_internal_mutable_new_email() {
+
+  return _impl_.new_email_.Mutable(GetArenaForAllocation());
+}
+inline std::string* SendSecurityCodeRequest::release_new_email() {
+  // @@protoc_insertion_point(field_release:oj.biz.SendSecurityCodeRequest.new_email)
+  return _impl_.new_email_.Release();
+}
+inline void SendSecurityCodeRequest::set_allocated_new_email(std::string* new_email) {
+  if (new_email != nullptr) {
+
+  } else {
+
+  }
+  _impl_.new_email_.SetAllocated(new_email, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.new_email_.IsDefault()) {
+    _impl_.new_email_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:oj.biz.SendSecurityCodeRequest.new_email)
 }
 
 // -------------------------------------------------------------------
@@ -27124,6 +27401,8 @@ inline void InvalidateStaticCacheRequest::set_allocated_path(std::string* path) 
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

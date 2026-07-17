@@ -8,8 +8,6 @@
 
 #include <brpc/controller.h>
 
-#include "model/odb_adapter.hpp"
-#include "oj::util.hpp"
 #include "control/oj_control.hpp"
 #include "oj_admin.hpp"
 #include "rpc/oj_admin_service_impl.hpp"
@@ -101,7 +99,7 @@ void CheckNamingAndRoles()
 void CheckNoDatabasePaths()
 {
     oj::control::Control control;
-    oj::admin::AdminSessionStore sessions;
+    oj::admin::AdminSessionStore sessions(false);
     oj::runtime::BusinessExecutor executor({.worker_count = 1, .queue_capacity = 4});
     Check(executor.Start(), "executor starts");
     oj::rpc::OJAdminServiceImpl service(control, sessions, executor);
@@ -129,7 +127,7 @@ void CheckNoDatabasePaths()
 void CheckQueueRejection()
 {
     oj::control::Control control;
-    oj::admin::AdminSessionStore sessions;
+    oj::admin::AdminSessionStore sessions(false);
     oj::runtime::BusinessExecutor executor({.worker_count = 1, .queue_capacity = 1});
     Check(executor.Start(), "bounded executor starts");
     oj::rpc::OJAdminServiceImpl service(control, sessions, executor);
@@ -152,6 +150,30 @@ void CheckQueueRejection()
     executor.Stop();
 }
 
+void CheckLogoutRevocationFailure()
+{
+    oj::control::Control control;
+    oj::admin::AdminSessionStore sessions(true, "tcp://127.0.0.1:1");
+    oj::runtime::BusinessExecutor executor({.worker_count = 1, .queue_capacity = 2});
+    Check(executor.Start(), "logout executor starts");
+    oj::rpc::OJAdminServiceImpl service(control, sessions, executor);
+    TestController controller;
+    controller.http_request().set_method(brpc::HTTP_METHOD_POST);
+    controller.http_request().set_content_type("application/protobuf");
+    controller.http_request().SetHeader("Cookie", "oj_admin_session_id=unconfirmed");
+    oj::common::EmptyRequest request;
+    oj::common::EmptyResponse response;
+    Done done;
+    service.AdminLogout(&controller, &request, &response, &done);
+    Check(done.Wait(), "failed admin revocation completes");
+    Check(response.status().code() == 503 && response.status().message() == "SESSION_REVOCATION_FAILED" &&
+              response.status().retryable(),
+          "failed admin revocation returns retryable status");
+    Check(controller.http_response().GetHeader("Set-Cookie") == nullptr,
+          "failed admin revocation does not clear retry cookie");
+    executor.Stop();
+}
+
 } // namespace
 
 int main()
@@ -159,6 +181,7 @@ int main()
     CheckNamingAndRoles();
     CheckNoDatabasePaths();
     CheckQueueRejection();
+    CheckLogoutRevocationFailure();
     std::cout << "oj_admin_service_rpc_test: PASS\n";
     return 0;
 }

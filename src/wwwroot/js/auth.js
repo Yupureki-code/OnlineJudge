@@ -81,7 +81,7 @@
     }
 
     async function getJson(url) {
-        const response = await fetch(url, {
+        const response = await OJApi.fetch(url, {
             method: "GET",
             credentials: "include"
         });
@@ -101,7 +101,7 @@
     }
 
     async function postJson(url, body) {
-        const response = await fetch(url, {
+        const response = await OJApi.fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -132,7 +132,7 @@
             };
         }
 
-        const result = await getJson("/api/user/info");
+        const result = await getJson("/api/user");
         if (result.ok && result.data && result.data.success && result.data.user) {
             return result.data.user;
         }
@@ -438,7 +438,7 @@
 
         setAuthBusy(true);
         try {
-            const result = await postJson("/api/auth/send_code", { email: email });
+            const result = await postJson("/api/auth/registration-code", { email: email });
             if (result.ok && result.data && result.data.success) {
                 startCooldown(Number(result.data.retry_after_seconds || 60));
                 if (msgId === "reg-message") setRegMessage("验证码已发送，请查收邮箱", false);
@@ -469,8 +469,8 @@
         setAuthBusy(true);
         setAuthMessage("正在登录...", false);
         try {
-            const result = await postJson("/api/user/password/login", {
-                username: username,
+            const result = await postJson("/api/auth/login/password", {
+                email_or_name: username,
                 password: password
             });
 
@@ -509,11 +509,9 @@
         setAuthBusy(true);
         setAuthMessage("正在登录...", false);
         try {
-            const result = await postJson("/api/auth/verify_code", {
+            const result = await postJson("/api/auth/login/code", {
                 email: email,
-                code: code,
-                name: "",
-                password: ""
+                verification_code: code
             });
 
             if (result.ok && result.data && result.data.success) {
@@ -563,9 +561,9 @@
         setAuthBusy(true);
         setRegMessage("正在注册...", false);
         try {
-            const result = await postJson("/api/auth/verify_code", {
+            const result = await postJson("/api/auth/register", {
                 email: email,
-                code: code,
+                verification_code: code,
                 name: name,
                 password: password
             });
@@ -605,7 +603,7 @@
 
     async function logoutAndRefresh() {
         try {
-            await postJson("/api/user/logout", {});
+            await postJson("/api/auth/logout", {});
         } catch (e) {}
         window.location.reload();
     }

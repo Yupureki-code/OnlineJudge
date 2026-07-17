@@ -24,14 +24,14 @@
     }
 
     async function getJson(url) {
-        var resp = await fetch(url, { credentials: "include" });
+        var resp = await OJApi.fetch(url, { credentials: "include" });
         var data = {};
         try { data = await resp.json(); } catch (e) { data = { success: false, error_code: "BAD_JSON" }; }
         return { ok: resp.ok, status: resp.status, data: data };
     }
 
     async function postJson(url, body) {
-        var resp = await fetch(url, {
+        var resp = await OJApi.fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -43,7 +43,7 @@
     }
 
     async function putJson(url, body) {
-        var resp = await fetch(url, {
+        var resp = await OJApi.fetch(url, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -55,7 +55,7 @@
     }
 
     async function deleteJson(url) {
-        var resp = await fetch(url, {
+        var resp = await OJApi.fetch(url, {
             method: "DELETE",
             credentials: "include"
         });
@@ -183,7 +183,7 @@
         var content = document.getElementById("content");
         content.innerHTML = "加载中...";
 
-        var result = await getJson("/api/admin/overview");
+        var result = await getJson("/admin/api/overview");
         if (isAuthFailure(result)) {
             redirectToLogin();
             return;
@@ -250,7 +250,7 @@
     }
 
     async function loadCacheMetrics() {
-        var result = await getJson("/api/admin/cache/metrics");
+        var result = await getJson("/admin/api/cache/metrics");
         if (!result.ok || !result.data.success) return;
         var metrics = result.data.metrics || [];
         var pillsHtml = metrics.map(function(m) {
@@ -270,7 +270,7 @@
         content.innerHTML = "加载中...";
 
         readUsersStateFromLocation();
-        var url = "/api/admin/users?page=" + state.usersPage + "&size=" + state.usersSize + "&q=" + encodeURIComponent(state.usersKeyword);
+        var url = "/admin/api/users?page=" + state.usersPage + "&page_size=" + state.usersSize + "&search=" + encodeURIComponent(state.usersKeyword);
         var result = await getJson(url);
         if (isAuthFailure(result)) {
             redirectToLogin();
@@ -320,7 +320,7 @@
 
         readQuestionsStateFromLocation();
         state.lastQuestionsListPath = buildQuestionsListPath();
-        var url = "/api/admin/questions?page=" + state.questionsPage + "&size=" + state.questionsSize + "&q=" + encodeURIComponent(state.questionsKeyword);
+        var url = "/admin/api/questions?page=" + state.questionsPage + "&page_size=" + state.questionsSize + "&search=" + encodeURIComponent(state.questionsKeyword);
         var result = await getJson(url);
         if (isAuthFailure(result)) {
             redirectToLogin();
@@ -383,7 +383,7 @@
                 if (!window.confirm("确认删除题目 #" + number + " ?")) {
                     return;
                 }
-                var resultDelete = await deleteJson("/api/admin/questions/" + encodeURIComponent(number));
+                var resultDelete = await deleteJson("/admin/api/questions/" + encodeURIComponent(number));
                 if (isAuthFailure(resultDelete)) {
                     redirectToLogin();
                     return;
@@ -406,7 +406,7 @@
         content.innerHTML = "加载中...";
 
         if (isEditMode) {
-            var detailResult = await getJson("/api/admin/questions/" + encodeURIComponent(number));
+            var detailResult = await getJson("/admin/api/questions/" + encodeURIComponent(number));
             if (isAuthFailure(detailResult)) {
                 redirectToLogin();
                 return;
@@ -462,8 +462,8 @@
             }
 
             var resultSave = isEditMode
-                ? await putJson("/api/admin/questions/" + encodeURIComponent(number), payload)
-                : await postJson("/api/admin/questions", payload);
+                ? await putJson("/admin/api/questions/" + encodeURIComponent(number), payload)
+                : await postJson("/admin/api/questions", payload);
 
             if (isAuthFailure(resultSave)) {
                 redirectToLogin();
@@ -515,7 +515,7 @@
     }
 
     async function loadTests(questionId) {
-        var result = await getJson("/api/admin/questions/" + encodeURIComponent(questionId) + "/tests");
+        var result = await getJson("/admin/api/questions/" + encodeURIComponent(questionId) + "/test-cases");
         if (isAuthFailure(result)) { redirectToLogin(); return []; }
         if (!result.ok || !result.data.success) { return []; }
         return result.data.tests || [];
@@ -550,10 +550,10 @@
         var editBtns = tbody.querySelectorAll(".test-edit-btn");
         for (var j = 0; j < editBtns.length; j++) {
             editBtns[j].onclick = function () {
-                var testId = parseInt(this.getAttribute("data-test-id"));
+                var testId = this.getAttribute("data-test-id");
                 var testData = null;
                 for (var k = 0; k < tests.length; k++) {
-                    if (tests[k].id === testId) { testData = tests[k]; break; }
+                    if (String(tests[k].id) === testId) { testData = tests[k]; break; }
                 }
                 if (testData) showTestEditForm(questionId, testData);
             };
@@ -562,7 +562,7 @@
         var deleteBtns = tbody.querySelectorAll(".test-delete-btn");
         for (var m = 0; m < deleteBtns.length; m++) {
             deleteBtns[m].onclick = function () {
-                deleteTest(parseInt(this.getAttribute("data-test-id")), questionId);
+                deleteTest(this.getAttribute("data-test-id"), questionId);
             };
         }
     }
@@ -590,7 +590,7 @@
 
     async function deleteTest(testId, questionId) {
         if (!window.confirm("确认删除测试用例 #" + testId + " ?")) return;
-        var result = await deleteJson("/api/admin/tests/" + testId);
+        var result = await deleteJson("/admin/api/test-cases/" + testId);
         if (isAuthFailure(result)) { redirectToLogin(); return; }
         if (!result.ok || !result.data.success) {
             window.alert("删除失败: " + ((result.data && result.data.error) || "未知错误"));
@@ -610,9 +610,11 @@
 
         var result;
         if (testId) {
-            result = await putJson("/api/admin/tests/" + testId, payload);
+            result = await putJson("/admin/api/test-cases/" + testId, payload);
         } else {
-            result = await postJson("/api/admin/questions/" + encodeURIComponent(questionId) + "/tests", payload);
+            var existingTests = await loadTests(questionId);
+            payload.ordinal = (existingTests ? existingTests.length : 0) + 1;
+            result = await postJson("/admin/api/questions/" + encodeURIComponent(questionId) + "/test-cases", payload);
         }
 
         if (isAuthFailure(result)) { redirectToLogin(); return; }
@@ -671,7 +673,7 @@
 
         var logoutBtn = document.getElementById("logout-btn");
         logoutBtn.onclick = async function () {
-            await postJson("/api/admin/auth/logout", {});
+            await postJson("/admin/api/auth/logout", {});
             redirectToLogin();
         };
     }

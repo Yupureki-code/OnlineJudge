@@ -3,6 +3,10 @@
 #include "control_base.hpp"
 #include "../../../comm/models/user.hxx"
 #include "../../../comm/models/admin.hxx"
+#include <array>
+#include <cstdint>
+#include <openssl/crypto.h>
+#include <openssl/rand.h>
 
 
 namespace oj::control
@@ -33,9 +37,17 @@ namespace oj::control
 
         inline std::string GenerateAuthCode()
         {
-            static thread_local std::mt19937 rng(std::random_device{}());
-            std::uniform_int_distribution<int> dist(0, 999999);
-            int value = dist(rng);
+            uint32_t random_value = 0;
+            constexpr uint32_t kRange = 1000000;
+            constexpr uint32_t kLimit = UINT32_MAX - (UINT32_MAX % kRange);
+            do
+            {
+                if (RAND_bytes(reinterpret_cast<unsigned char*>(&random_value), sizeof(random_value)) != 1)
+                {
+                    return {};
+                }
+            } while (random_value >= kLimit);
+            int value = static_cast<int>(random_value % kRange);
             std::ostringstream oss;
             oss.width(6);
             oss.fill('0');
@@ -150,12 +162,10 @@ namespace oj::control
 
         std::string GenerateSaltHex(size_t bytes)
         {
-            static thread_local std::mt19937 rng(std::random_device{}());
-            std::uniform_int_distribution<int> dist(0, 255);
             std::vector<unsigned char> raw(bytes);
-            for (size_t i = 0; i < bytes; ++i)
+            if (bytes == 0 || RAND_bytes(raw.data(), raw.size()) != 1)
             {
-                raw[i] = static_cast<unsigned char>(dist(rng));
+                return {};
             }
             return ToHex(raw.data(), raw.size());
         }
@@ -175,6 +185,10 @@ namespace oj::control
         {
             const int iter = PasswordIterations();
             std::string salt = GenerateSaltHex(16);
+            if (salt.empty())
+            {
+                return {};
+            }
             std::string digest = DerivePasswordDigest(password, salt, iter);
             if (digest.empty())
             {
@@ -243,18 +257,140 @@ namespace oj::control
                 return false;
             }
 
-            if (iter <= 0)
+            if (iter != PasswordIterations() || salt.size() != 32 || parts[2].size() != SHA256_DIGEST_LENGTH * 2)
             {
                 return false;
             }
 
             std::string expected = DerivePasswordDigest(password, salt, iter);
-            return expected == parts[2];
+            return expected.size() == parts[2].size() &&
+                   CRYPTO_memcmp(expected.data(), parts[2].data(), expected.size()) == 0;
+        }
+
+        inline std::string DummyPasswordHash()
+        {
+            static const std::string hash = []() {
+                const std::string salt(32, '0');
+                return salt + "$" + std::to_string(PasswordIterations()) + "$" +
+                       DerivePasswordDigest("invalid-password", salt, PasswordIterations());
+            }();
+            return hash;
+        }
+
+        inline std::string LoginRateKey(const std::string& scope,
+                                        const std::string& dimension,
+                                        const std::string& value,
+                                        const std::string& suffix)
+        {
+            return "oj:auth:password:" + scope + ":" + dimension + ":" +
+                   Sha256Hex(value) + ":" + suffix;
+        }
+
+        inline bool CheckPasswordLoginRate(sw::redis::Redis& redis,
+                                           const std::string& scope,
+                                           const std::string& account,
+                                           const std::string& client_ip,
+                                           std::string* err_code)
+        {
+            try
+            {
+                static constexpr const char* kCheckScript = R"lua(
+                    if redis.call('EXISTS', KEYS[1]) == 1 or redis.call('EXISTS', KEYS[2]) == 1 then
+                        return 0
+                    end
+                    return 1
+                )lua";
+                const long long allowed = redis.eval<long long>(
+                    kCheckScript,
+                    {LoginRateKey(scope, "account", account, "lock"),
+                     LoginRateKey(scope, "ip", client_ip, "lock")}, {});
+                if (allowed != 1)
+                {
+                    if (err_code != nullptr) *err_code = "TOO_MANY_REQUESTS";
+                    return false;
+                }
+                return true;
+            }
+            catch (const sw::redis::Error& e)
+            {
+                LOG_ERROR("{}{}", "Redis password login rate check failed: ", e.what());
+                if (err_code != nullptr) *err_code = "REDIS_ERROR";
+                return false;
+            }
+        }
+
+        inline void RecordPasswordLoginFailure(sw::redis::Redis& redis,
+                                               const std::string& scope,
+                                               const std::string& account,
+                                               const std::string& client_ip)
+        {
+            static constexpr const char* kFailureScript = R"lua(
+                local window = tonumber(ARGV[1])
+                local function validate(attempts_key)
+                    local value = redis.call('GET', attempts_key)
+                    if value then
+                        local parsed = tonumber(value)
+                        if not parsed or parsed < 0 or parsed ~= math.floor(parsed) then
+                            return redis.error_reply('invalid login attempt counter')
+                        end
+                    end
+                    return false
+                end
+                local account_error = validate(KEYS[1])
+                if account_error then return account_error end
+                local ip_error = validate(KEYS[3])
+                if ip_error then return ip_error end
+                local function record(attempts_key, lock_key, threshold)
+                    local attempts = redis.call('INCR', attempts_key)
+                    if attempts == 1 then redis.call('EXPIRE', attempts_key, window) end
+                    if attempts >= threshold then
+                        local exponent = math.min(6, attempts - threshold)
+                        local lock_seconds = math.min(window, 5 * (2 ^ exponent))
+                        redis.call('SETEX', lock_key, lock_seconds, '1')
+                    end
+                    return attempts
+                end
+                local account_attempts = record(KEYS[1], KEYS[2], tonumber(ARGV[2]))
+                local ip_attempts = record(KEYS[3], KEYS[4], tonumber(ARGV[3]))
+                return math.max(account_attempts, ip_attempts)
+            )lua";
+            redis.eval<long long>(
+                kFailureScript,
+                {LoginRateKey(scope, "account", account, "attempts"),
+                 LoginRateKey(scope, "account", account, "lock"),
+                 LoginRateKey(scope, "ip", client_ip, "attempts"),
+                 LoginRateKey(scope, "ip", client_ip, "lock")},
+                {"900", "5", "50"});
+        }
+
+        inline void ClearPasswordLoginAccountRate(sw::redis::Redis& redis,
+                                                  const std::string& scope,
+                                                  const std::string& account)
+        {
+            redis.del(LoginRateKey(scope, "account", account, "attempts"));
+            redis.del(LoginRateKey(scope, "account", account, "lock"));
+        }
+
+        inline std::string BuildEmailChangeCodeKey(int uid, const std::string& new_email)
+        {
+            return "oj:auth:change-email:" + std::to_string(uid) + ":" + Sha256Hex(new_email) + ":code";
+        }
+
+        inline std::string BuildEmailChangeAttemptsKey(int uid, const std::string& new_email)
+        {
+            return "oj:auth:change-email:" + std::to_string(uid) + ":" + Sha256Hex(new_email) + ":attempts";
         }
     }
     class ControlAuth : public ControlBase
     {
     public:
+        bool BuildSecurePasswordHash(const std::string& password,
+                                     std::string* password_hash,
+                                     std::string* err_code)
+        {
+            return oj::control::BuildSecurePasswordHash(password, password_hash, err_code);
+        }
+
         //发送邮箱验证码
         bool SendEmailAuthCode(const std::string& email, const std::string& client_ip, std::string* err_code, int* retry_after_seconds)
         {
@@ -317,6 +453,12 @@ namespace oj::control
                 _auth_redis.setex(cooldown_key, kCooldownSeconds, "1");
 
                 std::string code = GenerateAuthCode();
+                if (code.empty())
+                {
+                    _auth_redis.del(cooldown_key);
+                    if (err_code != nullptr) *err_code = "CSPRNG_FAILED";
+                    return false;
+                }
                 _auth_redis.setex(BuildAuthCodeKey(email), kCodeTtlSeconds, code);
                 _auth_redis.del(BuildAuthAttemptsKey(email));
 
@@ -346,6 +488,84 @@ namespace oj::control
                 {
                     *err_code = "REDIS_ERROR";
                 }
+                return false;
+            }
+        }
+
+        bool SendEmailChangeCode(const User& current_user,
+                                 const std::string& new_email,
+                                 const std::string& client_ip,
+                                 std::string* err_code,
+                                 int* retry_after_seconds)
+        {
+            constexpr int kCodeTtlSeconds = 300;
+            constexpr int kCooldownSeconds = 60;
+            constexpr int kEmailDailyLimit = 20;
+            constexpr int kIpDailyLimit = 50;
+            if (retry_after_seconds != nullptr) *retry_after_seconds = 0;
+            if (new_email == current_user.email)
+            {
+                if (err_code != nullptr) *err_code = "SAME_EMAIL";
+                return false;
+            }
+            if (_model.User().CheckUser(new_email))
+            {
+                if (err_code != nullptr) *err_code = "EMAIL_ALREADY_EXISTS";
+                return false;
+            }
+
+            try
+            {
+                const std::string cooldown_key = "oj:auth:change-email:cooldown:" +
+                    std::to_string(current_user.uid) + ":" + Sha256Hex(new_email);
+                if (_auth_redis.exists(cooldown_key))
+                {
+                    if (err_code != nullptr) *err_code = "TOO_MANY_REQUESTS";
+                    if (retry_after_seconds != nullptr) *retry_after_seconds = kCooldownSeconds;
+                    return false;
+                }
+                const std::string email_limit_key = BuildAuthEmailDailyLimitKey(new_email);
+                const long long email_count = _auth_redis.incr(email_limit_key);
+                if (email_count == 1) _auth_redis.expire(email_limit_key, SecondsUntilDayEnd());
+                if (email_count > kEmailDailyLimit)
+                {
+                    if (err_code != nullptr) *err_code = "EMAIL_DAILY_LIMIT";
+                    return false;
+                }
+                const std::string ip_limit_key = BuildAuthIpDailyLimitKey(client_ip);
+                const long long ip_count = _auth_redis.incr(ip_limit_key);
+                if (ip_count == 1) _auth_redis.expire(ip_limit_key, SecondsUntilDayEnd());
+                if (ip_count > kIpDailyLimit)
+                {
+                    if (err_code != nullptr) *err_code = "IP_DAILY_LIMIT";
+                    return false;
+                }
+
+                const std::string code = GenerateAuthCode();
+                if (code.empty())
+                {
+                    if (err_code != nullptr) *err_code = "CSPRNG_FAILED";
+                    return false;
+                }
+                _auth_redis.setex(cooldown_key, kCooldownSeconds, "1");
+                _auth_redis.setex(BuildEmailChangeCodeKey(current_user.uid, new_email), kCodeTtlSeconds, code);
+                _auth_redis.del(BuildEmailChangeAttemptsKey(current_user.uid, new_email));
+                const auto send_result = _mail.SendAuthCodeMail(new_email, code);
+                if (!send_result.ok)
+                {
+                    _auth_redis.del(BuildEmailChangeCodeKey(current_user.uid, new_email));
+                    _auth_redis.del(BuildEmailChangeAttemptsKey(current_user.uid, new_email));
+                    _auth_redis.del(cooldown_key);
+                    if (err_code != nullptr) *err_code = "MAIL_SEND_FAILED";
+                    return false;
+                }
+                if (retry_after_seconds != nullptr) *retry_after_seconds = kCooldownSeconds;
+                return true;
+            }
+            catch (const sw::redis::Error& e)
+            {
+                LOG_ERROR("{}{}", "Redis email change code failed: ", e.what());
+                if (err_code != nullptr) *err_code = "REDIS_ERROR";
                 return false;
             }
         }
@@ -678,14 +898,41 @@ namespace oj::control
                 }
                 return false;
             }
-            //检查验证码正确性
-            std::string verify_err;
-            if (!VerifyEmailAuthCode(current_user.email, code, &verify_err))
+            constexpr int kCodeTtlSeconds = 300;
+            constexpr int kMaxAttempts = 5;
+            try
             {
-                if (err_code != nullptr)
+                const std::string code_key = BuildEmailChangeCodeKey(current_user.uid, new_email);
+                const std::string attempts_key = BuildEmailChangeAttemptsKey(current_user.uid, new_email);
+                const auto cached_code = _auth_redis.get(code_key);
+                if (!cached_code)
                 {
-                    *err_code = verify_err;
+                    if (err_code != nullptr) *err_code = "CODE_EXPIRED";
+                    return false;
                 }
+                if (cached_code.value() != code)
+                {
+                    const long long attempts = _auth_redis.incr(attempts_key);
+                    if (attempts == 1) _auth_redis.expire(attempts_key, kCodeTtlSeconds);
+                    if (attempts >= kMaxAttempts)
+                    {
+                        _auth_redis.del(code_key);
+                        _auth_redis.del(attempts_key);
+                        if (err_code != nullptr) *err_code = "ATTEMPTS_EXCEEDED";
+                    }
+                    else if (err_code != nullptr)
+                    {
+                        *err_code = "CODE_MISMATCH";
+                    }
+                    return false;
+                }
+                _auth_redis.del(code_key);
+                _auth_redis.del(attempts_key);
+            }
+            catch (const sw::redis::Error& e)
+            {
+                LOG_ERROR("{}{}", "Redis email change verify failed: ", e.what());
+                if (err_code != nullptr) *err_code = "REDIS_ERROR";
                 return false;
             }
             //检查用户是否存在
@@ -766,6 +1013,7 @@ namespace oj::control
         //邮箱/用户名+密码登陆
         bool LoginWithPassword(const std::string& email_or_username,
                                const std::string& password,
+                               const std::string& client_ip,
                                User* user,
                                std::string* err_code)
         {
@@ -775,6 +1023,11 @@ namespace oj::control
                 {
                     *err_code = "INVALID_ARGUMENT";
                 }
+                return false;
+            }
+
+            if (!CheckPasswordLoginRate(_auth_redis, "user", email_or_username, client_ip, err_code))
+            {
                 return false;
             }
 
@@ -806,30 +1059,36 @@ namespace oj::control
                 }
             }
 
-            if (!found || password_hash.empty())
+            const bool has_password = found && !password_hash.empty() &&
+                                      password_algo == PasswordAlgoTag();
+            const bool candidate_size_valid = password.size() <= 72;
+            const bool password_matches = VerifyPasswordHash(
+                candidate_size_valid ? password : std::string("invalid-password"),
+                has_password ? password_hash : DummyPasswordHash(),
+                PasswordAlgoTag());
+            if (!has_password || !candidate_size_valid || !password_matches)
             {
-                if (err_code != nullptr)
+                try
                 {
-                    *err_code = "USER_NOT_FOUND";
+                    RecordPasswordLoginFailure(_auth_redis, "user", email_or_username, client_ip);
                 }
+                catch (const sw::redis::Error& e)
+                {
+                    LOG_ERROR("{}{}", "Redis password login failure record failed: ", e.what());
+                    if (err_code != nullptr) *err_code = "REDIS_ERROR";
+                    return false;
+                }
+                if (err_code != nullptr) *err_code = "INVALID_CREDENTIALS";
                 return false;
             }
-
-            if (password_algo.empty() || password_algo == "none")
+            try
             {
-                if (err_code != nullptr)
-                {
-                    *err_code = "PASSWORD_NOT_SET";
-                }
-                return false;
+                ClearPasswordLoginAccountRate(_auth_redis, "user", email_or_username);
             }
-            //判断密码是否正确
-            if (!VerifyPasswordHash(password, password_hash, password_algo))
+            catch (const sw::redis::Error& e)
             {
-                if (err_code != nullptr)
-                {
-                    *err_code = "PASSWORD_MISMATCH";
-                }
+                LOG_ERROR("{}{}", "Redis password login success record failed: ", e.what());
+                if (err_code != nullptr) *err_code = "REDIS_ERROR";
                 return false;
             }
             //更新登陆时间
@@ -846,8 +1105,9 @@ namespace oj::control
         }
 
         bool LoginAdminWithIdAndPassword(int admin_id,
-                                         const std::string& password,
-                                         AdminAccount* admin,
+                                          const std::string& password,
+                                          const std::string& client_ip,
+                                          AdminAccount* admin,
                                          User* user,
                                          std::string* err_code)
         {
@@ -869,21 +1129,41 @@ namespace oj::control
                 return false;
             }
 
-            if (!_model.GetAdminByAdminId(admin_id, admin))
+            const std::string account = std::to_string(admin_id);
+            if (!CheckPasswordLoginRate(_auth_redis, "admin", account, client_ip, err_code))
             {
-                if (err_code != nullptr)
-                {
-                    *err_code = "INVALID_CREDENTIALS";
-                }
                 return false;
             }
 
-            if (!VerifyPasswordHash(password, admin->password_hash, PasswordAlgoTag()))
+            const bool found = _model.GetAdminByAdminId(admin_id, admin);
+            const bool candidate_size_valid = password.size() <= 72;
+            const bool password_matches = VerifyPasswordHash(
+                candidate_size_valid ? password : std::string("invalid-password"),
+                found ? admin->password_hash : DummyPasswordHash(), PasswordAlgoTag());
+            if (!found || !candidate_size_valid || !password_matches)
             {
-                if (err_code != nullptr)
+                try
                 {
-                    *err_code = "INVALID_CREDENTIALS";
+                    RecordPasswordLoginFailure(_auth_redis, "admin", account, client_ip);
                 }
+                catch (const sw::redis::Error& e)
+                {
+                    LOG_ERROR("{}{}", "Redis admin login failure record failed: ", e.what());
+                    if (err_code != nullptr) *err_code = "REDIS_ERROR";
+                    return false;
+                }
+                if (err_code != nullptr) *err_code = "INVALID_CREDENTIALS";
+                return false;
+            }
+
+            try
+            {
+                ClearPasswordLoginAccountRate(_auth_redis, "admin", account);
+            }
+            catch (const sw::redis::Error& e)
+            {
+                LOG_ERROR("{}{}", "Redis admin login success record failed: ", e.what());
+                if (err_code != nullptr) *err_code = "REDIS_ERROR";
                 return false;
             }
 

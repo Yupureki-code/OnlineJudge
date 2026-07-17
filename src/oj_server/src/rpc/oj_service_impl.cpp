@@ -1,19 +1,30 @@
 #include "../../include/rpc/oj_service_impl.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cctype>
 #include <cstdint>
+#include <cstdlib>
+#include <ctime>
 #include <memory>
+#include <set>
+#include <sstream>
 #include <string>
+#include <string_view>
 #include <brpc/controller.h>
 #include <jsoncpp/json/json.h>
+#include <openssl/rand.h>
+#include <google/protobuf/util/json_util.h>
 
 #include "../../include/control/oj_control.hpp"
 #include "../../include/rpc/async_dispatch.hpp"
 #include "../../include/rpc/proto_adapter.hpp"
 #include "../../include/rpc/session_adapter.hpp"
+#include "../../include/judge/outbox_publisher.hpp"
 #include "../../../comm/models/user.hxx"
 #include "../../../comm/models/question.hxx"
+#include "../../../comm/proto/mq_message.pb.h"
+#include "../../../comm/judge_callback_auth.hpp"
 
 namespace oj::rpc
 {
@@ -25,14 +36,15 @@ namespace oj::rpc
 
     int ErrorCode(const std::string& error)
     {
-        if (error == "UNAUTHORIZED") return 401;
+        if (error == "UNAUTHORIZED" || error == "INVALID_CREDENTIALS") return 401;
         if (error == "FORBIDDEN") return 403;
         if (error == "QUESTION_NOT_FOUND" || error == "SOLUTION_NOT_FOUND" ||
             error == "COMMENT_NOT_FOUND" || error == "NOT_FOUND" || error == "PARENT_NOT_FOUND") return 404;
         if (error == "NAME_TAKEN" || error == "EMAIL_ALREADY_EXISTS") return 409;
         if (error == "TOO_MANY_REQUESTS" || error == "EMAIL_DAILY_LIMIT" ||
             error == "IP_DAILY_LIMIT" || error == "ATTEMPTS_EXCEEDED") return 429;
-        if (error == "DB_ERROR" || error == "REDIS_ERROR" || error == "MAIL_SEND_FAILED" ||
+        if (error == "REDIS_ERROR") return 503;
+        if (error == "DB_ERROR" || error == "MAIL_SEND_FAILED" || error == "CSPRNG_FAILED" ||
             error == "SAVE_FAILED" || error == "CREATE_FAILED" || error == "UPDATE_FAILED" ||
             error == "DELETE_FAILED" || error == "CREATE_SOLUTION_FAILED") return 500;
         return 400;
@@ -61,6 +73,50 @@ namespace oj::rpc
     {
         return oj::util::StringUtil::IsValidAuthCode(oj::util::StringUtil::Trim(code));
     }
+
+    std::string RandomHex(std::size_t bytes)
+    {
+        std::string random(bytes, '\0');
+        if (bytes == 0 || RAND_bytes(reinterpret_cast<unsigned char*>(random.data()), bytes) != 1)
+            return {};
+        static constexpr char hex[] = "0123456789abcdef";
+        std::string output(bytes * 2, '0');
+        for (std::size_t index = 0; index < bytes; ++index) {
+            const unsigned char value = static_cast<unsigned char>(random[index]);
+            output[index * 2] = hex[value >> 4];
+            output[index * 2 + 1] = hex[value & 0x0f];
+        }
+        return output;
+    }
+
+    bool SupportedLanguage(const std::string& language)
+    {
+        static const std::set<std::string> supported{"cpp", "cpp17", "cpp20", "c++"};
+        return supported.contains(language);
+    }
+
+    bool VerifyCallbackHmac(const oj::biz::UpdateJudgeResultRequest& request)
+    {
+        const char* configured_id = std::getenv("OJ_JUDGE_CALLBACK_KEY_ID");
+        const char* configured_secret = std::getenv("OJ_JUDGE_CALLBACK_SECRET");
+        if (configured_id == nullptr || configured_secret == nullptr || *configured_secret == '\0' ||
+            request.service_auth().key_id() != configured_id ||
+            request.service_auth().hmac_sha256().size() != 32) return false;
+        return oj::security::VerifyJudgeCallbackHmac(request, configured_secret);
+    }
+
+    bool ValidateTaskPayload(const oj::db::JudgeOutbox& outbox,
+                             const oj::biz::UpdateJudgeResultRequest& request,
+                             oj::mq::JudgeTaskMessage* task)
+    {
+        const std::string payload(outbox.payload.begin(), outbox.payload.end());
+        if (task == nullptr || !task->ParseFromString(payload) || task->message_id() != request.message_id())
+            return false;
+        return (request.has_submission_id() && task->has_submission_id() &&
+                task->submission_id() == request.submission_id()) ||
+               (request.has_custom_task_id() && task->has_custom_task_id() &&
+                task->custom_task_id() == request.custom_task_id());
+    }
     //通过session获取用户信息
     bool RequireUser(brpc::Controller* controller, const std::shared_ptr<oj::control::Control>& control,
                     User* user, oj::common::StatusResponse* status)
@@ -80,19 +136,20 @@ namespace oj::rpc
         output->set_accepted_questions(stats.get("passed_questions", 0).asUInt64());
     }
     //填充题解操作Response
-    void FillSolutionActions(const Json::Value& result, oj::biz::SolutionActionResponse* response)
+    void FillSolutionActions(const oj::control::ActionState& result, oj::biz::SolutionActionResponse* response)
     {
-        response->mutable_actions()->set_liked(result.get("liked", false).asBool());
-        response->mutable_actions()->set_favorited(result.get("favorited", false).asBool());
-        response->set_like_count(result.get("like_count", 0).asUInt64());
-        response->set_favorite_count(result.get("favorite_count", 0).asUInt64());
+        response->mutable_actions()->set_liked(result.liked);
+        response->mutable_actions()->set_favorited(result.favorited);
+        response->set_like_count(result.like_count);
+        response->set_favorite_count(result.favorite_count);
     }
     //填充评论操作Response
-    void FillCommentAction(uint64_t id, const Json::Value& result, oj::common::CommentActionState* output)
+    void FillCommentAction(uint64_t id, const oj::control::ActionState& result,
+                           oj::common::CommentActionState* output)
     {
         output->set_comment_id(id);
-        output->set_liked(result.get("liked", result.get("like", false)).asBool());
-        output->set_favorited(result.get("favorited", result.get("favorite", false)).asBool());
+        output->set_liked(result.liked);
+        output->set_favorited(result.favorited);
     }
 
     template <typename Request, typename Response>
@@ -107,8 +164,9 @@ namespace oj::rpc
     } // namespace
 
     OJServiceImpl::OJServiceImpl(std::shared_ptr<oj::control::Control> control,
-                                oj::runtime::BusinessExecutor& executor)
-        : _control(std::move(control)), _executor(executor)
+                                 oj::runtime::BusinessExecutor& executor,
+                                 oj::judge::OutboxPublisher* outbox_publisher)
+        : _control(std::move(control)), _executor(executor), _outbox_publisher(outbox_publisher)
     {
     }
 
@@ -195,7 +253,9 @@ namespace oj::rpc
                 if (input->password().empty()) return Fail(output, 400, "PASSWORD_REQUIRED");
                 User user{};
                 std::string error;
-                if (!control->Auth().LoginWithPassword(login, input->password(), &user, &error))
+                if (!control->Auth().LoginWithPassword(
+                        login, input->password(), cntl == nullptr ? std::string{} : SessionAdapter::RemoteIp(*cntl),
+                        &user, &error))
                     return Fail(output, ErrorCode(error), error);
                 if (cntl == nullptr || SessionAdapter::CreateSession(*cntl, *control, user.uid, user.email).empty())
                     return Fail(output, 500, "SESSION_CREATE_FAILED");
@@ -211,7 +271,8 @@ namespace oj::rpc
         auto control = _control;
         AsyncDispatch(_executor, controller, request, response, done,
             [control](brpc::Controller* cntl, const auto*, auto* output) {
-                if (cntl != nullptr) SessionAdapter::DestroySession(*cntl, *control);
+                if (cntl != nullptr && !SessionAdapter::DestroySession(*cntl, *control))
+                    return Fail(output, 503, "SESSION_REVOCATION_FAILED");
                 ProtoAdapter::SetOk(output->mutable_status());
             });
     }
@@ -233,19 +294,28 @@ namespace oj::rpc
     }
     //验证用户信息并发送邮箱验证码
     void OJServiceImpl::SendSecurityCode(google::protobuf::RpcController* controller,
-                                        const oj::common::EmptyRequest* request,
+                                        const oj::biz::SendSecurityCodeRequest* request,
                                         oj::biz::SendVerificationCodeResponse* response,
                                         google::protobuf::Closure* done)
     {
         auto control = _control;
         AsyncDispatch(_executor, controller, request, response, done,
-            [control](brpc::Controller* cntl, const auto*, auto* output) {
+            [control](brpc::Controller* cntl, const auto* input, auto* output) {
                 User user{};
                 if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
                 std::string error;
                 int retry = 0;
-                const bool ok = control->Auth().SendEmailAuthCode(
-                    user.email, cntl == nullptr ? std::string{} : SessionAdapter::RemoteIp(*cntl), &error, &retry);
+                const std::string client_ip = cntl == nullptr ? std::string{} : SessionAdapter::RemoteIp(*cntl);
+                bool ok = false;
+                if (input->purpose().empty() || input->purpose() == "current_account") {
+                    ok = control->Auth().SendEmailAuthCode(user.email, client_ip, &error, &retry);
+                } else if (input->purpose() == "change_email") {
+                    const std::string new_email = oj::util::StringUtil::Trim(input->new_email());
+                    if (!oj::util::StringUtil::IsValidEmail(new_email)) return Fail(output, 400, "INVALID_EMAIL");
+                    ok = control->Auth().SendEmailChangeCode(user, new_email, client_ip, &error, &retry);
+                } else {
+                    return Fail(output, 400, "INVALID_SECURITY_CODE_PURPOSE");
+                }
                 output->set_retry_after_seconds(std::max(0, retry));
                 ok ? ProtoAdapter::SetOk(output->mutable_status()) : Fail(output, ErrorCode(error), error);
             });
@@ -287,7 +357,8 @@ namespace oj::rpc
                 if (!control->Auth().ChangeEmailWithCode(user, email, code, &updated, &error))
                     return Fail(output, ErrorCode(error), error);
                 if (cntl != nullptr) {
-                    SessionAdapter::DestroySession(*cntl, *control);
+                    if (!SessionAdapter::DestroySession(*cntl, *control))
+                        return Fail(output, 503, "SESSION_REVOCATION_FAILED");
                     if (SessionAdapter::CreateSession(*cntl, *control, updated.uid, updated.email).empty())
                         return Fail(output, 500, "SESSION_CREATE_FAILED");
                 }
@@ -309,7 +380,8 @@ namespace oj::rpc
                 std::string error;
                 if (!control->Auth().DeleteAccountWithCode(user.email, code, &error))
                     return Fail(output, ErrorCode(error), error);
-                if (cntl != nullptr) SessionAdapter::DestroySession(*cntl, *control);
+                if (cntl != nullptr && !SessionAdapter::DestroySession(*cntl, *control))
+                    return Fail(output, 503, "SESSION_REVOCATION_FAILED");
                 ProtoAdapter::SetOk(output->mutable_status());
             });
     }
@@ -546,13 +618,14 @@ namespace oj::rpc
                 const int page = input.page().page() == 0 ? 1 :
                     static_cast<int>(std::min(input.page().page(), 100u));
                 const int size = input.page().page_size() == 0 ? 10 : static_cast<int>(std::min(input.page().page_size(), 50u));
-                Json::Value result;
+                std::vector<Solution> solutions;
+                int total = 0;
                 std::string error;
                 if (!control->Solution().GetSolutionList(input.question_id(), "approved", input.sort_by(),
-                                                        page, size, &result, &error))
+                                                        page, size, &solutions, &total, &error))
                     return Fail(output, ErrorCode(error), error);
-                for (const auto& item : result["solutions"]) ProtoAdapter::ToProto(item, output->add_solutions());
-                ProtoAdapter::SetPage(input.page(), result.get("total", 0).asUInt64(), output->mutable_page(), 10, 50);
+                for (const auto& item : solutions) ProtoAdapter::ToProto(item, output->add_solutions());
+                ProtoAdapter::SetPage(input.page(), total, output->mutable_page(), 10, 50);
                 ProtoAdapter::SetOk(output->mutable_status());
             });
     }
@@ -566,19 +639,20 @@ namespace oj::rpc
         AsyncDispatch(_executor, controller, request, response, done,
             [control](brpc::Controller* cntl, const auto* input, auto* output) {
                 if (input->solution_id() == 0) return Fail(output, 400, "INVALID_ID");
-                Json::Value result;
+                Solution result{};
+                User author{};
                 std::string error;
-                if (!control->Solution().GetSolutionDetail(input->solution_id(), &result, &error))
+                if (!control->Solution().GetSolutionDetail(input->solution_id(), &result, &author, &error))
                     return Fail(output, ErrorCode(error), error);
                 ProtoAdapter::ToProto(result, output->mutable_solution());
-                output->mutable_author()->set_uid(output->solution().user_id());
-                output->mutable_author()->set_name(result.get("author_name", "").asString());
+                output->mutable_author()->set_uid(result.user_id);
+                output->mutable_author()->set_name(author.name);
                 User user{};
-                Json::Value actions;
+                oj::control::ActionState actions;
                 if (cntl != nullptr && SessionAdapter::GetSessionUser(*cntl, *control, &user) &&
-                    control->Solution().GetUserSolutionActions(input->solution_id(), user.uid, &actions)) {
-                    output->mutable_current_user_actions()->set_liked(actions.get("liked", false).asBool());
-                    output->mutable_current_user_actions()->set_favorited(actions.get("favorited", false).asBool());
+                    control->Solution().GetUserSolutionActions(input->solution_id(), user.uid, &actions, &error)) {
+                    output->mutable_current_user_actions()->set_liked(actions.liked);
+                    output->mutable_current_user_actions()->set_favorited(actions.favorited);
                 }
                 ProtoAdapter::SetOk(output->mutable_status());
             });
@@ -627,7 +701,7 @@ namespace oj::rpc
                 User user{};
                 if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
                 if (input->solution_id() == 0) return Fail(output, 400, "INVALID_ID");
-                Json::Value result; std::string error;
+                oj::control::ActionState result; std::string error;
                 if (!control->Solution().ToggleLike(input->solution_id(), user, &result, &error))
                     return Fail(output, ErrorCode(error), error);
                 FillSolutionActions(result, output); ProtoAdapter::SetOk(output->mutable_status());
@@ -645,7 +719,7 @@ namespace oj::rpc
                 User user{};
                 if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
                 if (input->solution_id() == 0) return Fail(output, 400, "INVALID_ID");
-                Json::Value result; std::string error;
+                oj::control::ActionState result; std::string error;
                 if (!control->Solution().ToggleFavorite(input->solution_id(), user, &result, &error))
                     return Fail(output, ErrorCode(error), error);
                 FillSolutionActions(result, output); ProtoAdapter::SetOk(output->mutable_status());
@@ -661,10 +735,11 @@ namespace oj::rpc
         AsyncDispatch(_executor, controller, request, response, done,
             [control](brpc::Controller* cntl, const auto* input, auto* output) {
                 if (input->solution_id() == 0) return Fail(output, 400, "INVALID_ID");
-                User user{}; Json::Value result;
-                if (cntl != nullptr && SessionAdapter::GetSessionUser(*cntl, *control, &user) &&
-                    !control->Solution().GetUserSolutionActions(input->solution_id(), user.uid, &result))
-                    return Fail(output, 500, "DB_ERROR");
+                User user{}; oj::control::ActionState result; std::string error;
+                if (cntl != nullptr) SessionAdapter::GetSessionUser(*cntl, *control, &user);
+                if (!control->Solution().GetUserSolutionActions(
+                        input->solution_id(), user.uid, &result, &error))
+                    return Fail(output, ErrorCode(error), error);
                 FillSolutionActions(result, output); ProtoAdapter::SetOk(output->mutable_status());
             });
     }
@@ -680,18 +755,23 @@ namespace oj::rpc
                 if (input->solution_id() == 0) return Fail(output, 400, "INVALID_ID");
                 const int page = input->page().page() == 0 ? 1 :
                     static_cast<int>(std::min(input->page().page(), 1000000u));
-                const int size = input->page().page_size() == 0 ? 20 : static_cast<int>(std::min(input->page().page_size(), 1000u));
-                Json::Value result; std::string error;
-                if (!control->Comment().GetTopLevelComments(input->solution_id(), page, size, &result, &error))
+                const int size = input->page().page_size() == 0 ? 20 : static_cast<int>(std::min(input->page().page_size(), 100u));
+                std::vector<Comment> comments;
+                int total = 0;
+                std::string error;
+                if (!control->Comment().GetTopLevelComments(
+                        input->solution_id(), page, size, &comments, &total, &error))
                     return Fail(output, ErrorCode(error), error);
-                for (const auto& item : result["comments"]) ProtoAdapter::ToProto(item, output->add_comments());
-                ProtoAdapter::SetPage(input->page(), result.get("total", 0).asUInt64(), output->mutable_page(), 20, 1000);
-                User user{}; Json::Value actions;
+                for (const auto& item : comments) ProtoAdapter::ToProto(item, output->add_comments());
+                ProtoAdapter::SetPage(input->page(), total, output->mutable_page(), 20, 100);
+                User user{};
+                std::map<unsigned long long, oj::control::ActionState> actions;
                 if (cntl != nullptr && SessionAdapter::GetSessionUser(*cntl, *control, &user)) {
                     std::vector<unsigned long long> ids;
-                    for (const auto& item : result["comments"]) ids.push_back(item.get("id", 0).asUInt64());
-                    if (control->Comment().GetCommentActions(ids, user.uid, &actions)) {
-                        for (const auto id : ids) FillCommentAction(id, actions["actions"][std::to_string(id)], output->add_current_user_actions());
+                    for (const auto& item : comments) ids.push_back(item.id);
+                    if (control->Comment().GetCommentActions(ids, user.uid, &actions, &error)) {
+                        for (const auto id : ids)
+                            FillCommentAction(id, actions[id], output->add_current_user_actions());
                     }
                 }
                 ProtoAdapter::SetOk(output->mutable_status());
@@ -709,19 +789,24 @@ namespace oj::rpc
                 if (input->parent_comment_id() == 0) return Fail(output, 400, "INVALID_ID");
                 const int page = input->page().page() == 0 ? 1 :
                     static_cast<int>(std::min(input->page().page(), 1000000u));
-                const int size = input->page().page_size() == 0 ? 20 : static_cast<int>(std::min(input->page().page_size(), 1000u));
-                Json::Value result; std::string error;
-                if (!control->Comment().GetCommentReplies(input->parent_comment_id(), page, size, &result, &error))
+                const int size = input->page().page_size() == 0 ? 20 : static_cast<int>(std::min(input->page().page_size(), 100u));
+                std::vector<Comment> comments;
+                int total = 0;
+                std::string error;
+                if (!control->Comment().GetCommentReplies(
+                        input->parent_comment_id(), page, size, &comments, &total, &error))
                     return Fail(output, ErrorCode(error), error);
                 std::vector<unsigned long long> ids;
-                for (const auto& item : result["comments"]) {
-                    ProtoAdapter::ToProto(item, output->add_comments()); ids.push_back(item.get("id", 0).asUInt64());
+                for (const auto& item : comments) {
+                    ProtoAdapter::ToProto(item, output->add_comments()); ids.push_back(item.id);
                 }
-                ProtoAdapter::SetPage(input->page(), result.get("total", 0).asUInt64(), output->mutable_page(), 20, 1000);
-                User user{}; Json::Value actions;
+                ProtoAdapter::SetPage(input->page(), total, output->mutable_page(), 20, 100);
+                User user{};
+                std::map<unsigned long long, oj::control::ActionState> actions;
                 if (cntl != nullptr && SessionAdapter::GetSessionUser(*cntl, *control, &user) &&
-                    control->Comment().GetCommentActions(ids, user.uid, &actions))
-                    for (const auto id : ids) FillCommentAction(id, actions["actions"][std::to_string(id)], output->add_current_user_actions());
+                    control->Comment().GetCommentActions(ids, user.uid, &actions, &error))
+                    for (const auto id : ids)
+                        FillCommentAction(id, actions[id], output->add_current_user_actions());
                 ProtoAdapter::SetOk(output->mutable_status());
             });
     }
@@ -738,7 +823,7 @@ namespace oj::rpc
                 if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
                 if (input->solution_id() == 0) return Fail(output, 400, "INVALID_ID");
                 if (input->content().empty()) return Fail(output, 400, "CONTENT_REQUIRED");
-                Json::Value result; std::string error;
+                Comment result{}; std::string error;
                 if (!control->Comment().PostComment(input->solution_id(), user, input->content(), &result,
                                                     &error, input->parent_comment_id()))
                     return Fail(output, ErrorCode(error), error);
@@ -759,7 +844,7 @@ namespace oj::rpc
                 if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
                 if (input->comment_id() == 0) return Fail(output, 400, "INVALID_ID");
                 if (input->content().empty()) return Fail(output, 400, "CONTENT_REQUIRED");
-                Json::Value result; std::string error;
+                Comment result{}; std::string error;
                 if (!control->Comment().EditComment(input->comment_id(), user, input->content(), &result, &error))
                     return Fail(output, ErrorCode(error), error);
                 ProtoAdapter::ToProto(result, output->mutable_comment());
@@ -778,8 +863,8 @@ namespace oj::rpc
                 User user{};
                 if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
                 if (input->comment_id() == 0) return Fail(output, 400, "INVALID_ID");
-                Json::Value result; std::string error;
-                control->Comment().DeleteComment(input->comment_id(), user, &result, &error)
+                std::string error;
+                control->Comment().DeleteComment(input->comment_id(), user, &error)
                     ? ProtoAdapter::SetOk(output->mutable_status()) : Fail(output, ErrorCode(error), error);
             });
     }
@@ -795,11 +880,11 @@ namespace oj::rpc
                 User user{};
                 if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
                 if (input->comment_id() == 0) return Fail(output, 400, "INVALID_ID");
-                Json::Value result; std::string error;
+                oj::control::ActionState result; std::string error;
                 if (!control->Comment().ToggleCommentLike(input->comment_id(), user, &result, &error))
                     return Fail(output, ErrorCode(error), error);
                 FillCommentAction(input->comment_id(), result, output->mutable_actions());
-                output->set_like_count(result.get("like_count", 0).asUInt64());
+                output->set_like_count(result.like_count);
                 ProtoAdapter::SetOk(output->mutable_status());
             });
     }
@@ -815,11 +900,11 @@ namespace oj::rpc
                 User user{};
                 if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
                 if (input->comment_id() == 0) return Fail(output, 400, "INVALID_ID");
-                Json::Value result; std::string error;
+                oj::control::ActionState result; std::string error;
                 if (!control->Comment().ToggleCommentFavorite(input->comment_id(), user, &result, &error))
                     return Fail(output, ErrorCode(error), error);
                 FillCommentAction(input->comment_id(), result, output->mutable_actions());
-                output->set_favorite_count(result.get("favorite_count", 0).asUInt64());
+                output->set_favorite_count(result.favorite_count);
                 ProtoAdapter::SetOk(output->mutable_status());
             });
     }
@@ -833,21 +918,323 @@ namespace oj::rpc
         AsyncDispatch(_executor, controller, request, response, done,
             [control](brpc::Controller* cntl, const auto* input, auto* output) {
                 std::vector<unsigned long long> ids(input->comment_ids().begin(), input->comment_ids().end());
-                User user{}; Json::Value result;
-                if (cntl != nullptr && SessionAdapter::GetSessionUser(*cntl, *control, &user) &&
-                    !control->Comment().GetCommentActions(ids, user.uid, &result))
-                    return Fail(output, 500, "DB_ERROR");
-                for (const auto id : ids) FillCommentAction(id, result["actions"][std::to_string(id)], output->add_actions());
+                User user{};
+                std::map<unsigned long long, oj::control::ActionState> result;
+                std::string error;
+                if (cntl != nullptr) SessionAdapter::GetSessionUser(*cntl, *control, &user);
+                if (!control->Comment().GetCommentActions(ids, user.uid, &result, &error))
+                    return Fail(output, ErrorCode(error), error);
+                for (const auto id : ids) FillCommentAction(id, result[id], output->add_actions());
                 ProtoAdapter::SetOk(output->mutable_status());
             });
     }
 
-    OJ_501(CreateSubmission, oj::biz::CreateSubmissionRequest, oj::biz::CreateSubmissionResponse)
-    OJ_501(CreateCustomTest, oj::biz::CreateCustomTestRequest, oj::biz::CreateCustomTestResponse)
-    OJ_501(GetSubmission, oj::biz::GetSubmissionRequest, oj::biz::GetSubmissionResponse)
-    OJ_501(GetCustomTest, oj::biz::GetCustomTestRequest, oj::biz::GetCustomTestResponse)
-    OJ_501(ListSubmissions, oj::biz::ListSubmissionsRequest, oj::biz::ListSubmissionsResponse)
-    OJ_501(UpdateJudgeResult, oj::biz::UpdateJudgeResultRequest, oj::biz::UpdateJudgeResultResponse)
+    void OJServiceImpl::CreateSubmission(google::protobuf::RpcController* controller,
+                                         const oj::biz::CreateSubmissionRequest* request,
+                                         oj::biz::CreateSubmissionResponse* response,
+                                         google::protobuf::Closure* done)
+    {
+        auto control = _control;
+        auto* publisher = _outbox_publisher;
+        AsyncDispatch(_executor, controller, request, response, done,
+            [control, publisher](brpc::Controller* cntl, const auto* input, auto* output) {
+                User user{};
+                if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
+                const std::string question_id = oj::util::StringUtil::Trim(input->question_id());
+                const std::string language = oj::util::StringUtil::Trim(input->language());
+                if (!ValidQuestionId(question_id)) return Fail(output, 400, "INVALID_QUESTION_ID");
+                if (input->code().empty() || input->code().size() > 64 * 1024)
+                    return Fail(output, 400, "INVALID_CODE");
+                if (!SupportedLanguage(language)) return Fail(output, 400, "UNSUPPORTED_LANGUAGE");
+                const int64_t window = std::time(nullptr) / 2;
+                const int reserved = control->GetModel()->ReserveCachedStringByAnyKey(
+                    "judge:submit-rate:" + std::to_string(user.uid) + ":" + std::to_string(window), "1", 3);
+                if (reserved == 0) return Fail(output, 429, "SUBMISSION_RATE_LIMITED");
+                if (reserved < 0) return Fail(output, 503, "REDIS_ERROR");
+
+                Question question{};
+                if (!control->Question().GetOneQuestion(question_id, question))
+                    return Fail(output, 404, "QUESTION_NOT_FOUND");
+                if (!question.visible) return Fail(output, 404, "QUESTION_NOT_FOUND");
+                Json::Value tests;
+                if (!control->GetModel()->Question().GetTestsByQuestionId(question_id, &tests))
+                    return Fail(output, 500, "LOAD_TEST_CASES_FAILED");
+                oj::mq::JudgeTaskMessage task;
+                task.set_message_id(RandomHex(16));
+                task.set_user_id(user.uid);
+                task.set_question_id(question_id);
+                task.set_code(input->code());
+                task.set_language(language);
+                task.set_time_limit_ms(std::max(1, static_cast<int>(question.cpu_limit)) * 1000);
+                task.set_memory_limit_mb(static_cast<uint32_t>(std::max(1, question.memory_limit)));
+                task.set_created_at(std::time(nullptr));
+                for (const auto& item : tests["tests"]) {
+                    auto* test = task.add_test_cases();
+                    test->set_test_case_id(item.get("test_case_id", item.get("id", 0)).asUInt64());
+                    test->set_index(item.get("id", 0).asUInt());
+                    test->set_input(item.get("in", "").asString());
+                    test->set_expected_output(item.get("out", "").asString());
+                }
+                if (task.message_id().empty() || task.test_cases().empty())
+                    return Fail(output, 500, "BUILD_JUDGE_TASK_FAILED");
+                oj::db::Submission created{};
+                if (!control->GetModel()->Submission().CreateSubmissionWithOutbox(
+                        user.uid, question_id, input->code(), language, task, &created))
+                    return Fail(output, 500, "CREATE_SUBMISSION_FAILED");
+                ProtoAdapter::ToProto(created, output->mutable_submission());
+                ProtoAdapter::SetOk(output->mutable_status());
+                if (publisher) publisher->Notify();
+            });
+    }
+
+    void OJServiceImpl::CreateCustomTest(google::protobuf::RpcController* controller,
+                                         const oj::biz::CreateCustomTestRequest* request,
+                                         oj::biz::CreateCustomTestResponse* response,
+                                         google::protobuf::Closure* done)
+    {
+        auto control = _control;
+        auto* publisher = _outbox_publisher;
+        AsyncDispatch(_executor, controller, request, response, done,
+            [control, publisher](brpc::Controller* cntl, const auto* input, auto* output) {
+                User user{};
+                if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
+                const std::string question_id = oj::util::StringUtil::Trim(input->question_id());
+                const std::string language = oj::util::StringUtil::Trim(input->language());
+                if (!ValidQuestionId(question_id)) return Fail(output, 400, "INVALID_QUESTION_ID");
+                if (input->code().empty() || input->code().size() > 64 * 1024)
+                    return Fail(output, 400, "INVALID_CODE");
+                if (input->custom_input().size() > 64 * 1024)
+                    return Fail(output, 400, "CUSTOM_INPUT_TOO_LARGE");
+                if (!SupportedLanguage(language)) return Fail(output, 400, "UNSUPPORTED_LANGUAGE");
+                const int64_t window = std::time(nullptr) / 2;
+                const int reserved = control->GetModel()->ReserveCachedStringByAnyKey(
+                    "judge:submit-rate:" + std::to_string(user.uid) + ":" + std::to_string(window), "1", 3);
+                if (reserved == 0) return Fail(output, 429, "SUBMISSION_RATE_LIMITED");
+                if (reserved < 0) return Fail(output, 503, "REDIS_ERROR");
+                Question question{};
+                if (!control->Question().GetOneQuestion(question_id, question))
+                    return Fail(output, 404, "QUESTION_NOT_FOUND");
+                if (!question.visible) return Fail(output, 404, "QUESTION_NOT_FOUND");
+                oj::mq::JudgeTaskMessage task;
+                task.set_message_id(RandomHex(16));
+                task.set_custom_task_id(RandomHex(24));
+                task.set_user_id(user.uid);
+                task.set_question_id(question_id);
+                task.set_code(input->code());
+                task.set_language(language);
+                task.set_time_limit_ms(std::max(1, static_cast<int>(question.cpu_limit)) * 1000);
+                task.set_memory_limit_mb(static_cast<uint32_t>(std::max(1, question.memory_limit)));
+                task.set_custom_input(input->custom_input());
+                task.set_created_at(std::time(nullptr));
+                auto* test = task.add_test_cases();
+                test->set_index(1);
+                test->set_input(input->custom_input());
+                if (task.message_id().empty() || task.custom_task_id().empty() ||
+                    !control->GetModel()->Submission().CreateCustomOutbox(task))
+                    return Fail(output, 500, "CREATE_CUSTOM_TASK_FAILED");
+                Json::Value state;
+                state["task_id"] = task.custom_task_id();
+                state["message_id"] = task.message_id();
+                state["user_id"] = user.uid;
+                state["status"] = "QUEUED";
+                state["expires_at"] = Json::Int64(task.created_at() + 600);
+                Json::StreamWriterBuilder writer;
+                writer["indentation"] = "";
+                output->set_task_id(task.custom_task_id());
+                output->set_submission_status(oj::common::SUBMISSION_STATUS_QUEUED);
+                if (!control->GetModel()->SetCachedStringByAnyKey(
+                        "judge:custom:" + task.custom_task_id(), Json::writeString(writer, state), 600))
+                    LOG_ERROR("Initial custom task cache write failed task_id={}", task.custom_task_id());
+                ProtoAdapter::SetOk(output->mutable_status());
+                if (publisher) publisher->Notify();
+            });
+    }
+
+    void OJServiceImpl::GetSubmission(google::protobuf::RpcController* controller,
+                                      const oj::biz::GetSubmissionRequest* request,
+                                      oj::biz::GetSubmissionResponse* response,
+                                      google::protobuf::Closure* done)
+    {
+        auto control = _control;
+        AsyncDispatch(_executor, controller, request, response, done,
+            [control](brpc::Controller* cntl, const auto* input, auto* output) {
+                User user{};
+                if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
+                if (input->submission_id() == 0) return Fail(output, 400, "INVALID_SUBMISSION_ID");
+                oj::db::Submission submission{};
+                if (!control->GetModel()->Submission().GetSubmission(input->submission_id(), &submission))
+                    return Fail(output, 404, "SUBMISSION_NOT_FOUND");
+                if (submission.user_id != static_cast<uint32_t>(user.uid))
+                    return Fail(output, 403, "FORBIDDEN");
+                ProtoAdapter::ToProto(submission, output->mutable_submission());
+                ProtoAdapter::SetOk(output->mutable_status());
+            });
+    }
+
+    void OJServiceImpl::GetCustomTest(google::protobuf::RpcController* controller,
+                                      const oj::biz::GetCustomTestRequest* request,
+                                      oj::biz::GetCustomTestResponse* response,
+                                      google::protobuf::Closure* done)
+    {
+        auto control = _control;
+        AsyncDispatch(_executor, controller, request, response, done,
+            [control](brpc::Controller* cntl, const auto* input, auto* output) {
+                User user{};
+                if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
+                if (input->task_id().empty()) return Fail(output, 400, "INVALID_TASK_ID");
+                std::string encoded;
+                if (!control->GetModel()->GetCachedStringByAnyKey("judge:custom:" + input->task_id(), &encoded))
+                    return Fail(output, 404, "CUSTOM_TASK_NOT_FOUND");
+                Json::CharReaderBuilder reader;
+                Json::Value state;
+                std::istringstream stream(encoded);
+                if (!Json::parseFromStream(reader, stream, &state, nullptr))
+                    return Fail(output, 500, "CUSTOM_TASK_STATE_INVALID");
+                if (state.get("user_id", 0).asInt() != user.uid) return Fail(output, 403, "FORBIDDEN");
+                output->set_task_id(input->task_id());
+                output->set_submission_status(ProtoAdapter::SubmissionStatus(state.get("status", "").asString()));
+                if (state.isMember("result_json"))
+                    google::protobuf::util::JsonStringToMessage(state["result_json"].asString(), output->mutable_result());
+                ProtoAdapter::SetOk(output->mutable_status());
+            });
+    }
+
+    void OJServiceImpl::ListSubmissions(google::protobuf::RpcController* controller,
+                                        const oj::biz::ListSubmissionsRequest* request,
+                                        oj::biz::ListSubmissionsResponse* response,
+                                        google::protobuf::Closure* done)
+    {
+        auto control = _control;
+        AsyncDispatch(_executor, controller, request, response, done,
+            [control](brpc::Controller* cntl, const auto* input, auto* output) {
+                User user{};
+                if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
+                if (!input->question_id().empty() && !ValidQuestionId(input->question_id()))
+                    return Fail(output, 400, "INVALID_QUESTION_ID");
+                const uint32_t page = input->page().page() == 0 ? 1 : input->page().page();
+                const uint32_t size = std::clamp(input->page().page_size() == 0 ? 20u : input->page().page_size(), 1u, 100u);
+                std::string status;
+                if (input->submission_status() != oj::common::SUBMISSION_STATUS_UNSPECIFIED) {
+                    const auto* value = oj::common::SubmissionStatus_descriptor()->FindValueByNumber(input->submission_status());
+                    if (!value) return Fail(output, 400, "INVALID_SUBMISSION_STATUS");
+                    status = value->name().substr(std::string("SUBMISSION_STATUS_").size());
+                }
+                std::vector<oj::db::Submission> submissions;
+                uint64_t total = 0;
+                if (!control->GetModel()->Submission().ListSubmissions(
+                        user.uid, input->question_id(), status, page, size, &submissions, &total))
+                    return Fail(output, 500, "DB_ERROR");
+                for (const auto& submission : submissions)
+                    ProtoAdapter::ToProto(submission, output->add_submissions());
+                ProtoAdapter::SetPage(input->page(), total, output->mutable_page(), 20, 100);
+                ProtoAdapter::SetOk(output->mutable_status());
+            });
+    }
+
+    void OJServiceImpl::UpdateJudgeResult(google::protobuf::RpcController* controller,
+                                          const oj::biz::UpdateJudgeResultRequest* request,
+                                          oj::biz::UpdateJudgeResultResponse* response,
+                                          google::protobuf::Closure* done)
+    {
+        auto control = _control;
+        AsyncDispatch(_executor, controller, request, response, done,
+            [control](const auto& input, auto* output) {
+                if (input.message_id().empty() || oj::security::JudgeCallbackTarget(input).empty() ||
+                    input.result_payload().empty() || input.service_auth().nonce().size() < 16)
+                    return Fail(output, 400, "INVALID_CALLBACK");
+                const int64_t now = std::time(nullptr);
+                if (std::llabs(now - input.service_auth().timestamp()) > 300 || !VerifyCallbackHmac(input)) {
+                    output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_REJECTED);
+                    return Fail(output, 401, "INVALID_SERVICE_AUTH");
+                }
+                const int nonce = control->GetModel()->ReserveCachedStringByAnyKey(
+                    "judge:callback-nonce:" + input.service_auth().key_id() + ":" + input.service_auth().nonce(),
+                    "1", 600);
+                if (nonce == 0) {
+                    output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_REJECTED);
+                    return Fail(output, 409, "CALLBACK_REPLAYED");
+                }
+                if (nonce < 0) {
+                    output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_RETRYABLE_FAILURE);
+                    output->set_retry_after_ms(1000);
+                    return Fail(output, 503, "REDIS_ERROR");
+                }
+                oj::db::JudgeOutbox outbox{};
+                oj::mq::JudgeTaskMessage task;
+                if (!control->GetModel()->Submission().GetOutbox(input.message_id(), &outbox) ||
+                    !ValidateTaskPayload(outbox, input, &task)) {
+                    output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_REJECTED);
+                    return Fail(output, 404, "JUDGE_TASK_NOT_FOUND");
+                }
+                oj::common::JudgeResult result;
+                if (!result.ParseFromString(input.result_payload()) ||
+                    result.status() == oj::common::SUBMISSION_STATUS_UNSPECIFIED ||
+                    result.status() == oj::common::SUBMISSION_STATUS_PENDING ||
+                    result.status() == oj::common::SUBMISSION_STATUS_QUEUED ||
+                    result.status() == oj::common::SUBMISSION_STATUS_JUDGING) {
+                    output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_REJECTED);
+                    return Fail(output, 400, "INVALID_JUDGE_RESULT");
+                }
+                const int64_t expires_at = task.created_at() * 1000000LL + 600LL * 1000000;
+                if (input.has_custom_task_id()) {
+                    const int64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::system_clock::now().time_since_epoch()).count();
+                    if (expires_at <= now_us) {
+                        output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_REJECTED);
+                        return Fail(output, 410, "CUSTOM_TASK_EXPIRED");
+                    }
+                }
+                const auto outcome = control->GetModel()->Submission().ApplyJudgeResult(
+                    input, result, oj::util::TimeUtil::IntToDateTime(expires_at));
+                if (outcome == oj::model::ModelSubmission::ApplyOutcome::Conflict ||
+                    outcome == oj::model::ModelSubmission::ApplyOutcome::NotFound) {
+                    if (outcome == oj::model::ModelSubmission::ApplyOutcome::Conflict)
+                        LOG_CRITICAL("Conflicting judge result message_id={}", input.message_id());
+                    output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_REJECTED);
+                    return Fail(output, 409, "CONFLICTING_JUDGE_RESULT");
+                }
+                if (outcome == oj::model::ModelSubmission::ApplyOutcome::RetryableFailure) {
+                    output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_RETRYABLE_FAILURE);
+                    output->set_retry_after_ms(1000);
+                    return Fail(output, 503, "PERSIST_RESULT_FAILED");
+                }
+                if (outcome == oj::model::ModelSubmission::ApplyOutcome::Persisted &&
+                    input.has_submission_id()) {
+                    control->GetModel()->User().InvalidateSubmissionCaches(
+                        static_cast<int>(task.user_id()), task.question_id());
+                }
+                if (input.has_custom_task_id()) {
+                    const int ttl = static_cast<int>((expires_at -
+                        std::chrono::duration_cast<std::chrono::microseconds>(
+                            std::chrono::system_clock::now().time_since_epoch()).count()) / 1000000);
+                    std::string result_json;
+                    if (!google::protobuf::util::MessageToJsonString(result, &result_json).ok()) {
+                        output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_RETRYABLE_FAILURE);
+                        return Fail(output, 500, "ENCODE_RESULT_FAILED");
+                    }
+                    Json::Value state;
+                    state["task_id"] = input.custom_task_id();
+                    state["message_id"] = input.message_id();
+                    state["user_id"] = task.user_id();
+                    const auto* value = oj::common::SubmissionStatus_descriptor()->FindValueByNumber(result.status());
+                    state["status"] = value ? value->name().substr(std::string("SUBMISSION_STATUS_").size()) : "SYSTEM_ERROR";
+                    state["expires_at"] = Json::Int64(expires_at / 1000000);
+                    state["result_json"] = result_json;
+                    Json::StreamWriterBuilder writer;
+                    writer["indentation"] = "";
+                    if (!control->GetModel()->SetCachedStringByAnyKey(
+                            "judge:custom:" + input.custom_task_id(), Json::writeString(writer, state), ttl)) {
+                        output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_RETRYABLE_FAILURE);
+                        output->set_retry_after_ms(1000);
+                        return Fail(output, 503, "REDIS_ERROR");
+                    }
+                }
+                output->set_outcome(outcome == oj::model::ModelSubmission::ApplyOutcome::Idempotent
+                    ? oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_IDEMPOTENT
+                    : oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_PERSISTED);
+                ProtoAdapter::SetOk(output->mutable_status());
+            });
+    }
     
     void OJServiceImpl::LegacyUpdateJudgeResult(google::protobuf::RpcController* controller,
                                                 const oj_judge::JudgeFinishedRequest* request,

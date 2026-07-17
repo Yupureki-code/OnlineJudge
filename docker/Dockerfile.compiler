@@ -8,11 +8,10 @@ FROM debian:bookworm-slim
 LABEL maintainer="OnlineJudge Project"
 LABEL description="OJ Compiler Container - g++ for code compilation"
 
-# 安装编译器和 curl（用于通知 JudgeService）
+# 安装编译器；容器禁网且不主动回调宿主。
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 创建非 root 用户

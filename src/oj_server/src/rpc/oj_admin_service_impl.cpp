@@ -67,16 +67,16 @@ bool ToLegacy(const oj::common::Question& input, Question* output)
         input.difficulty().empty() || input.time_limit_ms() == 0 || input.memory_limit_mb() == 0)
         return false;
     const uint64_t seconds = (static_cast<uint64_t>(input.time_limit_ms()) + 999) / 1000;
-    const uint64_t bytes = static_cast<uint64_t>(input.memory_limit_mb()) * 1024 * 1024;
     if (seconds > static_cast<uint64_t>(std::numeric_limits<int8_t>::max()) ||
-        bytes > static_cast<uint64_t>(std::numeric_limits<int>::max()))
+        input.memory_limit_mb() > static_cast<uint64_t>(std::numeric_limits<int>::max()))
         return false;
     output->id = input.id();
     output->title = input.title();
     output->desc = input.description();
     output->star = input.difficulty();
     output->cpu_limit = static_cast<int>(seconds);
-    output->memory_limit = static_cast<int>(bytes);
+    output->memory_limit = static_cast<int>(input.memory_limit_mb());
+    output->visible = input.visible();
     return true;
 }
 
@@ -235,8 +235,12 @@ void OJAdminServiceImpl::AdminLogin(google::protobuf::RpcController* controller,
         User user;
         std::string error;
         if (!_control.Auth().LoginAdminWithIdAndPassword(
-                static_cast<int>(req->admin_id()), req->password(), &admin, &user, &error)) {
-            SetError(rsp->mutable_status(), 401, "INVALID_CREDENTIALS");
+                static_cast<int>(req->admin_id()), req->password(),
+                cntl == nullptr ? std::string{} : SessionAdapter::RemoteIp(*cntl),
+                &admin, &user, &error)) {
+            if (error == "TOO_MANY_REQUESTS") SetError(rsp->mutable_status(), 429, "TOO_MANY_REQUESTS", true);
+            else if (error == "REDIS_ERROR") SetError(rsp->mutable_status(), 503, "REDIS_ERROR", true);
+            else SetError(rsp->mutable_status(), 401, "INVALID_CREDENTIALS");
             return;
         }
         if (!IsAdminRole(admin.role)) {
@@ -259,7 +263,10 @@ void OJAdminServiceImpl::AdminLogout(google::protobuf::RpcController* controller
     OJ_ADMIN_DISPATCH(oj::common::EmptyRequest, oj::common::EmptyResponse, {
         (void)req;
         if (cntl == nullptr) { SetError(rsp->mutable_status(), 400, "BRPC_CONTROLLER_REQUIRED"); return; }
-        AdminSessionAdapter::DestroySession(*cntl, sessions_);
+        if (!AdminSessionAdapter::DestroySession(*cntl, sessions_)) {
+            SetError(rsp->mutable_status(), 503, "SESSION_REVOCATION_FAILED", true);
+            return;
+        }
         ProtoAdapter::SetOk(rsp->mutable_status());
     });
 }
@@ -291,10 +298,8 @@ void OJAdminServiceImpl::AdminGetOverview(google::protobuf::RpcController* contr
         if (!model->User().GetUserCount(&users) || !model->Question().GetQuestionCount(&questions)) {
             SetError(rsp->mutable_status(), 500, "LOAD_OVERVIEW_FAILED", true); return;
         }
-        std::vector<Solution> solutions;
-        int solution_count = 0, pages = 0;
-        if (!model->Solution().GetSolutionsByPage("", "", "latest", 1, 1,
-                                                   &solutions, &solution_count, &pages))
+        int solution_count = 0;
+        if (!model->Solution().GetSolutionCount("", &solution_count))
             solution_count = 0;
         ProtoAdapter::SetOk(rsp->mutable_status());
         rsp->set_total_users(users); rsp->set_total_questions(questions);
@@ -355,7 +360,7 @@ void OJAdminServiceImpl::AdminListQuestions(google::protobuf::RpcController* con
         context.list_type = ListType::Questions;
         auto key = std::make_shared<oj::cache::Cache::CacheListKey>(); key->Build(context);
         std::vector<Question> questions; int total = 0, pages = 0;
-        if (!model->Question().GetQuestionsByPage(key, questions, &total, &pages)) {
+        if (!model->Question().GetQuestionsByPage(key, questions, &total, &pages, true)) {
             SetError(rsp->mutable_status(), 500, "LOAD_QUESTIONS_FAILED", true); return;
         }
         ProtoAdapter::SetOk(rsp->mutable_status());
@@ -372,7 +377,7 @@ void OJAdminServiceImpl::AdminGetQuestion(google::protobuf::RpcController* contr
         if (!RequireAdmin(cntl, false, nullptr, rsp->mutable_status())) return;
         if (!IsDigits(req->question_id())) { SetError(rsp->mutable_status(), 400, "INVALID_QUESTION_ID"); return; }
         Question question;
-        if (!_control.GetModel()->Question().GetOneQuestion(req->question_id(), question)) {
+        if (!_control.GetModel()->Question().GetOneQuestion(req->question_id(), question, true)) {
             SetError(rsp->mutable_status(), 404, "QUESTION_NOT_FOUND"); return;
         }
         ProtoAdapter::SetOk(rsp->mutable_status()); ProtoAdapter::ToProto(question, rsp->mutable_question());
@@ -717,7 +722,7 @@ void OJAdminServiceImpl::AdminGetAuditLogs(google::protobuf::RpcController* cont
         }
         std::vector<AdminAuditLog> logs; int total = 0;
         if (!_control.GetModel()->ListAdminAuditLogsPaged(Page(req->page()), PageSize(req->page()),
-                req->action(), 0, "", &logs, &total)) {
+                req->action(), 0, "", req->start_time(), req->end_time(), &logs, &total)) {
             SetError(rsp->mutable_status(), 500, "LOAD_AUDIT_LOGS_FAILED", true); return;
         }
         ProtoAdapter::SetOk(rsp->mutable_status());

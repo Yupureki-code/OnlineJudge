@@ -37,6 +37,15 @@ struct JudgeOutbox {
     #pragma db type("DATETIME") null
     odb::nullable<DateTime> next_retry_at;
 
+    #pragma db type("VARCHAR(64)") null
+    odb::nullable<std::string> lease_owner;
+
+    #pragma db type("DATETIME") null
+    odb::nullable<DateTime> lease_expires_at;
+
+    #pragma db type("DATETIME") null
+    odb::nullable<DateTime> confirm_deadline;
+
     #pragma db type("DATETIME")
     DateTime created_at;
 

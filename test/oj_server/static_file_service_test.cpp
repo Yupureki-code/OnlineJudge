@@ -91,7 +91,7 @@ int main()
     Check(Request(main_service, "/css/site.css", brpc::HTTP_METHOD_POST).status == 405, "non-read method rejected");
     Check(Request(main_service, "/healthz").body == "ok", "main health check");
 
-    auto sessions = std::make_shared<oj::admin::AdminSessionStore>();
+    auto sessions = std::make_shared<oj::admin::AdminSessionStore>(false);
     oj::rpc::StaticHttpConfig config{oj::rpc::StaticHttpMode::Admin, root.string(), sessions};
     oj::rpc::StaticHttpService admin_service(control, config);
     Check(Request(admin_service, "/healthz").body == "ok", "admin health check");
@@ -103,20 +103,30 @@ int main()
           "admin shell physical path requires session");
     Check(Request(admin_service, "/admin/assets/admin-app.js").body == "window.app=true;", "admin asset mapping");
 
-    AdminAccount admin;
+    oj::db::AdminAccount admin;
     admin.admin_id = 3;
     admin.uid = 7;
     admin.role = "admin";
-    User user{};
-    user.uid = 7;
-    user.name = "</script><script>bad()</script>";
-    user.email = "admin@example.test";
-    const std::string session_id = sessions->CreateSession(admin, user);
+    oj::db::User admin_user{};
+    admin_user.uid = 7;
+    admin_user.name = "</script><script>bad()</script>";
+    admin_user.email = "admin@example.test";
+    const std::string session_id = sessions->CreateSession(admin, admin_user);
+    Check(session_id.size() == 64, "admin session uses a 256-bit token");
+    const std::string set_cookie = sessions->BuildSetCookieHeader(session_id);
+    Check(set_cookie.find("Path=/admin") != std::string::npos &&
+              set_cookie.find("SameSite=Strict") != std::string::npos,
+          "admin cookie is restricted to the admin surface");
     result = Request(admin_service, "/admin", brpc::HTTP_METHOD_GET,
                      std::string(oj::admin::kAdminSessionCookieName) + "=" + session_id);
     Check(result.status == 200, "authenticated admin shell");
     Check(result.body.find("SERVER_USER_INFO") != std::string::npos, "admin user injected");
     Check(result.body.find("</script><script>bad()") == std::string::npos, "injected values are script-safe");
+    oj::admin::AdminSessionStore unavailable_redis(true, "tcp://127.0.0.1:1");
+    oj::admin::AdminSession loaded;
+    Check(!unavailable_redis.GetSessionByCookie(
+              std::string(oj::admin::kAdminSessionCookieName) + "=" + session_id, &loaded),
+          "admin session fails closed during Redis outage despite a local copy");
 
     fs::remove_all(root);
     fs::remove(outside);

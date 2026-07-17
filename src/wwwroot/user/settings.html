@@ -119,6 +119,8 @@
             }
         }
 </style>
+    <script src="/js/csrf.js"></script>
+    <script src="/js/api-client.js"></script>
 </head>
 <body>
 
@@ -205,7 +207,7 @@
         }
 
         async function postJson(url, body) {
-            const response = await fetch(url, {
+            const response = await OJApi.fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -223,14 +225,14 @@
             el.textContent = text || '';
         }
 
-        async function sendSecurityCode(btnId, msgId) {
+        async function sendSecurityCode(btnId, msgId, body) {
             const btn = document.getElementById(btnId);
             if (btn) btn.disabled = true;
             setMsg(msgId, '发送中...', true);
             try {
-                const result = await postJson('/api/user/security/send_code', {});
+                const result = await postJson('/api/user/security/send_code', body || {});
                 if (result.ok && result.data.success) {
-                    setMsg(msgId, '验证码已发送到当前绑定邮箱', true);
+                    setMsg(msgId, body && body.purpose === 'change_email' ? '验证码已发送到新邮箱' : '验证码已发送到当前绑定邮箱', true);
                 } else {
                     setMsg(msgId, '发送验证码失败，请稍后重试', false);
                 }
@@ -360,7 +362,7 @@
             }
 
             try {
-                const res = await fetch('/api/user/info', { credentials: 'include' });
+                const res = await OJApi.fetch('/api/user', { credentials: 'include' });
                 const data = await res.json();
                 if (data && data.success && data.user) {
                     document.getElementById('current-email').textContent = data.user.email || '-';
@@ -372,7 +374,14 @@
         }
 
         document.getElementById('send-code-email-change')?.addEventListener('click', function () {
-            sendSecurityCode('send-code-email-change', 'msg-email-change');
+            const newEmail = trim(document.getElementById('email-change-new')?.value);
+            if (!isValidEmail(newEmail)) {
+                setMsg('msg-email-change', '请先输入合法的新邮箱', false);
+                return;
+            }
+            sendSecurityCode('send-code-email-change', 'msg-email-change', {
+                purpose: 'change_email', new_email: newEmail
+            });
         });
         document.getElementById('send-code-password-change')?.addEventListener('click', function () {
             sendSecurityCode('send-code-password-change', 'msg-password-change');

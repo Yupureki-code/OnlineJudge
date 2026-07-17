@@ -2,16 +2,20 @@
 #include "../../comm/comm.hpp"
 #include "../../comm/logger.hpp"
 #include "../../comm/filesystem.hpp"
+#include "../../comm/proto/mq_message.pb.h"
 #include <memory>
+#include <ctime>
 #include "event_loop.hpp"
 #include "docker_sandbox.hpp"
 
-namespace oj_judge 
+namespace oj::judge
 {
 
 /// 判题链入口：组装 preprocesser → compiler → runner → judge
 struct TestCase 
 {
+    uint64_t test_case_id = 0;
+    uint32_t index = 0;
     std::string input;
     std::string output;
     int cpu_limit;    // 秒
@@ -21,20 +25,29 @@ struct TestCase
 class Judger
 {
 public:
-    Judger() : _runner_pool(nullptr), _handle(nullptr) {}
-    explicit Judger(oj_sandbox::SandboxPool* pool) : _runner_pool(pool), _handle(nullptr) {}
+    Judger() : _runner_pool(nullptr) {}
+    explicit Judger(oj_sandbox::SandboxPool* pool) : _runner_pool(pool) {}
 
     /// 运行判题链
     /// @param request 判题请求（包含 code, question_id, time_limit 等）
     /// @return 判题结果
-    CoTask Run(const oj_judge::SubmitRequest& request) 
+    CoTask Run(oj::mq::JudgeTaskMessage request)
     {
-        LOG_INFO("Judger started submission_id={}", request.submission_id());
+        LOG_INFO("Judger started message_id={}", request.message_id());
         // ① 生成唯一文件名，写入源代码到宿主机临时目录
         std::string file_name = oj::util::StringUtil::GetUniqueName();
         std::string src_path = oj::util::PathUtil::Src(file_name);
         std::string exe_path = oj::util::PathUtil::Exe(file_name);
         std::string err_path = oj::util::PathUtil::Compile_err(file_name);
+        struct HostFileCleanup {
+            fileUtil::FileSystem& filesystem;
+            std::vector<std::string> paths;
+            ~HostFileCleanup() {
+                for (const auto& path : paths) {
+                    try { filesystem.remove(path); } catch (...) {}
+                }
+            }
+        } cleanup{_file_system, {src_path, exe_path, err_path}};
         _file_system.write(src_path, request.code());
         LOG_DEBUG("Submission source staged");
 
@@ -42,158 +55,234 @@ public:
         oj_sandbox::DockerSandbox compile_sandbox;
         oj_sandbox::SandboxConfig compile_config;
         compile_config.image = "oj-compiler:latest";
-        compile_config.network_disabled = false;  // 编译容器需要网络通知 JudgeService
-        compile_config.read_only_root = false;
+        compile_config.network_disabled = true;
+        compile_config.read_only_root = true;
         compile_config.work_dir = "/home/judge";
-        std::string compile_container_id = compile_sandbox.Create(compile_config);
+        auto create_result = co_await DockerTaskAwaitable{
+            6000,
+            [&compile_sandbox, compile_config] {
+                DockerTaskResult result;
+                result.stdout_str = compile_sandbox.Create(compile_config);
+                result.status = result.stdout_str.empty() ? "SYSTEM_ERROR" : "OK";
+                return result;
+            }};
+        std::string compile_container_id = std::move(create_result.stdout_str);
         LOG_DEBUG("Compile container created id={}", compile_container_id);
         if (compile_container_id.empty()) {
             LOG_ERROR("Failed to create compile container");
-            auto resp = std::make_shared<JudgeFinishedRequest>();
-            resp->set_submission_id(request.submission_id());
-            resp->set_question_id(request.question_id());
-            resp->set_user_id(request.user_id());
-            auto* status = resp->add_status_list();
-            status->set_result(UNKNOWN);
-            co_return resp;
+            co_return ErrorResult(oj::common::SUBMISSION_STATUS_SYSTEM_ERROR);
         }
-        compile_sandbox.Start();
+        auto start_result = co_await DockerTaskAwaitable{
+            6000,
+            [&compile_sandbox] {
+                const int rc = compile_sandbox.Start();
+                return DockerTaskResult{rc == 0 ? "OK" : "SYSTEM_ERROR", rc};
+            }};
+        if (start_result.status != "OK") {
+            LOG_ERROR("Failed to start compile container: {}", compile_sandbox.GetLastError());
+            co_return ErrorResult(oj::common::SUBMISSION_STATUS_SYSTEM_ERROR);
+        }
         LOG_DEBUG("Compile container started");
 
         // ③ 写入源代码到编译容器
-        compile_sandbox.WriteFile("/home/judge/source.cpp", request.code());
+        auto write_source_result = co_await DockerTaskAwaitable{
+            6000,
+            [&compile_sandbox, code = request.code()] {
+                const int rc = compile_sandbox.WriteFile("/home/judge/source.cpp", code);
+                return DockerTaskResult{rc == 0 ? "OK" : "SYSTEM_ERROR", rc};
+            }};
+        if (write_source_result.status != "OK") {
+            LOG_ERROR("Failed to write compile input: {}", compile_sandbox.GetLastError());
+            co_return ErrorResult(oj::common::SUBMISSION_STATUS_SYSTEM_ERROR);
+        }
 
-        // ④ 启动编译容器脚本，协程挂起等待容器 curl 通知
+        // ④ 宿主执行并等待 Docker exec；容器没有网络和回调能力。
         DockerTaskAwaitable compile_awaitable;
-        compile_awaitable.container_id = compile_container_id;
-        compile_awaitable.script = "/judge/compile.sh";
-        compile_awaitable.timeout_ms = 10000;  // 编译超时 10 秒
-        compile_awaitable.home = _handle.promise().home;  // 返回 Work 协程
-        compile_awaitable.task_id = _handle.promise().task_id;  // Docker 回调标识
-        *_handle.promise().status = Blocking;  // 标记为等待 Docker
-        compile_awaitable.start_container = [this, &compile_sandbox](
-            const std::string& cid, const std::string& script, const std::string& task_id) {
-            std::string judge_host = std::getenv("OJ_JUDGE_HOST") ? std::getenv("OJ_JUDGE_HOST") : "host.docker.internal:8082";
-            std::string cmd = "export TASK_ID=" + task_id + 
-                             " && export JUDGE_HOST=" + judge_host + 
-                             " && " + script;
-            LOG_DEBUG("Starting detached compile task");
-            compile_sandbox.ExecDetached(cmd);  // non-blocking — awaits DockerWorkDone callback
-            LOG_DEBUG("Detached compile task started");
+        compile_awaitable.timeout_ms = 10000;
+        compile_awaitable.work = [&compile_sandbox, standard = LanguageStandard(request.language())] {
+            return ToDockerTaskResult(compile_sandbox.Exec(
+                "CXX_STANDARD=" + standard + " /judge/compile.sh", 10000), true);
         };
-        LOG_DEBUG("Waiting for compile task");
 
-        co_await compile_awaitable;
-        LOG_DEBUG("Compile task resumed status={}", _handle.promise().result.status);
+        auto compile_result = co_await compile_awaitable;
+        LOG_DEBUG("Compile task resumed status={}", compile_result.status);
 
         // ⑤ 协程恢复，检查编译结果
-        auto& compile_result = _handle.promise().result;
         if (compile_result.status != "OK") {
             // 编译失败，直接返回 CE
-            auto resp = std::make_shared<JudgeFinishedRequest>();
-            resp->set_submission_id(request.submission_id());
-            resp->set_question_id(request.question_id());
-            resp->set_user_id(request.user_id());
-            auto* status = resp->add_status_list();
-            status->set_result(COMPILE_ERROR);
-            status->set_time_cost(0);
-            status->set_memory_cost(0);
+            auto resp = std::make_shared<oj::common::JudgeResult>();
+            resp->set_status(oj::common::SUBMISSION_STATUS_COMPILE_ERROR);
             // 读取编译错误信息
-            std::string compile_err = compile_sandbox.ReadFile("/home/judge/compile_err");
-            compile_sandbox.Destroy();
+            auto read_error_result = co_await DockerTaskAwaitable{
+                6000,
+                [&compile_sandbox] {
+                    DockerTaskResult result;
+                    result.stdout_str = compile_sandbox.ReadFile("/home/judge/compile_err");
+                    result.status = "OK";
+                    return result;
+                }};
+            resp->set_compile_error(read_error_result.stdout_str);
+            resp->set_completed_at(std::time(nullptr));
+            co_await DockerTaskAwaitable{
+                4000,
+                [&compile_sandbox] {
+                    compile_sandbox.Destroy();
+                    return DockerTaskResult{"OK", 0};
+                }};
             co_return resp;
         }
 
         // ⑥ 从编译容器拷贝可执行文件到宿主机
-        std::string exe_content = compile_sandbox.ReadFile("/home/judge/main");
+        auto read_executable_result = co_await DockerTaskAwaitable{
+            6000,
+            [&compile_sandbox] {
+                DockerTaskResult result;
+                result.stdout_str = compile_sandbox.ReadFile("/home/judge/main");
+                result.status = result.stdout_str.empty() ? "SYSTEM_ERROR" : "OK";
+                return result;
+            }};
+        if (read_executable_result.status != "OK") {
+            co_return ErrorResult(oj::common::SUBMISSION_STATUS_SYSTEM_ERROR);
+        }
+        std::string exe_content = std::move(read_executable_result.stdout_str);
         _file_system.write(exe_path, exe_content);
-        compile_sandbox.Destroy();  // 编译容器销毁
+        co_await DockerTaskAwaitable{
+            4000,
+            [&compile_sandbox] {
+                compile_sandbox.Destroy();
+                return DockerTaskResult{"OK", 0};
+            }};
 
         // ⑦ 从预热池获取运行容器
-        auto runner_sandbox = _runner_pool->Acquire();
-        if (!runner_sandbox || runner_sandbox->GetContainerId().empty()) {
-            auto resp = std::make_shared<JudgeFinishedRequest>();
-            resp->set_submission_id(request.submission_id());
-            resp->set_question_id(request.question_id());
-            resp->set_user_id(request.user_id());
-            auto* status = resp->add_status_list();
-            status->set_result(UNKNOWN);
-            co_return resp;
+        std::unique_ptr<oj_sandbox::DockerSandbox> runner_sandbox;
+        auto acquire_result = co_await DockerTaskAwaitable{
+            12000,
+            [this, &runner_sandbox] {
+                runner_sandbox = _runner_pool ? _runner_pool->Acquire() : nullptr;
+                const bool ok = runner_sandbox && !runner_sandbox->GetContainerId().empty();
+                return DockerTaskResult{ok ? "OK" : "SYSTEM_ERROR", ok ? 0 : -1};
+            }};
+        if (acquire_result.status != "OK") {
+            co_return ErrorResult(oj::common::SUBMISSION_STATUS_SYSTEM_ERROR);
         }
 
         // ⑧ 拷贝可执行文件到运行容器
-        runner_sandbox->WriteFile("/home/judge/main", exe_content);
+        auto write_executable_result = co_await DockerTaskAwaitable{
+            6000,
+            [&runner_sandbox, exe_content] {
+                const int rc = runner_sandbox->WriteFile("/home/judge/main", exe_content);
+                return DockerTaskResult{rc == 0 ? "OK" : "SYSTEM_ERROR", rc};
+            }};
+        if (write_executable_result.status != "OK") {
+            co_return ErrorResult(oj::common::SUBMISSION_STATUS_SYSTEM_ERROR);
+        }
         // 设置可执行权限
-        runner_sandbox->Exec("chmod +x /home/judge/main", 5000);
+        auto chmod_result = co_await DockerTaskAwaitable{
+            6000,
+            [&runner_sandbox] {
+                return ToDockerTaskResult(
+                    runner_sandbox->Exec("chmod +x /home/judge/main", 5000), false);
+            }};
+        if (chmod_result.status != "OK") {
+            co_return ErrorResult(oj::common::SUBMISSION_STATUS_SYSTEM_ERROR);
+        }
 
         // ⑨ 逐个测试用例运行
-        auto resp = std::make_shared<JudgeFinishedRequest>();
-        resp->set_submission_id(request.submission_id());
-        resp->set_question_id(request.question_id());
-        resp->set_user_id(request.user_id());
+        auto resp = std::make_shared<oj::common::JudgeResult>();
+        resp->set_status(_test_cases.empty() ? oj::common::SUBMISSION_STATUS_SYSTEM_ERROR
+                                             : oj::common::SUBMISSION_STATUS_ACCEPTED);
 
         for (size_t i = 0; i < _test_cases.size(); ++i) {
             const auto& test = _test_cases[i];
 
             // 写入输入文件到运行容器
-            runner_sandbox->WriteFile("/home/judge/input.txt", test.input);
+            auto write_input_result = co_await DockerTaskAwaitable{
+                6000,
+                [&runner_sandbox, input = test.input] {
+                    const int rc = runner_sandbox->WriteFile("/home/judge/input.txt", input);
+                    return DockerTaskResult{rc == 0 ? "OK" : "SYSTEM_ERROR", rc};
+                }};
+            if (write_input_result.status != "OK") {
+                resp->set_status(oj::common::SUBMISSION_STATUS_SYSTEM_ERROR);
+                break;
+            }
 
-            // 启动运行容器脚本，协程挂起等待容器 curl 通知
+            // 宿主等待 exec 完成；超时由 DockerSandbox kill 一次性容器。
             DockerTaskAwaitable run_awaitable;
-            run_awaitable.container_id = runner_sandbox->GetContainerId();
-            run_awaitable.script = "/judge/run.sh";
-            run_awaitable.timeout_ms = request.time_limit() + 1000;
-            run_awaitable.home = _handle.promise().home;  // 返回 Work 协程
-            run_awaitable.task_id = _handle.promise().task_id;  // Docker 回调标识
-            *_handle.promise().status = Blocking;  // 标记为等待 Docker
-            run_awaitable.start_container = [this, &runner_sandbox, &test, &request](
-                const std::string& cid, const std::string& script, const std::string& task_id) {
-                std::string judge_host = std::getenv("OJ_JUDGE_HOST") ? std::getenv("OJ_JUDGE_HOST") : "host.docker.internal:8082";
-                std::string cmd = "export TASK_ID=" + task_id +
-                                 " && export JUDGE_HOST=" + judge_host +
-                                 " && export TIME_LIMIT=" + std::to_string(test.cpu_limit) +
-                                 " && export MEM_LIMIT=" + std::to_string(test.mem_limit * 1024) +
-                                 " && " + script;
-                runner_sandbox->Exec(cmd, request.time_limit() + 5000);
+            run_awaitable.timeout_ms = request.time_limit_ms() + 1000;
+            run_awaitable.work = [&runner_sandbox, &test, timeout = request.time_limit_ms()] {
+                const auto started = std::chrono::steady_clock::now();
+                std::string cmd = "TIME_LIMIT=" + std::to_string(std::max(1, test.cpu_limit)) +
+                                  " MEM_LIMIT=" + std::to_string(std::max(1, test.mem_limit) * 1024) +
+                                  " OUTPUT_LIMIT_KB=1024 /judge/run.sh";
+                auto result = ToDockerTaskResult(runner_sandbox->Exec(cmd, timeout + 1000), false);
+                result.time_used_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - started).count();
+                if (result.exit_code == 137 && runner_sandbox->WasOomKilled())
+                    result.status = "MEMORY_LIMIT";
+                result.memory_used_bytes = runner_sandbox->MemoryPeakBytes();
+                return result;
             };
 
-            co_await run_awaitable;
+            auto run_result = co_await run_awaitable;
+            LOG_DEBUG("Runner completed exit_code={} status={} timed_out={} stderr={}",
+                      run_result.exit_code, run_result.status, run_result.timed_out,
+                      run_result.stderr_str);
 
             // ⑩ 协程恢复，解析运行结果
-            auto& run_result = _handle.promise().result;
-            auto* status = resp->add_status_list();
+            auto* test_result = resp->add_test_case_results();
+            test_result->set_index(test.index);
+            test_result->set_input(test.input);
+            test_result->set_expected_output(test.output);
+            test_result->set_time_used_ms(run_result.time_used_ms);
+            test_result->set_memory_used_bytes(run_result.memory_used_bytes);
+            oj::common::SubmissionStatus test_status = oj::common::SUBMISSION_STATUS_ACCEPTED;
 
             if (run_result.timed_out) {
-                status->set_result(TIME_LIMIT);
-                status->set_time_cost(request.time_limit());
-                status->set_memory_cost(0);
+                test_status = oj::common::SUBMISSION_STATUS_TIME_LIMIT_EXCEEDED;
+                test_result->set_time_used_ms(std::max<int64_t>(request.time_limit_ms(), run_result.time_used_ms));
             } else if (run_result.status != "OK") {
                 // 运行时错误
-                SubmitResult result = MapStatusToSubmitResult(run_result.status);
-                status->set_result(result);
-                status->set_time_cost(0);
-                status->set_memory_cost(0);
+                test_status = MapStatusToSubmissionStatus(run_result.status);
             } else {
                 // 运行成功，比较输出
-                std::string user_output = runner_sandbox->ReadFile("/home/judge/output.txt");
+                auto read_output_result = co_await DockerTaskAwaitable{
+                    6000,
+                    [&runner_sandbox] {
+                        DockerTaskResult result;
+                        result.stdout_str = runner_sandbox->ReadFile("/home/judge/output.txt");
+                        result.status = "OK";
+                        return result;
+                    }};
+                std::string user_output = std::move(read_output_result.stdout_str);
                 LOG_DEBUG("User program completed");
+                test_result->set_actual_output(user_output);
                 std::string expected = test.output;
-                if (RemoveAllWhitespace(user_output) == RemoveAllWhitespace(expected)) {
-                    status->set_result(AC);
-                } else {
-                    status->set_result(WA);
+                if (!request.has_custom_task_id() &&
+                    NormalizeOutput(user_output) != NormalizeOutput(expected)) {
+                    test_status = oj::common::SUBMISSION_STATUS_WRONG_ANSWER;
                 }
-                status->set_time_cost(0);
-                status->set_memory_cost(0);
+            }
+            test_result->set_status(test_status);
+            resp->set_time_used_ms(resp->time_used_ms() + test_result->time_used_ms());
+            resp->set_memory_used_bytes(std::max(resp->memory_used_bytes(),
+                                                 test_result->memory_used_bytes()));
+            if (resp->status() == oj::common::SUBMISSION_STATUS_ACCEPTED &&
+                test_status != oj::common::SUBMISSION_STATUS_ACCEPTED) {
+                resp->set_status(test_status);
             }
         }
 
         // ⑪ 归还运行容器到预热池
-        _runner_pool->Release(std::move(runner_sandbox));
+        co_await DockerTaskAwaitable{
+            4000,
+            [&runner_sandbox] {
+                runner_sandbox->Destroy();
+                return DockerTaskResult{"OK", 0};
+            }};
+        runner_sandbox.reset();
 
-        // ⑫ 清理宿主机临时文件
-        _file_system.remove(src_path);
-        _file_system.remove(exe_path);
+        resp->set_completed_at(std::time(nullptr));
 
         co_return resp;
     }
@@ -206,7 +295,7 @@ public:
 
     void SetTask(CoTask& task)
     {
-        _handle = task.GetHandle();
+        (void)task;
     }
 
     /// 设置运行容器预热池
@@ -218,28 +307,59 @@ public:
 private:
     fileUtil::FileSystem _file_system;
     oj_sandbox::SandboxPool* _runner_pool;
-    CoTask::handle_type _handle;
     std::vector<TestCase> _test_cases;
 
-    /// 去除所有空白字符
-    static std::string RemoveAllWhitespace(const std::string& str) {
-        std::string result;
-        for (char c : str) {
-            if (c != ' ' && c != '\n' && c != '\r' && c != '\t') {
-                result += c;
-            }
+    static std::shared_ptr<oj::common::JudgeResult> ErrorResult(
+        oj::common::SubmissionStatus status) {
+        auto result = std::make_shared<oj::common::JudgeResult>();
+        result->set_status(status);
+        result->set_completed_at(std::time(nullptr));
+        return result;
+    }
+
+    static std::string NormalizeOutput(const std::string& output) {
+        std::string normalized;
+        size_t line_start = 0;
+        while (line_start < output.size()) {
+            size_t line_end = output.find('\n', line_start);
+            if (line_end == std::string::npos) line_end = output.size();
+            size_t content_end = line_end;
+            while (content_end > line_start &&
+                   (output[content_end - 1] == ' ' || output[content_end - 1] == '\t' ||
+                    output[content_end - 1] == '\r')) --content_end;
+            normalized.append(output, line_start, content_end - line_start);
+            normalized.push_back('\n');
+            line_start = line_end + (line_end < output.size());
         }
+        while (!normalized.empty() && normalized.back() == '\n') normalized.pop_back();
+        return normalized;
+    }
+
+    static std::string LanguageStandard(const std::string& language) {
+        return language == "cpp20" ? "c++20" : "c++17";
+    }
+
+    static DockerTaskResult ToDockerTaskResult(const oj_sandbox::ExecResult& exec, bool compile) {
+        DockerTaskResult result;
+        result.exit_code = exec.exit_code;
+        result.timed_out = exec.timed_out;
+        result.killed = exec.killed;
+        result.stdout_str = exec.stdout_str;
+        result.stderr_str = exec.stderr_str;
+        if (exec.timed_out) result.status = "TIME_LIMIT";
+        else if (exec.exit_code == 0) result.status = "OK";
+        else if (compile) result.status = "COMPILE_ERROR";
+        else if (exec.exit_code == 137) result.status = "RUNTIME_ERROR";
+        else if (exec.exit_code == 152) result.status = "TIME_LIMIT";
+        else result.status = "RUNTIME_ERROR";
         return result;
     }
 
     /// Docker 脚本状态映射到 SubmitResult 枚举
-    static SubmitResult MapStatusToSubmitResult(const std::string& status) {
-        if (status == "MEMORY_LIMIT") return MEMORY_LIMIT;
-        if (status == "SEGV")         return SEGV_ERROR;
-        if (status == "FPE")          return FPE_ERROR;
-        if (status == "TIME_LIMIT")   return TIME_LIMIT;
-        if (status == "COMPILE_ERROR") return COMPILE_ERROR;
-        return RUNTIME_ERROR;
+    static oj::common::SubmissionStatus MapStatusToSubmissionStatus(const std::string& status) {
+        if (status == "MEMORY_LIMIT") return oj::common::SUBMISSION_STATUS_MEMORY_LIMIT_EXCEEDED;
+        if (status == "TIME_LIMIT") return oj::common::SUBMISSION_STATUS_TIME_LIMIT_EXCEEDED;
+        return oj::common::SUBMISSION_STATUS_RUNTIME_ERROR;
     }
 };
 

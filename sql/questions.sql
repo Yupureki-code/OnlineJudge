@@ -30,6 +30,7 @@ CREATE TABLE `questions`  (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '题目更新时间',
   `cpu_limit` tinyint NOT NULL COMMENT '时间限制',
   `memory_limit` int NOT NULL COMMENT '内存限制',
+  `visible` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否对普通用户可见',
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '题目属性' ROW_FORMAT = Dynamic;
 

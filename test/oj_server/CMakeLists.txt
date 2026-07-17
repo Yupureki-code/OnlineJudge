@@ -22,12 +22,14 @@ set(OJ_RPC_TEST_LIBRARIES
     pthread jsoncpp ctemplate spdlog::spdlog CURL::libcurl
     ${REDIS_PLUS_PLUS_LIB} ${HIREDIS_LIB}
     ${OJ_SERVER_BRPC} ${OJ_SERVER_PROTOC} ${OJ_SERVER_GFLAGS} ${OJ_SERVER_LEVELDB}
+    ${OJ_SERVER_AMQPCPP}
     OpenSSL::SSL OpenSSL::Crypto dl z event event_pthreads
 )
 
 add_executable(brpc_adapter_test brpc_adapter_test.cpp)
 add_executable(oj_service_rpc_test
     oj_service_rpc_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/oj_server/src/judge/outbox_publisher.cpp
     ${CMAKE_SOURCE_DIR}/src/oj_server/src/rpc/oj_service_impl.cpp
 )
 add_executable(oj_admin_service_rpc_test
@@ -39,8 +41,15 @@ add_executable(static_file_service_test
     static_file_service_test.cpp
     ${CMAKE_SOURCE_DIR}/src/oj_server/src/rpc/static_http_service.cpp
 )
+add_executable(outbox_publisher_test
+    outbox_publisher_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/oj_server/src/judge/outbox_publisher.cpp
+)
+add_executable(submission_persistence_test submission_persistence_test.cpp)
+add_executable(data_query_regression_test data_query_regression_test.cpp)
+add_executable(auth_session_security_test auth_session_security_test.cpp)
 
-foreach(target brpc_adapter_test oj_service_rpc_test oj_admin_service_rpc_test static_file_service_test)
+foreach(target brpc_adapter_test oj_service_rpc_test oj_admin_service_rpc_test static_file_service_test outbox_publisher_test submission_persistence_test data_query_regression_test auth_session_security_test)
     target_compile_features(${target} PRIVATE cxx_std_20)
     target_include_directories(${target} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -49,5 +58,7 @@ foreach(target brpc_adapter_test oj_service_rpc_test oj_admin_service_rpc_test s
         ${CMAKE_SOURCE_DIR}/src/comm
     )
     target_link_libraries(${target} PRIVATE ${OJ_RPC_TEST_LIBRARIES})
+    # Static brpc references protobuf symbols; keep protobuf after brpc for --as-needed linkers.
+    target_link_libraries(${target} PRIVATE protobuf::libprotobuf)
     add_dependencies(${target} generate_phase3_proto)
 endforeach()

@@ -16,6 +16,7 @@
 #include "model_base.hpp"
 #include "model_comment.hpp"
 #include "model_solution.hpp"
+#include "model_submission.hpp"
 #include "model_user.hpp"
 #include "model_question.hpp"
 #include <thread>
@@ -70,6 +71,7 @@ namespace oj::model
 
         ModelComment  _comment;
         ModelSolution _solution;
+        ModelSubmission _submission;
         ModelUser     _user;
         ModelQuestion _question;
 
@@ -80,6 +82,7 @@ namespace oj::model
         
         ModelComment&  Comment()  { return _comment; }
         ModelSolution& Solution() { return _solution; }
+        ModelSubmission& Submission() { return _submission; }
         ModelUser&     User()     { return _user; }
         ModelQuestion& Question() { return _question; }
 
@@ -123,6 +126,12 @@ namespace oj::model
                 return false;
             }
             return _cache.SetStringByAnyKey(key, value, expire_seconds);
+        }
+
+        int ReserveCachedStringByAnyKey(const std::string& key, const std::string& value, int expire_seconds)
+        {
+            if (key.empty() || expire_seconds <= 0) return -1;
+            return _cache.ReserveStringByAnyKey(key, value, expire_seconds);
         }
 
         bool DeleteCachedStringByAnyKey(const std::string& key)
@@ -734,6 +743,8 @@ namespace oj::model
                                      const std::string& action,
                                      int operator_uid,
                                      const std::string& result,
+                                     int64_t start_time,
+                                     int64_t end_time,
                                      std::vector<AdminAuditLog>* logs,
                                      int* total_count)
         {
@@ -748,6 +759,10 @@ namespace oj::model
             const std::string safe_action = TrimCopy(action);
             const std::string safe_result = TrimCopy(result);
             if (operator_uid < 0 || safe_action.size() > 64 || safe_result.size() > 16 ||
+                start_time < 0 || end_time < 0 ||
+                start_time > std::numeric_limits<int64_t>::max() / 1000000 ||
+                end_time > std::numeric_limits<int64_t>::max() / 1000000 ||
+                (start_time > 0 && end_time > 0 && start_time > end_time) ||
                 (!safe_result.empty() && safe_result != "success" &&
                  safe_result != "denied" && safe_result != "failed"))
                 return false;
@@ -768,6 +783,18 @@ namespace oj::model
             {
                 condition = condition && ODBAdminAuditLogQuery::result == safe_result;
                 count_condition = count_condition && ODBAdminAuditLogCountQuery::result == safe_result;
+            }
+            if (start_time > 0)
+            {
+                const auto start = oj::util::TimeUtil::IntToDateTime(start_time * 1000000);
+                condition = condition && ODBAdminAuditLogQuery::created_at >= start;
+                count_condition = count_condition && ODBAdminAuditLogCountQuery::created_at >= start;
+            }
+            if (end_time > 0)
+            {
+                const auto end = oj::util::TimeUtil::IntToDateTime(end_time * 1000000);
+                condition = condition && ODBAdminAuditLogQuery::created_at <= end;
+                count_condition = count_condition && ODBAdminAuditLogCountQuery::created_at <= end;
             }
             DeferredScopedDB database;
             std::unique_ptr<ns_odb::ScopedTransaction> transaction;

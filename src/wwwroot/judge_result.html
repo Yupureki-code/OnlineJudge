@@ -716,6 +716,9 @@
             }
         }
 </style>
+    <script src="/js/csrf.js"></script>
+    <script src="/js/api-client.js"></script>
+    <script src="/js/submission-poller.js"></script>
 </head>
 <body>
 
@@ -802,18 +805,29 @@
             return urlParams.get(name);
         }
 
-        function displayResult() {
+        async function displayResult() {
             const resultDiv = document.getElementById('result');
             try {
-                const resultJson = getURLParam('result');
-                if (resultJson) {
-                    const result = JSON.parse(decodeURIComponent(resultJson));
-                    showResult(result);
-                } else {
-                    showResult({"status": 0, "desc": "恭喜你!已通过此题", "stdout": "", "stderr": ""});
-                }
+                const submissionId = getURLParam('submission_id');
+                if (!submissionId) throw new Error('SUBMISSION_ID_REQUIRED');
+                resultDiv.innerHTML = '<div class="result-container"><div class="result-header"><h1 class="result-title">判题中</h1><p class="result-desc">正在等待判题结果...</p></div></div>';
+                const data = await window.OJSubmissionPoller.pollSubmission(submissionId, {
+                    onUpdate: function(_, status) {
+                        const desc = resultDiv.querySelector('.result-desc');
+                        if (desc) desc.textContent = status === 'SUBMISSION_STATUS_QUEUED' ? '排队中...' : '判题中...';
+                    }
+                });
+                const submission = data.submission || {};
+                const judge = submission.result || {};
+                const cases = judge.test_case_results || [];
+                showResult({
+                    status: cases.length ? cases.map(function(item) { return String(item.status || '').replace('SUBMISSION_STATUS_', ''); }).join(' ') : String(submission.status || '').replace('SUBMISSION_STATUS_', ''),
+                    desc: judge.message || '',
+                    stderr: judge.compile_error || '',
+                    stdout: cases.length ? cases[cases.length - 1].actual_output || '' : ''
+                });
             } catch (e) {
-                resultDiv.innerHTML = '<div class="result-container result-error"><div class="result-header"><div class="result-icon">⚠️</div><h1 class="result-title">错误</h1><p class="result-desc">无法解析结果</p></div></div>';
+                resultDiv.innerHTML = '<div class="result-container result-error"><div class="result-header"><div class="result-icon">!</div><h1 class="result-title">结果加载失败</h1><p class="result-desc">请稍后刷新重试</p></div></div>';
             }
         }
 

@@ -1,17 +1,16 @@
 # docker/Dockerfile.runner
-# 运行容器镜像 — 仅包含运行时动态库，预热池复用
+# 运行容器镜像 — 仅包含运行时动态库，每次任务新建销毁
 #
 # 构建: docker build -t oj-runner:latest -f docker/Dockerfile.runner .
 
 FROM debian:bookworm-slim
 
 LABEL maintainer="OnlineJudge Project"
-LABEL description="OJ Runner Container - runtime only, lightweight for pooling"
+LABEL description="OJ Runner Container - isolated one-shot runtime"
 
-# 仅安装运行时动态库和 curl（用于通知 JudgeService）
+# 仅安装运行时动态库；容器禁网且不主动回调宿主。
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libstdc++6 \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 创建非 root 用户

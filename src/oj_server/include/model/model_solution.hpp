@@ -4,10 +4,10 @@
 #include "model_base.hpp"
 #include "../../../comm/models/solution.hxx"
 #include "../../../comm/models/model_counts.hxx"
-#include "../../../comm/models/gen/solution-odb.hxx"
-#include "../../../comm/models/gen/model_counts-odb.hxx"
+#include "solution-odb.hxx"
+#include "model_counts-odb.hxx"
 #include "../../../comm/models/solution_action.hxx"
-#include "../../../comm/models/gen/solution_action-odb.hxx"
+#include "solution_action-odb.hxx"
 #include <limits>
 
 namespace oj::model
@@ -110,7 +110,14 @@ namespace oj::model
                         latecyMonitor::Timer timer(Monitor(), "ModelSolution.CreateSolution.ODBRollback");
                         transaction->rollback();
                     }
-                    catch (...) {}
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("CreateSolution rollback failed: {}", rollback_error.what());
+                    }
+                    catch (...)
+                    {
+                        LOG_ERROR("CreateSolution rollback failed with unknown exception");
+                    }
                 }
                 LOG_ERROR("{}{}", "ODB创建题解失败: ", error.what());
                 return false;
@@ -235,9 +242,9 @@ namespace oj::model
                 using Query = odb::query<oj::db::Solution>;
                 Query page_query = BuildSolutionQuery<Query>(question_id, status_filter);
                 if (sort_order == "hot")
-                    page_query += " ORDER BY like_count DESC, id ASC LIMIT ";
+                    page_query += " ORDER BY like_count DESC, id DESC LIMIT ";
                 else
-                    page_query += " ORDER BY id ASC LIMIT ";
+                    page_query += " ORDER BY id DESC LIMIT ";
                 page_query += std::to_string(safe_size) + " OFFSET " + std::to_string(offset);
 
                 odb::result<oj::db::Solution> result;
@@ -264,7 +271,14 @@ namespace oj::model
                         latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionsByPage.ODBRollback");
                         transaction->rollback();
                     }
-                    catch (...) {}
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("GetSolutionsByPage rollback failed: {}", rollback_error.what());
+                    }
+                    catch (...)
+                    {
+                        LOG_ERROR("GetSolutionsByPage rollback failed with unknown exception");
+                    }
                 }
                 LOG_ERROR("{}{}", "ODB题解列表查询失败: ", error.what());
                 return false;
@@ -367,6 +381,7 @@ namespace oj::model
                     transaction->commit();
                     return false;
                 }
+                *solution = *record;
                 {
                     latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionById.ODBCommit");
                     transaction->commit();
@@ -381,7 +396,14 @@ namespace oj::model
                         latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetSolutionById.ODBRollback");
                         transaction->rollback();
                     }
-                    catch (...) {}
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("GetSolutionById rollback failed: {}", rollback_error.what());
+                    }
+                    catch (...)
+                    {
+                        LOG_ERROR("GetSolutionById rollback failed with unknown exception");
+                    }
                 }
                 LOG_ERROR("{}{}", "ODB题解详情查询失败: ", error.what());
                 return false;
@@ -410,6 +432,32 @@ namespace oj::model
             RecordCacheMetrics(RecordActionType::Solution, false, true, cost_ms);
 
             return true;
+        }
+
+        bool GetSolutionCount(const std::string& status_filter, int* total_count)
+        {
+            if (total_count == nullptr || (!status_filter.empty() && status_filter != "pending" &&
+                status_filter != "approved" && status_filter != "rejected"))
+                return false;
+            try
+            {
+                auto database = AcquireDatabase();
+                if (!database.Get()) return false;
+                odb::transaction transaction(database->begin());
+                using CountQuery = odb::query<oj::db::SolutionCount>;
+                CountQuery query(true);
+                if (!status_filter.empty()) query = query && CountQuery::status == status_filter;
+                const auto count = database->query_value<oj::db::SolutionCount>(query).value;
+                if (count > static_cast<uint64_t>(std::numeric_limits<int>::max())) return false;
+                *total_count = static_cast<int>(count);
+                transaction.commit();
+                return true;
+            }
+            catch (const std::exception& error)
+            {
+                LOG_ERROR("GetSolutionCount failed: {}", error.what());
+                return false;
+            }
         }
 
         bool ToggleSolutionAction(long long solution_id, int user_id, const std::string& action_type,
@@ -519,7 +567,14 @@ namespace oj::model
                         latecyMonitor::Timer timer(Monitor(), "ModelSolution.ToggleSolutionAction.ODBRollback");
                         transaction->rollback();
                     }
-                    catch (...) {}
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("ToggleSolutionAction rollback failed: {}", rollback_error.what());
+                    }
+                    catch (...)
+                    {
+                        LOG_ERROR("ToggleSolutionAction rollback failed with unknown exception");
+                    }
                 }
                 LOG_ERROR("{}{}", "ODB切换题解交互失败: ", error.what());
                 return false;
@@ -599,7 +654,14 @@ namespace oj::model
                         latecyMonitor::Timer timer(Monitor(), "ModelSolution.GetUserActionsForSolutions.ODBRollback");
                         transaction->rollback();
                     }
-                    catch (...) {}
+                    catch (const std::exception& rollback_error)
+                    {
+                        LOG_ERROR("GetUserActionsForSolutions rollback failed: {}", rollback_error.what());
+                    }
+                    catch (...)
+                    {
+                        LOG_ERROR("GetUserActionsForSolutions rollback failed with unknown exception");
+                    }
                 }
                 LOG_ERROR("{}{}", "ODB查询用户题解交互失败: ", error.what());
                 return false;
