@@ -3,7 +3,11 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
+#include <cstdlib>
 #include <ctime>
+#include <deque>
+#include <filesystem>
+#include <fstream>
 #include <limits>
 #include <memory>
 #include <sstream>
@@ -29,11 +33,14 @@ namespace
 
 constexpr uint32_t kMaxTestOrdinal = 127;
 constexpr std::size_t kMaxEncodedQuestionIdLength = 5;
+constexpr std::size_t kDiagnosticMaxLines = 2000;
+constexpr std::size_t kDiagnosticMaxBytes = 2 * 1024 * 1024;
 
 bool IsDigits(const std::string& value)
 {
-    return !value.empty() && std::all_of(value.begin(), value.end(), [](unsigned char ch) {
-        return std::isdigit(ch) != 0;
+    return !value.empty() && value.size() <= kMaxEncodedQuestionIdLength &&
+           std::all_of(value.begin(), value.end(), [](unsigned char ch) {
+        return std::isalnum(ch) != 0;
     });
 }
 
@@ -118,6 +125,49 @@ void FillTestCase(const Json::Value& input, oj::common::TestCase* output)
     ProtoAdapter::ToProto(input, output);
     const uint32_t ordinal = output->ordinal();
     output->set_test_case_id(EncodeTestId(output->question_id(), ordinal));
+}
+
+std::filesystem::path DiagnosticDirectory(const std::string& kind)
+{
+    const char* configured = std::getenv("OJ_LOG_PATH");
+    const std::filesystem::path root = configured && *configured ? configured : "/app/log";
+    if (kind == "log") return root;
+    if (kind == "latency") return root / "latency";
+    return {};
+}
+
+bool ValidDiagnosticFile(const std::string& file)
+{
+    return !file.empty() && file.size() <= 128 &&
+           file.find_first_of("/\\") == std::string::npos &&
+           file != "." && file != ".." && file.find("..") == std::string::npos;
+}
+
+bool ReadDiagnosticTail(const std::filesystem::path& path, std::string* content,
+                        uint32_t* returned_lines, bool* truncated)
+{
+    std::ifstream input(path);
+    if (!input || content == nullptr || returned_lines == nullptr || truncated == nullptr)
+        return false;
+    std::deque<std::string> lines;
+    std::size_t bytes = 0;
+    bool dropped = false;
+    std::string line;
+    while (std::getline(input, line)) {
+        lines.push_back(line);
+        bytes += line.size() + 1;
+        while (lines.size() > kDiagnosticMaxLines || bytes > kDiagnosticMaxBytes) {
+            bytes -= lines.front().size() + 1;
+            lines.pop_front();
+            dropped = true;
+        }
+    }
+    std::ostringstream output;
+    for (const auto& item : lines) output << item << '\n';
+    *content = output.str();
+    *returned_lines = static_cast<uint32_t>(lines.size());
+    *truncated = input.bad() || dropped;
+    return true;
 }
 
 template <typename Response>
@@ -341,7 +391,20 @@ void OJAdminServiceImpl::Method(google::protobuf::RpcController* controller, \
     const RequestType* request, ResponseType* response, google::protobuf::Closure* done) \
 { OJ_ADMIN_DISPATCH(RequestType, ResponseType, { (void)cntl; (void)req; SetNotImplemented(rsp); }); }
 
-OJ_ADMIN_NOT_IMPLEMENTED(AdminGetUser, oj::biz::AdminUserIdRequest, oj::biz::AdminUserResponse)
+void OJAdminServiceImpl::AdminGetUser(google::protobuf::RpcController* controller,
+    const oj::biz::AdminUserIdRequest* request, oj::biz::AdminUserResponse* response,
+    google::protobuf::Closure* done)
+{
+    OJ_ADMIN_DISPATCH(oj::biz::AdminUserIdRequest, oj::biz::AdminUserResponse, {
+        if (!RequireAdmin(cntl, false, nullptr, rsp->mutable_status())) return;
+        User user;
+        if (req->uid() == 0 || req->uid() > static_cast<uint64_t>(std::numeric_limits<int>::max()) ||
+            !_control.GetModel()->User().GetUserById(static_cast<int>(req->uid()), &user)) {
+            SetError(rsp->mutable_status(), 404, "USER_NOT_FOUND"); return;
+        }
+        ProtoAdapter::SetOk(rsp->mutable_status()); ProtoAdapter::ToProto(user, rsp->mutable_user());
+    });
+}
 OJ_ADMIN_NOT_IMPLEMENTED(AdminCreateUser, oj::biz::AdminCreateUserRequest, oj::biz::AdminUserResponse)
 OJ_ADMIN_NOT_IMPLEMENTED(AdminUpdateUser, oj::biz::AdminUpdateUserRequest, oj::biz::AdminUserResponse)
 OJ_ADMIN_NOT_IMPLEMENTED(AdminDeleteUser, oj::biz::AdminUserIdRequest, oj::common::EmptyResponse)
@@ -733,6 +796,55 @@ void OJAdminServiceImpl::AdminGetAuditLogs(google::protobuf::RpcController* cont
             out->set_operator_role(log.operator_role); out->set_action(log.action);
             out->set_resource_type(log.resource_type); out->set_result(log.result); out->set_payload_text(log.payload_text);
         }
+    });
+}
+
+void OJAdminServiceImpl::AdminListDiagnosticFiles(google::protobuf::RpcController* controller,
+    const oj::biz::DiagnosticFilesRequest* request, oj::biz::DiagnosticFilesResponse* response,
+    google::protobuf::Closure* done)
+{
+    OJ_ADMIN_DISPATCH(oj::biz::DiagnosticFilesRequest, oj::biz::DiagnosticFilesResponse, {
+        if (!RequireAdmin(cntl, false, nullptr, rsp->mutable_status())) return;
+        const auto directory = DiagnosticDirectory(req->kind());
+        if (directory.empty()) { SetError(rsp->mutable_status(), 400, "INVALID_DIAGNOSTIC_KIND"); return; }
+        std::error_code error;
+        if (!std::filesystem::is_directory(directory, error)) {
+            SetError(rsp->mutable_status(), 500, "DIAGNOSTIC_DIRECTORY_UNAVAILABLE", true); return;
+        }
+        for (const auto& entry : std::filesystem::directory_iterator(directory, error)) {
+            if (error) break;
+            if (!entry.is_symlink(error) && entry.is_regular_file(error) &&
+                ValidDiagnosticFile(entry.path().filename().string()))
+                rsp->add_files(entry.path().filename().string());
+        }
+        if (error) { SetError(rsp->mutable_status(), 500, "LIST_DIAGNOSTIC_FILES_FAILED", true); return; }
+        std::sort(rsp->mutable_files()->begin(), rsp->mutable_files()->end());
+        ProtoAdapter::SetOk(rsp->mutable_status());
+    });
+}
+
+void OJAdminServiceImpl::AdminReadDiagnosticFile(google::protobuf::RpcController* controller,
+    const oj::biz::DiagnosticContentRequest* request, oj::biz::DiagnosticContentResponse* response,
+    google::protobuf::Closure* done)
+{
+    OJ_ADMIN_DISPATCH(oj::biz::DiagnosticContentRequest, oj::biz::DiagnosticContentResponse, {
+        if (!RequireAdmin(cntl, false, nullptr, rsp->mutable_status())) return;
+        const auto directory = DiagnosticDirectory(req->kind());
+        if (directory.empty()) { SetError(rsp->mutable_status(), 400, "INVALID_DIAGNOSTIC_KIND"); return; }
+        if (!ValidDiagnosticFile(req->file())) { SetError(rsp->mutable_status(), 400, "INVALID_DIAGNOSTIC_FILE"); return; }
+        const auto path = directory / req->file();
+        std::error_code error;
+        const auto file_status = std::filesystem::symlink_status(path, error);
+        if (error || !std::filesystem::is_regular_file(file_status)) {
+            SetError(rsp->mutable_status(), 404, "DIAGNOSTIC_FILE_NOT_FOUND"); return;
+        }
+        std::string content; uint32_t lines = 0; bool truncated = false;
+        if (!ReadDiagnosticTail(path, &content, &lines, &truncated)) {
+            SetError(rsp->mutable_status(), 500, "READ_DIAGNOSTIC_FILE_FAILED", true); return;
+        }
+        rsp->set_file(req->file()); rsp->set_content(content);
+        rsp->set_returned_lines(lines); rsp->set_truncated(truncated);
+        ProtoAdapter::SetOk(rsp->mutable_status());
     });
 }
 

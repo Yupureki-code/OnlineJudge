@@ -21,6 +21,14 @@ namespace oj::model
             });
         }
 
+        bool IsValidQuestionId(const std::string& value) const
+        {
+            return !value.empty() && value.size() <= 5 &&
+                std::all_of(value.begin(), value.end(), [](unsigned char ch) {
+                    return std::isalnum(ch) != 0;
+                });
+        }
+
         std::string TrimCopy(const std::string& value) const
         {
             size_t begin = 0;
@@ -69,6 +77,8 @@ namespace oj::model
         }
 
     public:
+        latecyMonitor::LatencyMonitor& GetLatencyMonitor() noexcept { return Monitor(); }
+
         static bool StartDatabase(const std::string& process_name)
         {
             return Context().Start(process_name);

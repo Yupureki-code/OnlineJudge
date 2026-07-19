@@ -162,10 +162,9 @@
     function renderOverviewCards(data) {
         return [
             '<div class="metric-grid">',
-            '<div class="metric"><div class="k">题目总数</div><div class="v">' + (data.question_count || 0) + '</div><div class="s">题库规模</div></div>',
-            '<div class="metric"><div class="k">用户总数</div><div class="v">' + (data.user_count || 0) + '</div><div class="s">已注册账户</div></div>',
-            '<div class="metric"><div class="k">管理员总数</div><div class="v">' + (data.admin_count || 0) + '</div><div class="s">后台可登录账户</div></div>',
-            '<div class="metric"><div class="k">审计日志总量</div><div class="v">' + (data.recent_audit_total || 0) + '</div><div class="s">最近操作可追溯</div></div>',
+            '<div class="metric"><div class="k">题目总数</div><div class="v">' + (data.total_questions || 0) + '</div><div class="s">题库规模</div></div>',
+            '<div class="metric"><div class="k">用户总数</div><div class="v">' + (data.total_users || 0) + '</div><div class="s">已注册账户</div></div>',
+            '<div class="metric"><div class="k">题解总数</div><div class="v">' + (data.total_solutions || 0) + '</div><div class="s">公开题解</div></div>',
             '</div>'
         ].join('');
     }
@@ -193,76 +192,62 @@
             return;
         }
 
-        var data = result.data.data || {};
-        var cache = data.cache || {};
-        var roleData = data.admin_roles || {};
-        var recentUsers = data.recent_users || [];
-        var recentQuestions = data.recent_questions || [];
-        var recentAudits = data.recent_audits || [];
-
-        var recentUsersBody = recentUsers.length ? recentUsers.map(function (user) {
-            return '<tr><td>' + escapeHtml(user.uid) + '</td><td>' + escapeHtml(user.name) + '</td><td>' + escapeHtml(user.email) + '</td><td>' + escapeHtml(user.create_time) + '</td></tr>';
-        }).join('') : '<tr><td colspan="4" class="empty">暂无用户数据</td></tr>';
-
-        var recentQuestionsBody = recentQuestions.length ? recentQuestions.map(function (question) {
-            return '<tr><td>#' + escapeHtml(question.number) + '</td><td>' + escapeHtml(question.title) + '</td><td>' + escapeHtml(question.star) + '</td><td>' + escapeHtml(question.update_time) + '</td></tr>';
-        }).join('') : '<tr><td colspan="4" class="empty">暂无题目数据</td></tr>';
-
-        var recentAuditsBody = recentAudits.length ? recentAudits.map(function (log) {
-            return '<tr>' +
-                '<td>' + escapeHtml(log.action) + '</td>' +
-                '<td>' + escapeHtml(log.operator_admin_id) + '</td>' +
-                '<td class="status-' + escapeHtml(log.result) + '">' + escapeHtml(log.result) + '</td>' +
-                '<td>' + escapeHtml(log.resource_type) + '</td>' +
-                '</tr>';
-        }).join('') : '<tr><td colspan="4" class="empty">暂无审计日志</td></tr>';
+        var data = result.data || {};
 
         content.innerHTML = [
-            '<div class="page-head"><div><h2>仪表盘</h2><div class="page-subtitle">围绕题库、缓存与后台操作的管理概览</div></div></div>',
+            '<div class="page-head"><div><h2>仪表盘</h2><div class="page-subtitle">服务数据与运行诊断</div></div></div>',
             renderOverviewCards(data),
-            '<div class="overview-grid">',
-            '<div class="stack">',
-            '<section class="panel">',
-            '<h3>缓存运行概况 <span style="font-size:12px;color:var(--muted);">(过去24小时)</span></h3>',
-            '<div class="page-subtitle">按业务类型展示缓存命中情况</div>',
-            '<div id="cache-pills" class="pill-row">加载中...</div>',
-            '<table class="table-compact">',
-            '<thead><tr><th>业务类型</th><th>请求</th><th>缓存命中</th><th>DB回退</th><th>命中率</th><th>总耗时</th></tr></thead>',
-            '<tbody id="cache-table-body">加载中...</tbody>',
-            '</table></section>',
-            renderOverviewTable('最近注册用户', '按注册时间倒序展示最近 5 条', '<tr><th>UID</th><th>用户名</th><th>邮箱</th><th>注册时间</th></tr>', recentUsersBody),
-            renderOverviewTable('最近更新题目', '帮助快速定位近期维护的题目', '<tr><th>题号</th><th>标题</th><th>难度</th><th>最近更新时间</th></tr>', recentQuestionsBody),
-            '</div>',
-            '<div class="stack">',
-            '<section class="panel">',
-            '<h3>管理员构成</h3>',
-            '<div class="page-subtitle">当前后台权限结构</div>',
-            '<div class="pill-row">',
-            '<span class="pill">超级管理员 ' + (roleData.super_admin || 0) + '</span>',
-            '<span class="pill">普通管理员 ' + (roleData.admin || 0) + '</span>',
-            '</div>',
-            '</section>',
-            renderOverviewTable('最近审计日志', '展示最近 5 条后台操作结果', '<tr><th>动作</th><th>管理员ID</th><th>结果</th><th>资源</th></tr>', recentAuditsBody),
-            '</div>',
+            '<div class="diagnostic-grid">',
+            diagnosticPanel('log', '服务日志', '查看 log/ 下各服务日志的尾部 2000 行'),
+            diagnosticPanel('latency', '延迟记录', '查看 log/latency/ 下的 CSV 延迟记录'),
             '</div>'
         ].join('');
-        loadCacheMetrics();
+        initializeDiagnostic('log');
+        initializeDiagnostic('latency');
     }
 
-    async function loadCacheMetrics() {
-        var result = await getJson("/admin/api/cache/metrics");
-        if (!result.ok || !result.data.success) return;
-        var metrics = result.data.metrics || [];
-        var pillsHtml = metrics.map(function(m) {
-            return '<span class="pill">' + m.name + ' ' + (m.hit_rate || 0).toFixed(1) + '%</span>';
-        }).join('');
-        var tableHtml = metrics.map(function(m) {
-            return '<tr><td>' + m.name + '</td><td>' + m.total_requests + '</td><td>' + m.cache_hits + '</td><td>' + m.db_fallbacks + '</td><td>' + (m.hit_rate || 0).toFixed(1) + '%</td><td>' + m.total_ms + ' ms</td></tr>';
-        }).join('');
-        var pillsEl = document.getElementById('cache-pills');
-        var tableEl = document.getElementById('cache-table-body');
-        if (pillsEl) pillsEl.innerHTML = pillsHtml || '<span style="color:var(--muted)">暂无数据</span>';
-        if (tableEl) tableEl.innerHTML = tableHtml || '<tr><td colspan="6" class="empty">暂无数据</td></tr>';
+    function diagnosticPanel(kind, title, subtitle) {
+        return '<section class="panel diagnostic-panel">' +
+            '<div class="diagnostic-head"><div><h3>' + title + '</h3><div class="page-subtitle">' + subtitle + '</div></div>' +
+            '<button class="action" id="diagnostic-refresh-' + kind + '">刷新</button></div>' +
+            '<div class="diagnostic-files" id="diagnostic-files-' + kind + '">加载中...</div>' +
+            '<pre class="diagnostic-content" id="diagnostic-content-' + kind + '">请选择文件</pre>' +
+            '</section>';
+    }
+
+    async function loadDiagnosticContent(kind, file) {
+        var output = document.getElementById('diagnostic-content-' + kind);
+        if (!output || !file) return;
+        output.textContent = '加载中...';
+        var result = await getJson('/admin/api/diagnostics/content?kind=' + encodeURIComponent(kind) + '&file=' + encodeURIComponent(file));
+        if (!result.ok || !result.data.success) {
+            output.textContent = '读取失败: ' + (result.data.error_code || result.data.message || result.status);
+            return;
+        }
+        output.textContent = result.data.content || '(空文件)';
+    }
+
+    async function initializeDiagnostic(kind) {
+        var list = document.getElementById('diagnostic-files-' + kind);
+        if (!list) return;
+        var result = await getJson('/admin/api/diagnostics/files?kind=' + encodeURIComponent(kind));
+        if (!result.ok || !result.data.success) {
+            list.textContent = '文件列表读取失败';
+            return;
+        }
+        var files = result.data.files || [];
+        list.innerHTML = files.length ? files.map(function(file, index) {
+            return '<label><input type="radio" name="diagnostic-' + kind + '" value="' + escapeHtml(file) + '"' + (index === 0 ? ' checked' : '') + '> ' + escapeHtml(file) + '</label>';
+        }).join('') : '<span class="empty">暂无文件</span>';
+        list.onchange = function(event) {
+            if (event.target && event.target.type === 'radio') loadDiagnosticContent(kind, event.target.value);
+        };
+        var refresh = document.getElementById('diagnostic-refresh-' + kind);
+        if (refresh) refresh.onclick = function() {
+            var selected = list.querySelector('input[type="radio"]:checked');
+            if (selected) loadDiagnosticContent(kind, selected.value);
+        };
+        if (files.length) loadDiagnosticContent(kind, files[0]);
     }
 
     async function renderUsers() {
@@ -281,8 +266,8 @@
             return;
         }
 
-        var data = result.data.data || {};
-        var rows = data.rows || [];
+        var data = result.data || {};
+        var rows = data.users || [];
         var html = [];
         html.push('<div class="page-head"><div><h2>用户管理</h2><div class="page-subtitle">按用户名或邮箱检索用户账号</div></div></div>');
         html.push('<div class="toolbar">');
@@ -304,7 +289,7 @@
             html.push('<tr><td colspan="5" class="empty">没有匹配的用户</td></tr>');
         }
         html.push('</tbody></table>');
-        html.push('<div class="pagination">第 ' + (data.page || 1) + ' 页，每页 ' + (data.size || 20) + ' 条，总计 ' + (data.total_count || 0) + ' 条</div>');
+        html.push('<div class="pagination">第 ' + (data.page_number || 1) + ' 页，每页 ' + (data.page_size || 20) + ' 条，总计 ' + (data.total || 0) + ' 条</div>');
         content.innerHTML = html.join('');
 
         document.getElementById("users-search-btn").onclick = function () {
@@ -331,8 +316,8 @@
             return;
         }
 
-        var data = result.data.data || {};
-        var rows = data.rows || [];
+        var data = result.data || {};
+        var rows = data.questions || [];
         var html = [];
         html.push('<div class="page-head"><div><h2>题目列表</h2><div class="page-subtitle">列表页只负责检索、跳转编辑和删除</div></div><div class="actions-inline"><button class="action" id="questions-new-btn">新增题目</button></div></div>');
         html.push('<div class="toolbar">');
@@ -355,7 +340,7 @@
             html.push('<tr><td colspan="6" class="empty">没有匹配的题目</td></tr>');
         }
         html.push('</tbody></table>');
-        html.push('<div class="pagination">第 ' + (data.page || 1) + ' 页，每页 ' + (data.size || 20) + ' 条，总计 ' + (data.total_count || 0) + ' 条</div>');
+        html.push('<div class="pagination">第 ' + (data.page_number || 1) + ' 页，每页 ' + (data.page_size || 20) + ' 条，总计 ' + (data.total || 0) + ' 条</div>');
         content.innerHTML = html.join('');
 
         document.getElementById("questions-search-btn").onclick = function () {
@@ -652,9 +637,9 @@
             return;
         }
 
-        var match = pathname.match(/^\/admin\/questions\/(\d+)$/);
+        var match = pathname.match(/^\/admin\/questions\/([^/]+)$/);
         if (match) {
-            renderQuestionEditor(match[1]);
+            renderQuestionEditor(decodeURIComponent(match[1]));
             return;
         }
 

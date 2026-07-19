@@ -42,16 +42,12 @@ public:
 
     TcpState* process(const Monitor& monitor, int fd, int flags) override
     {
-        (void)monitor;
-        (void)fd;
-
         // Write queued output
         if ((flags & AMQP::writable) && !_outbuf.empty()) {
             ssize_t n = ::send(_sockfd, _outbuf.data(), _outbuf.size(), MSG_NOSIGNAL);
             if (n > 0) _outbuf.erase(0, n);
             else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-                _closed = true;
-                _parent->onLost(this);
+                MarkLost();
                 return this;
             }
         }
@@ -64,12 +60,15 @@ public:
                 _inbuf.append(buf, static_cast<size_t>(n));
                 ByteBuffer bb(_inbuf.data(), _inbuf.size());
                 const size_t consumed = _parent->onReceived(this, bb);
+                if (!monitor) return nullptr;
                 if (consumed > 0) _inbuf.erase(0, std::min(consumed, _inbuf.size()));
             } else if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
-                _closed = true;
-                _parent->onLost(this);
+                MarkLost();
+                return this;
             }
         }
+        _parent->onIdle(this, fd, AMQP::readable |
+                                  (_outbuf.empty() ? 0 : AMQP::writable));
         return this;
     }
 
@@ -79,6 +78,14 @@ public:
     }
 
 private:
+    void MarkLost()
+    {
+        if (_closed) return;
+        _closed = true;
+        _parent->onIdle(this, _sockfd, 0);
+        _parent->onLost(this);
+    }
+
     int _sockfd;
     bool _closed = false;
     std::string _outbuf;
@@ -164,6 +171,8 @@ bool TcpConnection::close(bool immediate)
 {
     (void)immediate;
     if (_handler) {
+        const int fd = fileno();
+        if (fd >= 0) _handler->monitor(this, fd, 0);
         _handler->onDetached(this);
     }
     return true;
@@ -202,8 +211,8 @@ void TcpConnection::onProperties(Connection* connection, const Table& server, Ta
 
 uint16_t TcpConnection::onNegotiate(Connection* connection, uint16_t interval)
 {
-    (void)connection;
-    return interval;
+    if (_state) _state->maxframe(connection->maxFrame());
+    return _handler ? _handler->onNegotiate(this, interval) : interval;
 }
 
 int TcpConnection::fileno() const

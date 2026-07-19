@@ -7,12 +7,16 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include <condition_variable>
+#include <atomic>
+#include <chrono>
+#include <cstdlib>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <system_error>
+#include <thread>
 
 namespace oj::logger
 {
@@ -85,7 +89,32 @@ namespace oj::logger
             std::string name;
             std::string file;
             spdlog::level::level_enum level = spdlog::level::info;
+            std::atomic<bool> stop_periodic_flush{false};
+            std::mutex periodic_mutex;
+            std::condition_variable periodic_cv;
+            std::thread periodic_thread;
         };
+
+        inline std::chrono::milliseconds FlushInterval()
+        {
+            constexpr long fallback = 1000;
+            const char* configured = std::getenv("OJ_LOG_FLUSH_MS");
+            if (configured == nullptr || *configured == '\0')
+                return std::chrono::milliseconds(fallback);
+            char* end = nullptr;
+            const long parsed = std::strtol(configured, &end, 10);
+            if (end == configured || *end != '\0' || parsed < 100 || parsed > 60000)
+                return std::chrono::milliseconds(fallback);
+            return std::chrono::milliseconds(parsed);
+        }
+
+        inline void StopPeriodicFlush(const std::shared_ptr<LoggerRuntime>& runtime)
+        {
+            if (!runtime) return;
+            runtime->stop_periodic_flush.store(true, std::memory_order_release);
+            runtime->periodic_cv.notify_all();
+            if (runtime->periodic_thread.joinable()) runtime->periodic_thread.join();
+        }
 
         inline std::mutex& RuntimeMutex()
         {
@@ -178,8 +207,21 @@ namespace oj::logger
             runtime->file = logger_file;
             runtime->level = logger_level;
 
+            detail::StopPeriodicFlush(current);
             detail::Flush(current);
             current = std::move(runtime);
+            const auto interval = detail::FlushInterval();
+            auto* active = current.get();
+            current->periodic_thread = std::thread([active, interval] {
+                std::unique_lock lock(active->periodic_mutex);
+                while (!active->periodic_cv.wait_for(lock, interval, [active] {
+                    return active->stop_periodic_flush.load(std::memory_order_acquire);
+                })) {
+                    lock.unlock();
+                    active->logger->flush();
+                    lock.lock();
+                }
+            });
             return true;
         } catch (const std::exception&) {
             return false;
@@ -206,6 +248,7 @@ namespace oj::logger
             std::lock_guard<std::mutex> lock(detail::RuntimeMutex());
             runtime = std::move(detail::Runtime());
         }
+        detail::StopPeriodicFlush(runtime);
         detail::Flush(runtime);
     }
 

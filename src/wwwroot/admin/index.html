@@ -427,11 +427,49 @@
             overflow-y: auto;
         }
 
+        .diagnostic-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .diagnostic-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .diagnostic-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            margin: 14px 0;
+            min-height: 24px;
+        }
+
+        .diagnostic-files label { color: var(--muted); font-size: 13px; }
+
+        .diagnostic-content {
+            height: 460px;
+            overflow: auto;
+            margin: 0;
+            padding: 12px;
+            border: 1px solid var(--border);
+            background: #0b0d0f;
+            color: #dce4dd;
+            font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
         @media (max-width: 900px) {
             .layout { grid-template-columns: 1fr; }
             .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
             .cards { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
             .overview-grid { grid-template-columns: 1fr; }
+            .diagnostic-grid { grid-template-columns: 1fr; }
             .metric-grid { grid-template-columns: 1fr 1fr; }
             .form-grid { grid-template-columns: 1fr 1fr; }
         }
@@ -477,7 +515,7 @@
         <section id="content" class="content"></section>
     </main>
 </div>
-<script src="/admin/assets/admin-app.js?v=20260425"></script>
+    <script src="/admin/admin-app.js?v=20260425"></script>
 <script>
 (function() {
     var c = document.getElementById('rainLines');

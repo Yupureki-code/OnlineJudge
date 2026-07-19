@@ -834,7 +834,7 @@
         function showResult(result) {
             const resultDiv = document.getElementById('result');
             
-            let statusString = result.status || '';
+            let statusString = normalizeStatus(result.status || '');
             const statusArray = statusString.trim().split(/\s+/).filter(s => s);
             
             // 检查是否是编译错误
@@ -920,7 +920,13 @@
                             statusIcon = '⏱️';
                             statusText = 'TLE';
                             break;
+                        case 'TLE':
+                            statusClass = 'test-timeout';
+                            statusIcon = '⏱️';
+                            statusText = 'TLE';
+                            break;
                         case 'MEMORY_LIMIT':
+                        case 'MLE':
                             statusClass = 'test-memory';
                             statusIcon = '💾';
                             statusText = 'MLE';
@@ -1037,14 +1043,18 @@
         }
         
         function getStatusDesc(status) {
+            status = normalizeStatus(status);
             switch(status) {
                 case 'AC':
                     return '通过';
                 case 'WA':
                     return '答案错误';
+                case 'TLE':
+                    return '运行时间超时';
                 case 'RUNTIME_ERROR':
                     return '运行时间超时';
                 case 'MEMORY_LIMIT':
+                case 'MLE':
                     return '内存申请过多';
                 case 'COMPILE_ERROR':
                     return '编译错误';
@@ -1063,6 +1073,15 @@
             return div.innerHTML;
         }
 
+        function normalizeStatus(status) {
+            status = String(status || '').replace('SUBMISSION_STATUS_', '');
+            if (status === 'ACCEPTED') return 'AC';
+            if (status === 'WRONG_ANSWER') return 'WA';
+            if (status === 'TIME_LIMIT_EXCEEDED') return 'TLE';
+            if (status === 'MEMORY_LIMIT_EXCEEDED') return 'MLE';
+            return status;
+        }
+
         // 获取当前题目的ID
         function getCurrentQuestionId() {
             // 优先从URL参数中获取题目ID
@@ -1070,7 +1089,7 @@
             const idParam = urlParams.get('id');
             console.log('idParam:', idParam);
             if (idParam) {
-                const id = parseInt(idParam);
+                const id = idParam;
                 console.log('Parsed id from param:', id);
                 return id;
             }
@@ -1078,15 +1097,15 @@
             // 如果没有参数，再从URL路径中获取
             const currentUrl = window.location.href;
             console.log('Current URL:', currentUrl);
-            const match = currentUrl.match(/\/(questions|judge)\/(\d+)/);
+            const match = currentUrl.match(/\/(questions|judge)\/([^/?]+)/);
             console.log('Match result:', match);
             if (match) {
-                const id = parseInt(match[2]);
+                const id = decodeURIComponent(match[2]);
                 console.log('Parsed id from path:', id);
                 return id;
             }
-            console.log('Returning default id: 1');
-            return 1;
+            console.log('No question id found');
+            return '';
         }
 
         // 设置返回题目和下一道题的链接
@@ -1102,7 +1121,7 @@
             
             const nextQuestion = document.getElementById('nextQuestion');
             if (nextQuestion) {
-                nextQuestion.href = `/questions/${currentQuestionId + 1}`;
+                nextQuestion.href = currentQuestionId ? `/questions/${currentQuestionId}` : '/all_questions';
                 console.log('Set nextQuestion href:', nextQuestion.href);
             }
         }

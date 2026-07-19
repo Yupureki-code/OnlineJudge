@@ -121,6 +121,7 @@ void CheckNoDatabasePaths()
     Check(get_user_response.status().code() == 501 &&
               get_user_response.status().message() == "NOT_IMPLEMENTED",
           "admin user CRUD has stable 501 status");
+
     executor.Stop();
 }
 

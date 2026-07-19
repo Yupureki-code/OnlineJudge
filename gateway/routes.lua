@@ -73,11 +73,11 @@ main("POST", "/api/comments/:comment_id/favorite", "ToggleCommentFavorite", "oj.
 main("GET", "/api/comments/actions", "GetActionStates", "oj.biz.GetCommentActionsRequest", "oj.biz.GetCommentActionsResponse", "optional_user", false,
      { query = { comment_ids = "comment_ids" } })
 
-main("POST", "/api/questions/:question_id/submissions", "CreateSubmission", "oj.biz.CreateSubmissionRequest", "oj.biz.CreateSubmissionResponse", "user", true, { path = { question_id = "question_id" } })
+main("POST", "/api/questions/:question_id/submissions", "CreateSubmission", "oj.biz.CreateSubmissionRequest", "oj.biz.CreateSubmissionResponse", "optional_user", true, { path = { question_id = "question_id" } })
 main("POST", "/api/questions/:question_id/custom-tests", "CreateCustomTest", "oj.biz.CreateCustomTestRequest", "oj.biz.CreateCustomTestResponse", "user", true, { path = { question_id = "question_id" } })
-main("GET", "/api/submissions/:submission_id", "GetSubmission", "oj.biz.GetSubmissionRequest", "oj.biz.GetSubmissionResponse", "user", false, { path = { submission_id = "submission_id" } })
+main("GET", "/api/submissions/:submission_id", "GetSubmission", "oj.biz.GetSubmissionRequest", "oj.biz.GetSubmissionResponse", "optional_user", false, { path = { submission_id = "submission_id" } })
 main("GET", "/api/custom-tests/:task_id", "GetCustomTest", "oj.biz.GetCustomTestRequest", "oj.biz.GetCustomTestResponse", "user", false, { path = { task_id = "task_id" } })
-main("GET", "/api/submissions", "ListSubmissions", "oj.biz.ListSubmissionsRequest", "oj.biz.ListSubmissionsResponse", "user", false,
+main("GET", "/api/submissions", "ListSubmissions", "oj.biz.ListSubmissionsRequest", "oj.biz.ListSubmissionsResponse", "optional_user", false,
      { query = { page = "page.page", page_size = "page.page_size", question_id = "question_id", submission_status = "submission_status" } })
 
 admin("GET", "/admin/api/version", "AdminGetVersion", "oj.common.EmptyRequest", "oj.biz.GetVersionResponse", "public", false)
@@ -110,6 +110,10 @@ admin("DELETE", "/admin/api/accounts/:admin_id", "AdminDeleteAdminAccount", "oj.
 admin("GET", "/admin/api/cache/metrics", "AdminGetCacheMetrics", "oj.common.EmptyRequest", "oj.biz.GetCacheMetricsResponse", "super_admin", false)
 admin("GET", "/admin/api/audit-logs", "AdminGetAuditLogs", "oj.biz.GetAuditLogsRequest", "oj.biz.GetAuditLogsResponse", "admin", false,
       { query = { page = "page.page", page_size = "page.page_size", action = "action", start_time = "start_time", end_time = "end_time" } })
+admin("GET", "/admin/api/diagnostics/files", "AdminListDiagnosticFiles", "oj.biz.DiagnosticFilesRequest", "oj.biz.DiagnosticFilesResponse", "admin", false,
+      { query = { kind = "kind" } })
+admin("GET", "/admin/api/diagnostics/content", "AdminReadDiagnosticFile", "oj.biz.DiagnosticContentRequest", "oj.biz.DiagnosticContentResponse", "admin", false,
+      { query = { kind = "kind", file = "file" } })
 
 routes.denied = {
     ["oj.biz.OJService.CreateQuestion"] = "admin-only operation",

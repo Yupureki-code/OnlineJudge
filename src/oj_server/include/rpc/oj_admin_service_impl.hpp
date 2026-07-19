@@ -79,6 +79,10 @@ public:
                               oj::biz::GetCacheMetricsResponse*, google::protobuf::Closure*) override;
     void AdminGetAuditLogs(google::protobuf::RpcController*, const oj::biz::GetAuditLogsRequest*,
                            oj::biz::GetAuditLogsResponse*, google::protobuf::Closure*) override;
+    void AdminListDiagnosticFiles(google::protobuf::RpcController*, const oj::biz::DiagnosticFilesRequest*,
+                                  oj::biz::DiagnosticFilesResponse*, google::protobuf::Closure*) override;
+    void AdminReadDiagnosticFile(google::protobuf::RpcController*, const oj::biz::DiagnosticContentRequest*,
+                                 oj::biz::DiagnosticContentResponse*, google::protobuf::Closure*) override;
 
 private:
     bool RequireAdmin(brpc::Controller*, bool super_only, oj::db::AdminAccount*,

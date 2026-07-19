@@ -407,6 +407,15 @@ public:
     }
 
     bool IsConnected() const { return _connected.load(std::memory_order_acquire); }
+    bool WaitUntilConnected(std::chrono::milliseconds timeout) const
+    {
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (std::chrono::steady_clock::now() < deadline) {
+            if (IsConnected()) return true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        return IsConnected();
+    }
     void SetErrorHandler(ErrorCallback callback) { _error_callback = std::move(callback); }
 
 private:

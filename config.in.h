@@ -72,7 +72,7 @@ const std::string oj_users = ns_runtime_cfg::GetEnvOrDefault("OJ_USERS", "@OJ_US
 
 const std::string host = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_HOST", "@HOST@");
 const std::string user = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_USER", "@USER@");
-const std::string passwd = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_PASS", "@PASSWD@");
+const std::string passwd = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_PASSWD", "@PASSWD@");
 const std::string db = ns_runtime_cfg::GetEnvOrDefault("OJ_DB_NAME", "@MYOJ@");
 const int port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_DB_PORT", ns_runtime_cfg::ParseIntOrDefault("@PORT@", 3306));
 
@@ -81,7 +81,7 @@ const std::string redis_addr = ns_runtime_cfg::GetEnvOrDefault("OJ_REDIS_ADDR", 
 const std::string smtp_host = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_HOST", "@SMTP_HOST@");
 const int smtp_port = ns_runtime_cfg::GetEnvIntOrDefault("OJ_SMTP_PORT", ns_runtime_cfg::ParseIntOrDefault("@SMTP_PORT@", 465));
 const std::string smtp_user = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_USER", "@SMTP_USER@");
-const std::string smtp_passwd = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_PASS", "@SMTP_PASSWD@");
+const std::string smtp_passwd = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_PASSWD", "@SMTP_PASSWD@");
 const std::string smtp_from = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_FROM", "@SMTP_FROM@");
 const bool smtp_ssl = ns_runtime_cfg::GetEnvOrDefault("OJ_SMTP_SSL", "@SMTP_SSL@") == "true";
 

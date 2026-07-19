@@ -86,6 +86,13 @@ void TestExecutorSaturationAndFifoDrain()
     }
     assert(executor.Submit([&] { completed.push_back(2); }) == SubmitResult::Accepted);
     assert(executor.Submit([] {}) == SubmitResult::QueueFull);
+    auto saturated = executor.GetSnapshot();
+    assert(saturated.worker_count == 1);
+    assert(saturated.queue_capacity == 1);
+    assert(saturated.active_workers == 1);
+    assert(saturated.queue_depth == 1);
+    assert(saturated.accepted_count == 2);
+    assert(saturated.rejected_queue_full_count == 1);
 
     {
         std::lock_guard lock(mutex);
@@ -96,6 +103,12 @@ void TestExecutorSaturationAndFifoDrain()
 
     assert((completed == std::vector<int>{1, 2}));
     assert(executor.Submit([] {}) == SubmitResult::Stopped);
+    auto drained = executor.GetSnapshot();
+    assert(drained.completed_count == 2);
+    assert(drained.rejected_stopped_count == 1);
+    assert(drained.queue_wait_count == 2);
+    assert(drained.execution_count == 2);
+    assert(drained.execution_total_us >= drained.execution_max_us);
     executor.Stop(StopPolicy::CancelPending);
 }
 
@@ -135,6 +148,9 @@ void TestExecutorCancelPending()
     cv.notify_all();
     stopper.join();
     assert(pending_runs.load() == 0);
+    auto cancelled = executor.GetSnapshot();
+    assert(cancelled.completed_count == 1);
+    assert(cancelled.cancelled_pending_count == 1);
 }
 
 void TestExecutorExceptionIsolation()
@@ -158,6 +174,9 @@ void TestExecutorExceptionIsolation()
     executor.Stop(StopPolicy::Drain);
     assert(exceptions.load() == 1);
     assert(completed.load() == 1);
+    auto metrics = executor.GetSnapshot();
+    assert(metrics.completed_count == 2);
+    assert(metrics.execution_count == 2);
 }
 
 ApplicationContext::Config ContextConfig()

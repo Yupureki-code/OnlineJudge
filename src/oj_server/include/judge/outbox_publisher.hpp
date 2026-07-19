@@ -74,7 +74,7 @@ public:
     struct Config
     {
         std::size_t batch_size = 32;
-        std::chrono::milliseconds idle_wait{200};
+        std::chrono::milliseconds idle_wait{1000};
         uint32_t max_retry_delay_seconds = 60;
         uint32_t lease_seconds = 30;
         uint32_t confirm_timeout_seconds = 5;
@@ -99,6 +99,7 @@ private:
         std::mutex mutex;
         std::condition_variable condition;
         std::queue<Completion> queue;
+        bool wake_requested = false;
         std::atomic<bool> accepting{true};
     };
 
@@ -115,8 +116,6 @@ private:
     std::string owner_;
     std::chrono::steady_clock::time_point next_cleanup_{};
     std::atomic<bool> running_{false};
-    std::mutex wake_mutex_;
-    std::condition_variable wake_condition_;
     std::thread worker_;
 };
 

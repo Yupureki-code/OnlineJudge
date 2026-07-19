@@ -1633,12 +1633,6 @@
             </div>
                         </div>
                         <textarea name="code" id="code" style="display: none;"></textarea>
-            <div id="bottom-panel" class="bottom-panel">
-                <div class="panel-body" id="panel-body">
-                    <button class="panel-close" id="panel-close" title="关闭" style="position:absolute;top:8px;right:8px;z-index:1;">&times;</button>
-                    <div class="panel-empty">点击上方按钮开始</div>
-                </div>
-            </div>
                     </form>
             </div>
     </div>
@@ -1701,7 +1695,7 @@
         });
         
         // 设置默认代码
-        var questionId = (function() { var m = window.location.pathname.match(/\/questions\/(\d+)/); return m ? m[1] : ''; })();
+        var questionId = (function() { var m = window.location.pathname.match(/\/questions\/([^/]+)/); return m ? decodeURIComponent(m[1]) : ''; })();
         var codeKey = 'oj_code_' + questionId;
         var savedCode = sessionStorage.getItem(codeKey);
         editor.setValue(savedCode || '#include <iostream>\n\nint main()\n{\n    // 在这里编写你的代码\n    return 0;\n}');
@@ -1835,8 +1829,8 @@
             var tabDesc = document.getElementById('tab-desc');
             var tabSolutions = document.getElementById('tab-solutions');
             var questionId = (function() {
-                var m = window.location.pathname.match(/\/questions\/(\d+)/);
-                return m ? m[1] : '';
+                var m = window.location.pathname.match(/\/questions\/([^/]+)/);
+                return m ? decodeURIComponent(m[1]) : '';
             })();
             var solutionsLoaded = false;
             var solutionsPage = 1;
@@ -1952,8 +1946,8 @@
             var commentIsLoading = false;
 
             function getQuestionId() {
-                var m = window.location.pathname.match(/\/questions\/(\d+)/);
-                return m ? m[1] : '';
+                var m = window.location.pathname.match(/\/questions\/([^/]+)/);
+                return m ? decodeURIComponent(m[1]) : '';
             }
 
             function formatRelativeTime(timestamp) {
@@ -2112,39 +2106,40 @@
             };
 
             // ── Comments ──
-            function initCommentInput() {
+            function renderCommentInput(user) {
                 var inputArea = document.getElementById('sol-comment-input-area');
                 if (!inputArea) return;
-
-                var isLoggedIn = typeof SERVER_USER_INFO !== 'undefined' && SERVER_USER_INFO && SERVER_USER_INFO.isLoggedIn;
-                if (isLoggedIn) {
-                    // Check user info for comment ownership
-                    OJApi.fetch('/api/user', { credentials: 'include' })
-                        .then(function(r) { return r.json(); })
-                        .then(function(data) {
-                            if (data.success) {
-                                commentCurrentUser = data.user;
-                                inputArea.innerHTML = '<textarea class="sol-comment-textarea" id="sol-comment-textarea" maxlength="1000" placeholder="\u8f93\u5165\u8bc4\u8bba..."></textarea>'
-                                    + '<div class="sol-comment-meta"><span class="sol-char-count" id="sol-char-count">0/1000</span>'
-                                    + '<button class="sol-submit-comment-btn" id="sol-submit-comment">\u53d1\u8868</button></div>';
-                                document.getElementById('sol-comment-textarea').addEventListener('input', function(e) {
-                                    document.getElementById('sol-char-count').textContent = e.target.value.length + '/1000';
-                                });
-                                document.getElementById('sol-submit-comment').addEventListener('click', function() {
-                                    submitDetailComment(currentDetailId);
-                                });
-                            } else {
-                                commentCurrentUser = null;
-                                inputArea.innerHTML = '<div class="sol-login-prompt"><a href="#" onclick="document.getElementById(\'sign-in-button\').click(); return false;">\u767b\u5f55</a>\u540e\u53ef\u53d1\u8868\u8bc4\u8bba</div>';
-                            }
-                        })
-                        .catch(function() {
-                            inputArea.innerHTML = '<div class="sol-login-prompt"><a href="#" onclick="document.getElementById(\'sign-in-button\').click(); return false;">\u767b\u5f55</a>\u540e\u53ef\u53d1\u8868\u8bc4\u8bba</div>';
-                        });
-                } else {
+                commentCurrentUser = user || null;
+                if (!commentCurrentUser) {
                     inputArea.innerHTML = '<div class="sol-login-prompt"><a href="#" onclick="document.getElementById(\'sign-in-button\').click(); return false;">\u767b\u5f55</a>\u540e\u53ef\u53d1\u8868\u8bc4\u8bba</div>';
+                    return;
                 }
+                inputArea.innerHTML = '<textarea class="sol-comment-textarea" id="sol-comment-textarea" maxlength="1000" placeholder="\u8f93\u5165\u8bc4\u8bba..."></textarea>'
+                    + '<div class="sol-comment-meta"><span class="sol-char-count" id="sol-char-count">0/1000</span>'
+                    + '<button class="sol-submit-comment-btn" id="sol-submit-comment">\u53d1\u8868</button></div>';
+                document.getElementById('sol-comment-textarea').addEventListener('input', function(e) {
+                    document.getElementById('sol-char-count').textContent = e.target.value.length + '/1000';
+                });
+                document.getElementById('sol-submit-comment').addEventListener('click', function() {
+                    submitDetailComment(currentDetailId);
+                });
             }
+
+            function initCommentInput() {
+                OJApi.fetch('/api/user', { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        renderCommentInput(data.success && data.user ? data.user : null);
+                    })
+                    .catch(function() {
+                        var inputArea = document.getElementById('sol-comment-input-area');
+                        if (inputArea) inputArea.innerHTML = '<div class="sol-login-prompt">\u65e0\u6cd5\u786e\u8ba4\u767b\u5f55\u72b6\u6001\uff0c\u8bf7\u5237\u65b0\u540e\u91cd\u8bd5</div>';
+                    });
+            }
+
+            window.addEventListener('oj-auth-changed', function(event) {
+                renderCommentInput(event.detail && event.detail.user ? event.detail.user : null);
+            });
 
             function loadDetailComments(solutionId, page) {
                 if (commentIsLoading || !commentHasMore) return;
@@ -2539,8 +2534,8 @@
         // Bottom Panel - Test Cases, Test Results, Submissions
         (function() {
             var questionId = (function() {
-                var m = window.location.pathname.match(/\/questions\/(\d+)/);
-                return m ? m[1] : '';
+                var m = window.location.pathname.match(/\/questions\/([^/]+)/);
+                return m ? decodeURIComponent(m[1]) : '';
             })();
 
             var panel = document.getElementById('bottom-panel');
@@ -2874,7 +2869,12 @@
             function loadSubmissions() {
                 panelBody.innerHTML = '<div class="panel-loading">加载中...</div>';
                 OJApi.fetch('/api/submissions?question_id=' + encodeURIComponent(questionId) + '&page=1&page_size=20', { credentials: 'include' })
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) {
+                        if (r.status === 401) {
+                            return { guest: true, message: '您还未登录，快去登录吧~' };
+                        }
+                        return r.json();
+                    })
                     .then(function(data) {
                         if (data.guest) {
                             panelBody.innerHTML = '<div class="panel-empty" style="color:#4CAF50;">' + (data.message || '您还未登录，快去登录吧~') + '</div>';

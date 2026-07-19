@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
+#include <future>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -25,6 +26,8 @@
 #include "../../../comm/models/question.hxx"
 #include "../../../comm/proto/mq_message.pb.h"
 #include "../../../comm/judge_callback_auth.hpp"
+#include "comm.hpp"
+#include "logger.hpp"
 
 namespace oj::rpc
 {
@@ -64,9 +67,10 @@ namespace oj::rpc
     //判断题目ID是否合法
     bool ValidQuestionId(const std::string& id)
     {
-        return !id.empty() && std::all_of(id.begin(), id.end(), [](unsigned char ch) {
-            return std::isdigit(ch) != 0;
-        });
+        return !id.empty() && id.size() <= 5 &&
+               std::all_of(id.begin(), id.end(), [](unsigned char ch) {
+                   return std::isalnum(ch) != 0;
+               });
     }
     //判断验证码是否合法
     bool ValidCode(const std::string& code)
@@ -87,6 +91,28 @@ namespace oj::rpc
             output[index * 2 + 1] = hex[value & 0x0f];
         }
         return output;
+    }
+
+    uint64_t RandomGuestSubmissionId()
+    {
+        uint64_t value = 0;
+        if (RAND_bytes(reinterpret_cast<unsigned char*>(&value), sizeof(value)) != 1) return 0;
+        return value | (uint64_t{1} << 63);
+    }
+
+    bool PublishTransientTask(oj::judge::ConfirmedMessagePublisher* publisher,
+                              const oj::mq::JudgeTaskMessage& task)
+    {
+        if (publisher == nullptr) return false;
+        std::string payload;
+        if (!task.SerializeToString(&payload)) return false;
+        auto completed = std::make_shared<std::promise<bool>>();
+        auto future = completed->get_future();
+        if (!publisher->Publish(task.message_id(), std::move(payload),
+                [completed](bool success, const std::string&) {
+                    try { completed->set_value(success); } catch (...) {}
+                })) return false;
+        return future.wait_for(std::chrono::seconds(5)) == std::future_status::ready && future.get();
     }
 
     bool SupportedLanguage(const std::string& language)
@@ -160,13 +186,14 @@ namespace oj::rpc
         AsyncDispatch(executor, controller, request, response, done,
                     [](const Request&, Response* output) { NotImplemented(output); });
     }
-
     } // namespace
 
     OJServiceImpl::OJServiceImpl(std::shared_ptr<oj::control::Control> control,
                                  oj::runtime::BusinessExecutor& executor,
-                                 oj::judge::OutboxPublisher* outbox_publisher)
-        : _control(std::move(control)), _executor(executor), _outbox_publisher(outbox_publisher)
+                                 oj::judge::OutboxPublisher* outbox_publisher,
+                                 oj::judge::ConfirmedMessagePublisher* transient_publisher)
+        : _control(std::move(control)), _executor(executor), _outbox_publisher(outbox_publisher),
+          _transient_publisher(transient_publisher)
     {
     }
 
@@ -395,7 +422,10 @@ namespace oj::rpc
         AsyncDispatch(_executor, controller, request, response, done,
             [control](brpc::Controller* cntl, const auto*, auto* output) {
                 User user{};
-                if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
+                if (cntl == nullptr || !SessionAdapter::GetSessionUser(*cntl, *control, &user)) {
+                    ProtoAdapter::SetOk(output->mutable_status());
+                    return;
+                }
                 ProtoAdapter::ToProto(user, output->mutable_user());
                 output->mutable_user()->mutable_avatar()->set_url(control->GetEffectiveAvatarUrl(user));
                 ProtoAdapter::SetOk(output->mutable_status());
@@ -936,10 +966,12 @@ namespace oj::rpc
     {
         auto control = _control;
         auto* publisher = _outbox_publisher;
+        auto* transient_publisher = _transient_publisher;
         AsyncDispatch(_executor, controller, request, response, done,
-            [control, publisher](brpc::Controller* cntl, const auto* input, auto* output) {
+            [control, publisher, transient_publisher](brpc::Controller* cntl, const auto* input, auto* output) {
                 User user{};
-                if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
+                const bool authenticated = cntl != nullptr &&
+                    SessionAdapter::GetSessionUser(*cntl, *control, &user);
                 const std::string question_id = oj::util::StringUtil::Trim(input->question_id());
                 const std::string language = oj::util::StringUtil::Trim(input->language());
                 if (!ValidQuestionId(question_id)) return Fail(output, 400, "INVALID_QUESTION_ID");
@@ -947,8 +979,11 @@ namespace oj::rpc
                     return Fail(output, 400, "INVALID_CODE");
                 if (!SupportedLanguage(language)) return Fail(output, 400, "UNSUPPORTED_LANGUAGE");
                 const int64_t window = std::time(nullptr) / 2;
+                const std::string rate_identity = authenticated
+                    ? "user:" + std::to_string(user.uid)
+                    : "guest:" + (cntl == nullptr ? std::string("unknown") : SessionAdapter::RemoteIp(*cntl));
                 const int reserved = control->GetModel()->ReserveCachedStringByAnyKey(
-                    "judge:submit-rate:" + std::to_string(user.uid) + ":" + std::to_string(window), "1", 3);
+                    "judge:submit-rate:" + rate_identity + ":" + std::to_string(window), "1", 3);
                 if (reserved == 0) return Fail(output, 429, "SUBMISSION_RATE_LIMITED");
                 if (reserved < 0) return Fail(output, 503, "REDIS_ERROR");
 
@@ -961,7 +996,7 @@ namespace oj::rpc
                     return Fail(output, 500, "LOAD_TEST_CASES_FAILED");
                 oj::mq::JudgeTaskMessage task;
                 task.set_message_id(RandomHex(16));
-                task.set_user_id(user.uid);
+                task.set_user_id(authenticated ? user.uid : 0);
                 task.set_question_id(question_id);
                 task.set_code(input->code());
                 task.set_language(language);
@@ -977,6 +1012,40 @@ namespace oj::rpc
                 }
                 if (task.message_id().empty() || task.test_cases().empty())
                     return Fail(output, 500, "BUILD_JUDGE_TASK_FAILED");
+                if (!authenticated) {
+                    const uint64_t submission_id = RandomGuestSubmissionId();
+                    if (submission_id == 0) return Fail(output, 500, "CSPRNG_FAILED");
+                    task.set_custom_task_id("guest-" + std::to_string(submission_id));
+                    Json::Value state;
+                    state["task_id"] = task.custom_task_id();
+                    state["message_id"] = task.message_id();
+                    state["user_id"] = 0;
+                    state["submission_id"] = Json::UInt64(submission_id);
+                    state["question_id"] = question_id;
+                    state["language"] = language;
+                    state["status"] = "QUEUED";
+                    state["transient"] = true;
+                    state["created_at"] = Json::Int64(task.created_at());
+                    state["expires_at"] = Json::Int64(task.created_at() + 600);
+                    Json::StreamWriterBuilder writer;
+                    writer["indentation"] = "";
+                    const std::string cache_key = "judge:custom:" + task.custom_task_id();
+                    if (!control->GetModel()->SetCachedStringByAnyKey(
+                            cache_key, Json::writeString(writer, state), 600))
+                        return Fail(output, 503, "REDIS_ERROR");
+                    if (!PublishTransientTask(transient_publisher, task)) {
+                        control->GetModel()->DeleteCachedStringByAnyKey(cache_key);
+                        return Fail(output, 503, "PUBLISH_JUDGE_TASK_FAILED");
+                    }
+                    auto* created = output->mutable_submission();
+                    created->set_submission_id(submission_id);
+                    created->set_question_id(question_id);
+                    created->set_language(language);
+                    created->set_status(oj::common::SUBMISSION_STATUS_QUEUED);
+                    created->set_created_at(task.created_at());
+                    ProtoAdapter::SetOk(output->mutable_status());
+                    return;
+                }
                 oj::db::Submission created{};
                 if (!control->GetModel()->Submission().CreateSubmissionWithOutbox(
                         user.uid, question_id, input->code(), language, task, &created))
@@ -1058,9 +1127,32 @@ namespace oj::rpc
         auto control = _control;
         AsyncDispatch(_executor, controller, request, response, done,
             [control](brpc::Controller* cntl, const auto* input, auto* output) {
+                if (input->submission_id() == 0) return Fail(output, 400, "INVALID_SUBMISSION_ID");
+                const std::string transient_task_id = "guest-" + std::to_string(input->submission_id());
+                std::string encoded;
+                if (control->GetModel()->GetCachedStringByAnyKey(
+                        "judge:custom:" + transient_task_id, &encoded)) {
+                    Json::CharReaderBuilder reader;
+                    Json::Value state;
+                    std::istringstream stream(encoded);
+                    if (!Json::parseFromStream(reader, stream, &state, nullptr) ||
+                        !state.get("transient", false).asBool() ||
+                        state.get("submission_id", Json::UInt64(0)).asUInt64() != input->submission_id())
+                        return Fail(output, 500, "TRANSIENT_SUBMISSION_STATE_INVALID");
+                    auto* submission = output->mutable_submission();
+                    submission->set_submission_id(input->submission_id());
+                    submission->set_question_id(state.get("question_id", "").asString());
+                    submission->set_language(state.get("language", "").asString());
+                    submission->set_status(ProtoAdapter::SubmissionStatus(state.get("status", "").asString()));
+                    submission->set_created_at(state.get("created_at", 0).asInt64());
+                    if (state.isMember("result_json"))
+                        google::protobuf::util::JsonStringToMessage(
+                            state["result_json"].asString(), submission->mutable_result());
+                    ProtoAdapter::SetOk(output->mutable_status());
+                    return;
+                }
                 User user{};
                 if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
-                if (input->submission_id() == 0) return Fail(output, 400, "INVALID_SUBMISSION_ID");
                 oj::db::Submission submission{};
                 if (!control->GetModel()->Submission().GetSubmission(input->submission_id(), &submission))
                     return Fail(output, 404, "SUBMISSION_NOT_FOUND");
@@ -1108,7 +1200,13 @@ namespace oj::rpc
         AsyncDispatch(_executor, controller, request, response, done,
             [control](brpc::Controller* cntl, const auto* input, auto* output) {
                 User user{};
-                if (!RequireUser(cntl, control, &user, output->mutable_status())) return;
+                if (cntl == nullptr || !SessionAdapter::GetSessionUser(*cntl, *control, &user)) {
+                    output->set_guest(true);
+                    output->set_message("您还未登录，快去登录吧~");
+                    ProtoAdapter::SetPage(input->page(), 0, output->mutable_page(), 20, 100);
+                    ProtoAdapter::SetOk(output->mutable_status());
+                    return;
+                }
                 if (!input->question_id().empty() && !ValidQuestionId(input->question_id()))
                     return Fail(output, 400, "INVALID_QUESTION_ID");
                 const uint32_t page = input->page().page() == 0 ? 1 : input->page().page();
@@ -1161,10 +1259,32 @@ namespace oj::rpc
                 }
                 oj::db::JudgeOutbox outbox{};
                 oj::mq::JudgeTaskMessage task;
-                if (!control->GetModel()->Submission().GetOutbox(input.message_id(), &outbox) ||
-                    !ValidateTaskPayload(outbox, input, &task)) {
-                    output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_REJECTED);
-                    return Fail(output, 404, "JUDGE_TASK_NOT_FOUND");
+                Json::Value custom_state;
+                bool transient = false;
+                if (input.has_custom_task_id() && input.custom_task_id().starts_with("guest-")) {
+                    std::string encoded;
+                    Json::CharReaderBuilder reader;
+                    std::istringstream stream;
+                    if (control->GetModel()->GetCachedStringByAnyKey(
+                            "judge:custom:" + input.custom_task_id(), &encoded)) {
+                        stream.str(encoded);
+                        transient = Json::parseFromStream(reader, stream, &custom_state, nullptr) &&
+                            custom_state.get("transient", false).asBool() &&
+                            custom_state.get("message_id", "").asString() == input.message_id();
+                    }
+                    if (transient) {
+                        task.set_message_id(input.message_id());
+                        task.set_custom_task_id(input.custom_task_id());
+                        task.set_user_id(0);
+                        task.set_question_id(custom_state.get("question_id", "").asString());
+                        task.set_created_at(custom_state.get("created_at", 0).asInt64());
+                    }
+                }
+                if (!transient &&
+                    (!control->GetModel()->Submission().GetOutbox(input.message_id(), &outbox) ||
+                     !ValidateTaskPayload(outbox, input, &task))) {
+                        output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_REJECTED);
+                        return Fail(output, 404, "JUDGE_TASK_NOT_FOUND");
                 }
                 oj::common::JudgeResult result;
                 if (!result.ParseFromString(input.result_payload()) ||
@@ -1184,8 +1304,11 @@ namespace oj::rpc
                         return Fail(output, 410, "CUSTOM_TASK_EXPIRED");
                     }
                 }
-                const auto outcome = control->GetModel()->Submission().ApplyJudgeResult(
-                    input, result, oj::util::TimeUtil::IntToDateTime(expires_at));
+                auto outcome = oj::model::ModelSubmission::ApplyOutcome::Persisted;
+                if (!transient) {
+                    outcome = control->GetModel()->Submission().ApplyJudgeResult(
+                        input, result, oj::util::TimeUtil::IntToDateTime(expires_at));
+                }
                 if (outcome == oj::model::ModelSubmission::ApplyOutcome::Conflict ||
                     outcome == oj::model::ModelSubmission::ApplyOutcome::NotFound) {
                     if (outcome == oj::model::ModelSubmission::ApplyOutcome::Conflict)
@@ -1212,7 +1335,7 @@ namespace oj::rpc
                         output->set_outcome(oj::biz::JUDGE_RESULT_PERSISTENCE_OUTCOME_RETRYABLE_FAILURE);
                         return Fail(output, 500, "ENCODE_RESULT_FAILED");
                     }
-                    Json::Value state;
+                    Json::Value state = transient ? custom_state : Json::Value{};
                     state["task_id"] = input.custom_task_id();
                     state["message_id"] = input.message_id();
                     state["user_id"] = task.user_id();

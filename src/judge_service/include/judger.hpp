@@ -1,12 +1,14 @@
 #pragma once
 #include "../../comm/comm.hpp"
 #include "../../comm/logger.hpp"
+#include "../../comm/latecymonitor.hpp"
 #include "../../comm/filesystem.hpp"
 #include "../../comm/proto/mq_message.pb.h"
 #include <memory>
 #include <ctime>
 #include "event_loop.hpp"
 #include "docker_sandbox.hpp"
+#include "judge_delivery_policy.hpp"
 
 namespace oj::judge
 {
@@ -25,14 +27,21 @@ struct TestCase
 class Judger
 {
 public:
-    Judger() : _runner_pool(nullptr) {}
-    explicit Judger(oj_sandbox::SandboxPool* pool) : _runner_pool(pool) {}
+    Judger() : _runner_pool(nullptr), _latency_monitor(nullptr) {}
+    explicit Judger(oj_sandbox::SandboxPool* pool, latecyMonitor::LatencyMonitor* latency_monitor = nullptr)
+        : _runner_pool(pool), _latency_monitor(latency_monitor) {}
 
     /// 运行判题链
     /// @param request 判题请求（包含 code, question_id, time_limit 等）
     /// @return 判题结果
     CoTask Run(oj::mq::JudgeTaskMessage request)
     {
+        std::unique_ptr<latecyMonitor::Timer> latency_timer;
+        if (_latency_monitor != nullptr) {
+            latency_timer = std::make_unique<latecyMonitor::Timer>(
+                *_latency_monitor,
+                "judge_service JudgerCoTask.Run at " + oj::util::TimeUtil::GetTimeString());
+        }
         LOG_INFO("Judger started message_id={}", request.message_id());
         // ① 生成唯一文件名，写入源代码到宿主机临时目录
         std::string file_name = oj::util::StringUtil::GetUniqueName();
@@ -258,7 +267,7 @@ public:
                 LOG_DEBUG("User program completed");
                 test_result->set_actual_output(user_output);
                 std::string expected = test.output;
-                if (!request.has_custom_task_id() &&
+                if ((!request.has_custom_task_id() || IsGuestSubmission(request)) &&
                     NormalizeOutput(user_output) != NormalizeOutput(expected)) {
                     test_status = oj::common::SUBMISSION_STATUS_WRONG_ANSWER;
                 }
@@ -307,6 +316,7 @@ public:
 private:
     fileUtil::FileSystem _file_system;
     oj_sandbox::SandboxPool* _runner_pool;
+    latecyMonitor::LatencyMonitor* _latency_monitor;
     std::vector<TestCase> _test_cases;
 
     static std::shared_ptr<oj::common::JudgeResult> ErrorResult(

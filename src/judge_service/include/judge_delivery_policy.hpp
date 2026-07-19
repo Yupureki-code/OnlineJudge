@@ -9,9 +9,15 @@
 namespace oj::judge
 {
 
+inline bool IsGuestSubmission(const oj::mq::JudgeTaskMessage& task)
+{
+    return task.has_custom_task_id() && task.custom_task_id().starts_with("guest-");
+}
+
 inline bool ValidJudgeTask(const oj::mq::JudgeTaskMessage& task)
 {
-    if (task.message_id().empty() || task.user_id() == 0 || task.question_id().empty() ||
+    if (task.message_id().empty() || (task.user_id() == 0 && !IsGuestSubmission(task)) ||
+        task.question_id().empty() ||
         task.code().empty() || task.code().size() > 64 * 1024 || task.language().empty() ||
         task.time_limit_ms() == 0 || task.time_limit_ms() > 60000 ||
         task.memory_limit_mb() == 0 || task.memory_limit_mb() > 4096 ||

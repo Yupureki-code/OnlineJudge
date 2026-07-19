@@ -285,8 +285,8 @@
         }
 
         function getQuestionIdFromPath() {
-            const match = window.location.pathname.match(/\/questions\/(\d+)\/solutions\/new$/);
-            return match ? match[1] : '';
+            const match = window.location.pathname.match(/\/questions\/([^/]+)\/solutions\/new$/);
+            return match ? decodeURIComponent(match[1]) : '';
         }
 
         function setMessage(text, isSuccess) {

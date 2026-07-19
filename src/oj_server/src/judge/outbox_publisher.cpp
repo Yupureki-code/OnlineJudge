@@ -77,8 +77,10 @@ bool OutboxPublisher::Start()
 
 void OutboxPublisher::Stop() noexcept
 {
-    running_.store(false, std::memory_order_release);
-    wake_condition_.notify_all();
+    {
+        std::lock_guard lock(completions_->mutex);
+        running_.store(false, std::memory_order_release);
+    }
     completions_->condition.notify_all();
     if (worker_.joinable()) worker_.join();
     completions_->accepting.store(false, std::memory_order_release);
@@ -86,7 +88,11 @@ void OutboxPublisher::Stop() noexcept
 
 void OutboxPublisher::Notify()
 {
-    wake_condition_.notify_one();
+    {
+        std::lock_guard lock(completions_->mutex);
+        completions_->wake_requested = true;
+    }
+    completions_->condition.notify_one();
 }
 
 void OutboxPublisher::Run()
@@ -127,10 +133,12 @@ void OutboxPublisher::Run()
                 }
             }
         }
-        std::unique_lock lock(wake_mutex_);
-        wake_condition_.wait_for(lock, config_.idle_wait, [this] {
-            return !running_.load(std::memory_order_acquire);
+        std::unique_lock lock(completions_->mutex);
+        completions_->condition.wait_for(lock, config_.idle_wait, [this] {
+            return !running_.load(std::memory_order_acquire) ||
+                   completions_->wake_requested || !completions_->queue.empty();
         });
+        completions_->wake_requested = false;
     }
     DrainCompletions();
 }

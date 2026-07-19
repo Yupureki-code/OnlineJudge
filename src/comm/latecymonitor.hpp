@@ -2,11 +2,13 @@
 
 #include "filesystem.hpp"
 #include "logger.hpp"
+#include "comm.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <limits>
 #include <mutex>
@@ -22,8 +24,12 @@ namespace latecyMonitor
     {
         std::string output_path = "./log/latency";
         std::string file_name = "process_latency.csv";
-        size_t batch_size = 100;
-        std::chrono::milliseconds flush_interval{1000};
+        size_t batch_size = 1000;
+        std::chrono::milliseconds flush_interval{5000};
+        size_t sample_per_mille = 1000;
+        size_t max_queue_records = 10000;
+        size_t max_file_bytes = 64 * 1024 * 1024;
+        size_t max_files = 5;
     };
 
     inline size_t PositiveEnvironmentSize(const char* name, size_t fallback)
@@ -56,10 +62,19 @@ namespace latecyMonitor
             config.output_path = path;
         if (!process_name.empty())
             config.file_name = process_name + "_latency.csv";
+        if (process_name == "oj_server" || process_name == "oj_admin")
+            config.sample_per_mille = 100;
         config.batch_size = PositiveEnvironmentSize("OJ_LATENCY_BATCH_SIZE", config.batch_size);
         config.flush_interval = std::chrono::milliseconds(
             PositiveEnvironmentSize("OJ_LATENCY_FLUSH_MS",
                                     static_cast<size_t>(config.flush_interval.count())));
+        config.sample_per_mille = std::min<size_t>(1000,
+            PositiveEnvironmentSize("OJ_LATENCY_SAMPLE_PERMILLE", config.sample_per_mille));
+        config.max_queue_records = PositiveEnvironmentSize(
+            "OJ_LATENCY_MAX_QUEUE_RECORDS", config.max_queue_records);
+        config.max_file_bytes = PositiveEnvironmentSize(
+            "OJ_LATENCY_MAX_FILE_BYTES", config.max_file_bytes);
+        config.max_files = PositiveEnvironmentSize("OJ_LATENCY_MAX_FILES", config.max_files);
         return config;
     }
 
@@ -70,10 +85,10 @@ namespace latecyMonitor
         {
             std::string operation;
             int64_t latency_ms;
-            int64_t timestamp;
+            int64_t timestamp_us;
 
             LatencyRecord(std::string op, int64_t lat, int64_t ts)
-                : operation(std::move(op)), latency_ms(lat), timestamp(ts) {}
+                : operation(std::move(op)), latency_ms(lat), timestamp_us(ts) {}
         };
 
         void worker_thread_func()
@@ -106,7 +121,8 @@ namespace latecyMonitor
         {
             std::stringstream contents;
             for (const auto& record : batch)
-                contents << record.timestamp << ',' << record.operation << ',' << record.latency_ms << '\n';
+                contents << oj::util::TimeUtil::GetTimeString(record.timestamp_us) << ','
+                         << record.operation << ',' << record.latency_ms << '\n';
 
             fileUtil::Response response;
             {
@@ -114,7 +130,31 @@ namespace latecyMonitor
                 std::string full_path = _file_path.empty() ? "." : _file_path;
                 if (!full_path.empty() && full_path.back() != '/')
                     full_path.push_back('/');
-                response = _file.append(full_path + _file_name, contents.str());
+                const std::string output = contents.str();
+                const std::filesystem::path output_path = full_path + _file_name;
+                std::error_code error;
+                const auto current_size = std::filesystem::exists(output_path, error)
+                    ? std::filesystem::file_size(output_path, error) : 0;
+                const size_t max_bytes = max_file_bytes_.load(std::memory_order_relaxed);
+                const size_t max_files = max_files_.load(std::memory_order_relaxed);
+                if (!error && current_size + output.size() > max_bytes) {
+                    if (max_files <= 1) {
+                        std::filesystem::remove(output_path, error);
+                    } else {
+                        const auto last = output_path.string() + "." + std::to_string(max_files - 1);
+                        std::filesystem::remove(last, error);
+                        for (size_t index = max_files - 1; index > 1; --index) {
+                            const auto source = output_path.string() + "." + std::to_string(index - 1);
+                            const auto target = output_path.string() + "." + std::to_string(index);
+                            error.clear();
+                            if (std::filesystem::exists(source, error))
+                                std::filesystem::rename(source, target, error);
+                        }
+                        error.clear();
+                        std::filesystem::rename(output_path, output_path.string() + ".1", error);
+                    }
+                }
+                response = _file.append(output_path.string(), output);
             }
             if (!response.status) {
                 LOG_ERROR("LatencyMonitor: {}", response.errmsg);
@@ -123,9 +163,9 @@ namespace latecyMonitor
             return true;
         }
 
-        static int64_t current_timestamp_ms()
+        static int64_t current_timestamp_us()
         {
-            return std::chrono::duration_cast<std::chrono::milliseconds>(
+            return std::chrono::duration_cast<std::chrono::microseconds>(
                        std::chrono::system_clock::now().time_since_epoch())
                 .count();
         }
@@ -187,6 +227,10 @@ namespace latecyMonitor
                 return false;
             set_batch_size(config.batch_size);
             set_flush_interval(config.flush_interval);
+            sample_per_mille_.store(config.sample_per_mille, std::memory_order_relaxed);
+            max_queue_records_.store(config.max_queue_records, std::memory_order_relaxed);
+            max_file_bytes_.store(config.max_file_bytes, std::memory_order_relaxed);
+            max_files_.store(config.max_files, std::memory_order_relaxed);
             return true;
         }
 
@@ -201,13 +245,26 @@ namespace latecyMonitor
                 std::lock_guard<std::mutex> lock(queue_mutex_);
                 if (!enabled_.load() || !running_.load())
                     return;
-                queue_.emplace(operation, latency_ms, current_timestamp_ms());
+                if (queue_.size() >= max_queue_records_.load(std::memory_order_relaxed)) {
+                    dropped_records_.fetch_add(1, std::memory_order_relaxed);
+                    return;
+                }
+                queue_.emplace(operation, latency_ms, current_timestamp_us());
+                accepted_records_.fetch_add(1, std::memory_order_relaxed);
             }
             cv_.notify_one();
         }
 
         bool is_enabled() const { return enabled_.load(); }
         bool is_running() const { return running_.load(); }
+        bool should_sample()
+        {
+            const size_t rate = sample_per_mille_.load(std::memory_order_relaxed);
+            return rate >= 1000 || (rate > 0 &&
+                sample_sequence_.fetch_add(1, std::memory_order_relaxed) % 1000 < rate);
+        }
+        uint64_t accepted_records() const { return accepted_records_.load(std::memory_order_relaxed); }
+        uint64_t dropped_records() const { return dropped_records_.load(std::memory_order_relaxed); }
 
         size_t queue_size() const
         {
@@ -245,15 +302,23 @@ namespace latecyMonitor
         std::string _file_name = "process_latency.csv";
         fileUtil::FileSystem _file;
         mutable std::mutex file_mutex_;
-        size_t batch_size_ = 100;
-        std::chrono::milliseconds flush_interval_{1000};
+        size_t batch_size_ = 1000;
+        std::chrono::milliseconds flush_interval_{5000};
+        std::atomic<size_t> sample_per_mille_{1000};
+        std::atomic<size_t> max_queue_records_{10000};
+        std::atomic<size_t> max_file_bytes_{64 * 1024 * 1024};
+        std::atomic<size_t> max_files_{5};
+        std::atomic<uint64_t> sample_sequence_{0};
+        std::atomic<uint64_t> accepted_records_{0};
+        std::atomic<uint64_t> dropped_records_{0};
     };
 
     class Timer
     {
     public:
         Timer(LatencyMonitor& monitor, const std::string& operation)
-            : monitor_(monitor), operation_(operation), enabled_(monitor.is_enabled())
+            : monitor_(monitor), operation_(operation),
+              enabled_(monitor.is_enabled() && monitor.should_sample())
         {
             if (enabled_)
                 start_ = std::chrono::steady_clock::now();

@@ -95,6 +95,7 @@ void TestEnvironmentConfiguration()
     assert(config.file_name == "oj_server_latency.csv");
     assert(config.batch_size == 17);
     assert(config.flush_interval == std::chrono::milliseconds(23));
+    assert(config.sample_per_mille == 100);
 
     setenv("OJ_LATENCY_BATCH_SIZE", "-1", 1);
     setenv("OJ_LATENCY_FLUSH_MS", "0", 1);
@@ -106,6 +107,30 @@ void TestEnvironmentConfiguration()
     unsetenv("OJ_LATENCY_PATH");
     unsetenv("OJ_LATENCY_BATCH_SIZE");
     unsetenv("OJ_LATENCY_FLUSH_MS");
+}
+
+void TestBoundedQueueAndRotation()
+{
+    const auto directory = TestDirectory();
+    latecyMonitor::LatencyMonitor monitor;
+    latecyMonitor::LatencyMonitorConfig config;
+    config.output_path = directory.string();
+    config.file_name = "rotate.csv";
+    config.batch_size = 1;
+    config.flush_interval = std::chrono::seconds(10);
+    config.sample_per_mille = 1000;
+    config.max_queue_records = 2;
+    config.max_file_bytes = 80;
+    config.max_files = 2;
+    assert(monitor.configure(config));
+    assert(monitor.start());
+    monitor.enable(true);
+    for (int i = 0; i < 10; ++i)
+        monitor.record("Rotation.Operation.With.A.Long.Stable.Name", i);
+    monitor.stop();
+    assert(monitor.accepted_records() + monitor.dropped_records() == 10);
+    assert(std::filesystem::exists(directory / "rotate.csv"));
+    assert(std::filesystem::exists(directory / "rotate.csv.1"));
 }
 
 void TestFileFailureDoesNotPreventStop()
@@ -127,5 +152,6 @@ int main()
     TestStopDrainsCsvRecords();
     TestRestartAndConcurrentConfiguration();
     TestEnvironmentConfiguration();
+    TestBoundedQueueAndRotation();
     TestFileFailureDoesNotPreventStop();
 }

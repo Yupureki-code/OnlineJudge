@@ -1,4 +1,3 @@
-find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(spdlog REQUIRED)
@@ -12,6 +11,9 @@ find_library(OJ_SERVER_PROTOC NAMES protoc REQUIRED)
 find_library(OJ_SERVER_AMQPCPP NAMES amqpcpp REQUIRED)
 find_library(REDIS_PLUS_PLUS_LIB NAMES redis++ redis++_static REQUIRED)
 find_library(HIREDIS_LIB NAMES hiredis hiredis_static REQUIRED)
+find_library(OJ_SERVER_CURL NAMES curl
+    PATHS /usr/lib/${CMAKE_LIBRARY_ARCHITECTURE} /lib/${CMAKE_LIBRARY_ARCHITECTURE}
+    NO_DEFAULT_PATH REQUIRED)
 
 set(OJ_SERVER_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/src/oj_server/include)
 set(OJ_BRPC_LIBRARIES
@@ -20,7 +22,7 @@ set(OJ_BRPC_LIBRARIES
     OpenSSL::SSL OpenSSL::Crypto dl z event event_pthreads
 )
 set(OJ_LEGACY_LIBRARIES
-    pthread jsoncpp ctemplate spdlog::spdlog CURL::libcurl
+    pthread jsoncpp ctemplate spdlog::spdlog ${OJ_SERVER_CURL}
     ${REDIS_PLUS_PLUS_LIB} ${HIREDIS_LIB}
 )
 

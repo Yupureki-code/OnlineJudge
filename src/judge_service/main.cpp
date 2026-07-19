@@ -13,6 +13,7 @@
 #include <memory>
 #include <thread>
 #include <cstdlib>
+#include <stdexcept>
 #include "include/judger.hpp"
 #include "include/mq_consumer.hpp"
 #include "include/result_reporter.hpp"
@@ -23,6 +24,22 @@
 #include "../comm/proto/judge_service.pb.h"
 
 using namespace oj::logger;
+
+namespace
+{
+
+int ConcurrencyFromEnv(const char* name, int fallback)
+{
+    const char* value = std::getenv(name);
+    if (value == nullptr || *value == '\0') return fallback;
+    char* end = nullptr;
+    const long parsed = std::strtol(value, &end, 10);
+    if (end == value || *end != '\0' || parsed < 1 || parsed > 64)
+        throw std::invalid_argument(std::string(name) + " must be between 1 and 64");
+    return static_cast<int>(parsed);
+}
+
+}
 
 namespace oj::judge
 {
@@ -60,9 +77,31 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    int worker_count = 0;
+    int prefetch_count = 0;
+    try {
+        worker_count = ConcurrencyFromEnv("OJ_JUDGE_WORKERS", 4);
+        prefetch_count = ConcurrencyFromEnv("OJ_JUDGE_PREFETCH", 4);
+    } catch (const std::exception& e) {
+        LOG_CRITICAL("Invalid Judge concurrency configuration: {}", e.what());
+        oj::logger::ShutdownLogger();
+        return 1;
+    }
+
     auto event_loop = std::make_shared<oj::judge::JudgeEventLoop>();
-    event_loop->Run(4);
-    LOG_INFO("Event loop started with {} worker threads", 4);
+    event_loop->Run(worker_count);
+    LOG_INFO("Event loop started with {} worker threads", worker_count);
+
+    latecyMonitor::LatencyMonitor latency_monitor;
+    try {
+        if (!latency_monitor.configureFromEnv("judge_service") || !latency_monitor.start())
+            throw std::runtime_error("failed to start judge latency monitor");
+        latency_monitor.enable(true);
+    } catch (const std::exception& e) {
+        LOG_CRITICAL("Judge latency monitor initialization failed: {}", e.what());
+        oj::logger::ShutdownLogger();
+        return 1;
+    }
 
     const char* biz_addr = std::getenv("OJ_SERVER_RPC_ADDR");
     if (!biz_addr) biz_addr = "127.0.0.1:8080";
@@ -94,13 +133,16 @@ int main(int argc, char* argv[])
     mq_config.user = mq_user;
     mq_config.password = mq_pass;
     mq_config.queue_name = "oj.judge.task";
+    mq_config.prefetch_count = prefetch_count;
+    LOG_INFO("Judge MQ prefetch configured to {}", mq_config.prefetch_count);
 
     try {
-        consumer->Init(mq_config, reporter, event_loop, runner_pool.get());
+        consumer->Init(mq_config, reporter, event_loop, runner_pool.get(), &latency_monitor);
         consumer->Start();
     } catch (const std::exception& e) {
         LOG_CRITICAL("MQ consumer initialization failed: {}", e.what());
         runner_pool->Shutdown();
+        latency_monitor.stop();
         oj::logger::ShutdownLogger();
         return 1;
     }
@@ -130,6 +172,7 @@ int main(int argc, char* argv[])
     consumer->Stop();
     event_loop->Stop();
     runner_pool->Shutdown();
+    latency_monitor.stop();
     oj::logger::ShutdownLogger();
 
     return 0;

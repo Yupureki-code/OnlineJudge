@@ -12,6 +12,7 @@
 #include "model/model_base.hpp"
 #include "judge/outbox_publisher.hpp"
 #include "rpc/oj_service_impl.hpp"
+#include "rpc/async_dispatch.hpp"
 #include "rpc/static_http_service.hpp"
 #include "runtime/business_executor.hpp"
 #include "../../comm/mq_client.hpp"
@@ -48,6 +49,7 @@ int main()
     }
 
     auto control = std::make_shared<oj::control::Control>();
+    oj::rpc::SetDispatchLatencyMonitor(&control->GetModel()->GetLatencyMonitor());
     control->GetModel()->StartMetricsFlushWorker();
     ns_mq::MQConfig mq_config;
     mq_config.host = ns_runtime_cfg::GetEnvOrDefault("OJ_MQ_HOST", "localhost");
@@ -65,8 +67,8 @@ int main()
         return 1;
     }
     oj::runtime::BusinessExecutor executor({
-        .worker_count = static_cast<std::size_t>(BoundedEnv("OJ_BUSINESS_THREADS", 4, 1, 256)),
-        .queue_capacity = static_cast<std::size_t>(BoundedEnv("OJ_BUSINESS_QUEUE_CAPACITY", 256, 1, 65536)),
+        .worker_count = static_cast<std::size_t>(BoundedEnv("OJ_BUSINESS_THREADS", 8, 1, 16)),
+        .queue_capacity = static_cast<std::size_t>(BoundedEnv("OJ_BUSINESS_QUEUE_CAPACITY", 256, 8, 1024)),
     });
     if (!executor.Start()) {
         LOG_CRITICAL("Failed to start oj_server business executor");
@@ -91,7 +93,7 @@ int main()
         oj::logger::ShutdownLogger();
         return 1;
     }
-    oj::rpc::OJServiceImpl service(control, executor, &outbox_publisher);
+    oj::rpc::OJServiceImpl service(control, executor, &outbox_publisher, &confirmed_publisher);
     oj::rpc::StaticHttpService static_service(control, oj::rpc::StaticHttpMode::Main, HTML_PATH);
     brpc::Server server;
     brpc::ServiceOptions service_options;
@@ -125,7 +127,7 @@ int main()
     }
 
     brpc::ServerOptions options;
-    options.num_threads = BoundedEnv("OJ_SERVER_THREADS", 8, 1, 256);
+    options.num_threads = BoundedEnv("OJ_SERVER_THREADS", 16, 1, 32);
     options.max_concurrency = BoundedEnv("OJ_SERVER_MAX_CONCURRENCY", 1024, 1, 65536);
     options.has_builtin_services = false;
     const int port = BoundedEnv("OJ_SERVER_PORT", 8080, 1, 65535);

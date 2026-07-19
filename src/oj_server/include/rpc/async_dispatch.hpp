@@ -3,7 +3,9 @@
 #include <atomic>
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <concepts>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -14,6 +16,7 @@
 #include <google/protobuf/service.h>
 
 #include "../../../comm/proto/common.pb.h"
+#include "../../../comm/latecymonitor.hpp"
 #include "../runtime/business_executor.hpp"
 
 namespace oj::rpc
@@ -23,6 +26,17 @@ namespace oj::rpc
     inline constexpr int kDispatchStopped = 503;
     inline constexpr int kDispatchCancelled = 499;
     inline constexpr int kDispatchException = 500;
+
+    inline std::atomic<latecyMonitor::LatencyMonitor*>& DispatchLatencyMonitor()
+    {
+        static std::atomic<latecyMonitor::LatencyMonitor*> monitor{nullptr};
+        return monitor;
+    }
+
+    inline void SetDispatchLatencyMonitor(latecyMonitor::LatencyMonitor* monitor)
+    {
+        DispatchLatencyMonitor().store(monitor, std::memory_order_release);
+    }
 
     namespace detail
     {
@@ -134,6 +148,49 @@ namespace oj::rpc
                 std::invoke(callable);
         }
 
+        inline std::string DispatchOperation(google::protobuf::RpcController* controller)
+        {
+            std::string ip = "unknown";
+            std::string method = "brpc";
+            auto* brpc_controller = dynamic_cast<brpc::Controller*>(controller);
+            if (brpc_controller != nullptr) {
+                if (brpc_controller->has_http_request()) {
+                    if (const auto* forwarded = brpc_controller->http_request().GetHeader("X-OJ-Client-IP");
+                        forwarded != nullptr && !forwarded->empty())
+                        ip = *forwarded;
+                    const std::string path = brpc_controller->http_request().uri().path();
+                    const auto separator = path.find_last_of('/');
+                    if (separator != std::string::npos && separator + 1 < path.size())
+                        method = path.substr(separator + 1);
+                }
+                if (ip == "unknown") ip = butil::ip2str(brpc_controller->remote_side().ip).c_str();
+            }
+            return ip + " " + method + " at " + oj::util::TimeUtil::GetTimeString();
+        }
+
+        inline void LogExecutorSaturation(const oj::runtime::BusinessExecutor& executor)
+        {
+            static std::atomic<int64_t> next_log_ms{0};
+            const auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()).count();
+            auto next = next_log_ms.load(std::memory_order_relaxed);
+            if (now_ms < next ||
+                !next_log_ms.compare_exchange_strong(next, now_ms + 10000,
+                                                     std::memory_order_relaxed))
+                return;
+            const auto metrics = executor.GetSnapshot();
+            const auto queue_avg = metrics.queue_wait_count == 0 ? 0 :
+                metrics.queue_wait_total_us / metrics.queue_wait_count;
+            const auto execution_avg = metrics.execution_count == 0 ? 0 :
+                metrics.execution_total_us / metrics.execution_count;
+            LOG_WARNING(
+                "business executor saturated workers={} active={} queue={}/{} accepted={} rejected_full={} queue_wait_avg_us={} queue_wait_max_us={} execution_avg_us={} execution_max_us={}",
+                metrics.worker_count, metrics.active_workers, metrics.queue_depth,
+                metrics.queue_capacity, metrics.accepted_count,
+                metrics.rejected_queue_full_count, queue_avg, metrics.queue_wait_max_us,
+                execution_avg, metrics.execution_max_us);
+        }
+
     } // namespace detail
 
     template <typename Request, typename Response, typename Callable>
@@ -147,9 +204,15 @@ namespace oj::rpc
         using Completion = detail::DispatchCompletion<Response>;
         using Work = std::decay_t<Callable>;
         auto completion = std::make_shared<Completion>(controller, response, done);
+        auto* latency_monitor = DispatchLatencyMonitor().load(std::memory_order_acquire);
+        const std::string operation = detail::DispatchOperation(controller);
 
         auto task = [completion, controller, request, response,
+                    latency_monitor, operation,
                     work = Work(std::forward<Callable>(callable))]() mutable {
+            std::unique_ptr<latecyMonitor::Timer> timer;
+            if (latency_monitor != nullptr)
+                timer = std::make_unique<latecyMonitor::Timer>(*latency_monitor, operation);
             if (controller != nullptr) {
                 auto* brpc_controller = dynamic_cast<brpc::Controller*>(controller);
                 if (brpc_controller != nullptr && brpc_controller->has_http_request()) {
@@ -186,9 +249,10 @@ namespace oj::rpc
         };
 
         const auto result = executor.Submit(std::move(task));
-        if (result == oj::runtime::SubmitResult::QueueFull)
+        if (result == oj::runtime::SubmitResult::QueueFull) {
+            detail::LogExecutorSaturation(executor);
             completion->Fail(kDispatchQueueFull, "BUSINESS_QUEUE_FULL", true);
-        else if (result == oj::runtime::SubmitResult::Stopped)
+        } else if (result == oj::runtime::SubmitResult::Stopped)
             completion->Fail(kDispatchStopped, "BUSINESS_EXECUTOR_STOPPED", true);
         return result;
     }

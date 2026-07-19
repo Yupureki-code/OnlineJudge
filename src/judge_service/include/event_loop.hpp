@@ -296,8 +296,14 @@ namespace oj::judge
                 bool stopping = false;
                 {
                     std::unique_lock<std::mutex> lock(_mutex);
-                    _cv.wait_for(lock, std::chrono::milliseconds(5),
-                                 [this] { return _stop_owners.load() || !_ready.empty(); });
+                    if (_pendings.empty()) {
+                        _cv.wait(lock, [this] {
+                            return _stop_owners.load() || !_ready.empty() || !_pendings.empty();
+                        });
+                    } else {
+                        _cv.wait_for(lock, std::chrono::milliseconds(5),
+                                     [this] { return _stop_owners.load() || !_ready.empty(); });
+                    }
                     const auto now = std::chrono::steady_clock::now();
                     for (auto& [id, pending] : _pendings) {
                         if (!pending.cancel_requested && now >= pending.deadline) {

@@ -203,6 +203,9 @@ namespace oj::mail
             curl_easy_setopt(curl, CURLOPT_PASSWORD, password.c_str());
             curl_easy_setopt(curl, CURLOPT_LOGIN_OPTIONS, "AUTH=LOGIN");
             curl_easy_setopt(curl, CURLOPT_USE_SSL, use_ssl_mode);
+            curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
             curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buffer);
             curl_easy_setopt(curl, CURLOPT_MAIL_FROM, from_mail.c_str());
 

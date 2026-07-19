@@ -998,6 +998,64 @@ struct GetAuditLogsResponseDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetAuditLogsResponseDefaultTypeInternal _GetAuditLogsResponse_default_instance_;
+PROTOBUF_CONSTEXPR DiagnosticFilesRequest::DiagnosticFilesRequest(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.kind_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct DiagnosticFilesRequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR DiagnosticFilesRequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~DiagnosticFilesRequestDefaultTypeInternal() {}
+  union {
+    DiagnosticFilesRequest _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DiagnosticFilesRequestDefaultTypeInternal _DiagnosticFilesRequest_default_instance_;
+PROTOBUF_CONSTEXPR DiagnosticFilesResponse::DiagnosticFilesResponse(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.files_)*/{}
+  , /*decltype(_impl_.status_)*/nullptr
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct DiagnosticFilesResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR DiagnosticFilesResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~DiagnosticFilesResponseDefaultTypeInternal() {}
+  union {
+    DiagnosticFilesResponse _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DiagnosticFilesResponseDefaultTypeInternal _DiagnosticFilesResponse_default_instance_;
+PROTOBUF_CONSTEXPR DiagnosticContentRequest::DiagnosticContentRequest(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.kind_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.file_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct DiagnosticContentRequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR DiagnosticContentRequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~DiagnosticContentRequestDefaultTypeInternal() {}
+  union {
+    DiagnosticContentRequest _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DiagnosticContentRequestDefaultTypeInternal _DiagnosticContentRequest_default_instance_;
+PROTOBUF_CONSTEXPR DiagnosticContentResponse::DiagnosticContentResponse(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.file_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.content_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.status_)*/nullptr
+  , /*decltype(_impl_.truncated_)*/false
+  , /*decltype(_impl_.returned_lines_)*/0u
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct DiagnosticContentResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR DiagnosticContentResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~DiagnosticContentResponseDefaultTypeInternal() {}
+  union {
+    DiagnosticContentResponse _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DiagnosticContentResponseDefaultTypeInternal _DiagnosticContentResponse_default_instance_;
 PROTOBUF_CONSTEXPR CreateSubmissionRequest::CreateSubmissionRequest(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.question_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
@@ -1132,8 +1190,10 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 PROTOBUF_CONSTEXPR ListSubmissionsResponse::ListSubmissionsResponse(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.submissions_)*/{}
+  , /*decltype(_impl_.message_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.status_)*/nullptr
   , /*decltype(_impl_.page_)*/nullptr
+  , /*decltype(_impl_.guest_)*/false
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct ListSubmissionsResponseDefaultTypeInternal {
   PROTOBUF_CONSTEXPR ListSubmissionsResponseDefaultTypeInternal()
@@ -1207,7 +1267,7 @@ struct InvalidateStaticCacheRequestDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 InvalidateStaticCacheRequestDefaultTypeInternal _InvalidateStaticCacheRequest_default_instance_;
 }  // namespace biz
 }  // namespace oj
-static ::_pb::Metadata file_level_metadata_biz_5fservice_2eproto[82];
+static ::_pb::Metadata file_level_metadata_biz_5fservice_2eproto[86];
 static const ::_pb::EnumDescriptor* file_level_enum_descriptors_biz_5fservice_2eproto[1];
 static const ::_pb::ServiceDescriptor* file_level_service_descriptors_biz_5fservice_2eproto[2];
 
@@ -1780,6 +1840,40 @@ const uint32_t TableStruct_biz_5fservice_2eproto::offsets[] PROTOBUF_SECTION_VAR
   PROTOBUF_FIELD_OFFSET(::oj::biz::GetAuditLogsResponse, _impl_.page_),
   PROTOBUF_FIELD_OFFSET(::oj::biz::GetAuditLogsResponse, _impl_.logs_),
   ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticFilesRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticFilesRequest, _impl_.kind_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticFilesResponse, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticFilesResponse, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticFilesResponse, _impl_.files_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticContentRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticContentRequest, _impl_.kind_),
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticContentRequest, _impl_.file_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticContentResponse, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticContentResponse, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticContentResponse, _impl_.file_),
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticContentResponse, _impl_.content_),
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticContentResponse, _impl_.truncated_),
+  PROTOBUF_FIELD_OFFSET(::oj::biz::DiagnosticContentResponse, _impl_.returned_lines_),
+  ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::oj::biz::CreateSubmissionRequest, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
@@ -1865,6 +1959,8 @@ const uint32_t TableStruct_biz_5fservice_2eproto::offsets[] PROTOBUF_SECTION_VAR
   PROTOBUF_FIELD_OFFSET(::oj::biz::ListSubmissionsResponse, _impl_.status_),
   PROTOBUF_FIELD_OFFSET(::oj::biz::ListSubmissionsResponse, _impl_.page_),
   PROTOBUF_FIELD_OFFSET(::oj::biz::ListSubmissionsResponse, _impl_.submissions_),
+  PROTOBUF_FIELD_OFFSET(::oj::biz::ListSubmissionsResponse, _impl_.guest_),
+  PROTOBUF_FIELD_OFFSET(::oj::biz::ListSubmissionsResponse, _impl_.message_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::oj::biz::UpdateJudgeResultRequest, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -1973,20 +2069,24 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 540, -1, -1, sizeof(::oj::biz::GetCacheMetricsResponse)},
   { 548, -1, -1, sizeof(::oj::biz::GetAuditLogsRequest)},
   { 558, -1, -1, sizeof(::oj::biz::GetAuditLogsResponse)},
-  { 567, -1, -1, sizeof(::oj::biz::CreateSubmissionRequest)},
-  { 576, -1, -1, sizeof(::oj::biz::CreateSubmissionResponse)},
-  { 584, -1, -1, sizeof(::oj::biz::CreateCustomTestRequest)},
-  { 594, -1, -1, sizeof(::oj::biz::CreateCustomTestResponse)},
-  { 603, -1, -1, sizeof(::oj::biz::GetSubmissionRequest)},
-  { 610, -1, -1, sizeof(::oj::biz::GetSubmissionResponse)},
-  { 618, -1, -1, sizeof(::oj::biz::GetCustomTestRequest)},
-  { 625, -1, -1, sizeof(::oj::biz::GetCustomTestResponse)},
-  { 635, -1, -1, sizeof(::oj::biz::ListSubmissionsRequest)},
-  { 644, -1, -1, sizeof(::oj::biz::ListSubmissionsResponse)},
-  { 653, -1, -1, sizeof(::oj::biz::UpdateJudgeResultRequest)},
-  { 665, -1, -1, sizeof(::oj::biz::ServiceAuthentication)},
-  { 675, -1, -1, sizeof(::oj::biz::UpdateJudgeResultResponse)},
-  { 684, -1, -1, sizeof(::oj::biz::InvalidateStaticCacheRequest)},
+  { 567, -1, -1, sizeof(::oj::biz::DiagnosticFilesRequest)},
+  { 574, -1, -1, sizeof(::oj::biz::DiagnosticFilesResponse)},
+  { 582, -1, -1, sizeof(::oj::biz::DiagnosticContentRequest)},
+  { 590, -1, -1, sizeof(::oj::biz::DiagnosticContentResponse)},
+  { 601, -1, -1, sizeof(::oj::biz::CreateSubmissionRequest)},
+  { 610, -1, -1, sizeof(::oj::biz::CreateSubmissionResponse)},
+  { 618, -1, -1, sizeof(::oj::biz::CreateCustomTestRequest)},
+  { 628, -1, -1, sizeof(::oj::biz::CreateCustomTestResponse)},
+  { 637, -1, -1, sizeof(::oj::biz::GetSubmissionRequest)},
+  { 644, -1, -1, sizeof(::oj::biz::GetSubmissionResponse)},
+  { 652, -1, -1, sizeof(::oj::biz::GetCustomTestRequest)},
+  { 659, -1, -1, sizeof(::oj::biz::GetCustomTestResponse)},
+  { 669, -1, -1, sizeof(::oj::biz::ListSubmissionsRequest)},
+  { 678, -1, -1, sizeof(::oj::biz::ListSubmissionsResponse)},
+  { 689, -1, -1, sizeof(::oj::biz::UpdateJudgeResultRequest)},
+  { 701, -1, -1, sizeof(::oj::biz::ServiceAuthentication)},
+  { 711, -1, -1, sizeof(::oj::biz::UpdateJudgeResultResponse)},
+  { 720, -1, -1, sizeof(::oj::biz::InvalidateStaticCacheRequest)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -2058,6 +2158,10 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::oj::biz::_GetCacheMetricsResponse_default_instance_._instance,
   &::oj::biz::_GetAuditLogsRequest_default_instance_._instance,
   &::oj::biz::_GetAuditLogsResponse_default_instance_._instance,
+  &::oj::biz::_DiagnosticFilesRequest_default_instance_._instance,
+  &::oj::biz::_DiagnosticFilesResponse_default_instance_._instance,
+  &::oj::biz::_DiagnosticContentRequest_default_instance_._instance,
+  &::oj::biz::_DiagnosticContentResponse_default_instance_._instance,
   &::oj::biz::_CreateSubmissionRequest_default_instance_._instance,
   &::oj::biz::_CreateSubmissionResponse_default_instance_._instance,
   &::oj::biz::_CreateCustomTestRequest_default_instance_._instance,
@@ -2240,35 +2344,44 @@ const char descriptor_table_protodef_biz_5fservice_2eproto[] PROTOBUF_SECTION_VA
   "onse\022)\n\006status\030\001 \001(\0132\031.oj.common.StatusR"
   "esponse\022%\n\004page\030\002 \001(\0132\027.oj.common.PageRe"
   "sponse\022&\n\004logs\030\003 \003(\0132\030.oj.common.AdminAu"
-  "ditLog\"N\n\027CreateSubmissionRequest\022\023\n\013que"
-  "stion_id\030\001 \001(\t\022\014\n\004code\030\002 \001(\t\022\020\n\010language"
-  "\030\003 \001(\t\"p\n\030CreateSubmissionResponse\022)\n\006st"
-  "atus\030\001 \001(\0132\031.oj.common.StatusResponse\022)\n"
-  "\nsubmission\030\002 \001(\0132\025.oj.common.Submission"
-  "\"d\n\027CreateCustomTestRequest\022\023\n\013question_"
-  "id\030\001 \001(\t\022\014\n\004code\030\002 \001(\t\022\020\n\010language\030\003 \001(\t"
-  "\022\024\n\014custom_input\030\004 \001(\t\"\216\001\n\030CreateCustomT"
-  "estResponse\022)\n\006status\030\001 \001(\0132\031.oj.common."
-  "StatusResponse\022\017\n\007task_id\030\002 \001(\t\0226\n\021submi"
-  "ssion_status\030\003 \001(\0162\033.oj.common.Submissio"
-  "nStatus\"-\n\024GetSubmissionRequest\022\025\n\rsubmi"
-  "ssion_id\030\001 \001(\004\"m\n\025GetSubmissionResponse\022"
-  ")\n\006status\030\001 \001(\0132\031.oj.common.StatusRespon"
-  "se\022)\n\nsubmission\030\002 \001(\0132\025.oj.common.Submi"
-  "ssion\"\'\n\024GetCustomTestRequest\022\017\n\007task_id"
-  "\030\001 \001(\t\"\263\001\n\025GetCustomTestResponse\022)\n\006stat"
-  "us\030\001 \001(\0132\031.oj.common.StatusResponse\022\017\n\007t"
-  "ask_id\030\002 \001(\t\0226\n\021submission_status\030\003 \001(\0162"
-  "\033.oj.common.SubmissionStatus\022&\n\006result\030\004"
-  " \001(\0132\026.oj.common.JudgeResult\"\221\001\n\026ListSub"
-  "missionsRequest\022$\n\004page\030\001 \001(\0132\026.oj.commo"
-  "n.PageRequest\022\023\n\013question_id\030\002 \001(\t\0226\n\021su"
-  "bmission_status\030\004 \001(\0162\033.oj.common.Submis"
-  "sionStatusJ\004\010\003\020\004\"\227\001\n\027ListSubmissionsResp"
-  "onse\022)\n\006status\030\001 \001(\0132\031.oj.common.StatusR"
-  "esponse\022%\n\004page\030\002 \001(\0132\027.oj.common.PageRe"
-  "sponse\022*\n\013submissions\030\003 \003(\0132\025.oj.common."
-  "Submission\"\277\001\n\030UpdateJudgeResultRequest\022"
+  "ditLog\"&\n\026DiagnosticFilesRequest\022\014\n\004kind"
+  "\030\001 \001(\t\"S\n\027DiagnosticFilesResponse\022)\n\006sta"
+  "tus\030\001 \001(\0132\031.oj.common.StatusResponse\022\r\n\005"
+  "files\030\002 \003(\t\"6\n\030DiagnosticContentRequest\022"
+  "\014\n\004kind\030\001 \001(\t\022\014\n\004file\030\002 \001(\t\"\220\001\n\031Diagnost"
+  "icContentResponse\022)\n\006status\030\001 \001(\0132\031.oj.c"
+  "ommon.StatusResponse\022\014\n\004file\030\002 \001(\t\022\017\n\007co"
+  "ntent\030\003 \001(\t\022\021\n\ttruncated\030\004 \001(\010\022\026\n\016return"
+  "ed_lines\030\005 \001(\r\"N\n\027CreateSubmissionReques"
+  "t\022\023\n\013question_id\030\001 \001(\t\022\014\n\004code\030\002 \001(\t\022\020\n\010"
+  "language\030\003 \001(\t\"p\n\030CreateSubmissionRespon"
+  "se\022)\n\006status\030\001 \001(\0132\031.oj.common.StatusRes"
+  "ponse\022)\n\nsubmission\030\002 \001(\0132\025.oj.common.Su"
+  "bmission\"d\n\027CreateCustomTestRequest\022\023\n\013q"
+  "uestion_id\030\001 \001(\t\022\014\n\004code\030\002 \001(\t\022\020\n\010langua"
+  "ge\030\003 \001(\t\022\024\n\014custom_input\030\004 \001(\t\"\216\001\n\030Creat"
+  "eCustomTestResponse\022)\n\006status\030\001 \001(\0132\031.oj"
+  ".common.StatusResponse\022\017\n\007task_id\030\002 \001(\t\022"
+  "6\n\021submission_status\030\003 \001(\0162\033.oj.common.S"
+  "ubmissionStatus\"-\n\024GetSubmissionRequest\022"
+  "\025\n\rsubmission_id\030\001 \001(\004\"m\n\025GetSubmissionR"
+  "esponse\022)\n\006status\030\001 \001(\0132\031.oj.common.Stat"
+  "usResponse\022)\n\nsubmission\030\002 \001(\0132\025.oj.comm"
+  "on.Submission\"\'\n\024GetCustomTestRequest\022\017\n"
+  "\007task_id\030\001 \001(\t\"\263\001\n\025GetCustomTestResponse"
+  "\022)\n\006status\030\001 \001(\0132\031.oj.common.StatusRespo"
+  "nse\022\017\n\007task_id\030\002 \001(\t\0226\n\021submission_statu"
+  "s\030\003 \001(\0162\033.oj.common.SubmissionStatus\022&\n\006"
+  "result\030\004 \001(\0132\026.oj.common.JudgeResult\"\221\001\n"
+  "\026ListSubmissionsRequest\022$\n\004page\030\001 \001(\0132\026."
+  "oj.common.PageRequest\022\023\n\013question_id\030\002 \001"
+  "(\t\0226\n\021submission_status\030\004 \001(\0162\033.oj.commo"
+  "n.SubmissionStatusJ\004\010\003\020\004\"\267\001\n\027ListSubmiss"
+  "ionsResponse\022)\n\006status\030\001 \001(\0132\031.oj.common"
+  ".StatusResponse\022%\n\004page\030\002 \001(\0132\027.oj.commo"
+  "n.PageResponse\022*\n\013submissions\030\003 \003(\0132\025.oj"
+  ".common.Submission\022\r\n\005guest\030\004 \001(\010\022\017\n\007mes"
+  "sage\030\005 \001(\t\"\277\001\n\030UpdateJudgeResultRequest\022"
   "\022\n\nmessage_id\030\001 \001(\t\022\027\n\rsubmission_id\030\003 \001"
   "(\004H\000\022\030\n\016custom_task_id\030\004 \001(\tH\000\022\026\n\016result"
   "_payload\030\005 \001(\014\0223\n\014service_auth\030\006 \001(\0132\035.o"
@@ -2386,7 +2499,7 @@ const char descriptor_table_protodef_biz_5fservice_2eproto[] PROTOBUF_SECTION_VA
   "sult\022\036.oj_judge.JudgeFinishedRequest\032\021.o"
   "j_judge.NullRsp\022W\n\025InvalidateStaticCache"
   "\022$.oj.biz.InvalidateStaticCacheRequest\032\030"
-  ".oj.common.EmptyResponse2\270\020\n\016OJAdminServ"
+  ".oj.common.EmptyResponse2\365\021\n\016OJAdminServ"
   "ice\022F\n\017AdminGetVersion\022\027.oj.common.Empty"
   "Request\032\032.oj.biz.GetVersionResponse\022C\n\nA"
   "dminLogin\022\031.oj.biz.AdminLoginRequest\032\032.o"
@@ -2439,7 +2552,12 @@ const char descriptor_table_protodef_biz_5fservice_2eproto[] PROTOBUF_SECTION_VA
   "ommon.EmptyRequest\032\037.oj.biz.GetCacheMetr"
   "icsResponse\022N\n\021AdminGetAuditLogs\022\033.oj.bi"
   "z.GetAuditLogsRequest\032\034.oj.biz.GetAuditL"
-  "ogsResponseB\003\200\001\001b\006proto3"
+  "ogsResponse\022[\n\030AdminListDiagnosticFiles\022"
+  "\036.oj.biz.DiagnosticFilesRequest\032\037.oj.biz"
+  ".DiagnosticFilesResponse\022^\n\027AdminReadDia"
+  "gnosticFile\022 .oj.biz.DiagnosticContentRe"
+  "quest\032!.oj.biz.DiagnosticContentResponse"
+  "B\003\200\001\001b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_biz_5fservice_2eproto_deps[2] = {
   &::descriptor_table_common_2eproto,
@@ -2447,9 +2565,9 @@ static const ::_pbi::DescriptorTable* const descriptor_table_biz_5fservice_2epro
 };
 static ::_pbi::once_flag descriptor_table_biz_5fservice_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_biz_5fservice_2eproto = {
-    false, false, 14584, descriptor_table_protodef_biz_5fservice_2eproto,
+    false, false, 15133, descriptor_table_protodef_biz_5fservice_2eproto,
     "biz_service.proto",
-    &descriptor_table_biz_5fservice_2eproto_once, descriptor_table_biz_5fservice_2eproto_deps, 2, 82,
+    &descriptor_table_biz_5fservice_2eproto_once, descriptor_table_biz_5fservice_2eproto_deps, 2, 86,
     schemas, file_default_instances, TableStruct_biz_5fservice_2eproto::offsets,
     file_level_metadata_biz_5fservice_2eproto, file_level_enum_descriptors_biz_5fservice_2eproto,
     file_level_service_descriptors_biz_5fservice_2eproto,
@@ -19829,6 +19947,1060 @@ void GetAuditLogsResponse::InternalSwap(GetAuditLogsResponse* other) {
 
 // ===================================================================
 
+class DiagnosticFilesRequest::_Internal {
+ public:
+};
+
+DiagnosticFilesRequest::DiagnosticFilesRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:oj.biz.DiagnosticFilesRequest)
+}
+DiagnosticFilesRequest::DiagnosticFilesRequest(const DiagnosticFilesRequest& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  DiagnosticFilesRequest* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.kind_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.kind_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.kind_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_kind().empty()) {
+    _this->_impl_.kind_.Set(from._internal_kind(),
+      _this->GetArenaForAllocation());
+  }
+  // @@protoc_insertion_point(copy_constructor:oj.biz.DiagnosticFilesRequest)
+}
+
+inline void DiagnosticFilesRequest::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.kind_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.kind_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.kind_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+DiagnosticFilesRequest::~DiagnosticFilesRequest() {
+  // @@protoc_insertion_point(destructor:oj.biz.DiagnosticFilesRequest)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void DiagnosticFilesRequest::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.kind_.Destroy();
+}
+
+void DiagnosticFilesRequest::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void DiagnosticFilesRequest::Clear() {
+// @@protoc_insertion_point(message_clear_start:oj.biz.DiagnosticFilesRequest)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.kind_.ClearToEmpty();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* DiagnosticFilesRequest::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // string kind = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_kind();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj.biz.DiagnosticFilesRequest.kind"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* DiagnosticFilesRequest::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:oj.biz.DiagnosticFilesRequest)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string kind = 1;
+  if (!this->_internal_kind().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_kind().data(), static_cast<int>(this->_internal_kind().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj.biz.DiagnosticFilesRequest.kind");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_kind(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:oj.biz.DiagnosticFilesRequest)
+  return target;
+}
+
+size_t DiagnosticFilesRequest::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:oj.biz.DiagnosticFilesRequest)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string kind = 1;
+  if (!this->_internal_kind().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_kind());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DiagnosticFilesRequest::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    DiagnosticFilesRequest::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DiagnosticFilesRequest::GetClassData() const { return &_class_data_; }
+
+
+void DiagnosticFilesRequest::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<DiagnosticFilesRequest*>(&to_msg);
+  auto& from = static_cast<const DiagnosticFilesRequest&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:oj.biz.DiagnosticFilesRequest)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_kind().empty()) {
+    _this->_internal_set_kind(from._internal_kind());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void DiagnosticFilesRequest::CopyFrom(const DiagnosticFilesRequest& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:oj.biz.DiagnosticFilesRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool DiagnosticFilesRequest::IsInitialized() const {
+  return true;
+}
+
+void DiagnosticFilesRequest::InternalSwap(DiagnosticFilesRequest* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.kind_, lhs_arena,
+      &other->_impl_.kind_, rhs_arena
+  );
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata DiagnosticFilesRequest::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
+      file_level_metadata_biz_5fservice_2eproto[68]);
+}
+
+// ===================================================================
+
+class DiagnosticFilesResponse::_Internal {
+ public:
+  static const ::oj::common::StatusResponse& status(const DiagnosticFilesResponse* msg);
+};
+
+const ::oj::common::StatusResponse&
+DiagnosticFilesResponse::_Internal::status(const DiagnosticFilesResponse* msg) {
+  return *msg->_impl_.status_;
+}
+void DiagnosticFilesResponse::clear_status() {
+  if (GetArenaForAllocation() == nullptr && _impl_.status_ != nullptr) {
+    delete _impl_.status_;
+  }
+  _impl_.status_ = nullptr;
+}
+DiagnosticFilesResponse::DiagnosticFilesResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:oj.biz.DiagnosticFilesResponse)
+}
+DiagnosticFilesResponse::DiagnosticFilesResponse(const DiagnosticFilesResponse& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  DiagnosticFilesResponse* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.files_){from._impl_.files_}
+    , decltype(_impl_.status_){nullptr}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  if (from._internal_has_status()) {
+    _this->_impl_.status_ = new ::oj::common::StatusResponse(*from._impl_.status_);
+  }
+  // @@protoc_insertion_point(copy_constructor:oj.biz.DiagnosticFilesResponse)
+}
+
+inline void DiagnosticFilesResponse::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.files_){arena}
+    , decltype(_impl_.status_){nullptr}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+}
+
+DiagnosticFilesResponse::~DiagnosticFilesResponse() {
+  // @@protoc_insertion_point(destructor:oj.biz.DiagnosticFilesResponse)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void DiagnosticFilesResponse::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.files_.~RepeatedPtrField();
+  if (this != internal_default_instance()) delete _impl_.status_;
+}
+
+void DiagnosticFilesResponse::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void DiagnosticFilesResponse::Clear() {
+// @@protoc_insertion_point(message_clear_start:oj.biz.DiagnosticFilesResponse)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.files_.Clear();
+  if (GetArenaForAllocation() == nullptr && _impl_.status_ != nullptr) {
+    delete _impl_.status_;
+  }
+  _impl_.status_ = nullptr;
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* DiagnosticFilesResponse::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .oj.common.StatusResponse status = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          ptr = ctx->ParseMessage(_internal_mutable_status(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // repeated string files = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            auto str = _internal_add_files();
+            ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+            CHK_(ptr);
+            CHK_(::_pbi::VerifyUTF8(str, "oj.biz.DiagnosticFilesResponse.files"));
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<18>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* DiagnosticFilesResponse::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:oj.biz.DiagnosticFilesResponse)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .oj.common.StatusResponse status = 1;
+  if (this->_internal_has_status()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(1, _Internal::status(this),
+        _Internal::status(this).GetCachedSize(), target, stream);
+  }
+
+  // repeated string files = 2;
+  for (int i = 0, n = this->_internal_files_size(); i < n; i++) {
+    const auto& s = this->_internal_files(i);
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      s.data(), static_cast<int>(s.length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj.biz.DiagnosticFilesResponse.files");
+    target = stream->WriteString(2, s, target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:oj.biz.DiagnosticFilesResponse)
+  return target;
+}
+
+size_t DiagnosticFilesResponse::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:oj.biz.DiagnosticFilesResponse)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // repeated string files = 2;
+  total_size += 1 *
+      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(_impl_.files_.size());
+  for (int i = 0, n = _impl_.files_.size(); i < n; i++) {
+    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+      _impl_.files_.Get(i));
+  }
+
+  // .oj.common.StatusResponse status = 1;
+  if (this->_internal_has_status()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.status_);
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DiagnosticFilesResponse::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    DiagnosticFilesResponse::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DiagnosticFilesResponse::GetClassData() const { return &_class_data_; }
+
+
+void DiagnosticFilesResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<DiagnosticFilesResponse*>(&to_msg);
+  auto& from = static_cast<const DiagnosticFilesResponse&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:oj.biz.DiagnosticFilesResponse)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  _this->_impl_.files_.MergeFrom(from._impl_.files_);
+  if (from._internal_has_status()) {
+    _this->_internal_mutable_status()->::oj::common::StatusResponse::MergeFrom(
+        from._internal_status());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void DiagnosticFilesResponse::CopyFrom(const DiagnosticFilesResponse& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:oj.biz.DiagnosticFilesResponse)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool DiagnosticFilesResponse::IsInitialized() const {
+  return true;
+}
+
+void DiagnosticFilesResponse::InternalSwap(DiagnosticFilesResponse* other) {
+  using std::swap;
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  _impl_.files_.InternalSwap(&other->_impl_.files_);
+  swap(_impl_.status_, other->_impl_.status_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata DiagnosticFilesResponse::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
+      file_level_metadata_biz_5fservice_2eproto[69]);
+}
+
+// ===================================================================
+
+class DiagnosticContentRequest::_Internal {
+ public:
+};
+
+DiagnosticContentRequest::DiagnosticContentRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:oj.biz.DiagnosticContentRequest)
+}
+DiagnosticContentRequest::DiagnosticContentRequest(const DiagnosticContentRequest& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  DiagnosticContentRequest* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.kind_){}
+    , decltype(_impl_.file_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.kind_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.kind_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_kind().empty()) {
+    _this->_impl_.kind_.Set(from._internal_kind(),
+      _this->GetArenaForAllocation());
+  }
+  _impl_.file_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.file_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_file().empty()) {
+    _this->_impl_.file_.Set(from._internal_file(),
+      _this->GetArenaForAllocation());
+  }
+  // @@protoc_insertion_point(copy_constructor:oj.biz.DiagnosticContentRequest)
+}
+
+inline void DiagnosticContentRequest::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.kind_){}
+    , decltype(_impl_.file_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.kind_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.kind_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.file_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.file_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+DiagnosticContentRequest::~DiagnosticContentRequest() {
+  // @@protoc_insertion_point(destructor:oj.biz.DiagnosticContentRequest)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void DiagnosticContentRequest::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.kind_.Destroy();
+  _impl_.file_.Destroy();
+}
+
+void DiagnosticContentRequest::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void DiagnosticContentRequest::Clear() {
+// @@protoc_insertion_point(message_clear_start:oj.biz.DiagnosticContentRequest)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.kind_.ClearToEmpty();
+  _impl_.file_.ClearToEmpty();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* DiagnosticContentRequest::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // string kind = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_kind();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj.biz.DiagnosticContentRequest.kind"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string file = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_file();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj.biz.DiagnosticContentRequest.file"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* DiagnosticContentRequest::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:oj.biz.DiagnosticContentRequest)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string kind = 1;
+  if (!this->_internal_kind().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_kind().data(), static_cast<int>(this->_internal_kind().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj.biz.DiagnosticContentRequest.kind");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_kind(), target);
+  }
+
+  // string file = 2;
+  if (!this->_internal_file().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_file().data(), static_cast<int>(this->_internal_file().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj.biz.DiagnosticContentRequest.file");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_file(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:oj.biz.DiagnosticContentRequest)
+  return target;
+}
+
+size_t DiagnosticContentRequest::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:oj.biz.DiagnosticContentRequest)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string kind = 1;
+  if (!this->_internal_kind().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_kind());
+  }
+
+  // string file = 2;
+  if (!this->_internal_file().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_file());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DiagnosticContentRequest::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    DiagnosticContentRequest::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DiagnosticContentRequest::GetClassData() const { return &_class_data_; }
+
+
+void DiagnosticContentRequest::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<DiagnosticContentRequest*>(&to_msg);
+  auto& from = static_cast<const DiagnosticContentRequest&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:oj.biz.DiagnosticContentRequest)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_kind().empty()) {
+    _this->_internal_set_kind(from._internal_kind());
+  }
+  if (!from._internal_file().empty()) {
+    _this->_internal_set_file(from._internal_file());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void DiagnosticContentRequest::CopyFrom(const DiagnosticContentRequest& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:oj.biz.DiagnosticContentRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool DiagnosticContentRequest::IsInitialized() const {
+  return true;
+}
+
+void DiagnosticContentRequest::InternalSwap(DiagnosticContentRequest* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.kind_, lhs_arena,
+      &other->_impl_.kind_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.file_, lhs_arena,
+      &other->_impl_.file_, rhs_arena
+  );
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata DiagnosticContentRequest::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
+      file_level_metadata_biz_5fservice_2eproto[70]);
+}
+
+// ===================================================================
+
+class DiagnosticContentResponse::_Internal {
+ public:
+  static const ::oj::common::StatusResponse& status(const DiagnosticContentResponse* msg);
+};
+
+const ::oj::common::StatusResponse&
+DiagnosticContentResponse::_Internal::status(const DiagnosticContentResponse* msg) {
+  return *msg->_impl_.status_;
+}
+void DiagnosticContentResponse::clear_status() {
+  if (GetArenaForAllocation() == nullptr && _impl_.status_ != nullptr) {
+    delete _impl_.status_;
+  }
+  _impl_.status_ = nullptr;
+}
+DiagnosticContentResponse::DiagnosticContentResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:oj.biz.DiagnosticContentResponse)
+}
+DiagnosticContentResponse::DiagnosticContentResponse(const DiagnosticContentResponse& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  DiagnosticContentResponse* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.file_){}
+    , decltype(_impl_.content_){}
+    , decltype(_impl_.status_){nullptr}
+    , decltype(_impl_.truncated_){}
+    , decltype(_impl_.returned_lines_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.file_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.file_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_file().empty()) {
+    _this->_impl_.file_.Set(from._internal_file(),
+      _this->GetArenaForAllocation());
+  }
+  _impl_.content_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.content_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_content().empty()) {
+    _this->_impl_.content_.Set(from._internal_content(),
+      _this->GetArenaForAllocation());
+  }
+  if (from._internal_has_status()) {
+    _this->_impl_.status_ = new ::oj::common::StatusResponse(*from._impl_.status_);
+  }
+  ::memcpy(&_impl_.truncated_, &from._impl_.truncated_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.returned_lines_) -
+    reinterpret_cast<char*>(&_impl_.truncated_)) + sizeof(_impl_.returned_lines_));
+  // @@protoc_insertion_point(copy_constructor:oj.biz.DiagnosticContentResponse)
+}
+
+inline void DiagnosticContentResponse::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.file_){}
+    , decltype(_impl_.content_){}
+    , decltype(_impl_.status_){nullptr}
+    , decltype(_impl_.truncated_){false}
+    , decltype(_impl_.returned_lines_){0u}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.file_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.file_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.content_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.content_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+DiagnosticContentResponse::~DiagnosticContentResponse() {
+  // @@protoc_insertion_point(destructor:oj.biz.DiagnosticContentResponse)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void DiagnosticContentResponse::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.file_.Destroy();
+  _impl_.content_.Destroy();
+  if (this != internal_default_instance()) delete _impl_.status_;
+}
+
+void DiagnosticContentResponse::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void DiagnosticContentResponse::Clear() {
+// @@protoc_insertion_point(message_clear_start:oj.biz.DiagnosticContentResponse)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.file_.ClearToEmpty();
+  _impl_.content_.ClearToEmpty();
+  if (GetArenaForAllocation() == nullptr && _impl_.status_ != nullptr) {
+    delete _impl_.status_;
+  }
+  _impl_.status_ = nullptr;
+  ::memset(&_impl_.truncated_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.returned_lines_) -
+      reinterpret_cast<char*>(&_impl_.truncated_)) + sizeof(_impl_.returned_lines_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* DiagnosticContentResponse::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .oj.common.StatusResponse status = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          ptr = ctx->ParseMessage(_internal_mutable_status(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string file = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_file();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj.biz.DiagnosticContentResponse.file"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string content = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_content();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj.biz.DiagnosticContentResponse.content"));
+        } else
+          goto handle_unusual;
+        continue;
+      // bool truncated = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _impl_.truncated_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 returned_lines = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
+          _impl_.returned_lines_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* DiagnosticContentResponse::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:oj.biz.DiagnosticContentResponse)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .oj.common.StatusResponse status = 1;
+  if (this->_internal_has_status()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(1, _Internal::status(this),
+        _Internal::status(this).GetCachedSize(), target, stream);
+  }
+
+  // string file = 2;
+  if (!this->_internal_file().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_file().data(), static_cast<int>(this->_internal_file().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj.biz.DiagnosticContentResponse.file");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_file(), target);
+  }
+
+  // string content = 3;
+  if (!this->_internal_content().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_content().data(), static_cast<int>(this->_internal_content().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj.biz.DiagnosticContentResponse.content");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_content(), target);
+  }
+
+  // bool truncated = 4;
+  if (this->_internal_truncated() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(4, this->_internal_truncated(), target);
+  }
+
+  // uint32 returned_lines = 5;
+  if (this->_internal_returned_lines() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(5, this->_internal_returned_lines(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:oj.biz.DiagnosticContentResponse)
+  return target;
+}
+
+size_t DiagnosticContentResponse::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:oj.biz.DiagnosticContentResponse)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string file = 2;
+  if (!this->_internal_file().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_file());
+  }
+
+  // string content = 3;
+  if (!this->_internal_content().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_content());
+  }
+
+  // .oj.common.StatusResponse status = 1;
+  if (this->_internal_has_status()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.status_);
+  }
+
+  // bool truncated = 4;
+  if (this->_internal_truncated() != 0) {
+    total_size += 1 + 1;
+  }
+
+  // uint32 returned_lines = 5;
+  if (this->_internal_returned_lines() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_returned_lines());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DiagnosticContentResponse::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    DiagnosticContentResponse::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DiagnosticContentResponse::GetClassData() const { return &_class_data_; }
+
+
+void DiagnosticContentResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<DiagnosticContentResponse*>(&to_msg);
+  auto& from = static_cast<const DiagnosticContentResponse&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:oj.biz.DiagnosticContentResponse)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_file().empty()) {
+    _this->_internal_set_file(from._internal_file());
+  }
+  if (!from._internal_content().empty()) {
+    _this->_internal_set_content(from._internal_content());
+  }
+  if (from._internal_has_status()) {
+    _this->_internal_mutable_status()->::oj::common::StatusResponse::MergeFrom(
+        from._internal_status());
+  }
+  if (from._internal_truncated() != 0) {
+    _this->_internal_set_truncated(from._internal_truncated());
+  }
+  if (from._internal_returned_lines() != 0) {
+    _this->_internal_set_returned_lines(from._internal_returned_lines());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void DiagnosticContentResponse::CopyFrom(const DiagnosticContentResponse& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:oj.biz.DiagnosticContentResponse)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool DiagnosticContentResponse::IsInitialized() const {
+  return true;
+}
+
+void DiagnosticContentResponse::InternalSwap(DiagnosticContentResponse* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.file_, lhs_arena,
+      &other->_impl_.file_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.content_, lhs_arena,
+      &other->_impl_.content_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(DiagnosticContentResponse, _impl_.returned_lines_)
+      + sizeof(DiagnosticContentResponse::_impl_.returned_lines_)
+      - PROTOBUF_FIELD_OFFSET(DiagnosticContentResponse, _impl_.status_)>(
+          reinterpret_cast<char*>(&_impl_.status_),
+          reinterpret_cast<char*>(&other->_impl_.status_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata DiagnosticContentResponse::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
+      file_level_metadata_biz_5fservice_2eproto[71]);
+}
+
+// ===================================================================
+
 class CreateSubmissionRequest::_Internal {
  public:
 };
@@ -20127,7 +21299,7 @@ void CreateSubmissionRequest::InternalSwap(CreateSubmissionRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CreateSubmissionRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[68]);
+      file_level_metadata_biz_5fservice_2eproto[72]);
 }
 
 // ===================================================================
@@ -20378,7 +21550,7 @@ void CreateSubmissionResponse::InternalSwap(CreateSubmissionResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CreateSubmissionResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[69]);
+      file_level_metadata_biz_5fservice_2eproto[73]);
 }
 
 // ===================================================================
@@ -20731,7 +21903,7 @@ void CreateCustomTestRequest::InternalSwap(CreateCustomTestRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CreateCustomTestRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[70]);
+      file_level_metadata_biz_5fservice_2eproto[74]);
 }
 
 // ===================================================================
@@ -21016,7 +22188,7 @@ void CreateCustomTestResponse::InternalSwap(CreateCustomTestResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata CreateCustomTestResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[71]);
+      file_level_metadata_biz_5fservice_2eproto[75]);
 }
 
 // ===================================================================
@@ -21194,7 +22366,7 @@ void GetSubmissionRequest::InternalSwap(GetSubmissionRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetSubmissionRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[72]);
+      file_level_metadata_biz_5fservice_2eproto[76]);
 }
 
 // ===================================================================
@@ -21445,7 +22617,7 @@ void GetSubmissionResponse::InternalSwap(GetSubmissionResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetSubmissionResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[73]);
+      file_level_metadata_biz_5fservice_2eproto[77]);
 }
 
 // ===================================================================
@@ -21648,7 +22820,7 @@ void GetCustomTestRequest::InternalSwap(GetCustomTestRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetCustomTestRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[74]);
+      file_level_metadata_biz_5fservice_2eproto[78]);
 }
 
 // ===================================================================
@@ -21980,7 +23152,7 @@ void GetCustomTestResponse::InternalSwap(GetCustomTestResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata GetCustomTestResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[75]);
+      file_level_metadata_biz_5fservice_2eproto[79]);
 }
 
 // ===================================================================
@@ -22265,7 +23437,7 @@ void ListSubmissionsRequest::InternalSwap(ListSubmissionsRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListSubmissionsRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[76]);
+      file_level_metadata_biz_5fservice_2eproto[80]);
 }
 
 // ===================================================================
@@ -22310,17 +23482,28 @@ ListSubmissionsResponse::ListSubmissionsResponse(const ListSubmissionsResponse& 
   ListSubmissionsResponse* const _this = this; (void)_this;
   new (&_impl_) Impl_{
       decltype(_impl_.submissions_){from._impl_.submissions_}
+    , decltype(_impl_.message_){}
     , decltype(_impl_.status_){nullptr}
     , decltype(_impl_.page_){nullptr}
+    , decltype(_impl_.guest_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.message_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.message_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_message().empty()) {
+    _this->_impl_.message_.Set(from._internal_message(),
+      _this->GetArenaForAllocation());
+  }
   if (from._internal_has_status()) {
     _this->_impl_.status_ = new ::oj::common::StatusResponse(*from._impl_.status_);
   }
   if (from._internal_has_page()) {
     _this->_impl_.page_ = new ::oj::common::PageResponse(*from._impl_.page_);
   }
+  _this->_impl_.guest_ = from._impl_.guest_;
   // @@protoc_insertion_point(copy_constructor:oj.biz.ListSubmissionsResponse)
 }
 
@@ -22330,10 +23513,16 @@ inline void ListSubmissionsResponse::SharedCtor(
   (void)is_message_owned;
   new (&_impl_) Impl_{
       decltype(_impl_.submissions_){arena}
+    , decltype(_impl_.message_){}
     , decltype(_impl_.status_){nullptr}
     , decltype(_impl_.page_){nullptr}
+    , decltype(_impl_.guest_){false}
     , /*decltype(_impl_._cached_size_)*/{}
   };
+  _impl_.message_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.message_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
 ListSubmissionsResponse::~ListSubmissionsResponse() {
@@ -22348,6 +23537,7 @@ ListSubmissionsResponse::~ListSubmissionsResponse() {
 inline void ListSubmissionsResponse::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.submissions_.~RepeatedPtrField();
+  _impl_.message_.Destroy();
   if (this != internal_default_instance()) delete _impl_.status_;
   if (this != internal_default_instance()) delete _impl_.page_;
 }
@@ -22363,6 +23553,7 @@ void ListSubmissionsResponse::Clear() {
   (void) cached_has_bits;
 
   _impl_.submissions_.Clear();
+  _impl_.message_.ClearToEmpty();
   if (GetArenaForAllocation() == nullptr && _impl_.status_ != nullptr) {
     delete _impl_.status_;
   }
@@ -22371,6 +23562,7 @@ void ListSubmissionsResponse::Clear() {
     delete _impl_.page_;
   }
   _impl_.page_ = nullptr;
+  _impl_.guest_ = false;
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -22406,6 +23598,24 @@ const char* ListSubmissionsResponse::_InternalParse(const char* ptr, ::_pbi::Par
             CHK_(ptr);
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<26>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      // bool guest = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _impl_.guest_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string message = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+          auto str = _internal_mutable_message();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "oj.biz.ListSubmissionsResponse.message"));
         } else
           goto handle_unusual;
         continue;
@@ -22460,6 +23670,22 @@ uint8_t* ListSubmissionsResponse::_InternalSerialize(
         InternalWriteMessage(3, repfield, repfield.GetCachedSize(), target, stream);
   }
 
+  // bool guest = 4;
+  if (this->_internal_guest() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(4, this->_internal_guest(), target);
+  }
+
+  // string message = 5;
+  if (!this->_internal_message().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_message().data(), static_cast<int>(this->_internal_message().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "oj.biz.ListSubmissionsResponse.message");
+    target = stream->WriteStringMaybeAliased(
+        5, this->_internal_message(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -22483,6 +23709,13 @@ size_t ListSubmissionsResponse::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
+  // string message = 5;
+  if (!this->_internal_message().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_message());
+  }
+
   // .oj.common.StatusResponse status = 1;
   if (this->_internal_has_status()) {
     total_size += 1 +
@@ -22495,6 +23728,11 @@ size_t ListSubmissionsResponse::ByteSizeLong() const {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
         *_impl_.page_);
+  }
+
+  // bool guest = 4;
+  if (this->_internal_guest() != 0) {
+    total_size += 1 + 1;
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
@@ -22516,6 +23754,9 @@ void ListSubmissionsResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg
   (void) cached_has_bits;
 
   _this->_impl_.submissions_.MergeFrom(from._impl_.submissions_);
+  if (!from._internal_message().empty()) {
+    _this->_internal_set_message(from._internal_message());
+  }
   if (from._internal_has_status()) {
     _this->_internal_mutable_status()->::oj::common::StatusResponse::MergeFrom(
         from._internal_status());
@@ -22523,6 +23764,9 @@ void ListSubmissionsResponse::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg
   if (from._internal_has_page()) {
     _this->_internal_mutable_page()->::oj::common::PageResponse::MergeFrom(
         from._internal_page());
+  }
+  if (from._internal_guest() != 0) {
+    _this->_internal_set_guest(from._internal_guest());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -22540,11 +23784,17 @@ bool ListSubmissionsResponse::IsInitialized() const {
 
 void ListSubmissionsResponse::InternalSwap(ListSubmissionsResponse* other) {
   using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   _impl_.submissions_.InternalSwap(&other->_impl_.submissions_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.message_, lhs_arena,
+      &other->_impl_.message_, rhs_arena
+  );
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(ListSubmissionsResponse, _impl_.page_)
-      + sizeof(ListSubmissionsResponse::_impl_.page_)
+      PROTOBUF_FIELD_OFFSET(ListSubmissionsResponse, _impl_.guest_)
+      + sizeof(ListSubmissionsResponse::_impl_.guest_)
       - PROTOBUF_FIELD_OFFSET(ListSubmissionsResponse, _impl_.status_)>(
           reinterpret_cast<char*>(&_impl_.status_),
           reinterpret_cast<char*>(&other->_impl_.status_));
@@ -22553,7 +23803,7 @@ void ListSubmissionsResponse::InternalSwap(ListSubmissionsResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ListSubmissionsResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[77]);
+      file_level_metadata_biz_5fservice_2eproto[81]);
 }
 
 // ===================================================================
@@ -22951,7 +24201,7 @@ void UpdateJudgeResultRequest::InternalSwap(UpdateJudgeResultRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata UpdateJudgeResultRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[78]);
+      file_level_metadata_biz_5fservice_2eproto[82]);
 }
 
 // ===================================================================
@@ -23276,7 +24526,7 @@ void ServiceAuthentication::InternalSwap(ServiceAuthentication* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ServiceAuthentication::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[79]);
+      file_level_metadata_biz_5fservice_2eproto[83]);
 }
 
 // ===================================================================
@@ -23537,7 +24787,7 @@ void UpdateJudgeResultResponse::InternalSwap(UpdateJudgeResultResponse* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata UpdateJudgeResultResponse::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[80]);
+      file_level_metadata_biz_5fservice_2eproto[84]);
 }
 
 // ===================================================================
@@ -23740,7 +24990,7 @@ void InvalidateStaticCacheRequest::InternalSwap(InvalidateStaticCacheRequest* ot
 ::PROTOBUF_NAMESPACE_ID::Metadata InvalidateStaticCacheRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_biz_5fservice_2eproto_getter, &descriptor_table_biz_5fservice_2eproto_once,
-      file_level_metadata_biz_5fservice_2eproto[81]);
+      file_level_metadata_biz_5fservice_2eproto[85]);
 }
 
 // ===================================================================
@@ -25400,6 +26650,22 @@ void OJAdminService::AdminGetAuditLogs(::PROTOBUF_NAMESPACE_ID::RpcController* c
   done->Run();
 }
 
+void OJAdminService::AdminListDiagnosticFiles(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                         const ::oj::biz::DiagnosticFilesRequest*,
+                         ::oj::biz::DiagnosticFilesResponse*,
+                         ::google::protobuf::Closure* done) {
+  controller->SetFailed("Method AdminListDiagnosticFiles() not implemented.");
+  done->Run();
+}
+
+void OJAdminService::AdminReadDiagnosticFile(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                         const ::oj::biz::DiagnosticContentRequest*,
+                         ::oj::biz::DiagnosticContentResponse*,
+                         ::google::protobuf::Closure* done) {
+  controller->SetFailed("Method AdminReadDiagnosticFile() not implemented.");
+  done->Run();
+}
+
 void OJAdminService::CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method,
                              ::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                              const ::PROTOBUF_NAMESPACE_ID::Message* request,
@@ -25615,6 +26881,22 @@ void OJAdminService::CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor*
                  response),
              done);
       break;
+    case 26:
+      AdminListDiagnosticFiles(controller,
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<const ::oj::biz::DiagnosticFilesRequest*>(
+                 request),
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<::oj::biz::DiagnosticFilesResponse*>(
+                 response),
+             done);
+      break;
+    case 27:
+      AdminReadDiagnosticFile(controller,
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<const ::oj::biz::DiagnosticContentRequest*>(
+                 request),
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<::oj::biz::DiagnosticContentResponse*>(
+                 response),
+             done);
+      break;
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
       break;
@@ -25677,6 +26959,10 @@ const ::PROTOBUF_NAMESPACE_ID::Message& OJAdminService::GetRequestPrototype(
       return ::oj::common::EmptyRequest::default_instance();
     case 25:
       return ::oj::biz::GetAuditLogsRequest::default_instance();
+    case 26:
+      return ::oj::biz::DiagnosticFilesRequest::default_instance();
+    case 27:
+      return ::oj::biz::DiagnosticContentRequest::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
       return *::PROTOBUF_NAMESPACE_ID::MessageFactory::generated_factory()
@@ -25740,6 +27026,10 @@ const ::PROTOBUF_NAMESPACE_ID::Message& OJAdminService::GetResponsePrototype(
       return ::oj::biz::GetCacheMetricsResponse::default_instance();
     case 25:
       return ::oj::biz::GetAuditLogsResponse::default_instance();
+    case 26:
+      return ::oj::biz::DiagnosticFilesResponse::default_instance();
+    case 27:
+      return ::oj::biz::DiagnosticContentResponse::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
       return *::PROTOBUF_NAMESPACE_ID::MessageFactory::generated_factory()
@@ -25938,6 +27228,20 @@ void OJAdminService_Stub::AdminGetAuditLogs(::PROTOBUF_NAMESPACE_ID::RpcControll
                               ::oj::biz::GetAuditLogsResponse* response,
                               ::google::protobuf::Closure* done) {
   channel_->CallMethod(descriptor()->method(25),
+                       controller, request, response, done);
+}
+void OJAdminService_Stub::AdminListDiagnosticFiles(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                              const ::oj::biz::DiagnosticFilesRequest* request,
+                              ::oj::biz::DiagnosticFilesResponse* response,
+                              ::google::protobuf::Closure* done) {
+  channel_->CallMethod(descriptor()->method(26),
+                       controller, request, response, done);
+}
+void OJAdminService_Stub::AdminReadDiagnosticFile(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                              const ::oj::biz::DiagnosticContentRequest* request,
+                              ::oj::biz::DiagnosticContentResponse* response,
+                              ::google::protobuf::Closure* done) {
+  channel_->CallMethod(descriptor()->method(27),
                        controller, request, response, done);
 }
 
@@ -26216,6 +27520,22 @@ Arena::CreateMaybeMessage< ::oj::biz::GetAuditLogsRequest >(Arena* arena) {
 template<> PROTOBUF_NOINLINE ::oj::biz::GetAuditLogsResponse*
 Arena::CreateMaybeMessage< ::oj::biz::GetAuditLogsResponse >(Arena* arena) {
   return Arena::CreateMessageInternal< ::oj::biz::GetAuditLogsResponse >(arena);
+}
+template<> PROTOBUF_NOINLINE ::oj::biz::DiagnosticFilesRequest*
+Arena::CreateMaybeMessage< ::oj::biz::DiagnosticFilesRequest >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::oj::biz::DiagnosticFilesRequest >(arena);
+}
+template<> PROTOBUF_NOINLINE ::oj::biz::DiagnosticFilesResponse*
+Arena::CreateMaybeMessage< ::oj::biz::DiagnosticFilesResponse >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::oj::biz::DiagnosticFilesResponse >(arena);
+}
+template<> PROTOBUF_NOINLINE ::oj::biz::DiagnosticContentRequest*
+Arena::CreateMaybeMessage< ::oj::biz::DiagnosticContentRequest >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::oj::biz::DiagnosticContentRequest >(arena);
+}
+template<> PROTOBUF_NOINLINE ::oj::biz::DiagnosticContentResponse*
+Arena::CreateMaybeMessage< ::oj::biz::DiagnosticContentResponse >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::oj::biz::DiagnosticContentResponse >(arena);
 }
 template<> PROTOBUF_NOINLINE ::oj::biz::CreateSubmissionRequest*
 Arena::CreateMaybeMessage< ::oj::biz::CreateSubmissionRequest >(Arena* arena) {

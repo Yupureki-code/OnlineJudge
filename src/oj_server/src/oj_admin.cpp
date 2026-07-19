@@ -12,6 +12,7 @@
 #include "model/model_base.hpp"
 #include "oj_admin.hpp"
 #include "rpc/admin_audit_worker.hpp"
+#include "rpc/async_dispatch.hpp"
 #include "rpc/oj_admin_service_impl.hpp"
 #include "rpc/static_http_service.hpp"
 #include "runtime/business_executor.hpp"
@@ -48,10 +49,11 @@ int main()
     }
 
     auto control = std::make_shared<oj::control::Control>();
+    oj::rpc::SetDispatchLatencyMonitor(&control->GetModel()->GetLatencyMonitor());
     auto sessions = std::make_shared<oj::admin::AdminSessionStore>();
     oj::runtime::BusinessExecutor executor({
-        .worker_count = static_cast<std::size_t>(BoundedEnv("OJ_ADMIN_BUSINESS_THREADS", 4, 1, 256)),
-        .queue_capacity = static_cast<std::size_t>(BoundedEnv("OJ_ADMIN_BUSINESS_QUEUE_CAPACITY", 256, 1, 65536)),
+        .worker_count = static_cast<std::size_t>(BoundedEnv("OJ_ADMIN_BUSINESS_THREADS", 2, 1, 16)),
+        .queue_capacity = static_cast<std::size_t>(BoundedEnv("OJ_ADMIN_BUSINESS_QUEUE_CAPACITY", 32, 8, 1024)),
     });
     if (!executor.Start()) {
         LOG_CRITICAL("Failed to start oj_admin business executor");

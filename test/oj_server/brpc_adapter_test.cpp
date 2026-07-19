@@ -340,6 +340,14 @@ void CheckSessions()
 
 void CheckProtoConversions()
 {
+    Check(oj::util::TimeUtil::GetTimeString(0) == "1970-01-01 08:00:00",
+          "display timestamps use China Standard Time");
+    Check(oj::util::TimeUtil::GetTimeString(123456) == "1970-01-01 08:00:00.123456",
+          "display timestamps preserve microseconds");
+    Check(oj::util::TimeUtil::GetTimeString(16LL * 60 * 60 * 1000000) ==
+              "1970-01-02 00:00:00",
+          "China Standard Time conversion handles day rollover");
+
     oj::db::User user{};
     user.uid = 42;
     user.name = "Ada";

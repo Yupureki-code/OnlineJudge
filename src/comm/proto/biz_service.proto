@@ -276,6 +276,22 @@ message GetAuditLogsResponse {
     oj.common.PageResponse page = 2;
     repeated oj.common.AdminAuditLog logs = 3;
 }
+message DiagnosticFilesRequest { string kind = 1; }
+message DiagnosticFilesResponse {
+    oj.common.StatusResponse status = 1;
+    repeated string files = 2;
+}
+message DiagnosticContentRequest {
+    string kind = 1;
+    string file = 2;
+}
+message DiagnosticContentResponse {
+    oj.common.StatusResponse status = 1;
+    string file = 2;
+    string content = 3;
+    bool truncated = 4;
+    uint32 returned_lines = 5;
+}
 
 message CreateSubmissionRequest {
     string question_id = 1;
@@ -319,6 +335,8 @@ message ListSubmissionsResponse {
     oj.common.StatusResponse status = 1;
     oj.common.PageResponse page = 2;
     repeated oj.common.Submission submissions = 3;
+    bool guest = 4;
+    string message = 5;
 }
 message UpdateJudgeResultRequest {
     string message_id = 1;
@@ -449,4 +467,6 @@ service OJAdminService {
     rpc AdminDeleteAdminAccount(AdminAccountIdRequest) returns (oj.common.EmptyResponse);
     rpc AdminGetCacheMetrics(oj.common.EmptyRequest) returns (GetCacheMetricsResponse);
     rpc AdminGetAuditLogs(GetAuditLogsRequest) returns (GetAuditLogsResponse);
+    rpc AdminListDiagnosticFiles(DiagnosticFilesRequest) returns (DiagnosticFilesResponse);
+    rpc AdminReadDiagnosticFile(DiagnosticContentRequest) returns (DiagnosticContentResponse);
 }

@@ -70,7 +70,7 @@ namespace oj::model
                 add_clause(Query::name.like("%" + user_query->name + "%"));
             if (!user_query->email.empty())
                 add_clause(Query::email.like("%" + user_query->email + "%"));
-            return query;
+            return *filtered ? query : Query(true);
         }
 
     public:

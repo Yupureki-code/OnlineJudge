@@ -44,7 +44,7 @@ local function schema(type_name)
             number = number,
             type = normalize_type(field_type),
             default = default,
-            repeated = label == "repeated",
+            repeated = label == "repeated" or label == "packed",
             kind = descriptor_kind(field_type),
         }
     end

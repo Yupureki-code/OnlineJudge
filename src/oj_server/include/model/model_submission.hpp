@@ -127,7 +127,7 @@ public:
                          std::vector<oj::db::Submission>* submissions, uint64_t* total)
     {
         if (submissions == nullptr || total == nullptr || user_id == 0 || page == 0 ||
-            page_size == 0 || (!question_id.empty() && !IsAllDigits(question_id)) ||
+            page_size == 0 || (!question_id.empty() && !IsValidQuestionId(question_id)) ||
             !ValidStatusFilter(status)) return false;
         submissions->clear();
         *total = 0;

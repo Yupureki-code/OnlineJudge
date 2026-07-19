@@ -193,7 +193,7 @@ void CheckAuthAndUserRpcs(RpcSuite& suite, TestController* controller)
     suite.ExpectStatus<oj::biz::DeleteAccountRequest, oj::common::EmptyResponse>(
         "DeleteAccount", &oj::rpc::OJServiceImpl::DeleteAccount, controller, 401, "UNAUTHORIZED");
     suite.ExpectStatus<oj::common::EmptyRequest, oj::biz::GetUserProfileResponse>(
-        "GetCurrentUser", &oj::rpc::OJServiceImpl::GetCurrentUser, controller, 401, "UNAUTHORIZED");
+        "GetCurrentUser", &oj::rpc::OJServiceImpl::GetCurrentUser, controller, 200);
     suite.ExpectStatus<oj::biz::GetUserProfileRequest, oj::biz::GetUserProfileResponse>(
         "GetUserProfile", &oj::rpc::OJServiceImpl::GetUserProfile, controller, 401, "UNAUTHORIZED");
     suite.ExpectStatus<oj::biz::UpdateProfileRequest, oj::biz::UpdateProfileResponse>(
@@ -293,15 +293,23 @@ void CheckCommentRpcs(RpcSuite& suite, TestController* controller)
 void CheckSubmissionAndCacheRpcs(RpcSuite& suite, TestController* controller)
 {
     suite.ExpectStatus<oj::biz::CreateSubmissionRequest, oj::biz::CreateSubmissionResponse>(
-        "CreateSubmission", &oj::rpc::OJServiceImpl::CreateSubmission, controller, 401, "UNAUTHORIZED");
+        "CreateSubmission", &oj::rpc::OJServiceImpl::CreateSubmission, controller,
+        400, "INVALID_QUESTION_ID");
     suite.ExpectStatus<oj::biz::CreateCustomTestRequest, oj::biz::CreateCustomTestResponse>(
         "CreateCustomTest", &oj::rpc::OJServiceImpl::CreateCustomTest, controller, 401, "UNAUTHORIZED");
     suite.ExpectStatus<oj::biz::GetSubmissionRequest, oj::biz::GetSubmissionResponse>(
-        "GetSubmission", &oj::rpc::OJServiceImpl::GetSubmission, controller, 401, "UNAUTHORIZED");
+        "GetSubmission", &oj::rpc::OJServiceImpl::GetSubmission, controller,
+        400, "INVALID_SUBMISSION_ID");
     suite.ExpectStatus<oj::biz::GetCustomTestRequest, oj::biz::GetCustomTestResponse>(
         "GetCustomTest", &oj::rpc::OJServiceImpl::GetCustomTest, controller, 401, "UNAUTHORIZED");
-    suite.ExpectStatus<oj::biz::ListSubmissionsRequest, oj::biz::ListSubmissionsResponse>(
-        "ListSubmissions", &oj::rpc::OJServiceImpl::ListSubmissions, controller, 401, "UNAUTHORIZED");
+    auto guest_history = ExpectedStatus<oj::biz::ListSubmissionsResponse>(200);
+    guest_history.mutable_page()->set_page(1);
+    guest_history.mutable_page()->set_page_size(20);
+    guest_history.set_guest(true);
+    guest_history.set_message("您还未登录，快去登录吧~");
+    suite.Expect<oj::biz::ListSubmissionsRequest>(
+        "ListSubmissions", &oj::rpc::OJServiceImpl::ListSubmissions, controller,
+        [](auto&) {}, guest_history);
     suite.ExpectStatus<oj::biz::UpdateJudgeResultRequest, oj::biz::UpdateJudgeResultResponse>(
         "UpdateJudgeResult", &oj::rpc::OJServiceImpl::UpdateJudgeResult, controller, 400, "INVALID_CALLBACK");
     suite.ExpectLegacyFailure(controller);

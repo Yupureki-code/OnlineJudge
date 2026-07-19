@@ -235,7 +235,7 @@ void TestServiceContracts() {
     }};
     CheckMethods(oj::biz::OJService::descriptor(), kOJMethods);
 
-    constexpr std::array<const char*, 26> kOJAdminMethods{{
+    constexpr std::array<const char*, 28> kOJAdminMethods{{
         "AdminGetVersion", "AdminLogin", "AdminLogout", "AdminGetOverview",
         "AdminListUsers", "AdminGetUser", "AdminCreateUser", "AdminUpdateUser",
         "AdminDeleteUser", "AdminListQuestions", "AdminGetQuestion",
@@ -244,7 +244,7 @@ void TestServiceContracts() {
         "AdminDeleteTestCase", "AdminInvalidateQuestionCache",
         "AdminListAdminAccounts", "AdminGetAdminAccount", "AdminCreateAdminAccount",
         "AdminUpdateAdminAccount", "AdminDeleteAdminAccount", "AdminGetCacheMetrics",
-        "AdminGetAuditLogs",
+         "AdminGetAuditLogs", "AdminListDiagnosticFiles", "AdminReadDiagnosticFile",
     }};
     CheckMethods(oj::biz::OJAdminService::descriptor(), kOJAdminMethods);
     for (int i = 0; i < oj::biz::OJAdminService::descriptor()->method_count(); ++i) {

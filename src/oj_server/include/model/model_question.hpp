@@ -53,7 +53,7 @@ namespace oj::model
             normalized->title = TrimCopy(raw ? raw->title : "");
             normalized->star = LowerAscii(TrimCopy(raw ? raw->star : ""));
 
-            if (!normalized->id.empty() && !IsAllDigits(normalized->id))
+            if (!normalized->id.empty() && !IsValidQuestionId(normalized->id))
             {
                 normalized->id.clear();
             }
@@ -72,7 +72,7 @@ namespace oj::model
             if (!q)
                 return condition;
 
-            if (!q->id.empty() && !q->title.empty() && q->id == q->title && IsAllDigits(q->id))
+            if (!q->id.empty() && !q->title.empty() && q->id == q->title && IsValidQuestionId(q->id))
             {
                 condition = condition &&
                     (Query::id == q->id || Query::title.like("%" + q->title + "%"));
@@ -245,7 +245,7 @@ namespace oj::model
         bool GetOneQuestion(const std::string& id, Question& q, bool include_hidden = false)
         {
             auto begin = std::chrono::steady_clock::now();
-            if (!IsAllDigits(id))
+            if (!IsValidQuestionId(id))
                 return false;
 
             auto detail_key = _cache.BuildDetailCacheKey(id, Cache::CacheKey::PageType::kData);
@@ -414,7 +414,7 @@ namespace oj::model
         //删除题目
         bool DeleteQuestion(const std::string& id)
         {
-            if (!IsAllDigits(id))
+            if (!IsValidQuestionId(id))
                 return false;
 
             std::lock_guard<std::mutex> mutation_lock(_question_mutation_mutex);
@@ -725,7 +725,7 @@ namespace oj::model
                          std::string* test_input, std::string* test_output)
         {
             if (test_input == nullptr || test_output == nullptr ||
-                !IsAllDigits(question_id) || test_id <= 0 ||
+                !IsValidQuestionId(question_id) || test_id <= 0 ||
                 test_id > std::numeric_limits<int8_t>::max())
                 return false;
             auto begin = std::chrono::steady_clock::now();
@@ -800,7 +800,7 @@ namespace oj::model
                             bool is_sample,
                             int* test_id = nullptr)
         {
-            if (!IsAllDigits(question_id))
+            if (!IsValidQuestionId(question_id))
                 return false;
             std::lock_guard<std::mutex> mutation_lock(_question_mutation_mutex);
             DatabaseHandle database;
@@ -879,7 +879,7 @@ namespace oj::model
                             const std::string& output,
                             bool is_sample)
         {
-            if (!IsAllDigits(question_id) || test_id <= 0 ||
+            if (!IsValidQuestionId(question_id) || test_id <= 0 ||
                 test_id > std::numeric_limits<int8_t>::max())
                 return false;
             std::lock_guard<std::mutex> mutation_lock(_question_mutation_mutex);
@@ -956,7 +956,7 @@ namespace oj::model
 
         bool DeleteTestCase(int test_id, const std::string& question_id)
         {
-            if (!IsAllDigits(question_id) || test_id <= 0 ||
+            if (!IsValidQuestionId(question_id) || test_id <= 0 ||
                 test_id > std::numeric_limits<int8_t>::max())
                 return false;
             std::lock_guard<std::mutex> mutation_lock(_question_mutation_mutex);

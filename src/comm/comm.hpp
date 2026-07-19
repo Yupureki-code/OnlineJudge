@@ -18,6 +18,7 @@
 #include "models/types.hxx"
 #include <cassert>
 #include <iomanip>
+#include <limits>
 
 inline constexpr const char root[] = "/";
 inline constexpr const char dev_null[] = "/dev/null";
@@ -217,6 +218,23 @@ namespace oj::util
             struct timeval _time;
             gettimeofday(&_time, nullptr);
             return std::to_string(_time.tv_sec * 1000 + _time.tv_usec / 1000);
+        }
+        static inline std::string GetTimeString(int64_t ts_us = GetTimeStamp()) noexcept
+        {
+            constexpr int64_t kChinaStandardTimeOffsetUs = 8LL * 60 * 60 * 1000000;
+            MYSQL_TIME t{};
+            if (ts_us <= std::numeric_limits<int64_t>::max() - kChinaStandardTimeOffsetUs)
+                t = IntToDateTime(ts_us + kChinaStandardTimeOffsetUs);
+            char buf[32];
+            if (t.second_part == 0)
+                std::snprintf(buf, sizeof buf, "%04u-%02u-%02u %02u:%02u:%02u",
+                            t.year, t.month, t.day,
+                            t.hour, t.minute, t.second);
+            else
+                std::snprintf(buf, sizeof buf, "%04u-%02u-%02u %02u:%02u:%02u.%06lu",
+                            t.year, t.month, t.day,
+                            t.hour, t.minute, t.second, t.second_part);
+            return buf;
         }
         static inline int64_t DateTimeToInt(const MYSQL_TIME& t) noexcept 
         {

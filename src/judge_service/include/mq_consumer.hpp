@@ -1,6 +1,7 @@
 #pragma once
 #include "../../comm/mq_client.hpp"
 #include "../../comm/proto/judge_service.pb.h"
+#include "comm.hpp"
 #include "judger.hpp"
 #include "result_reporter.hpp"
 #include "judge_delivery_policy.hpp"
@@ -94,6 +95,10 @@ namespace oj::judge
                     return;
                 }
 
+                LOG_INFO("receive judge request message_id={} submission_id={} custom_task_id={} at {}",
+                         request.message_id(), request.submission_id(), request.custom_task_id(),
+                         oj::util::TimeUtil::GetTimeString());
+
                 const int64_t calculated_timeout = 15000LL + request.test_cases_size() *
                     (static_cast<int64_t>(request.time_limit_ms()) + 6000);
                 oj::common::JudgeResult completed;
@@ -121,7 +126,7 @@ namespace oj::judge
                 }
 
                 // 创建 Judger 并注入运行容器预热池
-                auto judger = std::make_shared<Judger>(_runner_pool);
+                auto judger = std::make_shared<Judger>(_runner_pool, _latency_monitor);
                 std::vector<TestCase> tests;
                 tests.reserve(request.test_cases_size());
                 for (const auto& item : request.test_cases()) {
@@ -176,11 +181,13 @@ namespace oj::judge
         void Init(const ns_mq::MQConfig& mq_config,
                   std::shared_ptr<ResultReporter> reporter,
                   std::shared_ptr<JudgeEventLoop> loop,
-                  oj_sandbox::SandboxPool* runner_pool) 
+                  oj_sandbox::SandboxPool* runner_pool,
+                  latecyMonitor::LatencyMonitor* latency_monitor = nullptr)
         {
             _reporter = std::move(reporter);
             _loop = std::move(loop);
             _runner_pool = runner_pool;
+            _latency_monitor = latency_monitor;
             const char* redis_uri = std::getenv("OJ_REDIS_ADDR");
             if (redis_uri == nullptr || *redis_uri == '\0')
                 throw std::runtime_error("OJ_REDIS_ADDR is required for the judge inbox");
@@ -211,7 +218,13 @@ namespace oj::judge
             _consumer_thread = std::make_unique<std::thread>([this]() {
                 _consumer->StartConsuming();
             });
+            if (!_consumer->WaitUntilConnected(std::chrono::seconds(15))) {
+                Stop();
+                throw std::runtime_error("MQ consumer did not become ready within 15 seconds");
+            }
         }
+
+        bool IsConnected() const { return _consumer && _consumer->IsConnected(); }
 
         /// 停止消费
         void Stop() {
@@ -227,6 +240,7 @@ namespace oj::judge
         std::shared_ptr<ResultReporter> _reporter;
         std::shared_ptr<JudgeEventLoop> _loop;
         oj_sandbox::SandboxPool* _runner_pool;
+        latecyMonitor::LatencyMonitor* _latency_monitor = nullptr;
         std::unique_ptr<std::thread> _consumer_thread;
         std::atomic<bool> _running{false};
         JudgeInbox _inbox;

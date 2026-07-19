@@ -9,7 +9,7 @@ namespace oj::control
 {
 class Control;
 }
-namespace oj::judge { class OutboxPublisher; }
+namespace oj::judge { class ConfirmedMessagePublisher; class OutboxPublisher; }
 
 namespace oj::rpc
 {
@@ -19,7 +19,8 @@ namespace oj::rpc
     public:
         OJServiceImpl(std::shared_ptr<oj::control::Control> control,
                     oj::runtime::BusinessExecutor& executor,
-                    oj::judge::OutboxPublisher* outbox_publisher = nullptr);
+                    oj::judge::OutboxPublisher* outbox_publisher = nullptr,
+                    oj::judge::ConfirmedMessagePublisher* transient_publisher = nullptr);
 
     #define OJ_MAIN_RPC(method, request_type, response_type) \
         void method(google::protobuf::RpcController* controller, \
@@ -84,5 +85,6 @@ namespace oj::rpc
         std::shared_ptr<oj::control::Control> _control;
         oj::runtime::BusinessExecutor& _executor;
         oj::judge::OutboxPublisher* _outbox_publisher;
+        oj::judge::ConfirmedMessagePublisher* _transient_publisher;
     };
 } // namespace oj::rpc

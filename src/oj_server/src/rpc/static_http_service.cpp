@@ -270,7 +270,8 @@ namespace oj::rpc
 
         bool IsDigits(std::string_view text)
         {
-            return !text.empty() && std::all_of(text.begin(), text.end(), [](unsigned char ch) { return std::isdigit(ch); });
+            return !text.empty() &&
+                   std::all_of(text.begin(), text.end(), [](unsigned char ch) { return std::isalnum(ch); });
         }
 
     } // namespace

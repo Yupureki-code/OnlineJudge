@@ -18,7 +18,18 @@ void Check(bool condition, const char* message)
     std::exit(1);
 }
 
-class FakeStore final : public oj::judge::OutboxStore
+template <typename Condition>
+bool WaitFor(Condition condition, std::chrono::milliseconds timeout)
+{
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (condition()) return true;
+        std::this_thread::sleep_for(5ms);
+    }
+    return condition();
+}
+
+class FakeStore : public oj::judge::OutboxStore
 {
 public:
     bool Claim(std::size_t, const std::string& owner, uint32_t, uint32_t,
@@ -89,6 +100,22 @@ public:
     std::atomic<int> calls{0};
 };
 
+class NotifiedStore final : public FakeStore
+{
+public:
+    bool Claim(std::size_t limit, const std::string& owner, uint32_t lease_seconds,
+               uint32_t confirm_timeout_seconds,
+               std::vector<oj::db::JudgeOutbox>* rows) override
+    {
+        ++claim_calls;
+        if (!ready.load(std::memory_order_acquire)) return true;
+        return FakeStore::Claim(limit, owner, lease_seconds, confirm_timeout_seconds, rows);
+    }
+
+    std::atomic<bool> ready{false};
+    std::atomic<int> claim_calls{0};
+};
+
 void RunCase(bool success, bool accepts)
 {
     FakeStore store;
@@ -138,6 +165,27 @@ void RunRestartRecoveryCase()
     Check(recovered.calls.load() == 1, "restart performs one confirmed republish");
 }
 
+void RunNotificationCase()
+{
+    NotifiedStore store;
+    FakePublisher publisher(true);
+    oj::judge::OutboxPublisher::Config config;
+    config.idle_wait = 2s;
+    config.batch_size = 1;
+    oj::judge::OutboxPublisher worker(store, publisher, config);
+    Check(worker.Start(), "notified publisher starts");
+    Check(WaitFor([&] { return store.claim_calls.load() > 0; }, 200ms),
+          "publisher performs initial recovery claim");
+    store.ready.store(true, std::memory_order_release);
+    const auto started = std::chrono::steady_clock::now();
+    worker.Notify();
+    Check(WaitFor([&] { return store.finished.load(); }, 200ms),
+          "notification wakes publisher before idle poll");
+    worker.Stop();
+    Check(std::chrono::steady_clock::now() - started < 500ms,
+          "notification avoids the two-second idle wait");
+}
+
 } // namespace
 
 int main()
@@ -146,6 +194,7 @@ int main()
     RunCase(false, true);
     RunCase(false, false);
     RunRestartRecoveryCase();
+    RunNotificationCase();
     std::cout << "outbox_publisher_test: PASS\n";
     return 0;
 }

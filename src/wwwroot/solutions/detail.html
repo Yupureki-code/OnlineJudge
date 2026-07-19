@@ -540,7 +540,7 @@
                 OJApi.fetch('/api/user', { credentials: 'include' })
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
-                        if (data.success) {
+                        if (data.success && data.user) {
                             currentUser = data.user;
                             document.getElementById('comment-login-prompt').style.display = 'none';
                             document.getElementById('comment-form').style.display = 'block';
@@ -550,9 +550,17 @@
                         }
                     })
                     .catch(function() {
+                        currentUser = null;
                         document.getElementById('comment-login-prompt').style.display = 'block';
+                        document.getElementById('comment-form').style.display = 'none';
                     });
             }
+
+            window.addEventListener('oj-auth-changed', function(event) {
+                currentUser = event.detail && event.detail.user ? event.detail.user : null;
+                document.getElementById('comment-login-prompt').style.display = currentUser ? 'none' : 'block';
+                document.getElementById('comment-form').style.display = currentUser ? 'block' : 'none';
+            });
 
             function loadComments(page) {
                 if (isLoading || !hasMoreComments) return;
